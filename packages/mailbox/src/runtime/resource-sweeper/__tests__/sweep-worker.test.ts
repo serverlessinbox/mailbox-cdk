@@ -4,31 +4,30 @@
  * outcome is the status Step Functions branches on. The sweepers are fakes.
  */
 
-import { ExpectedFailure, LoggerBuffer }                                                                                      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { ExpectedFailure, LoggerBuffer }                                                                                                                     from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput, TargetResult, TargetSweeper }     from '../removal';
-import { SweepWorker }                                                                                                        from '../sweep-worker';
+import type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput, StackFailureDetectorRemovalTarget, TargetResult, TargetSweeper } from '../removal';
+import { SweepWorker }                                                                                                                                       from '../sweep-worker';
 
 const SWEPT: TargetResult = { target: 'cert', status: 'SUCCESS' };
 
-const CERT_INPUT: CertRemovalInput                     = {
+const CERT_INPUT: CertRemovalInput                       = {
   certArn:       'arn:aws:acm:us-west-2:123456789012:certificate/abc',
   rootStackName: 'test-stack',
   rootStackId:   'guid-1',
 };
-const EDGE_INPUT: EdgeFunctionRemovalInput             = {
+const EDGE_INPUT: EdgeFunctionRemovalInput               = {
   edgeFnArn:     'arn:aws:lambda:us-east-1:123456789012:function:edge',
   rootStackName: 'test-stack',
   rootStackId:   'guid-1',
 };
-const DETECTOR_INPUT: StackFailureDetectorRemovalInput = {
+const ROOT_STACK                                         = { rootStackName: 'test-stack', rootStackId: 'guid-1' };
+const DETECTOR_TARGET: StackFailureDetectorRemovalTarget = {
   ruleArn:                'arn:aws:events:us-west-2:123456789012:rule/r',
   ruleTargetId:           'Target0',
   detectorFnArn:          'arn:aws:lambda:us-west-2:123456789012:function:f',
   detectorRoleArn:        'arn:aws:iam::123456789012:role/ro',
   detectorRolePolicyName: 'p',
-  rootStackName:          'test-stack',
-  rootStackId:            'guid-1',
 };
 
 function sweeperAnswering<TInput>(result: TargetResult): jest.Mocked<TargetSweeper<TInput>> {
@@ -69,9 +68,27 @@ describe('SweepWorker', () => {
     it('rejects a detector payload whose rule target id is empty, which would remove no target', async () => {
       const { worker, detector } = workerWith();
 
-      const rejection = worker.handle({ removalType: 'detector', ...DETECTOR_INPUT, ruleTargetId: '' });
+      const rejection = worker.handle({ removalType: 'detector', target: { ...DETECTOR_TARGET, ruleTargetId: '' }, ...ROOT_STACK });
 
       await expect(rejection).rejects.toBeInstanceOf(ExpectedFailure);
+      expect(detector.sweep).not.toHaveBeenCalled();
+    });
+
+    it('rejects a detector payload with a half part, which would sweep a resource it cannot address', async () => {
+      const { worker, detector } = workerWith();
+
+      const rejection = worker.handle({ removalType: 'detector', target: { ruleArn: DETECTOR_TARGET.ruleArn }, ...ROOT_STACK });
+
+      await expect(rejection).rejects.toThrow('must carry all of its fields or none');
+      expect(detector.sweep).not.toHaveBeenCalled();
+    });
+
+    it('rejects a detector payload with no part, which would sweep nothing', async () => {
+      const { worker, detector } = workerWith();
+
+      const rejection = worker.handle({ removalType: 'detector', target: {}, ...ROOT_STACK });
+
+      await expect(rejection).rejects.toThrow('at least one detector part');
       expect(detector.sweep).not.toHaveBeenCalled();
     });
   });
@@ -97,14 +114,26 @@ describe('SweepWorker', () => {
       expect(detector.sweep).not.toHaveBeenCalled();
     });
 
-    it('hands a detector payload only to the stack-failure detector sweeper', async () => {
+    it('hands a detector payload only to the stack-failure detector sweeper, its parts beside the root stack', async () => {
       const { worker, cert, edge, detector } = workerWith();
 
-      await worker.handle({ removalType: 'detector', ...DETECTOR_INPUT });
+      await worker.handle({ removalType: 'detector', target: DETECTOR_TARGET, ...ROOT_STACK });
 
-      expect(detector.sweep).toHaveBeenCalledWith(expect.objectContaining(DETECTOR_INPUT));
+      expect(detector.sweep).toHaveBeenCalledWith({ ...DETECTOR_TARGET, ...ROOT_STACK });
       expect(cert.sweep).not.toHaveBeenCalled();
       expect(edge.sweep).not.toHaveBeenCalled();
+    });
+
+    it('hands a detector payload with only the rule part to the sweeper with only the rule part', async () => {
+      const { worker, detector } = workerWith();
+
+      await worker.handle({ removalType: 'detector', target: { ruleArn: DETECTOR_TARGET.ruleArn, ruleTargetId: DETECTOR_TARGET.ruleTargetId }, ...ROOT_STACK });
+
+      expect(detector.sweep).toHaveBeenCalledWith({
+        ruleArn:      DETECTOR_TARGET.ruleArn,
+        ruleTargetId: DETECTOR_TARGET.ruleTargetId,
+        ...ROOT_STACK,
+      });
     });
   });
 

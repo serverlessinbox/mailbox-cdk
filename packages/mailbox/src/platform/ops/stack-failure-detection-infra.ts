@@ -51,23 +51,23 @@ export class StackFailureDetectionInfra extends Construct {
     const detectorFunctionName = Fn.join('', ['mailbox-diag-fn-', positionHash, '-', guidPrefix]);
     const detectorRoleName     = Fn.join('', ['mailbox-diag-role-', positionHash, '-', guidPrefix]);
 
-    const detectorRole = new iam.Role(this, 'detector-role', {
+    const detectorRole = new iam.Role(this, 'detector-role-v2', {
       roleName:  detectorRoleName,
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
-    this.retainOnEveryOperation(detectorRole, 'detector-role');
+    this.retainOnEveryOperation(detectorRole, 'detector-role-v2');
 
     // Reused below for the grant, so the env var and the grant ARN can never
     // come from two independent lookups.
     const infraLogGroup = PipelineLogGroup.getOrCreate(this, 'infra');
 
-    const detector = new StackFailureDetectorLambda(this, 'detector', {
+    const detector = new StackFailureDetectorLambda(this, 'detector-v2', {
       artifactResolver:  props.artifactResolver,
       role:              detectorRole,
       functionName:      detectorFunctionName,
       infraLogGroupName: infraLogGroup.logGroupName,
     });
-    this.retainOnEveryOperation(detector, 'detector');
+    this.retainOnEveryOperation(detector, 'detector-v2');
 
     this.createDetectorPolicy(detectorRole, infraLogGroup.logGroupArn, props.vendorAccountIds);
 
@@ -81,7 +81,7 @@ export class StackFailureDetectionInfra extends Construct {
     // The log grants live on this policy rather than on the role through grant methods, so the role
     // never gets an implicit DefaultPolicy. CreateLogStream/PutLogEvents is needed because the explicit
     // `role:` passed to the Lambda skips the AWSLambdaBasicExecutionRole attachment `Function` would add.
-    const detectorPolicy = new iam.Policy(this, 'detector-policy', {
+    const detectorPolicy = new iam.Policy(this, 'detector-policy-v2', {
       policyName: DETECTOR_POLICY_NAME,
       statements: [
         new iam.PolicyStatement({
@@ -107,7 +107,7 @@ export class StackFailureDetectionInfra extends Construct {
       ],
     });
     detectorPolicy.attachToRole(detectorRole);
-    this.retainOnEveryOperation(detectorPolicy, 'detector-policy');
+    this.retainOnEveryOperation(detectorPolicy, 'detector-policy-v2');
   }
 
   /**

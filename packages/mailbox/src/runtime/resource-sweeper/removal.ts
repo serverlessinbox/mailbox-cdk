@@ -10,12 +10,24 @@ const edgeFunctionTargetFields = {
   edgeFnArn: t.isString(),
 };
 
-const stackFailureDetectorTargetFields = {
-  ruleArn:                t.isString(),
-  ruleTargetId:           isNonEmptyString,
-  detectorFnArn:          t.isString(),
+const stackFailureDetectorRuleFields = {
+  ruleArn:      t.isString(),
+  ruleTargetId: isNonEmptyString,
+};
+
+const stackFailureDetectorFunctionFields = {
+  detectorFnArn: t.isString(),
+};
+
+const stackFailureDetectorRoleFields = {
   detectorRoleArn:        t.isString(),
   detectorRolePolicyName: isNonEmptyString,
+};
+
+const stackFailureDetectorTargetFields = {
+  ...stackFailureDetectorRuleFields,
+  ...stackFailureDetectorFunctionFields,
+  ...stackFailureDetectorRoleFields,
 };
 
 const workerRootStackFields = {
@@ -28,11 +40,74 @@ const isEdgeFunctionRemovalTarget         = t.isObject(edgeFunctionTargetFields)
 const isStackFailureDetectorRemovalTarget = t.isObject(stackFailureDetectorTargetFields);
 const isWorkerRootStack                   = t.isObject(workerRootStackFields);
 
+/** One entry of the custom resource's properties as the planner reads it: every removal's fields are strings. */
+export const isRemovalEntry = t.isRecord(t.isString());
+
+/** One entry of the custom resource's properties. */
+export type RemovalEntry = t.InferType<typeof isRemovalEntry>;
+
+/**
+ * A part of a removal: the resource the sweep removes as one unit. The part is swept when its
+ * `identity` field changed between the old and new properties; `fields` is everything the sweep of
+ * the part needs.
+ */
+export interface RemovalPart<TTarget> extends RemovalPartFields {
+  readonly identity: keyof TTarget & string;
+  readonly fields:   ReadonlyArray<keyof TTarget & string>;
+}
+
+/** A removal part by its field names, for code that handles the parts of any removal. */
+export interface RemovalPartFields {
+  readonly identity: string;
+  readonly fields:   readonly string[];
+}
+
+/**
+ * The parts of each removal. A cert and an edge function are one resource each, identified by their
+ * ARN. The detector is three resources: its rule, function and role.
+ */
+export const REMOVAL_PARTS: { readonly [TId in RemovalId]: ReadonlyArray<RemovalPart<RemovalTargets[TId]>> } = {
+  'cert':     [{ identity: 'certArn', fields: ['certArn'] }],
+  'edge-fn':  [{ identity: 'edgeFnArn', fields: ['edgeFnArn'] }],
+  'detector': [
+    { identity: 'ruleArn', fields: ['ruleArn', 'ruleTargetId'] },
+    { identity: 'detectorFnArn', fields: ['detectorFnArn'] },
+    { identity: 'detectorRoleArn', fields: ['detectorRoleArn', 'detectorRolePolicyName'] },
+  ],
+};
+
+const detectorSweepPartsFields = {
+  ruleArn:                t.isOptional(stackFailureDetectorRuleFields.ruleArn),
+  ruleTargetId:           t.isOptional(stackFailureDetectorRuleFields.ruleTargetId),
+  detectorFnArn:          t.isOptional(stackFailureDetectorFunctionFields.detectorFnArn),
+  detectorRoleArn:        t.isOptional(stackFailureDetectorRoleFields.detectorRoleArn),
+  detectorRolePolicyName: t.isOptional(stackFailureDetectorRoleFields.detectorRolePolicyName),
+};
+
+/** Accepts a detector sweep whose parts are each whole (all of a part's fields or none) and of which at least one is present. */
+const hasWholeDetectorParts = t.makeValidator<Record<string, string | undefined>>({
+  test: (value, state) => {
+    const present    = REMOVAL_PARTS.detector.map((part) => part.fields.map((field) => value[field] !== undefined));
+    const wholeParts = present.every((flags) => flags.every(Boolean) || !flags.some(Boolean));
+    if (!wholeParts) {
+      state?.errors?.push(`${state.p ?? '.'}: each detector part (rule, function, role) must carry all of its fields or none`);
+      return false;
+    }
+    if (!present.some((flags) => flags.some(Boolean))) {
+      state?.errors?.push(`${state?.p ?? '.'}: at least one detector part (rule, function, role) must be present`);
+      return false;
+    }
+    return true;
+  },
+});
+
+const isStackFailureDetectorSweepParts = t.cascade(t.isObject(detectorSweepPartsFields), [hasWholeDetectorParts]);
+
 const isCertWorkerInput                 = t.isPartial({ removalType: t.isLiteral('cert'), ...certTargetFields, ...workerRootStackFields });
 const isEdgeFunctionWorkerInput         = t.isPartial({ removalType: t.isLiteral('edge-fn'), ...edgeFunctionTargetFields, ...workerRootStackFields });
 const isStackFailureDetectorWorkerInput = t.isPartial({
   removalType: t.isLiteral('detector'),
-  ...stackFailureDetectorTargetFields,
+  target:      isStackFailureDetectorSweepParts,
   ...workerRootStackFields,
 });
 
@@ -44,9 +119,17 @@ export type EdgeFunctionRemovalTarget = t.InferType<typeof isEdgeFunctionRemoval
 
 /**
  * The stack-failure detector's rule, function and role, as the custom resource's
- * `ResourceProperties` entry carries them. They are swept together as one removal.
+ * `ResourceProperties` entry carries them. They are registered as one removal, and each is swept
+ * separately, when its own identity changes.
  */
 export type StackFailureDetectorRemovalTarget = t.InferType<typeof isStackFailureDetectorRemovalTarget>;
+
+/**
+ * The parts of the stack-failure detector the sweep removes: any of the rule (`ruleArn` with
+ * `ruleTargetId`), the function (`detectorFnArn`) and the role (`detectorRoleArn` with
+ * `detectorRolePolicyName`), at least one, each whole.
+ */
+export type StackFailureDetectorSweepParts = t.InferType<typeof isStackFailureDetectorSweepParts>;
 
 /**
  * The `ResourceProperties` entry of each removal, keyed by the removal's id. The removal's id is
@@ -71,11 +154,11 @@ export type CertRemovalInput = CertRemovalTarget & WorkerRootStack;
 export type EdgeFunctionRemovalInput = EdgeFunctionRemovalTarget & WorkerRootStack;
 
 /**
- * The stack-failure detector's rule, function and role, and the root stack they must belong to.
+ * The parts of the stack-failure detector to sweep, and the root stack they must belong to.
  * The grace period before they become deletable is a Wait step of the state machine, so a sweep of
  * this input assumes the grace period has already elapsed.
  */
-export type StackFailureDetectorRemovalInput = StackFailureDetectorRemovalTarget & WorkerRootStack;
+export type StackFailureDetectorRemovalInput = StackFailureDetectorSweepParts & WorkerRootStack;
 
 /** The worker payload of a certificate removal. */
 export type CertWorkerInput = t.InferType<typeof isCertWorkerInput>;
@@ -83,7 +166,7 @@ export type CertWorkerInput = t.InferType<typeof isCertWorkerInput>;
 /** The worker payload of a Lambda@Edge function removal. */
 export type EdgeFunctionWorkerInput = t.InferType<typeof isEdgeFunctionWorkerInput>;
 
-/** The worker payload of a stack-failure detector removal. */
+/** The worker payload of a stack-failure detector removal: the parts to sweep sit in `target`. */
 export type StackFailureDetectorWorkerInput = t.InferType<typeof isStackFailureDetectorWorkerInput>;
 
 /** Accepts a worker payload of one of the three removal types, and nothing else. */
@@ -128,8 +211,8 @@ export interface TargetSweeper<TInput> {
 }
 
 /**
- * The custom resource's `ResourceProperties`/`OldResourceProperties`: one entry per registered
- * removal, keyed by the removal's id. An entry is opaque: it is forwarded whole, never read field
- * by field.
+ * The custom resource's `ResourceProperties`/`OldResourceProperties`, and the planner's result: one
+ * entry per registered removal, keyed by the removal's id. A planned entry carries only the parts to
+ * sweep.
  */
 export type RemovalPropertiesMap = Record<string, unknown>;

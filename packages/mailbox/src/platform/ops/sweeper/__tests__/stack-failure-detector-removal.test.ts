@@ -97,8 +97,7 @@ describe('StackFailureDetectorRemoval', () => {
     expect(stateBodyOf(definition, 'DetectorHasTarget')).toContain('"Variable":"$.toSweep.detector"');
     expect(stateBodyOf(definition, 'DetectorHasTarget')).toContain('"Default":"Done"');
     const invoke = stateBodyOf(definition, 'DetectorInvoke');
-    expect(invoke).toContain('"ruleArn.$":"$.toSweep.detector.ruleArn"');
-    expect(invoke).toContain('"detectorRolePolicyName.$":"$.toSweep.detector.detectorRolePolicyName"');
+    expect(invoke).toContain('"target.$":"$.toSweep.detector"');
     expect(invoke).toContain('"rootStackName":"DetectorChainStack"');
     expect(invoke).toContain('"rootStackId":');
   });

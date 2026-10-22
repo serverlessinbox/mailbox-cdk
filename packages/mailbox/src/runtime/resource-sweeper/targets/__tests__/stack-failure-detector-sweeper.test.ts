@@ -1,6 +1,7 @@
 /**
- * Coverage for `StackFailureDetectorSweeper`. The detector's rule, function and role are swept as
- * one removal, sequentially (rule -> function -> role) in a single invocation, and the first step
+ * Coverage for `StackFailureDetectorSweeper`. The parts of the detector the input carries (rule,
+ * function, role) are swept sequentially (rule -> function -> role) in a single invocation, a part the
+ * input does not carry is never touched, and the first step
  * that is not done ends the sweep: continuing past a failed or retried step would delete the role
  * while the function that runs under it still exists. Every branch assumes the grace period has
  * already elapsed.
@@ -98,6 +99,39 @@ describe('StackFailureDetectorSweeper', () => {
       PolicyName: 'stack-failure-detector-policy',
     });
     expect(iamMock.commandCalls(DeleteRoleCommand)[0].args[0].input).toEqual({ RoleName: 'mailbox-diag-role-abc123' });
+  });
+
+  it('touches only the rule when the input carries only the rule part, leaving the live function and role alone', async () => {
+    mockAllStepsSucceeding();
+
+    const result = await sweep({
+      ruleArn:       INPUT.ruleArn,
+      ruleTargetId:  INPUT.ruleTargetId,
+      rootStackName: INPUT.rootStackName,
+      rootStackId:   INPUT.rootStackId,
+    });
+
+    expect(result).toEqual({ target: 'detector', status: 'SUCCESS' });
+    expect(eventsMock.commandCalls(DeleteRuleCommand)).toHaveLength(1);
+    expect(lambdaMock.calls()).toHaveLength(0);
+    expect(iamMock.calls()).toHaveLength(0);
+  });
+
+  it('touches only the function and role when the input carries those parts, leaving the rule alone', async () => {
+    mockAllStepsSucceeding();
+
+    const result = await sweep({
+      detectorFnArn:          INPUT.detectorFnArn,
+      detectorRoleArn:        INPUT.detectorRoleArn,
+      detectorRolePolicyName: INPUT.detectorRolePolicyName,
+      rootStackName:          INPUT.rootStackName,
+      rootStackId:            INPUT.rootStackId,
+    });
+
+    expect(result).toEqual({ target: 'detector', status: 'SUCCESS' });
+    expect(eventsMock.calls()).toHaveLength(0);
+    expect(lambdaMock.commandCalls(DeleteFunctionCommand)).toHaveLength(1);
+    expect(iamMock.commandCalls(DeleteRoleCommand)).toHaveLength(1);
   });
 
   it('passes IAM the bare role name when the role ARN carries a path', async () => {

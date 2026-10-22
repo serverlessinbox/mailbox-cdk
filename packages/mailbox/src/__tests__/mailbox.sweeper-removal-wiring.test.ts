@@ -17,8 +17,8 @@ import { App, BootstraplessSynthesizer }                                        
 
 import { Permission }                                                                  from '../core/auth/jmap-scopes';
 import type { IMailboxAuthProvider }                                                   from '../core/auth/types';
-import { SendStackFailuresMode }                                                       from '../platform/ops/stack-failure-detection';
 import { Mailbox }                                                                     from '../mailbox';
+import { SendStackFailuresMode }                                                       from '../platform/ops/stack-failure-detection';
 
 function createMockAuthProvider(): IMailboxAuthProvider {
   return {
@@ -123,45 +123,67 @@ describe('Mailbox: sweeper removal wiring', () => {
     expect(props.cert).toBeUndefined();
   });
 
+  it('the detector entry references the created-anew role and function (construct ids detector-role-v2 and detector-v2) by their ARNs', () => {
+    const roles     = Object.entries(template.findResources('AWS::IAM::Role')).filter(([, role]) =>
+      renderLiteralText(role.Properties?.RoleName).startsWith('mailbox-diag-role-'),
+    );
+    const functions = Object.entries(template.findResources('AWS::Lambda::Function')).filter(([, lambdaFunction]) =>
+      renderLiteralText(lambdaFunction.Properties?.FunctionName).startsWith('mailbox-diag-fn-'),
+    );
+    expect(roles).toHaveLength(1);
+    expect(functions).toHaveLength(1);
+    const [roleLogicalId]     = roles[0];
+    const [functionLogicalId] = functions[0];
+    expect(roleLogicalId).toMatch(/infradetectorrolev2[0-9A-F]{8}$/);
+    expect(functionLogicalId).toMatch(/infradetectorv2[0-9A-F]{8}$/);
+
+    const detector = deferredRemovalProperties(template)['detector'];
+
+    expect(detector).toMatchObject({
+      detectorRoleArn: { 'Fn::GetAtt': [roleLogicalId, 'Arn'] },
+      detectorFnArn:   { 'Fn::GetAtt': [functionLogicalId, 'Arn'] },
+    });
+  });
+
   it('the state machine definition contains steps contributed by each registered removal', () => {
-    const def = sweeperDefinition();
+    const definition = sweeperDefinition();
 
     // This test's Mailbox config has no custom regional-SAN certificate, so CertificateRemoval is
     // never registered (mirrors mailbox.ts's own `if (regionalSanCertificate)` gate) — only assert
     // the cert steps when the underlying certificate resource actually exists in the template.
     const hasCertificate = Object.keys(template.findResources('AWS::CertificateManager::Certificate')).length > 0;
     if (hasCertificate) {
-      expect(def).toContain('"CertInvoke"');
-      expect(def).toContain('"CertWaitRetry"');
+      expect(definition).toContain('"CertInvoke"');
+      expect(definition).toContain('"CertWaitRetry"');
     }
 
     // Edge-fn is always registered.
-    expect(def).toContain('"EdgeFnInvoke"');
-    expect(def).toContain('"EdgeFnWaitRetry"');
+    expect(definition).toContain('"EdgeFnInvoke"');
+    expect(definition).toContain('"EdgeFnWaitRetry"');
     // Detector contributes its own Invoke/retry-loop states too (enabled by default).
-    expect(def).toContain('"DetectorInvoke"');
-    expect(def).toContain('"DetectorWaitRetry"');
+    expect(definition).toContain('"DetectorInvoke"');
+    expect(definition).toContain('"DetectorWaitRetry"');
     // Self-cleanup tail still present after every removal succeeds.
-    expect(def).toContain('"SelfCleanupDeleteWorker"');
-    expect(def).toContain('"SelfCleanupDeleteStateMachine"');
+    expect(definition).toContain('"SelfCleanupDeleteWorker"');
+    expect(definition).toContain('"SelfCleanupDeleteStateMachine"');
   });
 
   it('the detector\'s grace-period Wait state comes from its own removal, not shared retry logic', () => {
-    const def = sweeperDefinition();
+    const definition = sweeperDefinition();
 
     // Only the detector removal contributes a grace-period wait.
-    expect(def).toContain('"DetectorGraceWait"');
+    expect(definition).toContain('"DetectorGraceWait"');
     // Cert/edge-fn removals have no equivalent — they only ever have their own retry-loop wait.
-    expect(def).not.toContain('"CertGraceWait"');
-    expect(def).not.toContain('"EdgeFnGraceWait"');
+    expect(definition).not.toContain('"CertGraceWait"');
+    expect(definition).not.toContain('"EdgeFnGraceWait"');
 
     // The grace wait is a fixed 15-minute duration, distinct from the 5-minute retry-loop wait
     // shared by every removal's own retry loop.
-    const graceWaitMatch = def.match(/"DetectorGraceWait":\s*\{[^}]*"Seconds":\s*(\d+)/);
+    const graceWaitMatch = definition.match(/"DetectorGraceWait":\s*\{[^}]*"Seconds":\s*(\d+)/);
     expect(graceWaitMatch).not.toBeNull();
     expect(Number(graceWaitMatch?.[1])).toBe(15 * 60);
 
-    const retryWaitMatch = def.match(/"DetectorWaitRetry":\s*\{[^}]*"Seconds":\s*(\d+)/);
+    const retryWaitMatch = definition.match(/"DetectorWaitRetry":\s*\{[^}]*"Seconds":\s*(\d+)/);
     expect(retryWaitMatch).not.toBeNull();
     expect(Number(retryWaitMatch?.[1])).toBe(5 * 60);
   });
@@ -172,9 +194,9 @@ describe('Mailbox: sweeper removal wiring', () => {
     }
 
     // No env var on the detector Lambda carries a state-machine ARN either.
-    const fns        = template.findResources('AWS::Lambda::Function');
-    const detectorFn = Object.values(fns).find((fn) =>
-      renderLiteralText(fn.Properties?.FunctionName).startsWith('mailbox-diag-fn-'),
+    const lambdaFunctions = template.findResources('AWS::Lambda::Function');
+    const detectorFn      = Object.values(lambdaFunctions).find((lambdaFunction) =>
+      renderLiteralText(lambdaFunction.Properties?.FunctionName).startsWith('mailbox-diag-fn-'),
     );
     expect(detectorFn).toBeDefined();
     const envVars = detectorFn?.Properties.Environment?.Variables ?? {};
@@ -192,9 +214,9 @@ describe('Mailbox: sweeper removal wiring — sendStackFailures disabled', () =>
   });
 
   it('synthesizes no detector resources at all — the all-or-nothing sweep-target property collapses to undefined', () => {
-    const fns        = template.findResources('AWS::Lambda::Function');
-    const detectorFn = Object.values(fns).find((fn) =>
-      renderLiteralText(fn.Properties?.FunctionName).startsWith('mailbox-diag-fn-'),
+    const lambdaFunctions = template.findResources('AWS::Lambda::Function');
+    const detectorFn      = Object.values(lambdaFunctions).find((lambdaFunction) =>
+      renderLiteralText(lambdaFunction.Properties?.FunctionName).startsWith('mailbox-diag-fn-'),
     );
     expect(detectorFn).toBeUndefined();
 
@@ -211,12 +233,12 @@ describe('Mailbox: sweeper removal wiring — sendStackFailures disabled', () =>
   });
 
   it('registers no detector removal on the sweeper: no grace-wait/invoke steps and no "detector" key on the deferred-removal custom resource', () => {
-    const machines = template.findResources('AWS::StepFunctions::StateMachine');
-    const [sm]     = Object.values(machines);
-    const def      = renderLiteralText(sm.Properties.DefinitionString);
-    expect(def).not.toContain('"DetectorGraceWait"');
-    expect(def).not.toContain('"DetectorInvoke"');
-    expect(def).not.toContain('"DetectorWaitRetry"');
+    const machines       = template.findResources('AWS::StepFunctions::StateMachine');
+    const [stateMachine] = Object.values(machines);
+    const definition     = renderLiteralText(stateMachine.Properties.DefinitionString);
+    expect(definition).not.toContain('"DetectorGraceWait"');
+    expect(definition).not.toContain('"DetectorInvoke"');
+    expect(definition).not.toContain('"DetectorWaitRetry"');
 
     expect(deferredRemovalProperties(template)['detector']).toBeUndefined();
   });

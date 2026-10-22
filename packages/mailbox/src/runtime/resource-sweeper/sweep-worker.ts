@@ -54,7 +54,11 @@ export class SweepWorker {
       case 'edge-fn':
         return this.edgeFunctionSweeper.sweep(input);
       case 'detector':
-        return this.stackFailureDetectorSweeper.sweep(input);
+        return this.stackFailureDetectorSweeper.sweep({
+          ...input.target,
+          rootStackName: input.rootStackName,
+          rootStackId:   input.rootStackId,
+        });
     }
   }
 

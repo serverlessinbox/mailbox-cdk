@@ -69,12 +69,14 @@ describe('SweepWorkerComposition', () => {
     iamMock.on(ListRoleTagsCommand).rejects(notFound('NoSuchEntityException'));
 
     await sweepWorker().handle({
-      removalType:            'detector',
-      ruleArn:                'arn:aws:events:eu-west-1:123456789012:rule/r',
-      ruleTargetId:           'Target0',
-      detectorFnArn:          'arn:aws:lambda:eu-west-1:123456789012:function:f',
-      detectorRoleArn:        'arn:aws:iam::123456789012:role/ro',
-      detectorRolePolicyName: 'p',
+      removalType: 'detector',
+      target:      {
+        ruleArn:                'arn:aws:events:eu-west-1:123456789012:rule/r',
+        ruleTargetId:           'Target0',
+        detectorFnArn:          'arn:aws:lambda:eu-west-1:123456789012:function:f',
+        detectorRoleArn:        'arn:aws:iam::123456789012:role/ro',
+        detectorRolePolicyName: 'p',
+      },
       ...ROOT_STACK,
     });
 

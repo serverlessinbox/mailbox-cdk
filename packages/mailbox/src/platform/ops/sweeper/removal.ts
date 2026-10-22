@@ -3,6 +3,7 @@ import { IFunction }                                                            
 import * as tasks                                                                 from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import * as sfn                                                                   from 'aws-cdk-lib/aws-stepfunctions';
 import { Duration }                                                               from 'aws-cdk-lib';
+import type { IResolvable }                                                       from 'aws-cdk-lib';
 import { Construct }                                                              from 'constructs';
 
 import type { RemovalId, RemovalTargets, SweepStatus, WorkerInput, WorkerOutput } from '../../../runtime/resource-sweeper/removal';
@@ -55,11 +56,20 @@ export interface IResourceRemoval<TId extends RemovalId = RemovalId> extends IRe
   crProperties(): RemovalTargets[TId];
 }
 
+/**
+ * A worker payload as the state machine states it: each string field of `TInput` is a literal or a
+ * reference into the execution input, and each object field is a reference to an object there. Both
+ * resolve to the real value when the state runs.
+ */
+export type WorkerPayloadTemplate<TInput> = {
+  readonly [TKey in keyof TInput as string extends TKey ? never : TKey]: TInput[TKey] extends string ? string : IResolvable;
+};
+
 /** The worker invocation of one removal and the loop that repeats it until the worker is done. */
 export interface WorkerRetryLoopProps {
   readonly worker: IFunction;
-  /** The worker payload; its string fields are state-machine references to the execution input. */
-  readonly payload:       WorkerInput;
+  /** The worker payload; its fields are state-machine references to the execution input. */
+  readonly payload:       WorkerPayloadTemplate<WorkerInput>;
   readonly retryInterval: Duration;
   /** Where the loop continues when the worker reports SUCCESS. */
   readonly onSuccess: sfn.IChainable;
@@ -75,6 +85,11 @@ export interface WorkerRetryLoopProps {
  */
 export function targetField<TId extends RemovalId>(removalId: TId, field: keyof RemovalTargets[TId] & string): string {
   return sfn.JsonPath.stringAt(`$.toSweep.${removalId}.${field}`);
+}
+
+/** A state-machine reference to a removal's whole planned entry in the execution input, whatever parts it carries. */
+export function targetAt(removalId: RemovalId): IResolvable {
+  return sfn.JsonPath.objectAt(`$.toSweep.${removalId}`);
 }
 
 /**

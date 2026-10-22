@@ -12,8 +12,8 @@ import type {
 } from '../../../runtime/resource-sweeper/removal';
 import type { StackFailureDetectorSweepTargets }                      from '../stack-failure-detection';
 
-import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard } from './removal';
-import type { IResourceRemoval }                                      from './removal';
+import { buildWorkerRetryLoop, targetAt, withTargetPresenceGuard }    from './removal';
+import type { IResourceRemoval, WorkerPayloadTemplate }               from './removal';
 
 export interface StackFailureDetectorRemovalProps extends StackFailureDetectorSweepTargets {
   /**
@@ -26,8 +26,8 @@ export interface StackFailureDetectorRemovalProps extends StackFailureDetectorSw
 
 /**
  * Registers the stack-failure detector's rule, function and role as ONE removal — grouped
- * because they are torn down together, after a single grace-period wait, rather than as three
- * independent registrations.
+ * because they share a single grace-period wait, rather than being three independent
+ * registrations. On an update only the parts whose own identity changed are swept.
  *
  * The grace period is a Wait step this removal contributes to the state machine.
  *
@@ -71,15 +71,11 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
   }
 
   public buildChain(worker: lambda.IFunction, retryInterval: Duration, onSuccess: sfn.IChainable): sfn.State {
-    const payload: StackFailureDetectorWorkerInput = {
-      removalType:            'detector',
-      ruleArn:                targetField(this.id, 'ruleArn'),
-      ruleTargetId:           targetField(this.id, 'ruleTargetId'),
-      detectorFnArn:          targetField(this.id, 'detectorFnArn'),
-      detectorRoleArn:        targetField(this.id, 'detectorRoleArn'),
-      detectorRolePolicyName: targetField(this.id, 'detectorRolePolicyName'),
-      rootStackName:          Stack.of(this).stackName,
-      rootStackId:            StackIdentity.guid,
+    const payload: WorkerPayloadTemplate<StackFailureDetectorWorkerInput> = {
+      removalType:   'detector',
+      target:        targetAt(this.id),
+      rootStackName: Stack.of(this).stackName,
+      rootStackId:   StackIdentity.guid,
     };
 
     const retryLoop = buildWorkerRetryLoop(this, 'Detector', {
