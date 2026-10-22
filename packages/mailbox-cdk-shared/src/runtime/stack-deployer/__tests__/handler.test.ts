@@ -7,6 +7,7 @@ import type * as HandlerModule            from '../handler';
 
 import {
   cfnRequest,
+  containingText,
   fakeCfnEndpoint,
   LOG_STREAM_NAME,
   operation,
@@ -25,6 +26,20 @@ interface LoadedHandlers {
   readonly handlers: typeof HandlerModule;
   readonly sfn: AwsClientStub<SfnSdk.SFNClient>;
   readonly cloudFormation: AwsClientStub<CloudFormationSdk.CloudFormationClient>;
+  readonly sfnClient: typeof SfnSdk.SFNClient;
+  readonly cloudFormationClient: typeof CloudFormationSdk.CloudFormationClient;
+}
+
+interface ClientWithRegion {
+  readonly config: { region(): Promise<string> };
+}
+
+/** The region a client was built for. The client is the `this` of a recorded call, which the mock library types `any`. */
+async function regionOf(client: unknown, clientClass: new (...args: never) => ClientWithRegion): Promise<string> {
+  if (!(client instanceof clientClass)) {
+    throw new Error('the recorded call was not made by a client of the expected class');
+  }
+  return client.config.region();
 }
 
 const CONTEXT        = { logStreamName: LOG_STREAM_NAME };
@@ -53,12 +68,14 @@ describe('stack-deployer handlers', () => {
 
     let loaded: LoadedHandlers | undefined;
     jest.isolateModules(() => {
-      const sfnSdk: typeof SfnSdk                       = require('@aws-sdk/client-sfn');
-      const cloudFormationSdk: typeof CloudFormationSdk = require('@aws-sdk/client-cloudformation');
-      loaded                                            = {
-        handlers: require('../handler'),
+      const sfnSdk            = jest.requireActual<typeof SfnSdk>('@aws-sdk/client-sfn');
+      const cloudFormationSdk = jest.requireActual<typeof CloudFormationSdk>('@aws-sdk/client-cloudformation');
+      loaded                  = {
+        handlers: jest.requireActual<typeof HandlerModule>('../handler'),
         sfn: mockClient(sfnSdk.SFNClient),
         cloudFormation: mockClient(cloudFormationSdk.CloudFormationClient),
+        sfnClient: sfnSdk.SFNClient,
+        cloudFormationClient: cloudFormationSdk.CloudFormationClient,
       };
     });
     if (!loaded) {
@@ -88,7 +105,7 @@ describe('stack-deployer handlers', () => {
   });
 
   describe('starterHandler', () => {
-    it('starts the execution, writes the break-glass finalization lines and answers nothing', async () => {
+    it('starts the execution and answers nothing', async () => {
       const { handlers, sfn } = loadHandlers(starterEnvironment);
       sfn.callsFake(async () => ({}));
 
@@ -96,19 +113,15 @@ describe('stack-deployer handlers', () => {
 
       expect(sfn.calls()).toHaveLength(1);
       expect(endpoint.answers()).toEqual([]);
-      const written = consoleSpies.log.mock.calls.map((call) => String(call[0])).join('\n');
-      expect(written).toContain('MANUAL_FINALIZE stack=test-data-stack logical=MailboxDeployer type=Create requestId=request-123');
-      expect(written).toContain(`MANUAL_FINALIZE responseUrl=https://example.com/cfn-response`);
-      expect(consoleSpies.info).toHaveBeenCalledWith('stack-deployer-starter dispatch', { requestType: 'Create', logicalResourceId: 'MailboxDeployer' });
     });
 
     it('starts the execution with a Step Functions client of the region the function runs in', async () => {
-      const { handlers, sfn } = loadHandlers({ ...starterEnvironment, AWS_REGION: 'eu-west-1' });
+      const { handlers, sfn, sfnClient } = loadHandlers({ ...starterEnvironment, AWS_REGION: 'eu-west-1' });
       sfn.callsFake(async () => ({}));
 
       await handlers.starterHandler(cfnRequest(), CONTEXT);
 
-      await expect(sfn.calls()[0].thisValue.config.region()).resolves.toBe('eu-west-1');
+      await expect(regionOf(sfn.calls()[0].thisValue, sfnClient)).resolves.toBe('eu-west-1');
     });
 
     it.each([
@@ -137,7 +150,7 @@ describe('stack-deployer handlers', () => {
       await handlers.starterHandler({ ...cfnRequest(), RequestType: 'Replace' }, CONTEXT);
 
       expect(endpoint.answers()).toEqual([
-        expect.objectContaining({ Status: 'FAILED', Reason: expect.stringContaining('Unexpected error: Error: Invalid event') }),
+        expect.objectContaining({ Status: 'FAILED', Reason: containingText('Unexpected error: Error: Invalid event') }),
       ]);
       expect(sfn.calls()).toHaveLength(0);
     });
@@ -165,7 +178,7 @@ describe('stack-deployer handlers', () => {
 
       await handlers.starterHandler(request, CONTEXT);
 
-      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'FAILED', Reason: expect.stringContaining('Root stack name "this-is-a-very-long-names" exceeds maximum length') })]);
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'FAILED', Reason: containingText('Root stack name "this-is-a-very-long-names" exceeds maximum length') })]);
       expect(sfn.calls()).toHaveLength(0);
       expect(consoleSpies.debug).not.toHaveBeenCalled();
     });
@@ -175,7 +188,7 @@ describe('stack-deployer handlers', () => {
 
       await handlers.starterHandler(cfnRequest({ RequestType: 'Delete' }), CONTEXT);
 
-      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'SUCCESS', Reason: expect.stringContaining(':stateMachine/{name}') })]);
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'SUCCESS', Reason: containingText(':stateMachine/{name}') })]);
     });
 
     it('answers properties it cannot run FAILED, naming the resource MailboxStack when they name no stack', async () => {
@@ -184,7 +197,7 @@ describe('stack-deployer handlers', () => {
       await handlers.starterHandler(cfnRequest({}, {}), CONTEXT);
 
       expect(endpoint.answers()).toEqual([
-        expect.objectContaining({ Status: 'FAILED', PhysicalResourceId: 'MailboxStack', Reason: expect.stringContaining('Invalid ResourceProperties') }),
+        expect.objectContaining({ Status: 'FAILED', PhysicalResourceId: 'MailboxStack', Reason: containingText('Invalid ResourceProperties') }),
       ]);
       expect(sfn.calls()).toHaveLength(0);
     });
@@ -264,7 +277,6 @@ describe('stack-deployer handlers', () => {
 
       expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
       expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'SUCCESS' })]);
-      expect(consoleSpies.info).toHaveBeenCalledWith('stack-deployer-worker dispatch', { mode: 'check', attempt: 1 });
     });
 
     it.each([
@@ -286,21 +298,21 @@ describe('stack-deployer handlers', () => {
       const inProgress = async () => ({ Stacks: [stack('UPDATE_IN_PROGRESS')], StackEvents: [] });
 
       it('is built for the region the operation names', async () => {
-        const { handlers, cloudFormation } = loadHandlers({ ...workerEnvironment, AWS_REGION: 'eu-west-1' });
+        const { handlers, cloudFormation, cloudFormationClient } = loadHandlers({ ...workerEnvironment, AWS_REGION: 'eu-west-1' });
         cloudFormation.callsFake(inProgress);
 
         await handlers.workerHandler(sfnEvent({ op: operation({ region: US_WEST_2 }) }), CONTEXT);
 
-        await expect(cloudFormation.calls()[0].thisValue.config.region()).resolves.toBe('us-west-2');
+        await expect(regionOf(cloudFormation.calls()[0].thisValue, cloudFormationClient)).resolves.toBe('us-west-2');
       });
 
       it('is built for the region the function runs in when the operation names none', async () => {
-        const { handlers, cloudFormation } = loadHandlers({ ...workerEnvironment, AWS_REGION: 'eu-west-1' });
+        const { handlers, cloudFormation, cloudFormationClient } = loadHandlers({ ...workerEnvironment, AWS_REGION: 'eu-west-1' });
         cloudFormation.callsFake(inProgress);
 
         await handlers.workerHandler(sfnEvent(), CONTEXT);
 
-        await expect(cloudFormation.calls()[0].thisValue.config.region()).resolves.toBe('eu-west-1');
+        await expect(regionOf(cloudFormation.calls()[0].thisValue, cloudFormationClient)).resolves.toBe('eu-west-1');
       });
 
       it('is never built when the function reports no region: the operation is answered as a configuration error', async () => {
@@ -311,18 +323,6 @@ describe('stack-deployer handlers', () => {
         expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'FAILED', Reason: 'Configuration error: AWS_REGION is not set' })]);
         expect(cloudFormation.calls()).toHaveLength(0);
       });
-
-      it('is built once per region and reused by later operations', async () => {
-        const { handlers, cloudFormation } = loadHandlers(workerEnvironment);
-        cloudFormation.callsFake(inProgress);
-
-        await handlers.workerHandler(sfnEvent(), CONTEXT);
-        await handlers.workerHandler(sfnEvent(), CONTEXT);
-
-        const clients = new Set(cloudFormation.calls().map((call) => call.thisValue));
-        expect(cloudFormation.calls().length).toBeGreaterThan(1);
-        expect(clients.size).toBe(1);
-      });
     });
 
     it('answers an input it cannot read, from the response target it still carries, and ends the workflow', async () => {
@@ -332,7 +332,7 @@ describe('stack-deployer handlers', () => {
 
       expect(result).toEqual({ done: true });
       expect(endpoint.answers()).toEqual([
-        expect.objectContaining({ Status: 'FAILED', Reason: expect.stringContaining('Unexpected error: Error: Invalid event') }),
+        expect.objectContaining({ Status: 'FAILED', Reason: containingText('Unexpected error: Error: Invalid event') }),
       ]);
       expect(cloudFormation.calls()).toHaveLength(0);
     });

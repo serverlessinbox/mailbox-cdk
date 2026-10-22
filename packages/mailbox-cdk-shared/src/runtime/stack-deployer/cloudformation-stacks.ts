@@ -6,12 +6,14 @@ import {
   DescribeStacksCommand,
   UpdateStackCommand,
   type Capability,
+  type Parameter,
   type Stack,
   type StackEvent,
+  type Tag,
 } from '@aws-sdk/client-cloudformation';
 
-import { CaughtError }         from '../../runtime/handler-kit/errors/caught-error';
 import type { Region }         from '../../runtime/handler-kit/aws-identifiers';
+import { CaughtError }         from '../../runtime/handler-kit/errors/caught-error';
 import type { LoggerBuffer }   from '../../runtime/handler-kit/logger-buffer';
 
 import type { OperationInput } from './stack/stack-deployment';
@@ -21,16 +23,6 @@ import { StackStatus }         from './stack/stack-status';
 const STACK_CAPABILITIES: Capability[] = ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM', 'CAPABILITY_AUTO_EXPAND'];
 
 const FAILURE_EVENT_LIMIT = 8;
-
-interface CfnParameter {
-  readonly ParameterKey: string;
-  readonly ParameterValue: string;
-}
-
-interface CfnTag {
-  readonly Key: string;
-  readonly Value: string;
-}
 
 /**
  * The CloudFormation calls that deploy and delete the stack of one operation. It issues the calls and
@@ -91,23 +83,19 @@ export class CloudFormationStacks {
   }
 
   /**
-   * Creates the stack, or updates it when it exists. A stack in a state CloudFormation can no longer update
-   * is deleted and created again. An update that changes nothing is not a failure.
+   * Creates the stack, or updates it when it exists. A stack whose status refuses every update is deleted and
+   * created again. An update that changes nothing is not a failure.
    */
   async startOrUpdate(op: OperationInput): Promise<void> {
     this.logOperation(op);
 
-    let existing = await this.describe(op);
+    const existing = await this.describeOrCreate(op);
     if (!existing) {
-      existing = await this.createUnlessExists(op);
-      if (!existing) {
-        return;
-      }
+      return;
     }
 
     if (new StackStatus(existing.StackStatus).requiresRecreate()) {
-      this.logger.debug(`Stack ${op.stackName} is in ${existing.StackStatus}; deleting and recreating.`);
-      await this.recreate(op);
+      await this.recreateStuck(op, existing);
       return;
     }
 
@@ -123,14 +111,8 @@ export class CloudFormationStacks {
   }
 
   async recreate(op: OperationInput): Promise<void> {
-    this.logger.debug(`Stack ${op.stackName} requires recreation; deleting and recreating.`);
-    await this.deleteIfExists(op);
-    try {
-      await this.createStack(op);
-    } catch (failure) {
-      this.logger.error('Recreate CreateStack failed', { error: this.stringify(failure) });
-      throw failure;
-    }
+    await this.deleteForRecreate(op);
+    await this.createAfterDelete(op);
   }
 
   private clientFor(op: OperationInput): CloudFormationClient {
@@ -182,6 +164,33 @@ export class CloudFormationStacks {
       templateUrl: op.templateUrl,
       terminationProtection: op.terminationProtection,
     });
+  }
+
+  private async describeOrCreate(op: OperationInput): Promise<Stack | undefined> {
+    const existing = await this.describe(op);
+    if (existing) {
+      return existing;
+    }
+    return this.createUnlessExists(op);
+  }
+
+  private async recreateStuck(op: OperationInput, existing: Stack): Promise<void> {
+    this.logger.debug(`Stack ${op.stackName} is in ${existing.StackStatus}; deleting and recreating.`);
+    await this.recreate(op);
+  }
+
+  private async deleteForRecreate(op: OperationInput): Promise<void> {
+    this.logger.debug(`Stack ${op.stackName} requires recreation; deleting and recreating.`);
+    await this.deleteIfExists(op);
+  }
+
+  private async createAfterDelete(op: OperationInput): Promise<void> {
+    try {
+      await this.createStack(op);
+    } catch (failure) {
+      this.logger.error('Recreate CreateStack failed', { error: this.stringify(failure) });
+      throw failure;
+    }
   }
 
   private async createUnlessExists(op: OperationInput): Promise<Stack | undefined> {
@@ -248,24 +257,22 @@ export class CloudFormationStacks {
     throw failure;
   }
 
-  private parameters(op: OperationInput): CfnParameter[] {
-    const parameters: CfnParameter[] = [];
-    for (const [key, value] of Object.entries(op.parameters ?? {})) {
-      if (value !== undefined && value !== '') {
-        parameters.push({ ParameterKey: key, ParameterValue: value });
-      }
-    }
-    return parameters;
+  private parameters(op: OperationInput): Parameter[] {
+    return this.nonEmptyEntries(op.parameters).map(([ParameterKey, ParameterValue]) => ({ ParameterKey, ParameterValue }));
   }
 
-  private tags(op: OperationInput): CfnTag[] {
-    const tags: CfnTag[] = [];
-    for (const [key, value] of Object.entries(op.tags ?? {})) {
+  private tags(op: OperationInput): Tag[] {
+    return this.nonEmptyEntries(op.tags).map(([Key, Value]) => ({ Key, Value }));
+  }
+
+  private nonEmptyEntries(values: Record<string, string | undefined> | undefined): Array<[string, string]> {
+    const entries: Array<[string, string]> = [];
+    for (const [key, value] of Object.entries(values ?? {})) {
       if (value !== undefined && value !== '') {
-        tags.push({ Key: key, Value: value });
+        entries.push([key, value]);
       }
     }
-    return tags;
+    return entries;
   }
 
   private stringify(value: unknown): string {

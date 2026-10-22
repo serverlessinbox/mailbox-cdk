@@ -1,25 +1,26 @@
-import { DescribeExecutionCommand, StartExecutionCommand, type SFNClient }                              from '@aws-sdk/client-sfn';
+import { DescribeExecutionCommand, StartExecutionCommand, type ExecutionStatus, type SFNClient }         from '@aws-sdk/client-sfn';
 
-import type { StackId }                                                                                 from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { CaughtError }                                                                                  from '../../runtime/handler-kit/errors/caught-error';
-import { ExpectedFailure }                                                                              from '../../runtime/handler-kit/errors/expected-failure';
-import { formatArn, parseArn, type ParsedArn }                                                          from '../../runtime/handler-kit/arn';
-import type { LoggerBuffer }                                                                            from '../../runtime/handler-kit/logger-buffer';
+import { formatArn, parseArn, type ParsedArn }                                                           from '../../runtime/handler-kit/arn';
+import type { StackId }                                                                                  from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { CaughtError }                                                                                   from '../../runtime/handler-kit/errors/caught-error';
+import { ExpectedFailure }                                                                               from '../../runtime/handler-kit/errors/expected-failure';
+import type { LoggerBuffer }                                                                             from '../../runtime/handler-kit/logger-buffer';
 
-import type { CfnReplyTarget, CfnResponder }                                                            from './answers/cfn-responder';
-import { toExecutionArn, toExecutionName, type ExecutionArn, type ExecutionName, type StateMachineArn } from './deployer-identifiers';
-import type { StackDeploymentEventReader }                                                              from './stack/stack-deployment-event-reader';
-import type { CfnRequest, RequestType, WorkflowInput }                                                  from './stack/stack-deployment';
-import { StackOperationFailure }                                                                        from './stack/stack-operation-failure';
+import type { CfnReplyTarget, CfnResponder }                                                             from './answers/cfn-responder';
+import { STATE_MACHINE_ARN_VARIABLE }                                                                    from './config';
+import { toExecutionArn, toExecutionName, type ExecutionArn, type ExecutionName, type StateMachineArn }  from './deployer-identifiers';
+import type { StackDeploymentEventReader }                                                               from './stack/stack-deployment-event-reader';
+import type { BrandedStackDeployerProperties, CfnRequest, RequestType, WorkflowInput }                   from './stack/stack-deployment';
+import { StackOperationFailure }                                                                         from './stack/stack-operation-failure';
 
-// CloudFormation truncates auto-generated physical names to 64 characters, and the names of the IAM roles
-// built from the root stack name need room beside it.
+// CloudFormation truncates auto-generated physical names to 64 characters; the root stack name is limited so
+// that the names built from it stay inside that.
 const MAX_ROOT_STACK_NAME_LENGTH = 24;
 
 // The execution name is the request id, and a rejected name is retried as `-r2` up to `-r5`.
 const LAST_EXECUTION_NAME_ATTEMPT = 5;
 
-const TERMINAL_EXECUTION_STATUSES = ['SUCCEEDED', 'FAILED', 'TIMED_OUT', 'ABORTED'];
+const TERMINAL_EXECUTION_STATUSES: readonly ExecutionStatus[] = ['SUCCEEDED', 'FAILED', 'TIMED_OUT', 'ABORTED'];
 
 type NameAttempt = 'started' | 'nameTaken' | 'failed';
 
@@ -56,18 +57,23 @@ export class StackDeployerStarter {
    * execution that cannot be started for any other reason throws a StackOperationFailure.
    */
   async start(request: CfnRequest, target: CfnReplyTarget): Promise<void> {
-    const properties = this.events.readProperties(request.ResourceProperties, request.RequestType);
-    this.logger.debug('CFN handler invoked', {
-      requestType: request.RequestType,
-      logicalResourceId: request.LogicalResourceId,
-      stackName: properties.stackName,
-    });
+    const properties = this.readProperties(request);
 
     this.rejectTooLongRootStackName(request);
     this.rejectSlashStateMachineArn();
 
     const input: WorkflowInput = { cfn: target.cfn, op: { ...properties, requestType: request.RequestType } };
     await this.startExecution(toExecutionName(request.RequestId), input, target);
+  }
+
+  private readProperties(request: CfnRequest): BrandedStackDeployerProperties {
+    const properties = this.events.readProperties(request.ResourceProperties, request.RequestType);
+    this.logger.debug('CFN handler invoked', {
+      requestType: request.RequestType,
+      logicalResourceId: request.LogicalResourceId,
+      stackName: properties.stackName,
+    });
+    return properties;
   }
 
   private rejectTooLongRootStackName(request: CfnRequest): void {
@@ -110,7 +116,7 @@ export class StackDeployerStarter {
     // Step Functions state machine ARNs put a colon before the name; the slash form is a configuration error.
     if (this.stateMachineArn.includes(':stateMachine/')) {
       throw new ExpectedFailure(
-        `MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN is invalid (expected ':stateMachine:{name}', got ':stateMachine/{name}'): ${this.stateMachineArn}`,
+        `${STATE_MACHINE_ARN_VARIABLE} is invalid (expected ':stateMachine:{name}', got ':stateMachine/{name}'): ${this.stateMachineArn}`,
       );
     }
   }
@@ -127,14 +133,12 @@ export class StackDeployerStarter {
 
   private async handleStartFailure(failure: unknown, executionName: ExecutionName, input: WorkflowInput, target: CfnReplyTarget): Promise<void> {
     const caught = new CaughtError(failure);
-    this.logger.error('Failed to start Step Functions execution', {
-      errorName: caught.name,
-      errorMessage: caught.describeWithMetadata(),
-    });
-
     if (!this.isExecutionAlreadyExists(caught)) {
+      this.logStartFailed(caught);
       throw this.startFailure(input.op.requestType, failure);
     }
+
+    this.logger.debug('ExecutionAlreadyExists on start', { executionName });
 
     // The same request id was retried by CloudFormation, and the earlier execution is handling, or has
     // handled, the answer. A Delete needs no more than that.
@@ -147,10 +151,17 @@ export class StackDeployerStarter {
     await this.resumeAfterExistingExecution(executionName, input, failure);
   }
 
+  private logStartFailed(caught: CaughtError): void {
+    this.logger.error('Failed to start Step Functions execution', {
+      errorName: caught.name,
+      errorMessage: caught.describeWithMetadata(),
+    });
+  }
+
   private async resumeAfterExistingExecution(executionName: ExecutionName, input: WorkflowInput, alreadyExistsFailure: unknown): Promise<void> {
     const executionArn = this.executionArn(executionName);
 
-    let status: string;
+    let status: ExecutionStatus | undefined;
     try {
       status = await this.existingExecutionStatus(executionArn);
     } catch (describeFailure) {
@@ -164,7 +175,7 @@ export class StackDeployerStarter {
       return;
     }
 
-    if (TERMINAL_EXECUTION_STATUSES.includes(status)) {
+    if (status !== undefined && TERMINAL_EXECUTION_STATUSES.includes(status)) {
       this.logger.info('Existing execution is terminal; attempting retry with suffixed name', { executionArn, status });
       await this.startAfterTerminalExecution(executionName, input);
       return;
@@ -173,10 +184,10 @@ export class StackDeployerStarter {
     throw this.startFailure(input.op.requestType, alreadyExistsFailure);
   }
 
-  private async existingExecutionStatus(executionArn: ExecutionArn): Promise<string> {
+  private async existingExecutionStatus(executionArn: ExecutionArn): Promise<ExecutionStatus | undefined> {
     this.logger.debug('Checking existing execution status', { executionArn });
     const response = await this.stepFunctions.send(new DescribeExecutionCommand({ executionArn }));
-    return response.status ?? '';
+    return response.status;
   }
 
   private async startAfterTerminalExecution(executionName: ExecutionName, input: WorkflowInput): Promise<void> {

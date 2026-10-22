@@ -4,9 +4,9 @@ import { mockClient }                                                 from 'aws-
 import { ExpectedFailure }                                            from '../../../runtime/handler-kit/errors/expected-failure';
 import { CfnResponder }                                               from '../answers/cfn-responder';
 import { toStateMachineArn, type StateMachineArn }                    from '../deployer-identifiers';
+import { StackDeployerStarter }                                       from '../stack-deployer-starter';
 import { StackDeploymentEventReader }                                 from '../stack/stack-deployment-event-reader';
 import { StackOperationFailure }                                      from '../stack/stack-operation-failure';
-import { StackDeployerStarter }                                       from '../stack-deployer-starter';
 
 import {
   BUCKET_ARN_AS_STACK_ID,
@@ -22,6 +22,7 @@ import {
   stackDeployerProperties,
   stackIdOf,
   STATE_MACHINE_ARN,
+  type ConsoleSpies,
   type FakeCfnEndpoint,
 } from './stack-deployer-helpers';
 
@@ -38,6 +39,7 @@ const EXISTING_EXECUTION_ARN = 'arn:aws:states:us-east-1:123456789012:execution:
 describe('StackDeployerStarter', () => {
   const sfn = mockClient(SFNClient);
   let endpoint: FakeCfnEndpoint;
+  let consoleSpies: ConsoleSpies;
 
   function starterFor(stateMachineArn: StateMachineArn = STATE_MACHINE_ARN): StackDeployerStarter {
     return new StackDeployerStarter(stateMachineArn, new SFNClient({}), new StackDeploymentEventReader(), new CfnResponder(noPause), defaultLevelLogger());
@@ -55,8 +57,8 @@ describe('StackDeployerStarter', () => {
   beforeEach(() => {
     sfn.reset();
     sfn.on(StartExecutionCommand).resolves({});
-    silenceConsole();
-    endpoint = fakeCfnEndpoint();
+    consoleSpies = silenceConsole();
+    endpoint     = fakeCfnEndpoint();
   });
 
   afterEach(() => {
@@ -85,8 +87,8 @@ describe('StackDeployerStarter', () => {
     it.each(['edge', 'data', 'cognito'] as const)('starts the execution for a request carrying the real keys of the %s deployer resource', async (resource) => {
       await starterFor().start(deployerRequest(resource), replyTarget());
 
-      const sent = JSON.parse(String(sfn.commandCalls(StartExecutionCommand)[0].args[0].input.input));
-      expect(sent.op).toEqual({ ...DEPLOYER_RESOURCE_PROPERTIES[resource], requestType: 'Create' });
+      const sent: unknown = JSON.parse(String(sfn.commandCalls(StartExecutionCommand)[0].args[0].input.input));
+      expect(sent).toEqual(expect.objectContaining({ op: { ...DEPLOYER_RESOURCE_PROPERTIES[resource], requestType: 'Create' } }));
       expect(endpoint.answers()).toEqual([]);
     });
 
@@ -95,8 +97,8 @@ describe('StackDeployerStarter', () => {
 
       await starterFor().start(cfnRequest({ RequestType: 'Update' }, properties), replyTarget());
 
-      const sent = JSON.parse(String(sfn.commandCalls(StartExecutionCommand)[0].args[0].input.input));
-      expect(sent.op).toMatchObject({ requestType: 'Update', preserveOnDelete: 'false', terminationProtection: 'true' });
+      const sent: unknown = JSON.parse(String(sfn.commandCalls(StartExecutionCommand)[0].args[0].input.input));
+      expect(sent).toMatchObject({ op: { requestType: 'Update', preserveOnDelete: 'false', terminationProtection: 'true' } });
     });
 
     it('rejects properties it cannot run as an ExpectedFailure and starts nothing', async () => {
@@ -122,8 +124,8 @@ describe('StackDeployerStarter', () => {
 
       await starterFor().start(cfnRequest({ RequestType: 'Delete' }, invalid), replyTarget());
 
-      const sent = JSON.parse(String(sfn.commandCalls(StartExecutionCommand)[0].args[0].input.input));
-      expect(sent.op).toEqual({ stackName: 'test-data-stack', preserveOnDelete: 'true', requestType: 'Delete' });
+      const sent: unknown = JSON.parse(String(sfn.commandCalls(StartExecutionCommand)[0].args[0].input.input));
+      expect(sent).toEqual(expect.objectContaining({ op: { stackName: 'test-data-stack', preserveOnDelete: 'true', requestType: 'Delete' } }));
     });
   });
 
@@ -197,6 +199,14 @@ describe('StackDeployerStarter', () => {
       expect(failure).toHaveProperty('message', 'Failed to start Step Functions execution: AccessDeniedException: not allowed');
     });
 
+    it('writes the failure as an error line', async () => {
+      sfn.on(StartExecutionCommand).rejects(ACCESS_DENIED);
+
+      await failureOf(starterFor().start(cfnRequest(), replyTarget()));
+
+      expect(consoleSpies.error).toHaveBeenCalledWith('Failed to start Step Functions execution', expect.objectContaining({ errorName: 'AccessDeniedException' }));
+    });
+
     it('says the failure is ignored when the request is a Delete', async () => {
       sfn.on(StartExecutionCommand).rejects(ACCESS_DENIED);
 
@@ -216,6 +226,14 @@ describe('StackDeployerStarter', () => {
         expect.objectContaining({ Status: 'SUCCESS', Reason: 'Delete already in progress (ExecutionAlreadyExists); continuing without waiting' }),
       ]);
       expect(sfn.commandCalls(DescribeExecutionCommand)).toHaveLength(0);
+    });
+
+    it('writes no error line for it, which is an expected condition', async () => {
+      sfn.on(StartExecutionCommand).rejects(ALREADY_EXISTS);
+
+      await starterFor().start(cfnRequest({ RequestType: 'Delete' }), replyTarget());
+
+      expect(consoleSpies.error).not.toHaveBeenCalled();
     });
 
     it('recognises the error by its message when it carries no name', async () => {

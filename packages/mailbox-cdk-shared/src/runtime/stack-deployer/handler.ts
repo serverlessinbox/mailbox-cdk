@@ -1,22 +1,23 @@
-import { CloudFormationClient }       from '@aws-sdk/client-cloudformation';
-import { SFNClient }                  from '@aws-sdk/client-sfn';
+import { CloudFormationClient }               from '@aws-sdk/client-cloudformation';
+import { SFNClient }                          from '@aws-sdk/client-sfn';
 
-import * as env                       from '../../runtime/handler-kit/config/config-env';
-import { emitManualFinalize }         from '../../runtime/handler-kit/custom-resource/custom-resource-manual-finalize';
-import { ExpectedFailure }            from '../../runtime/handler-kit/errors/expected-failure';
-import type { Region }                from '../../runtime/handler-kit/aws-identifiers';
-import { LoggerBuffer }               from '../../runtime/handler-kit/logger-buffer';
-import { withSmokeTest }              from '../../runtime/handler-kit/with-smoke-test';
+import * as env                               from '../../runtime/handler-kit/config/config-env';
+import { ExpectedFailure }                    from '../../runtime/handler-kit/errors/expected-failure';
+import { LoggerBuffer }                       from '../../runtime/handler-kit/logger-buffer';
+import { withSmokeTest }                      from '../../runtime/handler-kit/with-smoke-test';
 
-import { CfnResponder }               from './answers/cfn-responder';
-import { FailureAnswerer }            from './answers/failure-answerer';
-import { UpdateRollbackAnswerer }     from './answers/update-rollback-answerer';
-import { CloudFormationStacks }       from './cloudformation-stacks';
-import { loadStarter, loadWorker }    from './config';
-import { StackDeploymentEventReader } from './stack/stack-deployment-event-reader';
-import { StackDeployerStarter }       from './stack-deployer-starter';
-import { StackDeployerWorker }        from './stack-deployer-worker';
-import type { WorkerResult }          from './worker-result';
+import { CfnResponder }                       from './answers/cfn-responder';
+import { FailureAnswerer }                    from './answers/failure-answerer';
+import { UpdateRollbackAnswerer }             from './answers/update-rollback-answerer';
+import { CloudFormationClients }              from './cloudformation-clients';
+import { CloudFormationStacks }               from './cloudformation-stacks';
+import { loadStarter, loadWorker }            from './config';
+import { StackDeployerStarterRequestHandler } from './stack-deployer-starter-request-handler';
+import { StackDeployerStarter }               from './stack-deployer-starter';
+import { StackDeployerWorkerRequestHandler }  from './stack-deployer-worker-request-handler';
+import { StackDeployerWorker }                from './stack-deployer-worker';
+import { StackDeploymentEventReader }         from './stack/stack-deployment-event-reader';
+import type { WorkerResult }                  from './worker-result';
 
 /** The part of the Lambda context both handlers read: the log stream that a response to CloudFormation points to. */
 interface InvocationContext {
@@ -38,16 +39,8 @@ const unconfiguredFailureAnswerer = new FailureAnswerer(events, responder, undef
 // The parent stack of the custom resource lives in the region the function runs in.
 const parentStackCloudFormation = new CloudFormationClient({});
 
-// A stack operation names the region its stack lives in, so the CloudFormation clients are built per region on first use.
-const cloudFormationClients = new Map<Region, CloudFormationClient>();
-const cloudFormationIn      = (region: Region): CloudFormationClient => {
-  let client = cloudFormationClients.get(region);
-  if (!client) {
-    client = new CloudFormationClient({ region });
-    cloudFormationClients.set(region, client);
-  }
-  return client;
-};
+// A stack operation names the region its stack lives in.
+const cloudFormationClients = new CloudFormationClients((region) => new CloudFormationClient({ region }));
 
 export const starterHandler = withSmokeTest(async (event: unknown, context: InvocationContext): Promise<void> => {
   if (starterConfigError) {
@@ -58,21 +51,12 @@ export const starterHandler = withSmokeTest(async (event: unknown, context: Invo
 
   const logger          = new LoggerBuffer(starterConfig.serviceName, starterConfig.logLevel);
   const starter         = new StackDeployerStarter(starterConfig.stateMachineArn, stepFunctions, events, responder, logger);
-  const stacks          = new CloudFormationStacks(cloudFormationIn, starterConfig.region, logger);
+  const requestHandler  = new StackDeployerStarterRequestHandler(events, responder, starter);
+  const stacks          = new CloudFormationStacks((region) => cloudFormationClients.forRegion(region), starterConfig.region, logger);
   const failureAnswerer = new FailureAnswerer(events, responder, new UpdateRollbackAnswerer(parentStackCloudFormation, stacks, responder, logger));
 
   try {
-    const request = events.readCfnRequest(event);
-    console.info('stack-deployer-starter dispatch', {
-      requestType: request.RequestType,
-      logicalResourceId: request.LogicalResourceId,
-    });
-    const target = responder.targetForRequest(request, context.logStreamName);
-
-    // Break-glass details for releasing a resource whose handler hangs and never answers CloudFormation.
-    emitManualFinalize(request, { physicalResourceId: target.physicalResourceId });
-
-    await starter.start(request, target);
+    await requestHandler.handle(event, context.logStreamName);
   } catch (thrown) {
     if (!(thrown instanceof ExpectedFailure)) {
       logger.flush();
@@ -88,18 +72,14 @@ export const workerHandler = withSmokeTest(async (event: unknown, context: Invoc
   }
 
   const logger          = new LoggerBuffer(workerConfig.serviceName, workerConfig.logLevel);
-  const stacks          = new CloudFormationStacks(cloudFormationIn, workerConfig.region, logger);
+  const stacks          = new CloudFormationStacks((region) => cloudFormationClients.forRegion(region), workerConfig.region, logger);
   const rollback        = new UpdateRollbackAnswerer(parentStackCloudFormation, stacks, responder, logger);
   const worker          = new StackDeployerWorker(stacks, responder, rollback, logger);
+  const requestHandler  = new StackDeployerWorkerRequestHandler(events, responder, worker);
   const failureAnswerer = new FailureAnswerer(events, responder, rollback);
 
   try {
-    const invoke = events.readSfnInvokeEvent(event);
-    console.info('stack-deployer-worker dispatch', {
-      mode: invoke.mode,
-      attempt: invoke.attempt,
-    });
-    return await worker.handle(invoke, responder.targetForStep(invoke, context.logStreamName));
+    return await requestHandler.handle(event, context.logStreamName);
   } catch (thrown) {
     if (!(thrown instanceof ExpectedFailure)) {
       logger.flush();

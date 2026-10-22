@@ -19,16 +19,16 @@ describe('StackStatus', () => {
     );
   });
 
-  describe('isTerminalFailure', () => {
+  describe('isDeploymentFailed', () => {
     it.each(['CREATE_FAILED', 'UPDATE_FAILED', 'UPDATE_ROLLBACK_COMPLETE', 'DELETE_FAILED', 'ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_IN_PROGRESS'] as const)(
       'is true for %s',
       (status) => {
-        expect(new StackStatus(status).isTerminalFailure()).toBe(true);
+        expect(new StackStatus(status).isDeploymentFailed()).toBe(true);
       },
     );
 
     it.each(['CREATE_IN_PROGRESS', 'DELETE_IN_PROGRESS', 'CREATE_COMPLETE', undefined] as const)('is false for %s', (status) => {
-      expect(new StackStatus(status).isTerminalFailure()).toBe(false);
+      expect(new StackStatus(status).isDeploymentFailed()).toBe(false);
     });
   });
 

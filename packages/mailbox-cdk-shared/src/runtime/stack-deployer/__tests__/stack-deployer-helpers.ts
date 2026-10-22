@@ -1,6 +1,7 @@
-import type { Stack } from '@aws-sdk/client-cloudformation';
-import * as t         from 'typanion';
+import type { Stack }                                                                      from '@aws-sdk/client-cloudformation';
+import * as t                                                                              from 'typanion';
 
+import { toRegion }                                                                        from '../../../runtime/handler-kit/aws-identifiers';
 import {
   toLogicalResourceId,
   toPhysicalResourceId,
@@ -10,7 +11,6 @@ import {
   toStackName,
   type StackId,
 } from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { toRegion }                                                                        from '../../../runtime/handler-kit/aws-identifiers';
 import { LoggerBuffer }                                                                    from '../../../runtime/handler-kit/logger-buffer';
 import type { CfnReplyTarget }                                                             from '../answers/cfn-responder';
 import type { UpdateRollbackAnswers }                                                      from '../answers/update-rollback-answerer';
@@ -94,6 +94,11 @@ export function silenceConsole(): ConsoleSpies {
 /** A rollback answerer that suppresses every failure it is offered (`true`) or none (`false`), and records what it is offered. */
 export function rollbackAnswering(suppresses: boolean): jest.Mocked<UpdateRollbackAnswers> {
   return { answerSuccess: jest.fn<Promise<boolean>, Parameters<UpdateRollbackAnswers['answerSuccess']>>(async () => suppresses) };
+}
+
+/** Matches a string that contains the text; typed `unknown` because Jest types its matchers `any`, which cannot sit in an object literal. */
+export function containingText(text: string): unknown {
+  return expect.stringContaining(text);
 }
 
 /** A pause that returns at once, for a responder whose retries a test does not wait for. */

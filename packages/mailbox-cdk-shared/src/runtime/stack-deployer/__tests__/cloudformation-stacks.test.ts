@@ -8,16 +8,29 @@ import {
   type StackEvent,
 } from '@aws-sdk/client-cloudformation';
 import { mockClient }                                                                             from 'aws-sdk-client-mock';
+import * as t                                                                                     from 'typanion';
 
 import { CloudFormationStacks }                                                                   from '../cloudformation-stacks';
 
 import { defaultLevelLogger, EU_WEST_1, operation, silenceConsole, stack, STACK_NAME, US_EAST_1 } from './stack-deployer-helpers';
 
+const isStackEventOnTheWire = t.isObject({
+  StackId: t.isString(),
+  EventId: t.isString(),
+  StackName: t.isString(),
+  Timestamp: t.isString(),
+  LogicalResourceId: t.isString(),
+  ResourceType: t.isString(),
+  ResourceStatus: t.isString(),
+});
+
 // A status the SDK's enum does not list, as CloudFormation could send it: the wire is JSON, so the fixture is too.
 function cancelledEventFromWire(): StackEvent {
-  return JSON.parse(
+  const wire: unknown = JSON.parse(
     '{"StackId":"s","EventId":"6","StackName":"test-data-stack","Timestamp":"2026-01-01T00:00:00Z","LogicalResourceId":"Key","ResourceType":"AWS::KMS::Key","ResourceStatus":"CREATE_CANCELLED"}',
   );
+  t.assert(wire, isStackEventOnTheWire);
+  return { ...wire, Timestamp: new Date(wire.Timestamp), ResourceStatus: wire.ResourceStatus as StackEvent['ResourceStatus'] };
 }
 
 /**
@@ -167,7 +180,7 @@ describe('CloudFormationStacks', () => {
     });
 
     it('lists at most eight events', async () => {
-      const failed = Array.from({ length: 10 }, (_, index) => ({
+      const failed = Array.from(Array(10).keys(), (index) => ({
         StackId: 's',
         EventId: String(index),
         StackName: STACK_NAME,

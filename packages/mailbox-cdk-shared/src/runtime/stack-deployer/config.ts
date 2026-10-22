@@ -1,8 +1,11 @@
+import { toRegion, type Region }                   from '../../runtime/handler-kit/aws-identifiers';
 import { loadBaseConfig, type BaseConfig }         from '../../runtime/handler-kit/config/config-base';
 import * as env                                    from '../../runtime/handler-kit/config/config-env';
-import { toRegion, type Region }                   from '../../runtime/handler-kit/aws-identifiers';
 
 import { toStateMachineArn, type StateMachineArn } from './deployer-identifiers';
+
+/** The environment variable the starter function reads the ARN of the state machine it starts from. */
+export const STATE_MACHINE_ARN_VARIABLE = 'MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN';
 
 // Stands in for the region when AWS_REGION is missing; the problem is recorded and the config is never used.
 const UNUSABLE_REGION = toRegion('unusable');
@@ -38,7 +41,7 @@ export function loadWorker(l: env.Loader): WorkerConfig {
 export function loadStarter(l: env.Loader): StarterConfig {
   return {
     ...loadBaseConfig(l),
-    stateMachineArn: env.mandatoryAs(l, 'MAILBOX_STACK_DEPLOYER_STATE_MACHINE_ARN', toStateMachineArn, UNUSABLE_STATE_MACHINE_ARN),
+    stateMachineArn: env.mandatoryAs(l, STATE_MACHINE_ARN_VARIABLE, toStateMachineArn, UNUSABLE_STATE_MACHINE_ARN),
     region: env.mandatoryAs(l, 'AWS_REGION', toRegion, UNUSABLE_REGION),
   };
 }

@@ -13,9 +13,8 @@ import { StackOperationFailure }               from './stack/stack-operation-fai
 import { StackStatus }                         from './stack/stack-status';
 import { WorkerResult, type RetryCounts }      from './worker-result';
 
-// Polling stops so the worker answers CloudFormation before the 60 minute service timeout of the custom
-// resource, on every path including the retries of a DELETE_FAILED stack. The check at attempt N follows
-// N + 1 waits of 20 seconds, so the last check runs about 45 minutes in.
+// Polling stops so the worker answers CloudFormation before the service timeout of the custom resource, on
+// every path including the retries of a DELETE_FAILED stack.
 const MAX_POLL_ATTEMPTS = 135;
 
 const MAX_KMS_CREATE_RETRIES = 3;
@@ -51,14 +50,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
    * step that wraps them in a StackOperationFailure.
    */
   async handle(event: SfnInvokeEvent, target: CfnReplyTarget): Promise<WorkerResult> {
-    this.logger.info('Stack deployer op', {
-      mode: event.mode,
-      requestType: event.op.requestType,
-      stackName: event.op.stackName,
-      templateUrl: event.op.templateUrl,
-      terminationProtection: event.op.terminationProtection,
-      parameterKeys: Object.keys(event.op.parameters ?? {}),
-    });
+    this.logInvocation(event);
 
     if (event.mode === 'start') {
       return this.startOperation(event.op, target);
@@ -68,7 +60,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
 
   /** Answers CloudFormation that the stack operation failed, with the recent stack events as detail, and ends the workflow. */
   async answerFailure(op: OperationInput, failure: StackOperationFailure, target: CfnReplyTarget): Promise<WorkerResult> {
-    this.logger.error('Stack deployer failed', { errorMessage: failure.message });
+    this.logFailure(failure);
 
     if (await this.rollback.answerSuccess(op, target, failure.message)) {
       return WorkerResult.finished();
@@ -77,6 +69,21 @@ export class StackDeployerWorker implements StackFailureAnswerer {
     const failures = await this.stacks.describeRecentFailures(op);
     await this.responder.answerFailure(target, op.requestType, `${failure.message}${this.eventsDetail(failures)}`);
     return WorkerResult.finished();
+  }
+
+  private logInvocation(event: SfnInvokeEvent): void {
+    this.logger.info('Stack deployer op', {
+      mode: event.mode,
+      requestType: event.op.requestType,
+      stackName: event.op.stackName,
+      templateUrl: event.op.templateUrl,
+      terminationProtection: event.op.terminationProtection,
+      parameterKeys: Object.keys(event.op.parameters ?? {}),
+    });
+  }
+
+  private logFailure(failure: StackOperationFailure): void {
+    this.logger.error('Stack deployer failed', { errorMessage: failure.message });
   }
 
   private async startOperation(op: OperationInput, target: CfnReplyTarget): Promise<WorkerResult> {
@@ -132,12 +139,12 @@ export class StackDeployerWorker implements StackFailureAnswerer {
 
     const status = new StackStatus(stack.StackStatus);
 
-    // Once the attempts run out a DELETE_FAILED stack falls through to the terminal-failure answer below.
+    // Once the attempts run out a DELETE_FAILED stack falls through to the failed-deployment answer below.
     if (status.isDeleteFailed() && attempt < MAX_POLL_ATTEMPTS) {
       return this.retryDeletion(op, stack, retries, attempt);
     }
 
-    if (status.isTerminalFailure()) {
+    if (status.isDeploymentFailed()) {
       const failures = await this.stacks.describeRecentFailures(op);
       const reason   = stack.StackStatusReason ?? `Stack delete failed with status ${status.value}`;
       await this.responder.succeed(target, { reason: `${reason}${this.eventsDetail(failures)}` });
@@ -214,7 +221,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
       return this.recreateAfterKmsRace(op, retries);
     }
 
-    if (status.isTerminalFailure()) {
+    if (status.isDeploymentFailed()) {
       const reason = stack.StackStatusReason ?? `Stack failed with status ${status.value}`;
       await this.answerFailed(op, target, `${reason}${detail}`);
       return WorkerResult.finished(retries);

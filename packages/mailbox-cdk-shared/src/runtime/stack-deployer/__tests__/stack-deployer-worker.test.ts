@@ -13,12 +13,13 @@ import { AnswerDeliveryFailure }      from '../answers/answer-delivery-failure';
 import { CfnResponder }               from '../answers/cfn-responder';
 import type { UpdateRollbackAnswers } from '../answers/update-rollback-answerer';
 import { CloudFormationStacks }       from '../cloudformation-stacks';
+import { StackDeployerWorker }        from '../stack-deployer-worker';
 import type { OperationInput }        from '../stack/stack-deployment';
 import { StackOperationFailure }      from '../stack/stack-operation-failure';
-import { StackDeployerWorker }        from '../stack-deployer-worker';
 
 import {
   awsError,
+  containingText,
   defaultLevelLogger,
   fakeCfnEndpoint,
   LOG_STREAM_NAME,
@@ -256,7 +257,7 @@ describe('StackDeployerWorker', () => {
 
       await check({ attempt: 136 });
 
-      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'FAILED', Reason: expect.stringContaining('after 136 attempts') })]);
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'FAILED', Reason: containingText('after 136 attempts') })]);
     });
 
     it('throws a StackOperationFailure naming the check step when the stack cannot be described', async () => {
@@ -311,7 +312,7 @@ describe('StackDeployerWorker', () => {
       const result = await checkCreate(0);
 
       expect(result).toEqual({ done: false, deleteRetryCount: 0, createRetryCount: 1 });
-      expect(consoleSpies.error).toHaveBeenCalledWith('Recreate CreateStack failed', expect.objectContaining({ error: expect.stringContaining('LimitExceededException') }));
+      expect(consoleSpies.error).toHaveBeenCalledWith('Recreate CreateStack failed', expect.objectContaining({ error: containingText('LimitExceededException') }));
     });
 
     it('answers FAILED once the retry budget of three is spent', async () => {
@@ -320,7 +321,7 @@ describe('StackDeployerWorker', () => {
       const result = await checkCreate(3);
 
       expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 3 });
-      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'FAILED', Reason: expect.stringContaining('Failed to create stack') })]);
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'FAILED', Reason: containingText('Failed to create stack') })]);
       expect(cfn.commandCalls(DeleteStackCommand)).toHaveLength(0);
     });
 
@@ -492,11 +493,11 @@ describe('StackDeployerWorker', () => {
     const target     = replyTarget();
 
     it.each([
-      ['the stack does not exist', { Stacks: [] }, 0, `Stack ${STACK_NAME} does not exist`],
-      ['the stack is being deleted', { Stacks: [stack('DELETE_IN_PROGRESS')] }, 0, expect.stringContaining('is being deleted')],
-      ['the stack ended in a failed state', { Stacks: [stack('UPDATE_ROLLBACK_COMPLETE', { StackStatusReason: 'rolled back' })] }, 0, expect.stringContaining('rolled back')],
-      ['the stack is still in progress at the last attempt', { Stacks: [stack('UPDATE_IN_PROGRESS')] }, 135, expect.stringContaining('did not reach a terminal state')],
-    ])('is offered to the rollback answerer, and left unanswered when that answers it, when %s', async (_description, described, attempt, reason) => {
+      { scenario: 'the stack does not exist', described: { Stacks: [] }, attempt: 0, reason: `Stack ${STACK_NAME} does not exist` },
+      { scenario: 'the stack is being deleted', described: { Stacks: [stack('DELETE_IN_PROGRESS')] }, attempt: 0, reason: containingText('is being deleted') },
+      { scenario: 'the stack ended in a failed state', described: { Stacks: [stack('UPDATE_ROLLBACK_COMPLETE', { StackStatusReason: 'rolled back' })] }, attempt: 0, reason: containingText('rolled back') },
+      { scenario: 'the stack is still in progress at the last attempt', described: { Stacks: [stack('UPDATE_IN_PROGRESS')] }, attempt: 135, reason: containingText('did not reach a terminal state') },
+    ])('is offered to the rollback answerer, and left unanswered when that answers it, when $scenario', async ({ described, attempt, reason }) => {
       cfn.on(DescribeStacksCommand).resolves(described);
       const rollback = rolledBack();
 

@@ -23,7 +23,7 @@ export class StackStatus {
   }
 
   /** Any status containing `ROLLBACK` or `FAILED`, the in-progress rollback statuses included. */
-  isTerminalFailure(): boolean {
+  isDeploymentFailed(): boolean {
     if (!this.value) {
       return false;
     }
