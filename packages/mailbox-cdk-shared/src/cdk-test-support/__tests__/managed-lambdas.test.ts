@@ -92,6 +92,14 @@ describe('managedLambdasOf', () => {
 
     expect(() => managedLambdasOf(template)).toThrow(/has no artifact-name or artifact-package tag/);
   });
+
+  it('throws naming the function when its tags are not a list', () => {
+    const template = Template.fromJSON({
+      Resources: { Broken: { Type: 'AWS::Lambda::Function', Properties: { Tags: 'not-a-list' } } },
+    });
+
+    expect(() => managedLambdasOf(template)).toThrow(/Lambda Broken is not a synthesized function resource/);
+  });
 });
 
 describe('handlerSourceOf', () => {

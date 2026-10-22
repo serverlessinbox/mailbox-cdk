@@ -21,9 +21,14 @@ const isPolicyDocument = t.isPartial({
   Statement: t.isArray(isPolicyStatement),
 });
 
-const isRoleAttachment = t.isPartial({
+const isPolicyProperties = t.isPartial({
+  PolicyName: t.isOptional(t.isString()),
+  PolicyDocument: isPolicyDocument,
   Roles: t.isOptional(t.isArray(t.isOneOf([t.isString(), t.isPartial({ Ref: t.isOptional(t.isString()) })]))),
 });
+
+/** The properties of one synthesized `AWS::IAM::Policy`: its name, its document and the roles it is attached to. */
+type PolicyProperties = t.InferType<typeof isPolicyProperties>;
 
 /** One statement of a synthesized IAM policy document; `Resource` and `Condition` stay as synthesized. */
 export type PolicyStatementJson = t.InferType<typeof isPolicyStatement>;
@@ -49,9 +54,7 @@ export function resourcesOf(statement: PolicyStatementJson): unknown[] {
 
 /** Every statement of every `AWS::IAM::Policy` in the template. */
 export function allPolicyStatements(template: Template): PolicyStatementJson[] {
-  return Object.values(template.findResources('AWS::IAM::Policy')).flatMap((policy) =>
-    statementsOfDocument(policy.Properties?.PolicyDocument),
-  );
+  return policiesOf(template).flatMap((policy) => policy.PolicyDocument.Statement);
 }
 
 /** Every statement across every IAM policy of the template that includes `action`. */
@@ -67,26 +70,31 @@ export function statementsForResource(template: Template, resource: unknown): Po
 
 /** Every statement of the `AWS::IAM::Policy` resources attached to the role with the given logical ID. */
 export function statementsForRole(template: Template, roleLogicalId: string): PolicyStatementJson[] {
-  return Object.values(template.findResources('AWS::IAM::Policy'))
-    .filter((policy) => isAttachedToRole(policy.Properties, roleLogicalId))
-    .flatMap((policy) => statementsOfDocument(policy.Properties?.PolicyDocument));
+  return policiesOf(template)
+    .filter((policy) => isAttachedToRole(policy, roleLogicalId))
+    .flatMap((policy) => policy.PolicyDocument.Statement);
 }
 
 /** The statements of the one `AWS::IAM::Policy` with the given `PolicyName`; no such policy throws. */
 export function statementsOfNamedPolicy(template: Template, policyName: string): PolicyStatementJson[] {
-  const policy = Object.values(template.findResources('AWS::IAM::Policy')).find(
-    (candidate) => candidate.Properties?.PolicyName === policyName,
-  );
+  const policy = policiesOf(template).find((candidate) => candidate.PolicyName === policyName);
   if (policy === undefined) {
     throw new Error(`No AWS::IAM::Policy named '${policyName}' in the template`);
   }
-  return statementsOfDocument(policy.Properties.PolicyDocument);
+  return policy.PolicyDocument.Statement;
 }
 
-function isAttachedToRole(policyProperties: unknown, roleLogicalId: string): boolean {
-  const errors: string[] = [];
-  if (!isRoleAttachment(policyProperties, { errors })) {
-    throw new Error(`Not an IAM policy's properties: ${errors.join('; ')}`);
-  }
-  return (policyProperties.Roles ?? []).some((role) => typeof role !== 'string' && role.Ref === roleLogicalId);
+function policiesOf(template: Template): PolicyProperties[] {
+  return Object.values(template.findResources('AWS::IAM::Policy')).map((synthesized) => {
+    const properties: unknown = synthesized.Properties;
+    const errors: string[]    = [];
+    if (!isPolicyProperties(properties, { errors })) {
+      throw new Error(`Not an IAM policy's properties: ${errors.join('; ')}`);
+    }
+    return properties;
+  });
+}
+
+function isAttachedToRole(policy: PolicyProperties, roleLogicalId: string): boolean {
+  return (policy.Roles ?? []).some((role) => typeof role !== 'string' && role.Ref === roleLogicalId);
 }

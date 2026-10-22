@@ -1,26 +1,23 @@
-import type { Template } from 'aws-cdk-lib/assertions';
+import type { Template }          from 'aws-cdk-lib/assertions';
 /// <reference types="jest" />
-import { access }        from 'node:fs/promises';
-import * as path         from 'node:path';
+import { access }                 from 'node:fs/promises';
+import * as path                  from 'node:path';
+import * as t                     from 'typanion';
+
+import type { AutoUpdateType }    from '../artifacts/apply-artifact-tags';
+import { ServerlessInboxTagKeys } from '../runtime/handler-kit/tag-keys';
+
+/** The auto-update types whose functions the artifact updater manages. */
+export type ManagedAutoUpdateType = Extract<AutoUpdateType, 'code' | 'edge'>;
 
 /** A function of a synthesized template that the artifact updater manages, as the template describes it. */
 export interface ManagedLambda {
   readonly logicalId: string;
   readonly artifactName: string;
   readonly packageName: string;
-  readonly autoUpdateType: string;
+  readonly autoUpdateType: ManagedAutoUpdateType;
   readonly handlerExport: string;
   readonly environment: Record<string, string>;
-}
-
-/** The part of a synthesized `AWS::Lambda::Function` these helpers read. */
-interface LambdaFunctionResource {
-  readonly Type: string;
-  readonly Properties?: {
-    readonly Handler?: string;
-    readonly Tags?: ReadonlyArray<{ readonly Key: string; readonly Value: unknown }>;
-    readonly Environment?: { readonly Variables?: Record<string, unknown> };
-  };
 }
 
 /** An invocation outcome: whether the handler answered the probe, whether it was reached at all, and what happened. */
@@ -30,32 +27,48 @@ export interface ProbeOutcome {
   readonly detail: string;
 }
 
-const AUTO_UPDATE_TYPE_TAG  = 'serverless-inbox:auto-update-type';
-const ARTIFACT_NAME_TAG     = 'serverless-inbox:artifact-name';
-const ARTIFACT_PACKAGE_TAG  = 'serverless-inbox:artifact-package';
-const MANAGED_UPDATE_TYPES  = ['code', 'edge'];
+const MANAGED_UPDATE_TYPES  = ['code', 'edge'] as const satisfies readonly ManagedAutoUpdateType[];
 const PROBE                 = { serverlessInboxSmokeTest: true };
 const PLACEHOLDER_FOR_TOKEN = 'resolved-at-deploy-time';
 
+const isManagedAutoUpdateType = t.isEnum(MANAGED_UPDATE_TYPES);
+
+const isTemplateValue = t.isOneOf([t.isString(), t.isPartial({})]);
+
+const isLambdaFunctionResource = t.isPartial({
+  Properties: t.isOptional(
+    t.isPartial({
+      Handler: t.isOptional(t.isString()),
+      Tags: t.isOptional(t.isArray(t.isPartial({ Key: t.isString(), Value: isTemplateValue }))),
+      Environment: t.isOptional(t.isPartial({ Variables: t.isOptional(t.isRecord(isTemplateValue)) })),
+    }),
+  ),
+});
+
+/** A value of a synthesized template: a literal string, or an intrinsic function CloudFormation resolves at deploy time. */
+type TemplateValue = t.InferType<typeof isTemplateValue>;
+
 /**
  * Every function of the template that the artifact updater manages: those tagged with an auto-update-type of
- * `code` or `edge`. Throws when such a function lacks its artifact-name or artifact-package tag.
+ * `code` or `edge`. Throws when such a function lacks its artifact-name or artifact-package tag, or is not
+ * shaped like a synthesized function.
  */
 export function managedLambdasOf(template: Template): ManagedLambda[] {
-  const resources                = template.toJSON().Resources as Record<string, LambdaFunctionResource>;
   const managed: ManagedLambda[] = [];
 
-  for (const [logicalId, resource] of Object.entries(resources)) {
-    if (resource.Type !== 'AWS::Lambda::Function') {
-      continue;
+  for (const [logicalId, synthesized] of Object.entries(template.findResources('AWS::Lambda::Function'))) {
+    const resource: unknown = synthesized;
+    const errors: string[]  = [];
+    if (!isLambdaFunctionResource(resource, { errors })) {
+      throw new Error(`Lambda ${logicalId} is not a synthesized function resource: ${errors.join('; ')}`);
     }
     const tags           = resource.Properties?.Tags ?? [];
-    const autoUpdateType = tags.find((tag) => tag.Key === AUTO_UPDATE_TYPE_TAG)?.Value;
-    const artifactName   = tags.find((tag) => tag.Key === ARTIFACT_NAME_TAG)?.Value;
-    if (typeof autoUpdateType !== 'string' || !MANAGED_UPDATE_TYPES.includes(autoUpdateType)) {
+    const autoUpdateType = tags.find((tag) => tag.Key === ServerlessInboxTagKeys.autoUpdateType)?.Value;
+    const artifactName   = tags.find((tag) => tag.Key === ServerlessInboxTagKeys.artifactName)?.Value;
+    if (!isManagedAutoUpdateType(autoUpdateType)) {
       continue;
     }
-    const packageName = tags.find((tag) => tag.Key === ARTIFACT_PACKAGE_TAG)?.Value;
+    const packageName = tags.find((tag) => tag.Key === ServerlessInboxTagKeys.artifactPackage)?.Value;
     if (typeof artifactName !== 'string' || typeof packageName !== 'string') {
       throw new Error(`Managed Lambda ${logicalId} has no artifact-name or artifact-package tag`);
     }
@@ -108,7 +121,7 @@ export async function probeManagedLambda(lambda: ManagedLambda, source: string):
 }
 
 /** A value CloudFormation resolves at deploy time has no value yet; the placeholder stands in for it. */
-function environmentOf(variables: Record<string, unknown>): Record<string, string> {
+function environmentOf(variables: Record<string, TemplateValue>): Record<string, string> {
   const environment: Record<string, string> = {};
   for (const [name, value] of Object.entries(variables)) {
     environment[name] = typeof value === 'string' ? value : PLACEHOLDER_FOR_TOKEN;
@@ -139,7 +152,7 @@ async function invokeProbe(lambda: ManagedLambda, loaded: Record<string, unknown
   }
 
   try {
-    const answer: unknown = await handler(PROBE, {});
+    const answer: unknown = await Reflect.apply(handler, undefined, [PROBE, {}]);
     return { answered: isSmokeTestAnswer(answer), handlerReached: true, detail: `answered ${JSON.stringify(answer)}` };
   } catch (thrown) {
     const message = thrown instanceof Error ? thrown.message : String(thrown);

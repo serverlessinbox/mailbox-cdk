@@ -87,6 +87,14 @@ describe('allPolicyStatements', () => {
 
     expect(allPolicyStatements(template)).toHaveLength(3);
   });
+
+  it('throws when a policy of the template has no document', () => {
+    const template = Template.fromJSON({
+      Resources: { Broken: { Type: 'AWS::IAM::Policy', Properties: { PolicyName: 'broken' } } },
+    });
+
+    expect(() => allPolicyStatements(template)).toThrow(/Not an IAM policy's properties: .*PolicyDocument/);
+  });
 });
 
 describe('statementsForAction', () => {

@@ -41,11 +41,7 @@ export function makePhysicalName(scope: IConstruct, suffix: string, options: Phy
  * becomes a hyphen, hyphen runs collapse and leading and trailing hyphens are dropped.
  */
 export function slugifyLabel(label: string): string {
-  return label
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  return sanitizeStackName(label);
 }
 
 /** Replaces the tail of an over-long name with a hash of the full name, so different long names stay different. */

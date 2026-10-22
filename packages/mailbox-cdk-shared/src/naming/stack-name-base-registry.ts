@@ -2,19 +2,11 @@ import { IResolvable, Stack } from 'aws-cdk-lib';
 import { IConstruct }         from 'constructs';
 
 /**
- * Per-stack registry for S3-safe name bases.
- *
- * Stores an S3-safe name base (a CDK token or string) on a Stack's construct node,
- * and retrieves it for use in constructs that need to build deterministic
- * resource names (S3 buckets, DynamoDB tables).
- *
- * The registry is per-stack, with no global state. Different stacks (or multiple instances
- * of the same stack in one app) each maintain independent registries.
- *
- * Both setStackNameBase and getStackNameBase normalize to the actual Stack via Stack.of(),
+ * The S3-safe name base (a CDK token or string) of each stack, keyed by the stack's construct node.
+ * Different stacks, or several instances of one stack in an app, each hold their own entry.
+ * Both `setStackNameBase` and `getStackNameBase` normalize to the actual Stack via `Stack.of()`,
  * so any construct in the stack can be passed and the same key is used for all lookups.
  */
-
 const registryMap = new WeakMap<IConstruct['node'], string | IResolvable>();
 
 /**
