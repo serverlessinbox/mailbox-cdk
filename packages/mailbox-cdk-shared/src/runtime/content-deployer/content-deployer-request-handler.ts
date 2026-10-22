@@ -1,12 +1,13 @@
-import type { CloudFrontClient }                        from '@aws-sdk/client-cloudfront';
-import type { S3Client }                                from '@aws-sdk/client-s3';
+import type { CloudFrontClient }                         from '@aws-sdk/client-cloudfront';
+import type { S3Client }                                 from '@aws-sdk/client-s3';
 
-import type { CustomResourceRequest }                   from '../../runtime/handler-kit/custom-resource/custom-resource-request';
-import { ExpectedFailure }                              from '../../runtime/handler-kit/errors/expected-failure';
-import { invalidateCloudFront }                         from '../../runtime/handler-kit/cloudfront-invalidation';
-import { deletePrefix, deployZipToPrefix, writeObject } from '../../runtime/handler-kit/content-ops';
-import { hasTimeLeft, type InvocationDeadline }         from '../../runtime/handler-kit/invocation-deadline';
-import type { LoggerBuffer }                            from '../../runtime/handler-kit/logger-buffer';
+import { invalidateCloudFront }                          from '../../runtime/handler-kit/cloudfront-invalidation';
+import { deletePrefix, deployZipToPrefix, writeObject }  from '../../runtime/handler-kit/content-ops';
+import { toPhysicalResourceId, type PhysicalResourceId } from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import type { CustomResourceRequest }                    from '../../runtime/handler-kit/custom-resource/custom-resource-request';
+import { ExpectedFailure }                               from '../../runtime/handler-kit/errors/expected-failure';
+import { hasTimeLeft, type InvocationDeadline }          from '../../runtime/handler-kit/invocation-deadline';
+import type { LoggerBuffer }                             from '../../runtime/handler-kit/logger-buffer';
 
 import {
   isContentDeployerResourceProperties,
@@ -25,7 +26,7 @@ export type ContentDeployerResponseData = {
 
 /** The answer sent to CloudFormation for a request that succeeded. */
 export interface ContentDeployerResponse {
-  readonly PhysicalResourceId?: string;
+  readonly PhysicalResourceId?: PhysicalResourceId;
   readonly Data?: ContentDeployerResponseData;
 }
 
@@ -158,13 +159,14 @@ export class ContentDeployerRequestHandler {
     return invalidated;
   }
 
-  private derivePhysicalResourceId(request: CustomResourceRequest): string {
-    return `content-assets:${request.StackId}:${request.LogicalResourceId}`;
+  private derivePhysicalResourceId(request: CustomResourceRequest): PhysicalResourceId {
+    return toPhysicalResourceId(`content-assets:${request.StackId}:${request.LogicalResourceId}`);
   }
 
   private answerDeleted(request: CustomResourceRequest): ContentDeployerResponse {
     this.logger.debug('Delete is a no-op for content-deployer');
-    return this.answer(request.PhysicalResourceId, 0, '0');
+    const incoming = request.PhysicalResourceId;
+    return this.answer(incoming === undefined ? undefined : toPhysicalResourceId(incoming), 0, '0');
   }
 
   private answerDeployed(
@@ -177,7 +179,7 @@ export class ContentDeployerRequestHandler {
   }
 
   private answer(
-    physicalResourceId: string | undefined,
+    physicalResourceId: PhysicalResourceId | undefined,
     objectsWritten: number,
     cacheInvalidated: string,
   ): ContentDeployerResponse {

@@ -109,7 +109,7 @@ describe('BucketEmptier', () => {
   });
 
   it('deletes in batches of 1000', async () => {
-    const versions = Array.from({ length: 2500 }, (_, i) => ({ Key: `file${i}.txt`, VersionId: `v${i}` }));
+    const versions = Array.from(Array(2500).keys(), (i) => ({ Key: `file${i}.txt`, VersionId: `v${i}` }));
     s3Mock.on(ListObjectVersionsCommand).resolves({ Versions: versions, IsTruncated: false });
 
     const deleted = await emptier.empty('huge-bucket', PLENTY_OF_TIME);

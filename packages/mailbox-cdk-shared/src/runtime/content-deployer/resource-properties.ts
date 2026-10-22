@@ -25,7 +25,7 @@ export type ZipSourceSpec = t.InferType<typeof isZipSourceSpec>;
 const isStaticContentSourceSpec = t.isOneOf([isDataSourceSpec, isZipSourceSpec]);
 
 /** One source of a `Custom::ContentDeployment` resource, tagged by `kind`. */
-export type StaticContentSourceSpec = DataSourceSpec | ZipSourceSpec;
+export type StaticContentSourceSpec = t.InferType<typeof isStaticContentSourceSpec>;
 
 export const isContentDeployerResourceProperties = t.isPartial({
   targetBucket: t.isOptional(t.isString()),

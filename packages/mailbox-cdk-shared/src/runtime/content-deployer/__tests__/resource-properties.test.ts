@@ -32,7 +32,7 @@ describe('isContentDeployerResourceProperties', () => {
         'extra keys inside a source',
         { sources: [dataSource({ addedLater: true }), zipSource({ addedLater: true })] },
       ],
-    ])('%s', (_case, properties) => {
+    ])('%s', (...[, properties]) => {
       expect(isContentDeployerResourceProperties(properties)).toBe(true);
     });
   });
@@ -42,7 +42,7 @@ describe('isContentDeployerResourceProperties', () => {
       ['a string', 'not-an-object'],
       ['null', null],
       ['a number', 123],
-    ])('%s instead of an object', (_case, value) => {
+    ])('%s instead of an object', (...[, value]) => {
       expect(isContentDeployerResourceProperties(value)).toBe(false);
     });
 
@@ -64,7 +64,7 @@ describe('isContentDeployerResourceProperties', () => {
       ['a zip source without a targetPrefix', { sources: [{ kind: 'zip', sourceBucket: 'b', sourceKey: 'a.zip' }] }],
       ['a zip source whose targetPrefix is not a string', { sources: [zipSource({ targetPrefix: 123 })] }],
       ['a zip source whose sourceVersionId is not a string', { sources: [zipSource({ sourceVersionId: 123 })] }],
-    ])('%s', (_case, properties) => {
+    ])('%s', (...[, properties]) => {
       expect(isContentDeployerResourceProperties(properties)).toBe(false);
     });
   });

@@ -14,6 +14,7 @@ import { mockClient }              from 'aws-sdk-client-mock';
 import type { AwsClientStub }      from 'aws-sdk-client-mock';
 import type * as Https             from 'https';
 import { Writable }                from 'stream';
+import * as t                      from 'typanion';
 
 import type { SmokeTestProbe }     from '../../../runtime/handler-kit/smoke-test';
 import type * as HandlerModule     from '../handler';
@@ -32,12 +33,15 @@ jest.mock('https', () => ({
   request: jest.fn(),
 }));
 
-interface CfnResponseBody {
-  Status: string;
-  Reason?: string;
-  PhysicalResourceId?: string;
-  Data?: Record<string, string>;
-}
+const isCfnResponseBody = t.isPartial({
+  Status: t.isString(),
+  Reason: t.isOptional(t.isString()),
+  PhysicalResourceId: t.isOptional(t.isString()),
+  Data: t.isOptional(t.isRecord(t.isString())),
+});
+
+/** The body the handler PUTs to the ResponseURL, or `NOT SENT` when it sent none. */
+type CfnResponseBody = t.InferType<typeof isCfnResponseBody>;
 
 /** The faked AWS clients of one loaded handler, with the SDK modules whose command classes they answer. */
 interface Fakes {
@@ -80,13 +84,10 @@ describe('content-deployer handler', () => {
     process.env = { ...originalEnv, ...environment };
 
     // Required after resetModules so the faked client classes are the ones the handler constructs.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const s3Sdk = require('@aws-sdk/client-s3') as typeof S3Sdk;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const s3Sdk             = require('@aws-sdk/client-s3') as typeof S3Sdk;
     const cloudFormationSdk = require('@aws-sdk/client-cloudformation') as typeof CloudFormationSdk;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const cloudFrontSdk = require('@aws-sdk/client-cloudfront') as typeof CloudFrontSdk;
-    const fakes: Fakes  = {
+    const cloudFrontSdk     = require('@aws-sdk/client-cloudfront') as typeof CloudFrontSdk;
+    const fakes: Fakes      = {
       s3: mockClient(s3Sdk.S3Client),
       cloudFormation: mockClient(cloudFormationSdk.CloudFormationClient),
       cloudFront: mockClient(cloudFrontSdk.CloudFrontClient),
@@ -97,24 +98,27 @@ describe('content-deployer handler', () => {
     arrange(fakes);
 
     let responseJson = '';
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const https = require('https') as typeof Https;
-    jest.mocked(https.request).mockImplementation(((_options: unknown, callback: (res: object) => void) => {
-      callback({ statusCode: 200 });
+    const https      = require('https') as typeof Https;
+    jest.mocked(https.request).mockImplementation(((...[, onResponse]: [unknown, (res: object) => void]) => {
+      onResponse({ statusCode: 200 });
       return new Writable({
-        write(chunk: Buffer, _encoding, done) {
+        write(...[chunk, , done]: [Buffer, BufferEncoding, (error?: Error | null) => void]) {
           responseJson += chunk.toString();
           done();
         },
       });
     }) as typeof https.request);
 
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { handler } = require('../handler') as typeof HandlerModule;
     const result      = await handler(event, fakeLambdaContext());
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    const response: CfnResponseBody = responseJson === '' ? { Status: 'NOT SENT' } : JSON.parse(responseJson);
+    let response: CfnResponseBody = { Status: 'NOT SENT' };
+    if (responseJson !== '') {
+      const sent: unknown = JSON.parse(responseJson);
+      t.assert(sent, isCfnResponseBody);
+      response = sent;
+    }
     return { result, response, fakes };
   }
 
@@ -136,8 +140,9 @@ describe('content-deployer handler', () => {
 
     expect(response.Status).toBe('SUCCESS');
     expect(response.PhysicalResourceId).toBe(PHYSICAL_RESOURCE_ID);
+    const loggedConfigError: unknown = expect.stringContaining('LOG_LEVEL');
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Configuration error on Delete'), {
-      error: expect.stringContaining('LOG_LEVEL'),
+      error: loggedConfigError,
     });
     expect(fakes.s3.calls()).toHaveLength(0);
   });

@@ -8,9 +8,9 @@
 import { CloudFrontClient }                             from '@aws-sdk/client-cloudfront';
 import { S3Client }                                     from '@aws-sdk/client-s3';
 
-import { ExpectedFailure }                              from '../../../runtime/handler-kit/errors/expected-failure';
 import { invalidateCloudFront }                         from '../../../runtime/handler-kit/cloudfront-invalidation';
 import { deletePrefix, deployZipToPrefix, writeObject } from '../../../runtime/handler-kit/content-ops';
+import { ExpectedFailure }                              from '../../../runtime/handler-kit/errors/expected-failure';
 import { LoggerBuffer }                                 from '../../../runtime/handler-kit/logger-buffer';
 import { ContentDeployerRequestHandler }                from '../content-deployer-request-handler';
 
@@ -187,7 +187,7 @@ describe('ContentDeployerRequestHandler', () => {
     it.each([
       ['no targetBucket', { sources: [dataSource()] }],
       ['a blank targetBucket', { targetBucket: '   ', sources: [dataSource()] }],
-    ])('rejects sources with %s as an expected failure', async (_case, properties) => {
+    ])('rejects sources with %s as an expected failure', async (...[, properties]) => {
       const failure = await rejectionOf(requestHandler.handle(fakeCreateEvent(properties), invocation));
 
       expect(failure).toBeInstanceOf(ExpectedFailure);
