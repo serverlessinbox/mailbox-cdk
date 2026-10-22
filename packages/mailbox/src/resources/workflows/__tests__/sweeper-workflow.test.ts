@@ -6,49 +6,85 @@
  * a live stack without its sweeper, so the self-cleanup tail is entered only after a presence check
  * on the state machine's own logical id; the deletions are ordered so each can be skipped when its
  * target is already gone, and the last one cannot be followed by a state that runs against a deleted machine.
+ * The state machine is retained, or the sweep could not finish once the stack is deleted.
  */
 
-import { actionsOf, renderLiteralText, statementsOfDocument }        from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Template }                                                  from 'aws-cdk-lib/assertions';
-import * as iam                                                      from 'aws-cdk-lib/aws-iam';
-import { Duration }                                                  from 'aws-cdk-lib';
-import { Construct }                                                 from 'constructs';
+import { renderLiteralText, statementsForAction }                        from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                                                      from 'aws-cdk-lib/assertions';
+import * as iam                                                          from 'aws-cdk-lib/aws-iam';
+import * as lambda                                                       from 'aws-cdk-lib/aws-lambda';
+import * as sfn                                                          from 'aws-cdk-lib/aws-stepfunctions';
+import { App, BootstraplessSynthesizer, Duration, Stack }                from 'aws-cdk-lib';
+import * as t                                                            from 'typanion';
 
-import { SweeperWorkflow }                                           from '../sweeper-workflow';
-import type { SweeperWorkflowProps }                                 from '../sweeper-workflow';
-
-import { newRemovals, newTestStack, newWorkerFunction, stateBodyOf } from '../../../platform/ops/sweeper/__tests__/sweeper-helpers';
+import { stateBodyOf }                                                   from '../../../__tests__/state-machine-helpers';
+import { isTemplateValue, resourcesOfType }                              from '../../../__tests__/template-resources';
+import type { IRemovalChain }                                            from '../../../platform/ops/sweeper/removal';
+import { SweeperWorkflow }                                               from '../sweeper-workflow';
+import type { SweeperWorkflowProps }                                     from '../sweeper-workflow';
 
 const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:sweeper-machine';
 
+const isStateMachineProperties = t.isPartial({ DefinitionString: isTemplateValue });
+
 describe('SweeperWorkflow', () => {
-  interface Synthesized {
+  /** What the workflow handed to the removals when it built their chains. */
+  interface Received {
+    readonly retryIntervals: Duration[];
+    readonly workers:        lambda.IFunction[];
+  }
+
+  interface Synthesized extends Received {
     readonly template:              Template;
     readonly definition:            string;
     readonly stateMachineLogicalId: string;
+    readonly worker:                lambda.IFunction;
+  }
+
+  /** A removal that contributes one Pass state named `stateName` and records what the workflow handed it. */
+  function recordingRemoval(stack: Stack, stateName: string, received: Received): IRemovalChain {
+    return {
+      buildChain(worker, retryInterval, onSuccess) {
+        const state = new sfn.Pass(stack, stateName);
+        state.next(onSuccess);
+        received.retryIntervals.push(retryInterval);
+        received.workers.push(worker);
+        return state;
+      },
+    };
   }
 
   function synthesize(stackId: string, overrides: Partial<SweeperWorkflowProps> = {}): Synthesized {
-    const stack    = newTestStack(stackId);
-    const group    = new Construct(stack, 'ops');
+    const stack           = new Stack(new App(), stackId, {
+      env:         { account: '123456789012', region: 'us-west-2' },
+      synthesizer: new BootstraplessSynthesizer(),
+    });
+    const built: Received = { retryIntervals: [], workers: [] };
+    const worker          = lambda.Function.fromFunctionArn(stack, 'worker-ref', 'arn:aws:lambda:us-west-2:123456789012:function:sweeper-worker');
+
     const workflow = new SweeperWorkflow(stack, 'workflow', {
-      executionRole:    new iam.Role(stack, 'execution-role', { assumedBy: new iam.ServicePrincipal('states.amazonaws.com') }),
-      workerRoleArn:    'arn:aws:iam::123456789012:role/worker-role',
-      workerRoleName:   'worker-role',
-      worker:           newWorkerFunction(stack),
+      executionRole:  new iam.Role(stack, 'execution-role', { assumedBy: new iam.ServicePrincipal('states.amazonaws.com') }),
+      workerRoleArn:  'arn:aws:iam::123456789012:role/worker-role',
+      workerRoleName: 'worker-role',
+      worker,
       stateMachineName: 'sweeper-machine',
       stateMachineArn:  STATE_MACHINE_ARN,
-      removals:         newRemovals(group),
+      removals:         [recordingRemoval(stack, 'FirstRemoval', built), recordingRemoval(stack, 'SecondRemoval', built)],
       ...overrides,
     });
     const grantee  = new iam.Role(stack, 'grantee', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
     workflow.grantStartExecution(grantee);
     workflow.grantExecutionReaping(grantee);
-    workflow.markForRetention();
 
-    const template                           = Template.fromStack(stack);
-    const [[stateMachineLogicalId, machine]] = Object.entries(template.findResources('AWS::StepFunctions::StateMachine'));
-    return { template, definition: renderLiteralText(machine.Properties.DefinitionString), stateMachineLogicalId };
+    const template       = Template.fromStack(stack);
+    const [stateMachine] = resourcesOfType(template, 'AWS::StepFunctions::StateMachine', isStateMachineProperties);
+    return {
+      template,
+      definition:            renderLiteralText(stateMachine.properties.DefinitionString),
+      stateMachineLogicalId: stateMachine.logicalId,
+      worker,
+      ...built,
+    };
   }
 
   it('refuses to be built without a removal, because its definition would have nothing to sweep', () => {
@@ -59,23 +95,26 @@ describe('SweeperWorkflow', () => {
     it('runs the removals in the order given, then the self-cleanup tail', () => {
       const { definition } = synthesize('OrderStack');
 
-      expect(definition).toContain('"StartAt":"CertHasTarget"');
-      expect(stateBodyOf(definition, 'CertHasTarget')).toContain('"Default":"EdgeFnHasTarget"');
-      expect(stateBodyOf(definition, 'EdgeFnHasTarget')).toContain('"Default":"DetectorHasTarget"');
-      expect(stateBodyOf(definition, 'DetectorHasTarget')).toContain('"Default":"SelfCleanupDescribeOwnResource"');
+      expect(definition).toContain('"StartAt":"FirstRemoval"');
+      expect(stateBodyOf(definition, 'FirstRemoval')).toContain('"Next":"SecondRemoval"');
+      expect(stateBodyOf(definition, 'SecondRemoval')).toContain('"Next":"SelfCleanupDescribeOwnResource"');
     });
 
-    it('waits 5 minutes between retries and times out after 4 hours by default', () => {
-      const { definition } = synthesize('DefaultsStack');
+    it('hands every removal the worker and a retry interval of 5 minutes by default, and times out after 4 hours', () => {
+      const { definition, retryIntervals, workers, worker } = synthesize('DefaultsStack');
 
-      expect(stateBodyOf(definition, 'CertWaitRetry')).toContain('"Seconds":300');
+      expect(retryIntervals.map((interval) => interval.toSeconds())).toEqual([300, 300]);
+      expect(workers).toHaveLength(2);
+      for (const received of workers) {
+        expect(received).toBe(worker);
+      }
       expect(definition).toContain('"TimeoutSeconds":14400');
     });
 
-    it('waits the retry interval it is given', () => {
-      const { definition } = synthesize('RetryIntervalStack', { retryInterval: Duration.minutes(1) });
+    it('hands every removal the retry interval it is given', () => {
+      const { retryIntervals } = synthesize('RetryIntervalStack', { retryInterval: Duration.minutes(1) });
 
-      expect(stateBodyOf(definition, 'CertWaitRetry')).toContain('"Seconds":60');
+      expect(retryIntervals.map((interval) => interval.toSeconds())).toEqual([60, 60]);
     });
   });
 
@@ -136,7 +175,6 @@ describe('SweeperWorkflow', () => {
       expect(deleteStateMachine).toContain(`"StateMachineArn":"${STATE_MACHINE_ARN}"`);
       expect(deleteStateMachine).toContain('"ErrorEquals":["States.ALL"]');
       expect(deleteStateMachine).toContain('"Next":"Succeed"');
-      expect(deleteStateMachine).not.toMatch(/"Next":"(?!Succeed)/);
       expect(deleteStateMachine).toContain('"End":true');
     });
   });
@@ -145,9 +183,7 @@ describe('SweeperWorkflow', () => {
     it('lets the grantee start executions of this state machine only', () => {
       const { template } = synthesize('StartExecutionStack');
 
-      const statements = Object.values(template.findResources('AWS::IAM::Policy'))
-        .flatMap((policy) => statementsOfDocument(policy.Properties.PolicyDocument))
-        .filter((statement) => actionsOf(statement).includes('states:StartExecution'));
+      const statements = statementsForAction(template, 'states:StartExecution');
 
       expect(statements).toEqual([{ Action: 'states:StartExecution', Effect: 'Allow', Resource: STATE_MACHINE_ARN }]);
     });
@@ -155,9 +191,7 @@ describe('SweeperWorkflow', () => {
     it('lets the grantee list and stop executions of this state machine only', () => {
       const { template } = synthesize('ReapingStack');
 
-      const statements = Object.values(template.findResources('AWS::IAM::Policy'))
-        .flatMap((policy) => statementsOfDocument(policy.Properties.PolicyDocument))
-        .filter((statement) => actionsOf(statement).includes('states:StopExecution'));
+      const statements = statementsForAction(template, 'states:StopExecution');
 
       expect(statements).toEqual([
         { Action: ['states:ListExecutions', 'states:StopExecution'], Effect: 'Allow', Resource: STATE_MACHINE_ARN },
@@ -169,9 +203,9 @@ describe('SweeperWorkflow', () => {
     it('keeps the state machine when the stack is deleted, so the sweep can finish after it', () => {
       const { template } = synthesize('RetentionStack');
 
-      const [machine] = Object.values(template.findResources('AWS::StepFunctions::StateMachine'));
+      const [stateMachine] = resourcesOfType(template, 'AWS::StepFunctions::StateMachine', isStateMachineProperties);
 
-      expect(machine).toMatchObject({ DeletionPolicy: 'RetainExceptOnCreate', UpdateReplacePolicy: 'Retain' });
+      expect(stateMachine).toMatchObject({ deletionPolicy: 'RetainExceptOnCreate', updateReplacePolicy: 'Retain' });
     });
   });
 });

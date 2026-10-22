@@ -1,15 +1,17 @@
 import { ArtifactZone, PinnedArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver }            from '@serverlessinbox/artifact-registry-cdk';
 import { renderLiteralText }                              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { ServerlessInboxTagKeys }                         from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                       from 'aws-cdk-lib/assertions';
 import * as acm                                           from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam                                           from 'aws-cdk-lib/aws-iam';
 import * as lambda                                        from 'aws-cdk-lib/aws-lambda';
 import * as sfn                                           from 'aws-cdk-lib/aws-stepfunctions';
-/// <reference types="jest" />
 import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
 import { Construct }                                      from 'constructs';
+import * as t                                             from 'typanion';
 
+import { resourcesOfType, isTemplateValue }               from '../../../../__tests__/template-resources';
 import { StackFailedEvent }                               from '../../../../resources/events/stack-failed-event';
 import { CertificateRemoval }                             from '../certificate-removal';
 import { EdgeFunctionRemoval }                            from '../edge-function-removal';
@@ -17,6 +19,21 @@ import type { IResourceRemoval }                          from '../removal';
 import { StackFailureDetectorRemoval }                    from '../stack-failure-detector-removal';
 
 /** Shared fixtures of the sweeper feature's tests: a stack, real removals over imported or fresh CDK objects, and a rendered state machine. */
+
+const isStateMachineProperties = t.isPartial({ DefinitionString: isTemplateValue });
+
+const rootStackIdKey = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
+
+/** The IAM condition under which a removal may delete a resource tagged with this stack's id. */
+export const OWNED_BY_STACK_ID = {
+  StringEquals: { [rootStackIdKey]: { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] } },
+};
+
+/** The IAM condition under which a removal may delete a resource tagged with this stack's name and no stack id. */
+export const OWNED_BY_STACK_NAME_WITHOUT_ID = {
+  StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
+  Null:         { [rootStackIdKey]: 'true' },
+};
 
 export function newTestStack(id: string): Stack {
   return new Stack(new App(), id, {
@@ -90,7 +107,13 @@ export function newRemovals(scope: Construct): IResourceRemoval[] {
 
 /** The statements as they synthesize into a template, intrinsic functions included. */
 export function resolveStatements(scope: Construct, statements: iam.PolicyStatement[]): unknown[] {
-  return statements.map((statement) => Stack.of(scope).resolve(statement.toStatementJson()));
+  return statements.map((statement) => resolveValue(scope, statement.toStatementJson()));
+}
+
+/** A value as it synthesizes into the template of its stack, intrinsic functions included. */
+export function resolveValue(scope: Construct, value: unknown): unknown {
+  const resolved: unknown = Stack.of(scope).resolve(value);
+  return resolved;
 }
 
 /** The definition of a state machine whose chain is the removal's own, continuing to a Succeed state named `Done`. */
@@ -106,32 +129,6 @@ export function newWorkerFunction(scope: Construct): lambda.IFunction {
 /** Wraps `chain` in a state machine of its own and returns its definition with the intrinsic functions dropped. */
 export function renderDefinition(scope: Construct, chain: sfn.IChainable): string {
   new sfn.StateMachine(scope, 'rendered-machine', { definition: chain });
-  const machines  = Template.fromStack(Stack.of(scope)).findResources('AWS::StepFunctions::StateMachine');
-  const [machine] = Object.values(machines);
-  return renderLiteralText(machine.Properties.DefinitionString);
-}
-
-/**
- * The JSON body of one state of a rendered definition, found by brace counting on the state's own
- * `"<name>":{` key. A substring window would as often land on another state's `"Next":"<name>"`
- * as on the definition, and breaks on a Choice's nested `Choices` array.
- */
-export function stateBodyOf(definition: string, stateName: string): string {
-  const marker      = `"${stateName}":{`;
-  const markerIndex = definition.indexOf(marker);
-  expect(markerIndex).toBeGreaterThanOrEqual(0);
-
-  const start = markerIndex + marker.length - 1;
-  let depth   = 0;
-  for (let end = start; end < definition.length; end++) {
-    if (definition[end] === '{') {
-      depth++;
-    } else if (definition[end] === '}') {
-      depth--;
-      if (depth === 0) {
-        return definition.slice(start, end + 1);
-      }
-    }
-  }
-  throw new Error(`State '${stateName}' is not closed in the definition`);
+  const [machine] = resourcesOfType(Template.fromStack(Stack.of(scope)), 'AWS::StepFunctions::StateMachine', isStateMachineProperties);
+  return renderLiteralText(machine.properties.DefinitionString);
 }

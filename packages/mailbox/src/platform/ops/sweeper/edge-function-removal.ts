@@ -10,6 +10,7 @@ import type { EdgeFunctionRemovalTarget, EdgeFunctionWorkerInput }    from '../.
 import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard } from './removal';
 import type { IResourceRemoval }                                      from './removal';
 
+/** Inputs of {@link EdgeFunctionRemoval}. */
 export interface EdgeFunctionRemovalProps {
   /** The Lambda@Edge function to defer removal for. */
   readonly function: lambda.IFunction;
@@ -20,7 +21,7 @@ export interface EdgeFunctionRemovalProps {
  * Lambda@Edge's own constraint, regardless of which region the worker itself runs in.
  */
 export class EdgeFunctionRemoval extends Construct implements IResourceRemoval<'edge-fn'> {
-  private static readonly anyEdgeFunctionArn = `arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`;
+  private static readonly anyEdgeFunctionArn = `arn:${Aws.PARTITION}:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`;
 
   readonly id = 'edge-fn';
   private readonly edgeFnArn: string;

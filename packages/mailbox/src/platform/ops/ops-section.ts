@@ -54,13 +54,6 @@ export class OpsSection extends Construct {
       vendorAccountIds: props.vendorAccountIds,
     });
 
-    // Stack-failure detector: watches the root stack's own terminal `CloudFormation Stack
-    // Status Change` events. A terminal stack status is emitted only after the whole operation
-    // concludes, so the detector has no ordering requirement relative to its ops-group siblings.
-    // Consent defaults to ENABLED; `disabled` synthesizes zero detector resources (see
-    // StackFailureDetection for the CfnCondition gating). Built before SweeperInfra: its retained
-    // rule/function/role are registered below as one removal, and the sweeper's worker IAM policy
-    // is assembled from the registered removals.
     const stackFailureDetection = new StackFailureDetection(this, 'stack-failure-detection', {
       mode:             props.sendStackFailures ?? SendStackFailuresMode.ENABLED,
       artifactResolver: props.artifactResolver,
@@ -69,7 +62,6 @@ export class OpsSection extends Construct {
 
     const edgeFunction = this.importEdgeFunction(props.edge.jmapBlobDownloadVersionArn);
 
-    // Each retained resource is registered as its own removal.
     const removals: IResourceRemoval[] = [];
     if (props.edge.regionalCertificate) {
       removals.push(new CertificateRemoval(this, 'cert-removal', { certificate: props.edge.regionalCertificate }));
@@ -79,16 +71,11 @@ export class OpsSection extends Construct {
       removals.push(new StackFailureDetectorRemoval(this, 'stack-failure-detector-removal', stackFailureDetection.sweepTargets));
     }
 
-    // Resource sweeper (Step Functions + worker Lambda): asynchronous cleanup of the retained
-    // resources after stack deletion.
     const sweeperInfra = new SweeperInfra(this, 'sweeper-infra', {
       artifactResolver: props.artifactResolver,
       removals,
     });
 
-    // Fires the sweeper's starter Lambda on stack Delete or Update. CloudFormation supplies
-    // `OldResourceProperties` on Update, so the starter can sweep only what changed; on Delete it
-    // sweeps everything present.
     new DeferredRemoval(this, 'deferred-removal', {
       sweeperStarter: sweeperInfra.starter,
       removals,
@@ -101,14 +88,13 @@ export class OpsSection extends Construct {
     // Function ARN: arn:aws:lambda:us-east-1:<acct>:function:<name>
     const fnArnParts      = Fn.split(':', versionArn);
     const edgeFunctionArn = Fn.join(':', [
-      Fn.select(0, fnArnParts), // arn
-      Fn.select(1, fnArnParts), // aws
-      Fn.select(2, fnArnParts), // lambda
-      Fn.select(3, fnArnParts), // us-east-1
-      Fn.select(4, fnArnParts), // account
-      Fn.select(5, fnArnParts), // function
-      Fn.select(6, fnArnParts), // <function-name>
-      // Fn.select(7, ...) is the version number — intentionally dropped
+      Fn.select(0, fnArnParts),
+      Fn.select(1, fnArnParts),
+      Fn.select(2, fnArnParts),
+      Fn.select(3, fnArnParts),
+      Fn.select(4, fnArnParts),
+      Fn.select(5, fnArnParts),
+      Fn.select(6, fnArnParts),
     ]);
     // Imported by ARN: the JMAP blob download function lives in the separate edge sub-stack, so there is no
     // construct reference to it.

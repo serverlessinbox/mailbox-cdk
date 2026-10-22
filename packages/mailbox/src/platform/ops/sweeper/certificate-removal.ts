@@ -11,6 +11,7 @@ import type { CertRemovalTarget, CertWorkerInput }                    from '../.
 import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard } from './removal';
 import type { IResourceRemoval }                                      from './removal';
 
+/** Inputs of {@link CertificateRemoval}. */
 export interface CertificateRemovalProps {
   /** The ACM certificate to defer removal for. */
   readonly certificate: acm.ICertificate;
@@ -20,7 +21,7 @@ export interface CertificateRemovalProps {
  * Registers an ACM certificate for deferred removal.
  */
 export class CertificateRemoval extends Construct implements IResourceRemoval<'cert'> {
-  private static readonly anyCertificateArn = `arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`;
+  private static readonly anyCertificateArn = `arn:${Aws.PARTITION}:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/*`;
 
   readonly id = 'cert';
   private readonly certificateArn: string;

@@ -2,12 +2,12 @@ import type { IArtifactResolver }                        from '@serverlessinbox/
 import { PipelineLogGroup, PositionHash, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
 import * as iam                                          from 'aws-cdk-lib/aws-iam';
 import * as lambda                                       from 'aws-cdk-lib/aws-lambda';
-import { Fn, Aws, RemovalPolicy, CfnResource }           from 'aws-cdk-lib';
+import { Fn, Aws }                                       from 'aws-cdk-lib';
 import { Construct }                                     from 'constructs';
-import type { IConstruct }                               from 'constructs';
 
 import type { IStackFailedEvent }                        from '../../resources/events/stack-failed-event';
 import { StackFailureDetectorLambda }                    from '../../resources/lambdas/stack-failure-detector-lambda';
+import { retainOnEveryOperation }                        from '../../utils/cfn-resource';
 
 /** Inputs of the stack-failure detection resources. */
 export interface StackFailureDetectionInfraProps {
@@ -58,7 +58,7 @@ export class StackFailureDetectionInfra extends Construct {
       roleName:  detectorRoleName,
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
-    this.retainOnEveryOperation(detectorRole, 'detector-role-v2');
+    retainOnEveryOperation(detectorRole);
 
     // Reused below for the grant, so the env var and the grant ARN can never
     // come from two independent lookups.
@@ -70,7 +70,7 @@ export class StackFailureDetectionInfra extends Construct {
       functionName:      detectorFunctionName,
       infraLogGroupName: infraLogGroup.logGroupName,
     });
-    this.retainOnEveryOperation(detector, 'detector-v2');
+    retainOnEveryOperation(detector);
 
     this.createDetectorPolicy(detectorRole, infraLogGroup.logGroupArn, props.vendorAccountIds);
 
@@ -104,28 +104,12 @@ export class StackFailureDetectionInfra extends Construct {
         new iam.PolicyStatement({
           actions:   ['execute-api:Invoke'],
           resources: vendorAccountIds.map(
-            (accountId) => `arn:aws:execute-api:*:${accountId}:*/*/POST/issue-stack-failure-upload`,
+            (accountId) => `arn:${Aws.PARTITION}:execute-api:*:${accountId}:*/*/POST/issue-stack-failure-upload`,
           ),
         }),
       ],
     });
     detectorPolicy.attachToRole(detectorRole);
-    this.retainOnEveryOperation(detectorPolicy, 'detector-policy-v2');
-  }
-
-  /**
-   * Applies RETAIN to a construct's underlying CFN resource, so it is kept on update, on delete and when
-   * its creating operation is rolled back. RETAIN_ON_UPDATE_OR_DELETE is not used: CloudFormation deletes
-   * those resources when a create rolls back, and the detector reports that rollback, so it must still
-   * exist afterwards. Throws at synth when the construct has no CFN resource to retain.
-   */
-  private retainOnEveryOperation(construct: IConstruct, description: string): void {
-    const defaultChild = construct.node.defaultChild;
-    if (!(defaultChild instanceof CfnResource)) {
-      throw new Error(
-        `${description}: expected defaultChild to be a CfnResource, got ${defaultChild?.constructor?.name ?? String(defaultChild)}`,
-      );
-    }
-    defaultChild.applyRemovalPolicy(RemovalPolicy.RETAIN);
+    retainOnEveryOperation(detectorPolicy);
   }
 }

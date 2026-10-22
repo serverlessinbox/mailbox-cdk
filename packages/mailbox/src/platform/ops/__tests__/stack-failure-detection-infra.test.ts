@@ -19,15 +19,16 @@
  * `DefaultPolicy` cannot be removed that way, so the role could never be deleted.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import { PositionHash }                         from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                             from 'aws-cdk-lib/assertions';
-import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
-import { Construct }                            from 'constructs';
+import { ArtifactZone, PinnedArtifactResolver }            from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin, IArtifactResolver }             from '@serverlessinbox/artifact-registry-cdk';
+import { actionsOf, resourcesOf, statementsOfNamedPolicy } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { PositionHash }                                    from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                        from 'aws-cdk-lib/assertions';
+import * as cdk                                            from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                   from 'aws-cdk-lib';
+import { Construct }                                       from 'constructs';
 
-import { StackFailureDetectionInfra }           from '../stack-failure-detection-infra';
+import { StackFailureDetectionInfra }                      from '../stack-failure-detection-infra';
 
 const VENDOR_ACCOUNT_ID    = '444455556666';
 const DETECTOR_POLICY_NAME = 'stack-failure-detector-policy';
@@ -245,31 +246,20 @@ describe('StackFailureDetectionInfra — detector role policies', () => {
 });
 
 describe('StackFailureDetectionInfra — vendor license API access', () => {
-  interface PolicyStatementJson {
-    readonly Action:    string | string[];
-    readonly Resource?: string | string[];
-  }
-
-  /** The synthesized IAM policy resource, as far as this suite reads it. */
-  interface SynthesizedPolicy {
-    readonly Properties: {
-      readonly PolicyName:     string;
-      readonly PolicyDocument: { readonly Statement: PolicyStatementJson[] };
-    };
-  }
-
-  it('the detector policy grants execute-api:Invoke on the vendor issue-upload route only', () => {
+  it('the detector policy grants execute-api:Invoke on the vendor issue-upload route only, in the stack\'s partition', () => {
     const template = synthesizeDetectionTemplate();
-    // cast: CDK's findResources returns untyped template JSON; this is the one framework boundary.
-    const policies = Object.values(template.findResources('AWS::IAM::Policy')) as SynthesizedPolicy[];
 
-    const detectorPolicy = policies.find((p) => p.Properties.PolicyName === DETECTOR_POLICY_NAME);
-    const invoke         = detectorPolicy?.Properties.PolicyDocument.Statement.find((s) =>
-      [s.Action].flat().includes('execute-api:Invoke'),
+    const invokeStatements = statementsOfNamedPolicy(template, DETECTOR_POLICY_NAME).filter((statement) =>
+      actionsOf(statement).includes('execute-api:Invoke'),
     );
 
-    expect([invoke?.Resource].flat()).toEqual([
-      `arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/issue-stack-failure-upload`,
+    expect(invokeStatements.flatMap(resourcesOf)).toEqual([
+      {
+        'Fn::Join': [
+          '',
+          ['arn:', { Ref: 'AWS::Partition' }, `:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/issue-stack-failure-upload`],
+        ],
+      },
     ]);
   });
 });

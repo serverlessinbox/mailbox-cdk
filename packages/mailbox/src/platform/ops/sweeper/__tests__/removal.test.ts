@@ -10,10 +10,11 @@
 import * as sfn                                                           from 'aws-cdk-lib/aws-stepfunctions';
 import { Duration }                                                       from 'aws-cdk-lib';
 
+import { stateBodyOf }                                                    from '../../../../__tests__/state-machine-helpers';
 import type { CertWorkerInput }                                           from '../../../../runtime/resource-sweeper/removal';
 import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard }     from '../removal';
 
-import { newTestStack, newWorkerFunction, renderDefinition, stateBodyOf } from './sweeper-helpers';
+import { newTestStack, newWorkerFunction, renderDefinition }              from './sweeper-helpers';
 
 describe('removal chain helpers', () => {
   const retryInterval = Duration.minutes(5);

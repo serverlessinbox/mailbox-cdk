@@ -10,11 +10,19 @@ import type { IStackFailedEvent }     from '../../resources/events/stack-failed-
 
 import { StackFailureDetectionInfra } from './stack-failure-detection-infra';
 
+/**
+ * Whether the stack watches its own terminal stack-status events and uploads diagnostics about a failed
+ * stack operation to the vendor's stack-failure API. Reporting is a consent decision of the operator:
+ * choose {@link SendStackFailuresMode.DISABLED} when the stack must not send such reports.
+ */
 export enum SendStackFailuresMode {
+  /** The stack provisions the detector (a Lambda, its role and an event rule), which reports a failed stack operation. */
   ENABLED = 'enabled',
+  /** The stack provisions no detector resources, so no failure report is sent. */
   DISABLED = 'disabled',
 }
 
+/** Inputs of {@link StackFailureDetection}. */
 export interface StackFailureDetectionProps {
   readonly mode:             SendStackFailuresMode;
   readonly artifactResolver: IArtifactResolver;
@@ -33,6 +41,10 @@ export interface StackFailureDetectorSweepTargets {
   readonly detectorRolePolicyName: string;
 }
 
+/**
+ * The stack-failure detector, provisioned only when {@link SendStackFailuresMode.ENABLED}. It exposes the
+ * rule, function and role it creates as `sweepTargets`, which is `undefined` when the mode is the literal DISABLED.
+ */
 export class StackFailureDetection extends Construct {
   readonly sweepTargets?: StackFailureDetectorSweepTargets;
 

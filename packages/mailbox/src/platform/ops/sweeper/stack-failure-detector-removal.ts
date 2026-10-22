@@ -15,6 +15,7 @@ import type { StackFailureDetectorSweepTargets }                      from '../s
 import { buildWorkerRetryLoop, targetAt, withTargetPresenceGuard }    from './removal';
 import type { IResourceRemoval, WorkerPayloadTemplate }               from './removal';
 
+/** Inputs of {@link StackFailureDetectorRemoval}: the detector's sweep targets and the grace period before they are swept. */
 export interface StackFailureDetectorRemovalProps extends StackFailureDetectorSweepTargets {
   /**
    * How long to hold this removal back before its first attempt, giving the detector time to
@@ -36,8 +37,8 @@ export interface StackFailureDetectorRemovalProps extends StackFailureDetectorSw
  */
 export class StackFailureDetectorRemoval extends Construct implements IResourceRemoval<'detector'> {
   private static readonly defaultGracePeriod = Duration.minutes(15);
-  private static readonly anyRuleArn = `arn:aws:events:${Aws.REGION}:${Aws.ACCOUNT_ID}:rule/*`;
-  private static readonly anyRegionalFunctionArn = `arn:aws:lambda:${Aws.REGION}:${Aws.ACCOUNT_ID}:function:*`;
+  private static readonly anyRuleArn = `arn:${Aws.PARTITION}:events:${Aws.REGION}:${Aws.ACCOUNT_ID}:rule/*`;
+  private static readonly anyRegionalFunctionArn = `arn:${Aws.PARTITION}:lambda:${Aws.REGION}:${Aws.ACCOUNT_ID}:function:*`;
 
   readonly id = 'detector';
   private readonly targets: StackFailureDetectorSweepTargets;

@@ -1,6 +1,5 @@
 import type { IArtifactResolver }             from '@serverlessinbox/artifact-registry-cdk';
 import { ComponentDescription, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
-import * as lambda                            from 'aws-cdk-lib/aws-lambda';
 import { Construct }                          from 'constructs';
 
 import { LicenseRefresherLambda }             from '../../resources/lambdas/license-refresher-lambda';
@@ -17,9 +16,6 @@ export interface LicenseRefreshProps {
 
 /** The license refresher Lambda, which refreshes once a day and after every stack create or update. */
 export class LicenseRefresh extends Construct {
-  /** The Lambda function that refreshes the license. */
-  public readonly licenseFunction: lambda.IFunction;
-
   constructor(scope: Construct, id: string, props: LicenseRefreshProps) {
     super(scope, id);
     ComponentDescription.describe(this, 'Periodically refreshes the product license from the license server.');
@@ -29,7 +25,7 @@ export class LicenseRefresh extends Construct {
     const hour         = stackHelpers.resolveSeededNumber(this, 'schedule-hour', { salt: 'license-refresh-hour', range: 24 });
     const minute       = stackHelpers.resolveSeededNumber(this, 'schedule-minute', { salt: 'license-refresh-minute', range: 60 });
 
-    this.licenseFunction = new LicenseRefresherLambda(this, 'handler', {
+    new LicenseRefresherLambda(this, 'handler', {
       configTable:      props.configTable,
       artifactResolver: props.artifactResolver,
       coreDomain:       props.coreDomain,

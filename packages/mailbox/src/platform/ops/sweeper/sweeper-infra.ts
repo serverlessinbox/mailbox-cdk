@@ -7,12 +7,11 @@ import { Construct }                                                 from 'const
 
 import { ResourceSweeperStarterLambda }                              from '../../../resources/lambdas/resource-sweeper-starter-lambda';
 import { ResourceSweeperWorkerLambda }                               from '../../../resources/lambdas/resource-sweeper-worker-lambda';
+import { SweeperPolicyNames, SweeperWorkflow }                       from '../../../resources/workflows/sweeper-workflow';
 import { retainOnUpdateOrDelete }                                    from '../../../utils/cfn-resource';
 
 import type { IResourceRemoval }                                     from './removal';
 import { SweeperExecutionGrants }                                    from './sweeper-execution-grants';
-import { SweeperPolicyNames }                                        from './sweeper-names';
-import { SweeperWorkflow }                                           from '../../../resources/workflows/sweeper-workflow';
 
 export interface SweeperInfraProps {
   readonly artifactResolver: IArtifactResolver;
@@ -87,7 +86,6 @@ export class SweeperInfra extends Construct {
     });
     // The starter may start an execution during the deploy, which must not run before the role holds its grants.
     workflow.node.addDependency(executionPolicy);
-    workflow.markForRetention();
 
     // Starter Lambda (NOT retained — CFN deletes normally)
     this.starter = new ResourceSweeperStarterLambda(this, 'starter', {
@@ -96,11 +94,9 @@ export class SweeperInfra extends Construct {
     });
 
     // The starter receives the state machine ARN as a plain string, so only this edge makes a replaced state machine exist before the starter, and the custom resources it serves, update.
-
-    // The starter receives the state machine ARN as a plain string, so only this edge makes a replaced state machine exist before the starter, and the custom resources it serves, update.
     this.starter.node.addDependency(workflow);
 
-    this.attachWorkerPolicy(workerRole, worker, props.removals);
+    this.attachWorkerPolicy(workerRole, props.removals);
 
     workflow.grantStartExecution(this.starter);
     workflow.grantExecutionReaping(this.starter);
@@ -195,13 +191,35 @@ export class SweeperInfra extends Construct {
    * then the worker's log grants. It sits on a RETAIN'd role and is needed while the stack is torn
    * down, so it is retained too; the self-cleanup tail deletes it.
    */
-  private attachWorkerPolicy(workerRole: iam.IRole, worker: ResourceSweeperWorkerLambda, removals: IResourceRemoval[]): void {
+  private attachWorkerPolicy(workerRole: iam.IRole, removals: IResourceRemoval[]): void {
     const workerPolicy = new iam.Policy(this, 'worker-policy', {
       policyName: SweeperPolicyNames.workerPolicy,
-      statements: removals.flatMap((removal) => removal.grantStatements()),
+      statements: [
+        ...removals.flatMap((removal) => removal.grantStatements()),
+        this.grantLogGroupCreation(),
+        this.grantLogStreamWriting(),
+      ],
     });
-    worker.grantLogWriting(workerPolicy);
     workerPolicy.attachToRole(workerRole);
     retainOnUpdateOrDelete(workerPolicy);
+  }
+
+  /** The worker's role exists before its function, whose log group name is generated, so the grants cannot name the group. */
+  private grantLogGroupCreation(): iam.PolicyStatement {
+    return new iam.PolicyStatement({
+      actions:   ['logs:CreateLogGroup'],
+      resources: [`arn:${Aws.PARTITION}:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:*`],
+    });
+  }
+
+  /** Write-only, with the same effective scope as AWSLambdaBasicExecutionRole. */
+  private grantLogStreamWriting(): iam.PolicyStatement {
+    return new iam.PolicyStatement({
+      actions:   ['logs:CreateLogStream', 'logs:PutLogEvents'],
+      resources: [
+        `arn:${Aws.PARTITION}:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:*`,
+        `arn:${Aws.PARTITION}:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:*:*`,
+      ],
+    });
   }
 }

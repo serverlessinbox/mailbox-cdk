@@ -6,8 +6,13 @@ import { Aws, Duration, Lazy }                        from 'aws-cdk-lib';
 import { Construct }                                  from 'constructs';
 
 import type { IRemovalChain }                         from '../../platform/ops/sweeper/removal';
-import { SweeperPolicyNames }                         from '../../platform/ops/sweeper/sweeper-names';
 import { defaultCfnResource, retainOnUpdateOrDelete } from '../../utils/cfn-resource';
+
+/** The names of the sweeper's inline IAM policies. A deletion by name has nothing else to go on, so each name is defined once. */
+export const SweeperPolicyNames = {
+  executionPolicy: 'sweeper-execution-policy',
+  workerPolicy:    'sweeper-worker-policy',
+} as const;
 
 export interface SweeperWorkflowProps {
   /** The role the state machine runs as. */
@@ -55,6 +60,8 @@ type Step = (successors: StepSuccessors) => sfn.IChainable;
  * Self-cleanup tail: re-check that the state machine is gone from the template, then delete worker
  * Lambda, delete worker role policy and role, and delete the state machine. Runs once after every
  * removal has succeeded.
+ *
+ * The state machine is retained on update and delete, so the sweep can finish after the stack is gone.
  */
 export class SweeperWorkflow extends Construct {
   private static readonly defaultRetryInterval = Duration.minutes(5);
@@ -97,6 +104,7 @@ export class SweeperWorkflow extends Construct {
       timeout:          props.timeout ?? SweeperWorkflow.defaultTimeout,
       stateMachineName: props.stateMachineName,
     });
+    retainOnUpdateOrDelete(this.stateMachine);
   }
 
   public grantStartExecution(grantee: IGrantable): void {
@@ -114,14 +122,6 @@ export class SweeperWorkflow extends Construct {
       actions:   ['states:ListExecutions', 'states:StopExecution'],
       resources: [this.stateMachineArn],
     }));
-  }
-
-  /**
-   * Marks this state machine for retention when the stack is deleted.
-   * Allows the sweeper to complete asynchronously after the stack is torn down.
-   */
-  public markForRetention(): void {
-    retainOnUpdateOrDelete(this.stateMachine);
   }
 
   /**

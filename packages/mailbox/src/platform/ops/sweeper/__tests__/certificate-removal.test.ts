@@ -7,27 +7,23 @@
  * the worker has to look at a certificate before it can tell whether this stack owns it.
  */
 
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { stateBodyOf } from '../../../../__tests__/state-machine-helpers';
 
 import {
   newCertificateRemoval,
   newTestStack,
+  OWNED_BY_STACK_ID,
+  OWNED_BY_STACK_NAME_WITHOUT_ID,
   renderRemovalChain,
   resolveStatements,
-  stateBodyOf,
 } from './sweeper-helpers';
 
 describe('CertificateRemoval', () => {
   const anyCertificate = {
-    'Fn::Join': ['', ['arn:aws:acm:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':certificate/*']],
-  };
-
-  const stackGuid            = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
-  const idKey                = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
-  const ownedById            = { StringEquals: { [idKey]: stackGuid } };
-  const ownedByNameWithoutId = {
-    StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
-    Null:         { [idKey]: 'true' },
+    'Fn::Join': [
+      '',
+      ['arn:', { Ref: 'AWS::Partition' }, ':acm:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':certificate/*'],
+    ],
   };
 
   it('reads certificates unconditioned and deletes them only when the root stack owns them, by id or by name without an id tag', () => {
@@ -41,8 +37,8 @@ describe('CertificateRemoval', () => {
         Effect:   'Allow',
         Resource: anyCertificate,
       },
-      { Action: 'acm:DeleteCertificate', Effect: 'Allow', Resource: anyCertificate, Condition: ownedById },
-      { Action: 'acm:DeleteCertificate', Effect: 'Allow', Resource: anyCertificate, Condition: ownedByNameWithoutId },
+      { Action: 'acm:DeleteCertificate', Effect: 'Allow', Resource: anyCertificate, Condition: OWNED_BY_STACK_ID },
+      { Action: 'acm:DeleteCertificate', Effect: 'Allow', Resource: anyCertificate, Condition: OWNED_BY_STACK_NAME_WITHOUT_ID },
     ]);
   });
 

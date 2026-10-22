@@ -7,27 +7,20 @@
  * tag so a function another stack owns is never deleted.
  */
 
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { stateBodyOf } from '../../../../__tests__/state-machine-helpers';
 
 import {
   newEdgeFunctionRemoval,
   newTestStack,
+  OWNED_BY_STACK_ID,
+  OWNED_BY_STACK_NAME_WITHOUT_ID,
   renderRemovalChain,
   resolveStatements,
-  stateBodyOf,
 } from './sweeper-helpers';
 
 describe('EdgeFunctionRemoval', () => {
   const anyUsEast1Function = {
-    'Fn::Join': ['', ['arn:aws:lambda:us-east-1:', { Ref: 'AWS::AccountId' }, ':function:*']],
-  };
-
-  const stackGuid            = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
-  const idKey                = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
-  const ownedById            = { StringEquals: { [idKey]: stackGuid } };
-  const ownedByNameWithoutId = {
-    StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
-    Null:         { [idKey]: 'true' },
+    'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':lambda:us-east-1:', { Ref: 'AWS::AccountId' }, ':function:*']],
   };
 
   it('reads functions in us-east-1 unconditioned and deletes them there only when the root stack owns them, by id or by name without an id tag', () => {
@@ -37,8 +30,8 @@ describe('EdgeFunctionRemoval', () => {
 
     expect(statements).toEqual([
       { Action: 'lambda:GetFunction', Effect: 'Allow', Resource: anyUsEast1Function },
-      { Action: 'lambda:DeleteFunction', Effect: 'Allow', Resource: anyUsEast1Function, Condition: ownedById },
-      { Action: 'lambda:DeleteFunction', Effect: 'Allow', Resource: anyUsEast1Function, Condition: ownedByNameWithoutId },
+      { Action: 'lambda:DeleteFunction', Effect: 'Allow', Resource: anyUsEast1Function, Condition: OWNED_BY_STACK_ID },
+      { Action: 'lambda:DeleteFunction', Effect: 'Allow', Resource: anyUsEast1Function, Condition: OWNED_BY_STACK_NAME_WITHOUT_ID },
     ]);
   });
 

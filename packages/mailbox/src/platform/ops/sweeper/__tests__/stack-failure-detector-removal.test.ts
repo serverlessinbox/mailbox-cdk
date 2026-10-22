@@ -7,30 +7,32 @@
  * the detector time to report a failed stack before the sweeper tears it down.
  */
 
-import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration }               from 'aws-cdk-lib';
+import { Duration }    from 'aws-cdk-lib';
+
+import { stateBodyOf } from '../../../../__tests__/state-machine-helpers';
 
 import {
   newDetectorRemoval,
   newTestStack,
+  OWNED_BY_STACK_ID,
+  OWNED_BY_STACK_NAME_WITHOUT_ID,
   renderRemovalChain,
   resolveStatements,
-  stateBodyOf,
+  resolveValue,
 } from './sweeper-helpers';
 
 describe('StackFailureDetectorRemoval', () => {
-  const stackGuid            = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
-  const idKey                = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
-  const ownedById            = { StringEquals: { [idKey]: stackGuid } };
-  const ownedByNameWithoutId = {
-    StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
-    Null:         { [idKey]: 'true' },
+  const anyRule             = {
+    'Fn::Join': [
+      '',
+      ['arn:', { Ref: 'AWS::Partition' }, ':events:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':rule/*'],
+    ],
   };
-  const anyRule              = {
-    'Fn::Join': ['', ['arn:aws:events:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':rule/*']],
-  };
-  const anyRegionalFunction  = {
-    'Fn::Join': ['', ['arn:aws:lambda:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':function:*']],
+  const anyRegionalFunction = {
+    'Fn::Join': [
+      '',
+      ['arn:', { Ref: 'AWS::Partition' }, ':lambda:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':function:*'],
+    ],
   };
 
   it('scopes rule and function deletion by the root-stack tag and role deletion by the role\'s own ARN', () => {
@@ -39,18 +41,18 @@ describe('StackFailureDetectorRemoval', () => {
 
     const statements = resolveStatements(stack, removal.grantStatements());
 
-    const roleArn = stack.resolve(role.roleArn);
+    const roleArn = resolveValue(stack, role.roleArn);
     expect(statements).toEqual([
       {
         Action:   ['events:DescribeRule', 'events:ListTargetsByRule', 'events:ListTagsForResource'],
         Effect:   'Allow',
         Resource: anyRule,
       },
-      { Action: ['events:RemoveTargets', 'events:DeleteRule'], Effect: 'Allow', Resource: anyRule, Condition: ownedById },
-      { Action: ['events:RemoveTargets', 'events:DeleteRule'], Effect: 'Allow', Resource: anyRule, Condition: ownedByNameWithoutId },
+      { Action: ['events:RemoveTargets', 'events:DeleteRule'], Effect: 'Allow', Resource: anyRule, Condition: OWNED_BY_STACK_ID },
+      { Action: ['events:RemoveTargets', 'events:DeleteRule'], Effect: 'Allow', Resource: anyRule, Condition: OWNED_BY_STACK_NAME_WITHOUT_ID },
       { Action: 'lambda:GetFunction', Effect: 'Allow', Resource: anyRegionalFunction },
-      { Action: 'lambda:DeleteFunction', Effect: 'Allow', Resource: anyRegionalFunction, Condition: ownedById },
-      { Action: 'lambda:DeleteFunction', Effect: 'Allow', Resource: anyRegionalFunction, Condition: ownedByNameWithoutId },
+      { Action: 'lambda:DeleteFunction', Effect: 'Allow', Resource: anyRegionalFunction, Condition: OWNED_BY_STACK_ID },
+      { Action: 'lambda:DeleteFunction', Effect: 'Allow', Resource: anyRegionalFunction, Condition: OWNED_BY_STACK_NAME_WITHOUT_ID },
       { Action: 'iam:ListRoleTags', Effect: 'Allow', Resource: roleArn },
       { Action: ['iam:DeleteRolePolicy', 'iam:DeleteRole'], Effect: 'Allow', Resource: roleArn },
     ]);
@@ -60,11 +62,11 @@ describe('StackFailureDetectorRemoval', () => {
     const stack                               = newTestStack('DetectorPropertiesStack');
     const { removal, stackFailedEvent, role } = newDetectorRemoval(stack);
 
-    expect(stack.resolve(removal.crProperties())).toEqual({
-      ruleArn:                stack.resolve(stackFailedEvent.ruleArn),
+    expect(resolveValue(stack, removal.crProperties())).toEqual({
+      ruleArn:                resolveValue(stack, stackFailedEvent.ruleArn),
       ruleTargetId:           'Target0',
       detectorFnArn:          'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-test',
-      detectorRoleArn:        stack.resolve(role.roleArn),
+      detectorRoleArn:        resolveValue(stack, role.roleArn),
       detectorRolePolicyName: 'stack-failure-detector-policy',
     });
   });
