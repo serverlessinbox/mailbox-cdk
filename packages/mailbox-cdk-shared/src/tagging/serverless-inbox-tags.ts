@@ -31,9 +31,6 @@ export interface ApplyServerlessInboxTagsOptions {
    */
   readonly rootStack: string;
 
-  /** Optional version string (e.g. '1.2.3' or 'channel:dev'). Not applied as a resource tag. */
-  readonly version?: string;
-
   /** Optional extra tags supplied by the caller. */
   readonly extraTags?: Record<string, string>;
 }

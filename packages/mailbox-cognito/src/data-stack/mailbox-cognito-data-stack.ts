@@ -103,7 +103,6 @@ export class MailboxCognitoDataStack extends cdk.Stack {
     applyServerlessInboxBaseTagsWithDeployerType(this, {
       product: 'mailbox',
       rootStack: rootStackParam.valueAsString,
-      version: productVersionParam.valueAsString,
     }, deployerTypeParam.valueAsString as ServerlessInboxDeployerType, rootStackIdParam.valueAsString);
     applyServerlessInboxComponentTag(this, 'auth');
 

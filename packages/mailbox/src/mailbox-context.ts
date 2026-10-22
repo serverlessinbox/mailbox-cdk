@@ -54,7 +54,6 @@ export class MailboxContext {
     // is the main stack, so it is its own root-stack (the base helper also tags `stack`).
     applyServerlessInboxBaseTags(scope, {
       rootStack: Aws.STACK_NAME,
-      version: stackVersion,
       product: 'mailbox',
     });
 

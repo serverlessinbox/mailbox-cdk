@@ -71,7 +71,6 @@ export class MailboxEdgeStack extends cdk.Stack {
       // root-stack is the main stack name (flows in via the rootStack param);
       // the base helper tags this edge stack's own name as `stack` (AWS::StackName).
       rootStack: rootStackParam.valueAsString,
-      version: productVersionParam.valueAsString,
     }, deployerTypeParam.valueAsString as ServerlessInboxDeployerType, rootStackIdParam.valueAsString);
     applyServerlessInboxComponentTag(this, 'edge');
     applyServerlessInboxEdgeTags(this, {
