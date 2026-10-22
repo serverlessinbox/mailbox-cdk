@@ -32,7 +32,8 @@ interface TryLoadResult<T> {
   error: string | undefined;
 }
 
-const isPositiveIntString = t.matchesRegExp(/^[1-9]\d*$/);
+/** Validates a string of plain digits without a leading zero, such as `5`; zero, signs and fractions are rejected. */
+export const isPositiveIntString = t.matchesRegExp(/^[1-9]\d*$/);
 
 /**
  * Loads configuration and throws once, naming every problem, when any variable is missing or invalid.

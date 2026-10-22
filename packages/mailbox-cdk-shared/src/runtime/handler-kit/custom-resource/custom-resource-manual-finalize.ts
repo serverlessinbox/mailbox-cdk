@@ -1,23 +1,22 @@
-import type { StackId } from './custom-resource-identifiers';
+import type { StackId }               from './custom-resource-identifiers';
+import type { CustomResourceRequest } from './custom-resource-request';
 
 /**
  * The custom-resource properties of a request. Only `stackName` is read; the rest are open because every custom
  * resource declares its own.
  */
 export interface ManualFinalizeResourceProperties {
-  stackName?: string;
   [property: string]: unknown;
+  stackName?: string;
 }
 
 /**
- * The fields of a CloudFormation custom-resource request that the break-glass block reads.
+ * The fields of a CloudFormation custom-resource request that the break-glass block reads, each optional because
+ * an event that is not a real request, such as a smoke-test probe, carries none of them.
  */
-export interface ManualFinalizeEvent {
+export interface ManualFinalizeEvent extends Partial<Omit<CustomResourceRequest, 'StackId' | 'PhysicalResourceId' | 'ResourceProperties'>> {
   ResponseURL?: string;
   StackId?: StackId;
-  RequestId?: string;
-  LogicalResourceId?: string;
-  RequestType?: string;
   ResourceProperties?: ManualFinalizeResourceProperties;
 }
 

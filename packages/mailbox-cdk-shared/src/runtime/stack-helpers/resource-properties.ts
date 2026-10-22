@@ -1,13 +1,13 @@
-import * as t from 'typanion';
+import * as t                  from 'typanion';
 
-const POSITIVE_INTEGER = /^[1-9][0-9]*$/;
+import { isPositiveIntString } from '../handler-kit/config/config-env';
 
 export const isStackHelpersResourceProperties = t.isPartial({
   HostedZoneId: t.isOptional(t.isString()),
   DataStackName: t.isOptional(t.isString()),
   Fallback: t.isOptional(t.isString()),
   Salt: t.isOptional(t.isString()),
-  Range: t.isOptional(t.cascade(t.isString(), [t.matchesRegExp(POSITIVE_INTEGER)])),
+  Range: t.isOptional(t.cascade(t.isString(), [isPositiveIntString])),
 });
 
 /**

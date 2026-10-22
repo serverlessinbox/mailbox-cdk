@@ -11,6 +11,7 @@ import { LoggerBuffer }               from '../handler-kit/logger-buffer';
 import { withSmokeTest }              from '../handler-kit/with-smoke-test';
 
 import { load }                       from './config';
+import { StackHelpersRequestHandler } from './stack-helpers-request-handler';
 import { StackHelpersResolver }       from './stack-helpers-resolver';
 
 const { config, error: configError } = env.tryLoad(load);
@@ -25,16 +26,11 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
 
   emitManualFinalize({ ...event, StackId: toStackId(event.StackId) }, { service: config.serviceName });
 
-  // The resource creates nothing, so there is nothing to undo on Delete.
-  if (event.RequestType === 'Delete') {
-    return {};
-  }
-
-  const logger   = new LoggerBuffer(config.serviceName, config.logLevel);
-  const resolver = new StackHelpersResolver(route53, logger);
+  const logger         = new LoggerBuffer(config.serviceName, config.logLevel);
+  const requestHandler = new StackHelpersRequestHandler(new StackHelpersResolver(route53, logger));
 
   try {
-    return { Data: await resolver.resolve(event.ResourceProperties, toStackId(event.StackId)) };
+    return await requestHandler.handle(request);
   } catch (failure) {
     if (!(failure instanceof ExpectedFailure)) {
       logger.flush();

@@ -7,6 +7,7 @@
 import { CloudFormationClient, DescribeStacksCommand, type StackStatus } from '@aws-sdk/client-cloudformation';
 import { mockClient }                                                    from 'aws-sdk-client-mock';
 
+import { ExpectedFailure }                                               from '../../errors/expected-failure';
 import { LoggerBuffer }                                                  from '../../logger-buffer';
 import { FailedRequestAnswerer }                                         from '../custom-resource-failed-request-answerer';
 import type { CustomResourceRequest }                                    from '../custom-resource-request';
@@ -84,6 +85,12 @@ describe('FailedRequestAnswerer', () => {
     await answerer.answer(request('Create'), new Error('boom'));
 
     expect(console.error).toHaveBeenCalledWith('Handler failed', { error: 'boom', service: 'test-service' });
+  });
+
+  it('writes nothing for an expected failure, which answers by its reason alone', async () => {
+    await answerer.answer(request('Create'), new ExpectedFailure('rejected on purpose'));
+
+    expect(console.error).not.toHaveBeenCalled();
   });
 
   it('logs a failure that is not an Error as its string form', async () => {

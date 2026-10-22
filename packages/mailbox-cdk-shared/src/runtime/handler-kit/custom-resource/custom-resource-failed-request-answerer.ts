@@ -1,5 +1,7 @@
 import type { CloudFormationClient }                        from '@aws-sdk/client-cloudformation';
 
+import { CaughtError }                                      from '../errors/caught-error';
+import { ExpectedFailure }                                  from '../errors/expected-failure';
 import type { LoggerBuffer }                                from '../logger-buffer';
 
 import { toStackId }                                        from './custom-resource-identifiers';
@@ -20,13 +22,14 @@ export class FailedRequestAnswerer {
   }
 
   /**
-   * Logs the failure and returns the answer that suppresses it, or undefined when the failure stands.
+   * Returns the answer that suppresses the failure, or undefined when the failure stands. A failure the code
+   * did not recognise is logged at error level.
    * CloudFormation re-sends Update with the old properties while the parent stack rolls back, and
    * answering FAILED to that strands the stack in UPDATE_ROLLBACK_FAILED.
    */
-  async answer(request: CustomResourceRequest, failure: unknown): Promise<CustomResourceAnswer | undefined> {
-    const reason = failure instanceof Error ? failure.message : String(failure);
-    this.logger.error('Handler failed', { error: reason });
+  public async answer(request: CustomResourceRequest, failure: unknown): Promise<CustomResourceAnswer | undefined> {
+    const reason = new CaughtError(failure).message ?? String(failure);
+    this.logUnexpected(failure, reason);
 
     if (request.RequestType !== 'Update') {
       return undefined;
@@ -39,5 +42,11 @@ export class FailedRequestAnswerer {
 
     this.logger.warn('Suppressing error during stack rollback', { error: reason });
     return { PhysicalResourceId: request.PhysicalResourceId };
+  }
+
+  private logUnexpected(failure: unknown, reason: string): void {
+    if (!(failure instanceof ExpectedFailure)) {
+      this.logger.error('Handler failed', { error: reason });
+    }
   }
 }

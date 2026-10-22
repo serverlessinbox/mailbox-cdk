@@ -2,10 +2,10 @@
 
 /**
  * Pins what the stack-helpers handler file decides: a bad configuration is answered to CloudFormation
- * as FAILED (never a crash that leaves the resource waiting for its service timeout), Delete does no
- * lookup, a Create hands its resource properties to the resolver and returns the result as the
- * resource's attributes, and the buffered trace is flushed when the lookup fails unexpectedly. The
- * response is read from the request the handler sends to the ResponseURL.
+ * as FAILED (never a crash that leaves the resource waiting for its service timeout), a Create hands its
+ * resource properties to the resolver and returns the result as the resource's attributes, and the buffered
+ * trace is flushed when the lookup fails unexpectedly. The response is read from the request the handler
+ * sends to the ResponseURL.
  */
 
 import type * as Route53Sdk                                    from '@aws-sdk/client-route-53';
@@ -112,16 +112,6 @@ describe('stack-helpers handler', () => {
     );
 
     expect(response).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'physical-id' });
-    expect(hostedZoneLookups).toHaveLength(0);
-  });
-
-  it('answers SUCCESS to Delete without looking anything up', async () => {
-    const { response, hostedZoneLookups } = await invoke(
-      fakeDeleteEvent({ HostedZoneId: 'Z123' }),
-      { SERVICE_NAME: 'stack-helpers' },
-    );
-
-    expect(response.Status).toBe('SUCCESS');
     expect(hostedZoneLookups).toHaveLength(0);
   });
 
