@@ -24,6 +24,17 @@ import { MailboxResourceDescriptions }                                          
  *
  * Add it to your own stack and pass an `authProvider`. Optional capabilities are not built in:
  * you opt in through the props, for example `adminApiAddonProviders` and `artifactResolver`.
+ *
+ * The construct is a composition of sections, each a construct that owns its resources and takes
+ * the sections built before it as inputs. They live in two zones:
+ *
+ * - `core/` is the mail server: data, email, auth, edge, APIs, UIs and search.
+ * - `platform/` is what keeps the server running: updates, support and operations. Updates and
+ *   support reach the server as admin API addons that the consumer opts into; operations is built here.
+ *
+ * Construction order follows what each section needs. A section that needs a value which only
+ * exists later (the CDN after the UIs, the DNS records after the API endpoints) exposes an `add*`
+ * method that the constructor calls once that value exists.
  */
 export class Mailbox extends Construct {
   /**
@@ -45,6 +56,7 @@ export class Mailbox extends Construct {
     const { artifactResolver, deployerType, vendorLink, encryptionPlan: { queues: queueProps } } = context;
     const enabledUis                                                                             = { adminUi: props.enableAdminUi ?? true, webmailUi: props.enableWebmailUi ?? true };
 
+    // Every other section reads the data tables, queues and blob store, so data comes first.
     const data = new DataSection(this, 'data', {
       artifactResolver,
       deployerType,
@@ -53,10 +65,14 @@ export class Mailbox extends Construct {
     });
     setStackNameBase(this, data.mainStackNameBase);
 
+    // Fixes the domain names and URLs up front, since the sections below embed them.
     const addressing = this.resolveAddressing(props, enabledUis);
 
+    // Receives, sends and processes mail on top of the data stores; auth needs its queue and SES settings.
     const email = new EmailSection(this, 'email', { artifactResolver, data, queueProps });
 
+    // Key store and identity provisioning, which need data and email. The bootstrap that registers
+    // the OAuth clients waits for the UIs (`auth.addBootstrap` below).
     const auth = new AuthSection(this, 'auth', {
       artifactResolver,
       authProvider: props.authProvider,
@@ -67,6 +83,8 @@ export class Mailbox extends Construct {
       adminUiUrl: addressing.urls.adminUi,
     });
 
+    // Edge sub-stack and certificates, which need the auth key store and the addressing. The CDN and
+    // DNS records need the UIs and APIs, so they are added later.
     const edge = new EdgeSection(this, 'edge', {
       artifactResolver,
       deployerType,
@@ -78,6 +96,8 @@ export class Mailbox extends Construct {
       certificateOverrides: props.overrides?.certificates,
     });
 
+    // The API addons are created before the UIs because the Admin UI reads their UI configuration.
+    // The endpoints themselves come later.
     const apis = new ApisSection(this, 'apis', {
       artifactResolver,
       authProvider:           props.authProvider,
@@ -89,6 +109,7 @@ export class Mailbox extends Construct {
       jmapApiBaseUrl: addressing.urls.jmapApi,
     });
 
+    // Admin and Webmail UIs, each only when enabled; they need the edge certificates and the API addons.
     const ui = new UiSection(this, 'ui', {
       artifactResolver,
       authProvider:         props.authProvider,
@@ -102,8 +123,10 @@ export class Mailbox extends Construct {
       edge,
     });
 
+    // The CDN in front of the blob bucket allows the UIs' origins, so it can only be built after them.
     const blobCdn = edge.addBlobCdn({ ui, extraAllowedOrigins: props.extraAllowedOrigins });
 
+    // The API endpoints need the CDN host and the UI origins, so they follow both.
     const endpoints = apis.addEndpoints({
       cdnHost:        blobCdn.host,
       mailboxDomains: addressing.domains,
@@ -113,14 +136,20 @@ export class Mailbox extends Construct {
       enableMcp:           props.enableMcp,
     });
 
+    // The email Lambdas can push over the WebSocket only once the endpoints' broadcaster exists.
     email.enableWebSocketPublishing(endpoints.broadcaster);
 
+    // DNS records point at the UIs, the CDN and the API endpoints, so they come after all three.
     edge.addDns({ ui, blobCdn, apis: endpoints });
 
+    // The bootstrap registers the UIs' OAuth clients, so it needs the UIs and the edge.
     auth.addBootstrap({ email, ui, edge, sesReceivingMode: props.enableReceiving });
 
+    // Full-text search needs only the data stores, so nothing else waits on it.
     new SearchSection(this, 'search', { artifactResolver, data, queueProps });
 
+    // Platform zone: license refresh, stack-failure detection and cleanup of retained resources.
+    // The cleanup targets edge resources, so it is built after the edge.
     new OpsSection(this, 'ops', {
       artifactResolver, data, edge,
       domainName:        addressing.domains.domainName,
