@@ -1,8 +1,8 @@
-import { Grant, IGrantable }                   from 'aws-cdk-lib/aws-iam';
+import { IGrantable }                          from 'aws-cdk-lib/aws-iam';
 import { IFunction }                           from 'aws-cdk-lib/aws-lambda';
 import * as tasks                              from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import * as sfn                                from 'aws-cdk-lib/aws-stepfunctions';
-import { ArnFormat, Duration, Fn, Stack }      from 'aws-cdk-lib';
+import { Duration }                            from 'aws-cdk-lib';
 import type { IResolvable }                    from 'aws-cdk-lib';
 import { Construct, IDependable }              from 'constructs';
 
@@ -22,7 +22,7 @@ export interface PollingCfnDeployerWorkflowProps {
   readonly checkInterval?: Duration;
   /** Overall timeout for the workflow (default: 90m). */
   readonly timeout?: Duration;
-  /** The state machine's name; also the source of the execution ARN pattern granted to the starter. */
+  /** The state machine's explicit physical name. */
   readonly stateMachineName: string;
 }
 
@@ -69,17 +69,15 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
   /** A resource that depends on this is deleted before the state machine is. */
   public readonly stateMachineDependable: IDependable;
 
-  private readonly stateMachineName: string;
+  private readonly stateMachine: sfn.IStateMachine;
 
   constructor(scope: Construct, id: string, props: PollingCfnDeployerWorkflowProps) {
     super(scope, id);
 
-    this.stateMachineName = props.stateMachineName;
-
     const waitBeforeCheck = this.waitBeforeCheck(props.checkInterval ?? Duration.seconds(20));
     const done            = this.done();
 
-    const stateMachine = new sfn.StateMachine(this, 'StateMachine', {
+    this.stateMachine = new sfn.StateMachine(this, 'StateMachine', {
       definitionBody:   sfn.DefinitionBody.fromChainable(
         this.init()
           .next(this.startStackOperation(props.handler))
@@ -98,21 +96,13 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
       stateMachineName: props.stateMachineName,
     });
 
-    this.stateMachineArn        = stateMachine.stateMachineArn;
-    this.stateMachineDependable = stateMachine;
+    this.stateMachineArn        = this.stateMachine.stateMachineArn;
+    this.stateMachineDependable = this.stateMachine;
   }
 
   public grantStartAndDescribeExecutions(grantee: IGrantable): void {
-    Grant.addToPrincipal({
-      grantee,
-      actions:      ['states:StartExecution'],
-      resourceArns: [this.stateMachineArn],
-    });
-    Grant.addToPrincipal({
-      grantee,
-      actions:      ['states:DescribeExecution'],
-      resourceArns: [this.executionArnPattern()],
-    });
+    this.stateMachine.grantStartExecution(grantee);
+    this.stateMachine.grantExecution(grantee, 'states:DescribeExecution');
   }
 
   private init(): sfn.Pass {
@@ -204,14 +194,5 @@ export class PollingCfnDeployerWorkflow extends Construct implements IPollingCfn
 
   private path(...fields: PathField[]): string {
     return `$.${fields.join('.')}`;
-  }
-
-  private executionArnPattern(): string {
-    return Stack.of(this).formatArn({
-      service:      'states',
-      resource:     'execution',
-      resourceName: Fn.join(':', [this.stateMachineName, '*']),
-      arnFormat:    ArnFormat.COLON_RESOURCE_NAME,
-    });
   }
 }

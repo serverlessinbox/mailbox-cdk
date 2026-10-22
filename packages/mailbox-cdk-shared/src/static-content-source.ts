@@ -16,17 +16,14 @@ export interface StaticContentZipOptions {
 
 /**
  * One source of static content: the value embedded in a deployment's custom resource, and the S3 object
- * ARNs that deploying it touches.
+ * keys and source ARNs that deploying it touches.
  */
 export interface IStaticContentSource {
   /** The plain, CloudFormation-serializable value embedded in the custom resource's properties. */
   readonly spec: StaticContentSourceSpec;
 
-  /**
-   * The ARNs of the objects this source writes into `bucket`, for `s3:PutObject` and `s3:DeleteObject`.
-   * Bucket-level `s3:ListBucket` is not covered.
-   */
-  objectArns(bucket: IBucket): string[];
+  /** The key patterns of the objects this source writes into the target bucket. */
+  readonly objectKeyPatterns: string[];
 
   /** The ARNs of the objects this source reads from. Absent for a source whose content is inline. */
   sourceArns?(): string[];
@@ -36,30 +33,29 @@ export interface IStaticContentSource {
 export abstract class StaticContentSource {
   private constructor() {} // static factories only
 
-  /** A literal write at an exact, known key. IAM is scoped to exactly this one object ARN. */
+  /** A literal write at an exact, known key. IAM is scoped to exactly this one object. */
   static data(key: string, body: string, options: StaticContentWriteOptions = {}): IStaticContentSource {
     return {
-      spec:       { kind: 'data', key, body, ...options },
-      objectArns: (bucket) => [bucket.arnForObjects(key)],
+      spec:              { kind: 'data', key, body, ...options },
+      objectKeyPatterns: [key],
     };
   }
 
   /**
-   * A zip archive unpacked under `targetPrefix`. `sourceBucketName` is a plain name rather than an
-   * `IBucket`: the artifact bucket the zip comes from is external to the stack. The keys the archive
-   * produces are unknown at synth time, so IAM is scoped to a prefix wildcard.
+   * A zip archive unpacked under `targetPrefix`. The keys the archive produces are unknown at synth
+   * time, so IAM is scoped to a prefix wildcard.
    */
   static zipFromBucket(
-    sourceBucketName: string,
+    sourceBucket: IBucket,
     sourceKey: string,
     targetPrefix: string,
     options: StaticContentZipOptions = {},
   ): IStaticContentSource {
     const normalizedPrefix = targetPrefix.endsWith('/') ? targetPrefix : `${targetPrefix}/`;
     return {
-      spec:       { kind: 'zip', sourceBucket: sourceBucketName, sourceKey, targetPrefix: normalizedPrefix, ...options },
-      objectArns: (bucket) => [bucket.arnForObjects(`${normalizedPrefix}*`)],
-      sourceArns: () => [`arn:aws:s3:::${sourceBucketName}/${sourceKey}`],
+      spec:              { kind: 'zip', sourceBucket: sourceBucket.bucketName, sourceKey, targetPrefix: normalizedPrefix, ...options },
+      objectKeyPatterns: [`${normalizedPrefix}*`],
+      sourceArns:        () => [sourceBucket.arnForObjects(sourceKey)],
     };
   }
 }

@@ -9,7 +9,6 @@
 
 import type { IArtifactResolver, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
 import { Match, Template }                          from 'aws-cdk-lib/assertions';
-import { CfnBucket }                                from 'aws-cdk-lib/aws-s3';
 import { App, Stack }                               from 'aws-cdk-lib';
 
 import { PublicStaticAssetsBucket }                 from '../public-static-assets-bucket';
@@ -26,6 +25,12 @@ function newStack(): Stack {
   return new Stack(new App(), 'test-stack', { env: { account: '111122223333', region: 'eu-west-1' } });
 }
 
+function onlyBucketLogicalId(stack: Stack): string {
+  const bucketIds = Object.keys(Template.fromStack(stack).findResources('AWS::S3::Bucket'));
+  expect(bucketIds).toHaveLength(1);
+  return bucketIds[0];
+}
+
 describe('PublicStaticAssetsBucket.getOrCreate', () => {
   it('returns the same bucket on every call and creates one bucket per stack', () => {
     const stack = newStack();
@@ -38,10 +43,10 @@ describe('PublicStaticAssetsBucket.getOrCreate', () => {
   });
 
   it('allows anyone to read objects and nothing else', () => {
-    const stack  = newStack();
-    const bucket = PublicStaticAssetsBucket.getOrCreate(stack, fakeResolver);
+    const stack = newStack();
+    PublicStaticAssetsBucket.getOrCreate(stack, fakeResolver);
 
-    const bucketId = stack.getLogicalId(bucket.node.defaultChild as CfnBucket);
+    const bucketId = onlyBucketLogicalId(stack);
     Template.fromStack(stack).hasResourceProperties('AWS::S3::BucketPolicy', {
       PolicyDocument: {
         Statement: [
@@ -75,11 +80,11 @@ describe('PublicStaticAssetsBucket.getOrCreate', () => {
   });
 
   it('empties the bucket on stack deletion through a BucketAutoEmpty custom resource', () => {
-    const stack  = newStack();
-    const bucket = PublicStaticAssetsBucket.getOrCreate(stack, fakeResolver);
+    const stack = newStack();
+    PublicStaticAssetsBucket.getOrCreate(stack, fakeResolver);
 
     Template.fromStack(stack).hasResourceProperties('Custom::BucketAutoEmpty', {
-      bucketName: Match.objectLike({ Ref: stack.getLogicalId(bucket.node.defaultChild as CfnBucket) }),
+      bucketName: Match.objectLike({ Ref: onlyBucketLogicalId(stack) }),
     });
   });
 });

@@ -1,7 +1,7 @@
 import type { IArtifactResolver }                                    from '@serverlessinbox/artifact-registry-cdk';
+import type { IDistribution }                                        from 'aws-cdk-lib/aws-cloudfront';
 import * as iam                                                      from 'aws-cdk-lib/aws-iam';
-import type { IBucket }                                              from 'aws-cdk-lib/aws-s3';
-import { Aws, Duration, CustomResource, Stack, Token, Tokenization } from 'aws-cdk-lib';
+import { Duration, CustomResource, Stack, Token, Tokenization }      from 'aws-cdk-lib';
 import { Construct, type IDependable }                               from 'constructs';
 import { createHash }                                                from 'node:crypto';
 import * as t                                                        from 'typanion';
@@ -14,12 +14,13 @@ import type {
 } from '../../runtime/content-deployer/resource-properties';
 import type { IStaticContentSource }                                 from '../../static-content-source';
 import { getOrCreateSharedGroup }                                    from '../../tagging/shared-group';
+import type { IStaticContentTarget }                                 from '../buckets/static-content-target';
 
 import { TypeScriptLambda }                                          from './ts-lambda';
 
 /** What `StaticContentDeployer.deploy` deploys, and where. */
 export interface StaticContentDeploymentProps {
-  readonly targetBucket: IBucket;
+  readonly targetBucket: IStaticContentTarget;
 
   /** The single source to deploy. To deploy several sources, call `deploy()` once per source. */
   readonly source: IStaticContentSource;
@@ -27,8 +28,8 @@ export interface StaticContentDeploymentProps {
 
 /** What `StaticContentDeployer.invalidate` invalidates. */
 export interface StaticContentInvalidationProps {
-  readonly distributionId: string;
-  readonly paths:          string[];
+  readonly distribution: IDistribution;
+  readonly paths:        string[];
 }
 
 /** A deployment made from a scope: the resource to depend on, and the identity of the content it deploys. */
@@ -105,12 +106,12 @@ export class StaticContentDeployer extends TypeScriptLambda {
    * CloudFormation only re-invokes a custom resource whose properties changed.
    */
   invalidate(scope: Construct, id: string, props: StaticContentInvalidationProps): CustomResource {
-    this.grantInvalidation(props.distributionId);
+    props.distribution.grantCreateInvalidation(this);
 
     const deployments                                   = this.deploymentsByScope.get(scope) ?? [];
     const properties: ContentDeployerResourceProperties = {
       sources:           [],
-      distributionId:    props.distributionId,
+      distributionId:    props.distribution.distributionId,
       invalidationPaths: props.paths,
       deploymentNonce:   this.deploymentNonce(deployments),
     };
@@ -129,20 +130,10 @@ export class StaticContentDeployer extends TypeScriptLambda {
   }
 
   private grantDeployment(props: StaticContentDeploymentProps): void {
-    this.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions:   ['s3:PutObject', 's3:DeleteObject'],
-        resources: props.source.objectArns(props.targetBucket),
-      }),
-    );
+    props.targetBucket.grantContentWrite(this, props.source.objectKeyPatterns);
 
     if (props.source.spec.kind === 'zip') {
-      this.addToRolePolicy(
-        new iam.PolicyStatement({
-          actions:   ['s3:ListBucket'],
-          resources: [props.targetBucket.bucketArn],
-        }),
-      );
+      props.targetBucket.grantContentListing(this);
     }
 
     if (props.source.sourceArns) {
@@ -153,15 +144,6 @@ export class StaticContentDeployer extends TypeScriptLambda {
         }),
       );
     }
-  }
-
-  private grantInvalidation(distributionId: string): void {
-    this.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions:   ['cloudfront:CreateInvalidation'],
-        resources: [`arn:${Aws.PARTITION}:cloudfront::${Aws.ACCOUNT_ID}:distribution/${distributionId}`],
-      }),
-    );
   }
 
   private trackDeployment(scope: Construct, resource: IDependable, spec: StaticContentSourceSpec): void {

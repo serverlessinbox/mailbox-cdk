@@ -19,9 +19,13 @@
  * 3. Both constructs' CustomResources properly reference the shared deployer Lambda
  */
 
-import { MailboxArtifactResolverFactory, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
+import {
+  MailboxArtifactResolverFactory,
+  StackNamedBucket,
+  StaticContentDeployer,
+  StaticContentSource,
+} from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                                                   from 'aws-cdk-lib/assertions';
-import * as s3                                                                        from 'aws-cdk-lib/aws-s3';
 import * as cdk                                                                       from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                                              from 'aws-cdk-lib';
 
@@ -110,7 +114,7 @@ describe('StaticContentDeployer Singleton (Type-Collision Bug Fix)', () => {
       expect(deployer1).toBe(deployer2);
 
       // Create a minimal deployment to verify the deployer works
-      const testBucket = new s3.Bucket(stack, 'test-bucket-for-deployer');
+      const testBucket = new StackNamedBucket(stack, 'test-bucket-for-deployer');
       deployer1.deploy(stack, 'test-deployment', {
         targetBucket: testBucket,
         source:       StaticContentSource.data('test.txt', 'test content'),

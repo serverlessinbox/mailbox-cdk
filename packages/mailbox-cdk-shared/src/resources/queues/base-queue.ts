@@ -1,7 +1,9 @@
+import { Grant, IGrantable }                  from 'aws-cdk-lib/aws-iam';
 import { Queue, QueueEncryption, QueueProps } from 'aws-cdk-lib/aws-sqs';
 import { Duration }                           from 'aws-cdk-lib';
 import { Construct }                          from 'constructs';
 
+import type { SqsAction }                     from '../../grants/sqs-actions';
 import { makePhysicalName }                   from '../../naming/resource-names';
 
 /** Queue props for {@link BaseQueue}: every SQS queue prop, with the visibility timeout and long-poll wait optional. */
@@ -48,5 +50,41 @@ export class BaseQueue extends Queue {
       encryption,
       queueName,
     });
+  }
+
+  /**
+   * Grants `grantee` exactly the given SQS actions on this queue, scoped to the queue's ARN. If the
+   * queue uses a customer-managed KMS key (`encryptionMasterKey`), also grants the matching key
+   * actions, so a caller granted `SqsActions.send`/`SqsActions.consume` never needs to reason about
+   * the queue's encryption separately from its message actions.
+   */
+  grantActions(grantee: IGrantable, actions: readonly SqsAction[]): Grant {
+    const grant = Grant.addToPrincipal({
+      grantee,
+      actions:      [...actions],
+      resourceArns: [this.queueArn],
+    });
+
+    this.grantEncryptionKey(grantee, actions);
+
+    return grant;
+  }
+
+  /**
+   * SQS performs the envelope encryption itself: a producer never calls kms:Encrypt or kms:ReEncrypt*
+   * directly. It needs kms:GenerateDataKey* to have SQS mint a fresh data key, and kms:Decrypt because
+   * SQS caches the encrypted data key and decrypts it on subsequent sends within the cache window.
+   */
+  private grantEncryptionKey(grantee: IGrantable, actions: readonly SqsAction[]): void {
+    const key = this.encryptionMasterKey;
+    if (!key) {
+      return;
+    }
+
+    if (actions.includes('sqs:SendMessage')) {
+      key.grant(grantee, 'kms:GenerateDataKey*', 'kms:Decrypt');
+    } else if (actions.includes('sqs:ReceiveMessage')) {
+      key.grant(grantee, 'kms:Decrypt');
+    }
   }
 }

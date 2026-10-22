@@ -1,4 +1,4 @@
-import { BaseQueue, type BaseQueueProps, SqsActions, grantQueueActions } from '@serverlessinbox/mailbox-cdk-shared';
+import { BaseQueue, type BaseQueueProps, SqsActions }                    from '@serverlessinbox/mailbox-cdk-shared';
 import { IGrantable, PolicyStatement, ServicePrincipal }                 from 'aws-cdk-lib/aws-iam';
 import { IKey }                                                          from 'aws-cdk-lib/aws-kms';
 import { SqsSubscription }                                               from 'aws-cdk-lib/aws-sns-subscriptions';
@@ -72,7 +72,7 @@ export class SesEventQueue extends Construct implements ISesEventQueue {
   }
 
   public grantConsume(grantee: IGrantable): void {
-    grantQueueActions(grantee, this.queue, SqsActions.consume);
+    this.queue.grantActions(grantee, SqsActions.consume);
   }
 
   private allowTopicToUseKey(key: IKey, topic: ITopic): void {

@@ -17,7 +17,7 @@ import {
   stateMachineDefinition,
   stateMachineLogicalId,
 } from '../../../__tests__/deployer-infra-helpers';
-import { renderWithTokens, statementsForAction } from '../../../cdk-test-support';
+import { statementsForAction }                   from '../../../cdk-test-support';
 import { PollingCfnDeployerWorkflow }            from '../polling-cfn-deployer-workflow';
 import type { PollingCfnDeployerWorkflowProps }  from '../polling-cfn-deployer-workflow';
 
@@ -172,14 +172,23 @@ describe('PollingCfnDeployerWorkflow', () => {
       expect(statements[0].Resource).toEqual(stack.resolve(workflow.stateMachineArn));
     });
 
-    it('lets the grantee describe the executions of the named state machine, in the colon ARN form', () => {
-      const { template } = synthWorkflowWithGrantee();
+    it('lets the grantee describe every execution of the state machine, in the colon ARN form', () => {
+      const { stack, workflow, template } = synthWorkflowWithGrantee();
 
       const statements = statementsForAction(template, 'states:DescribeExecution');
       expect(statements).toHaveLength(1);
-      expect(renderWithTokens(statements[0].Resource)).toBe(
-        `arn:<token>:states:${TEST_REGION}:${TEST_ACCOUNT}:execution:test-deployer-machine:*`,
-      );
+      expect(statements[0].Resource).toEqual({
+        'Fn::Join': [
+          '',
+          [
+            'arn:',
+            { Ref: 'AWS::Partition' },
+            `:states:${TEST_REGION}:${TEST_ACCOUNT}:execution:`,
+            { 'Fn::Select': [6, { 'Fn::Split': [':', stack.resolve(workflow.stateMachineArn)] }] },
+            ':*',
+          ],
+        ],
+      });
     });
   });
 

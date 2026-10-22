@@ -21,6 +21,7 @@ import {
   ViewerProtocolPolicy,
 } from 'aws-cdk-lib/aws-cloudfront';
 import * as iam                            from 'aws-cdk-lib/aws-iam';
+import { Bucket }                          from 'aws-cdk-lib/aws-s3';
 import { Fn, Tags }                        from 'aws-cdk-lib';
 import { Construct, IDependable }          from 'constructs';
 
@@ -39,10 +40,10 @@ export type UiBundleSource = {
 
 /** Runtime config of a UI, serialized as-is into the `config.json` that the UI fetches. */
 export interface MailboxUiConfig {
-  /** Base URL of the UI's backend API. */
-  apiUrl?: string;
   /** Further keys are written to `config.json` unchanged. */
   [key: string]: unknown;
+  /** Base URL of the UI's backend API. */
+  apiUrl?: string;
 }
 
 /** Inputs of `MailboxUi`: the CloudFront domain, the token-exchange wiring behind `/auth/*`, and the optional static content to deploy. */
@@ -192,7 +193,7 @@ export class MailboxUi extends Construct {
     if (uiResolved) {
       deployer.deploy(this, 'ui-content', {
         targetBucket: this.bucket,
-        source:       StaticContentSource.zipFromBucket(uiResolved.bucket, uiResolved.key, 'content/', {
+        source:       StaticContentSource.zipFromBucket(Bucket.fromBucketName(this, 'ui-artifact-bucket', uiResolved.bucket), uiResolved.key, 'content/', {
           sourceVersionId: uiResolved.versionId,
         }),
       });
@@ -211,8 +212,8 @@ export class MailboxUi extends Construct {
 
     // Invalidate CloudFront distribution cache for all UI content
     deployer.invalidate(this, 'ui-invalidate', {
-      distributionId: this.distribution.distributionId,
-      paths:          ['/*'],
+      distribution: this.distribution,
+      paths:        ['/*'],
     });
   }
 

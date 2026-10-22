@@ -1,13 +1,11 @@
-import { Bucket, BucketProps, IBucket }             from 'aws-cdk-lib/aws-s3';
+import { Grant, IGrantable }                        from 'aws-cdk-lib/aws-iam';
+import { Bucket, BucketProps }                      from 'aws-cdk-lib/aws-s3';
 import { Aws, IResolvable, Fn, Lazy, Stack, Token } from 'aws-cdk-lib';
 import { Construct, IConstruct }                    from 'constructs';
 
 import { getStackNameBase }                         from '../../naming/stack-name-base-registry';
 
-/** A bucket whose explicit physical name is known at synth time, so a holder can reuse the name without a `Ref`. */
-export interface INamedBucket extends IBucket {
-  readonly explicitBucketName: string;
-}
+import type { IStaticContentTarget }                from './static-content-target';
 
 /** Props for {@link StackNamedBucket}: the S3 bucket props plus an optional replacement for the stack name in the bucket name. */
 export interface StackNamedBucketProps extends BucketProps {
@@ -21,9 +19,7 @@ export interface StackNamedBucketProps extends BucketProps {
  *
  * Not responsible for choosing the name base; the caller passes `nameBase` or registers one.
  */
-export class StackNamedBucket extends Bucket implements INamedBucket {
-  readonly explicitBucketName: string;
-
+export class StackNamedBucket extends Bucket implements IStaticContentTarget {
   constructor(scope: Construct, bucketName: string, props?: StackNamedBucketProps) {
     const constructId = bucketName;
 
@@ -35,8 +31,6 @@ export class StackNamedBucket extends Bucket implements INamedBucket {
     const fullBucketName = Fn.join('', [prefix, bucketName]);
 
     super(scope, constructId, { ...props, bucketName: fullBucketName });
-
-    this.explicitBucketName = fullBucketName;
   }
 
   /**
@@ -56,6 +50,22 @@ export class StackNamedBucket extends Bucket implements INamedBucket {
         const nameBase   = registered ? Token.asString(registered) : Aws.STACK_NAME;
         return Fn.join('', [Aws.ACCOUNT_ID, '-', nameBase, '-']);
       },
+    });
+  }
+
+  grantContentWrite(grantee: IGrantable, keyPatterns: string[]): void {
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:PutObject', 's3:DeleteObject'],
+      resourceArns: keyPatterns.map((keyPattern) => this.arnForObjects(keyPattern)),
+    });
+  }
+
+  grantContentListing(grantee: IGrantable): void {
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:ListBucket'],
+      resourceArns: [this.bucketArn],
     });
   }
 }

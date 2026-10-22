@@ -1,8 +1,8 @@
-import { DynamoDbActions, grantTableActions, INamedTable, StackNamedTable } from '@serverlessinbox/mailbox-cdk-shared';
-import { AttributeType, BillingMode }                                       from 'aws-cdk-lib/aws-dynamodb';
-import { IGrantable }                                                       from 'aws-cdk-lib/aws-iam';
-import { RemovalPolicy }                                                    from 'aws-cdk-lib';
-import { Construct }                                                        from 'constructs';
+import { DynamoDbActions, grantTableActions, StackNamedTable }  from '@serverlessinbox/mailbox-cdk-shared';
+import { AttributeType, BillingMode, ITable }                   from 'aws-cdk-lib/aws-dynamodb';
+import { IGrantable }                                           from 'aws-cdk-lib/aws-iam';
+import { RemovalPolicy }                                        from 'aws-cdk-lib';
+import { Construct }                                            from 'constructs';
 
 /**
  * Read or read-write access to the auth-key-store table without exposing the underlying DynamoDB
@@ -33,9 +33,9 @@ export interface IAuthKeyStoreTable {
  * Not responsible for populating or refreshing its own contents.
  */
 export class AuthKeyStoreTable extends Construct implements IAuthKeyStoreTable {
-  private readonly table: INamedTable;
   public readonly tableName: string;
   public readonly tableArn: string;
+  private readonly table: ITable;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);

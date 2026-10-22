@@ -1,5 +1,5 @@
-import { SsmActions, grantParameterActions } from '@serverlessinbox/mailbox-cdk-shared';
-import { IGrantable }                        from 'aws-cdk-lib/aws-iam';
+import { SsmActions }                        from '@serverlessinbox/mailbox-cdk-shared';
+import { Grant, IGrantable }                 from 'aws-cdk-lib/aws-iam';
 import * as ssm                              from 'aws-cdk-lib/aws-ssm';
 import { Construct }                         from 'constructs';
 
@@ -48,6 +48,10 @@ export class TemplateVersionParam implements ITemplateVersionParam {
   }
 
   public grantRead(grantee: IGrantable): void {
-    grantParameterActions(grantee, this.parameter, SsmActions.read);
+    Grant.addToPrincipal({
+      grantee,
+      actions:      [...SsmActions.read],
+      resourceArns: [this.parameter.parameterArn],
+    });
   }
 }

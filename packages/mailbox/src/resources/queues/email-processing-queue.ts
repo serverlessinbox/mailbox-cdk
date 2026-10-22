@@ -1,4 +1,4 @@
-import { BaseQueue, type BaseQueueProps, SqsActions, grantQueueActions } from '@serverlessinbox/mailbox-cdk-shared';
+import { BaseQueue, type BaseQueueProps, SqsActions }                    from '@serverlessinbox/mailbox-cdk-shared';
 import { IGrantable }                                                    from 'aws-cdk-lib/aws-iam';
 import { IKey }                                                          from 'aws-cdk-lib/aws-kms';
 import { QueueEncryption }                                               from 'aws-cdk-lib/aws-sqs';
@@ -72,11 +72,11 @@ export class EmailProcessingQueue extends Construct implements IEmailProcessingQ
   }
 
   public grantSend(grantee: IGrantable): void {
-    grantQueueActions(grantee, this.queue, SqsActions.send);
+    this.queue.grantActions(grantee, SqsActions.send);
   }
 
   public grantConsume(grantee: IGrantable): void {
-    grantQueueActions(grantee, this.queue, SqsActions.consume);
+    this.queue.grantActions(grantee, SqsActions.consume);
   }
 
   private encryptionProps(masterKey: IKey | undefined): Partial<BaseQueueProps> {

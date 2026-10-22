@@ -71,10 +71,11 @@ export { BucketAutoEmpty } from './resources/lambdas/bucket-auto-empty';
 
 // Public static assets bucket
 export { PublicStaticAssetsBucket } from './resources/buckets/public-static-assets-bucket';
+export type { IPublicStaticAssetsBucket } from './resources/buckets/public-static-assets-bucket';
 
 // Named bucket
 export { StackNamedBucket } from './resources/buckets/named-bucket';
-export type { INamedBucket, StackNamedBucketProps } from './resources/buckets/named-bucket';
+export type { StackNamedBucketProps } from './resources/buckets/named-bucket';
 
 // Stack name sanitizing
 export { sanitizeStackName } from './naming/sanitize-name';
@@ -103,7 +104,7 @@ export { BaseTable } from './resources/tables/base-table';
 export { BaseQueue } from './resources/queues/base-queue';
 export type { BaseQueueProps } from './resources/queues/base-queue';
 export { StackNamedTable } from './resources/tables/named-table';
-export type { INamedTable, StackNamedTableProps } from './resources/tables/named-table';
+export type { StackNamedTableProps } from './resources/tables/named-table';
 
 // Resource naming
 export { makePhysicalName, slugifyLabel } from './naming/resource-names';
@@ -119,14 +120,14 @@ export { ComponentDescription } from './tagging/component-description';
 // DynamoDB least-privilege action sets & table grant helper
 export { DynamoDbActions, grantTableActions } from './grants/dynamodb-grants';
 
-// SQS least-privilege action sets & queue grant helper
-export { SqsActions, grantQueueActions } from './grants/sqs-grants';
+// SQS least-privilege action sets, for `BaseQueue.grantActions`
+export { SqsActions } from './grants/sqs-actions';
 
 // S3 least-privilege object action sets & bucket grant helpers
 export { S3Actions, grantObjectActions, grantListBucket } from './grants/s3-grants';
 
-// SSM Parameter Store least-privilege action set & parameter grant helper
-export { SsmActions, grantParameterActions } from './grants/ssm-grants';
+// SSM Parameter Store least-privilege action set
+export { SsmActions } from './grants/ssm-actions';
 
 // Sub-stack deployer scaffolding: worker and starter Lambdas and the polling Step Functions workflow
 export { DeployerInfra } from './deployer-infra';

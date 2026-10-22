@@ -2,9 +2,9 @@
  * StackNamedTable naming tests.
  *
  * Pins how the explicit physical table name is composed from the account, the name base and the
- * construct id (plus the position hash and guid prefix when `uniquePerPosition` is set), and that the
- * template's `TableName` is that same value; a regression here renames live tables on deploy, or lets a
- * moved table collide with its retained original.
+ * construct id (plus the position hash and guid prefix when `uniquePerPosition` is set), as rendered
+ * in the template's `TableName`; a regression here renames live tables on deploy, or lets a moved
+ * table collide with its retained original.
  */
 
 import { Template }                      from 'aws-cdk-lib/assertions';
@@ -32,28 +32,33 @@ function propsWith(nameBase?: string): StackNamedTableProps {
   return { partitionKey: { name: 'pk', type: AttributeType.STRING }, nameBase };
 }
 
+function nameWithPosition(stack: cdk.Stack, parent: Construct): object {
+  return {
+    'Fn::Join': [
+      '',
+      [accountRef, '-', stackNameRef, `-orders-${PositionHash.ofChild(parent, 'orders')}-`, stack.resolve(StackIdentity.guidPrefix)],
+    ],
+  };
+}
+
 describe('StackNamedTable', () => {
   it('names the table <account>-<stack name>-<id> when no nameBase is given', () => {
     const stack = createStack();
 
-    const sut = new StackNamedTable(stack, 'orders', propsWith());
+    new StackNamedTable(stack, 'orders', propsWith());
 
-    const expectedName = {
-      'Fn::Join': ['', [accountRef, '-', stackNameRef, '-orders']],
-    };
-    expect(stack.resolve(sut.explicitTableName)).toEqual(expectedName);
     Template.fromStack(stack).hasResourceProperties('AWS::DynamoDB::Table', {
-      TableName: expectedName,
+      TableName: { 'Fn::Join': ['', [accountRef, '-', stackNameRef, '-orders']] },
     });
   });
 
   it('uses nameBase in place of the stack name', () => {
     const stack = createStack();
 
-    const sut = new StackNamedTable(stack, 'orders', propsWith('custom'));
+    new StackNamedTable(stack, 'orders', propsWith('custom'));
 
-    expect(stack.resolve(sut.explicitTableName)).toEqual({
-      'Fn::Join': ['', [accountRef, '-custom-orders']],
+    Template.fromStack(stack).hasResourceProperties('AWS::DynamoDB::Table', {
+      TableName: { 'Fn::Join': ['', [accountRef, '-custom-orders']] },
     });
   });
 
@@ -61,44 +66,42 @@ describe('StackNamedTable', () => {
     const stack = createStack();
     const group = new Construct(stack, 'group');
 
-    const sut = new StackNamedTable(group, 'orders', { ...propsWith(), uniquePerPosition: true });
+    new StackNamedTable(group, 'orders', { ...propsWith(), uniquePerPosition: true });
 
-    const expectedName = {
-      'Fn::Join': [
-        '',
-        [accountRef, '-', stackNameRef, `-orders-${PositionHash.ofChild(group, 'orders')}-`, stack.resolve(StackIdentity.guidPrefix)],
-      ],
-    };
-    expect(stack.resolve(sut.explicitTableName)).toEqual(expectedName);
-    Template.fromStack(stack).hasResourceProperties('AWS::DynamoDB::Table', { TableName: expectedName });
+    Template.fromStack(stack).hasResourceProperties('AWS::DynamoDB::Table', { TableName: nameWithPosition(stack, group) });
   });
 
   it('gives a table with the same id a different name under a different parent when uniquePerPosition is set', () => {
-    const stack = createStack();
+    const stack  = createStack();
+    const first  = new Construct(stack, 'first');
+    const second = new Construct(stack, 'second');
 
-    const first  = new StackNamedTable(new Construct(stack, 'first'), 'orders', { ...propsWith(), uniquePerPosition: true });
-    const second = new StackNamedTable(new Construct(stack, 'second'), 'orders', { ...propsWith(), uniquePerPosition: true });
+    new StackNamedTable(first, 'orders', { ...propsWith(), uniquePerPosition: true });
+    new StackNamedTable(second, 'orders', { ...propsWith(), uniquePerPosition: true });
 
-    expect(stack.resolve(first.explicitTableName)).not.toEqual(stack.resolve(second.explicitTableName));
+    const template = Template.fromStack(stack);
+    template.resourceCountIs('AWS::DynamoDB::Table', 2);
+    template.hasResourceProperties('AWS::DynamoDB::Table', { TableName: nameWithPosition(stack, first) });
+    template.hasResourceProperties('AWS::DynamoDB::Table', { TableName: nameWithPosition(stack, second) });
   });
 
   it('keeps the name unchanged when uniquePerPosition is false', () => {
     const stack = createStack();
 
-    const sut = new StackNamedTable(stack, 'orders', { ...propsWith(), uniquePerPosition: false });
+    new StackNamedTable(stack, 'orders', { ...propsWith(), uniquePerPosition: false });
 
-    expect(stack.resolve(sut.explicitTableName)).toEqual({
-      'Fn::Join': ['', [accountRef, '-', stackNameRef, '-orders']],
+    Template.fromStack(stack).hasResourceProperties('AWS::DynamoDB::Table', {
+      TableName: { 'Fn::Join': ['', [accountRef, '-', stackNameRef, '-orders']] },
     });
   });
 
   it('treats an empty nameBase as absent', () => {
     const stack = createStack();
 
-    const sut = new StackNamedTable(stack, 'orders', propsWith(''));
+    new StackNamedTable(stack, 'orders', propsWith(''));
 
-    expect(stack.resolve(sut.explicitTableName)).toEqual({
-      'Fn::Join': ['', [accountRef, '-', stackNameRef, '-orders']],
+    Template.fromStack(stack).hasResourceProperties('AWS::DynamoDB::Table', {
+      TableName: { 'Fn::Join': ['', [accountRef, '-', stackNameRef, '-orders']] },
     });
   });
 });

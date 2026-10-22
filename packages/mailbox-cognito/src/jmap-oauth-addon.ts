@@ -1,10 +1,10 @@
 import type { IArtifactResolver }                                                                      from '@serverlessinbox/artifact-registry-cdk';
 import { StaticContentDeployer, StaticContentSource, PublicStaticAssetsBucket, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IPublicStaticAssetsBucket }                                                              from '@serverlessinbox/mailbox-cdk-shared';
 import { IJmapApiAddon, IIdentityProvisioner }                                                         from '@serverlessinbox/mailbox';
 import { HttpUrlIntegration, HttpLambdaIntegration }                                                   from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { HttpApi, HttpMethod, HttpRoute, CfnStage }                                                    from 'aws-cdk-lib/aws-apigatewayv2';
 import { IUserPool }                                                                                   from 'aws-cdk-lib/aws-cognito';
-import { IBucket }                                                                                     from 'aws-cdk-lib/aws-s3';
 import * as cdk                                                                                        from 'aws-cdk-lib';
 import { Construct }                                                                                   from 'constructs';
 
@@ -84,7 +84,7 @@ export interface JmapOAuthAddonProps {
  * without-`registration_endpoint` document — no `Fn::If`.
  */
 export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
-  private readonly bucket: IBucket;
+  private readonly bucket: IPublicStaticAssetsBucket;
   private readonly dcrLambda?: JmapOAuthDcrLambda;
   private readonly registrationEnabled?: cdk.CfnCondition;
 

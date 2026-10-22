@@ -1,4 +1,4 @@
-import { ITable, TableProps } from 'aws-cdk-lib/aws-dynamodb';
+import { TableProps }         from 'aws-cdk-lib/aws-dynamodb';
 import { Aws, IResolvable }   from 'aws-cdk-lib';
 import { Construct }          from 'constructs';
 
@@ -6,11 +6,6 @@ import { PositionHash }       from '../../naming/position-hash';
 import { StackIdentity }      from '../../naming/stack-identity';
 
 import { BaseTable }          from './base-table';
-
-/** A table whose explicit physical name is known at synth time, so a holder can reuse the name without a `Ref`. */
-export interface INamedTable extends ITable {
-  readonly explicitTableName: string;
-}
 
 /** Props for {@link StackNamedTable}: the DynamoDB table props plus an optional replacement for the stack name in the table name. */
 export interface StackNamedTableProps extends TableProps {
@@ -31,9 +26,7 @@ export interface StackNamedTableProps extends TableProps {
  *
  * Not responsible for choosing the name base; the caller passes `nameBase` or accepts the stack name.
  */
-export class StackNamedTable extends BaseTable implements INamedTable {
-  readonly explicitTableName: string;
-
+export class StackNamedTable extends BaseTable {
   constructor(scope: Construct, tableName: string, props: StackNamedTableProps) {
     const nameBase      = props.nameBase || Aws.STACK_NAME;
     const stableName    = `${Aws.ACCOUNT_ID}-${nameBase}-${tableName}`;
@@ -44,7 +37,5 @@ export class StackNamedTable extends BaseTable implements INamedTable {
       ...props,
       tableName: fullTableName,
     });
-
-    this.explicitTableName = fullTableName;
   }
 }
