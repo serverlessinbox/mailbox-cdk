@@ -4,127 +4,46 @@ import * as iam                                          from 'aws-cdk-lib/aws-i
 import { Fn, Aws, Stack, Duration }                      from 'aws-cdk-lib';
 import { Construct }                                     from 'constructs';
 
-// Tier 1 — support-diag: observability only (CloudWatch Logs + metrics)
-const SUPPORT_DIAG_ALLOWED_ACTIONS = [
-  'logs:DescribeLogGroups',
-  'logs:DescribeLogStreams',
-  'logs:GetLogEvents',
-  'logs:FilterLogEvents',
-  'logs:GetLogGroupFields',
-  'logs:StartQuery',
-  'logs:GetQueryResults',
-  'logs:StopQuery',
-  'cloudwatch:GetMetricData',
-  'cloudwatch:GetMetricStatistics',
-  'cloudwatch:ListMetrics',
-];
-
-// Tier 2 delta — support-config: infrastructure config read (additional actions beyond diag)
-const SUPPORT_CONFIG_INSPECT_ADDITIONAL_ALLOWED_ACTIONS = [
-  'lambda:GetFunctionConfiguration',
-  'lambda:ListFunctions',
-  'lambda:ListVersionsByFunction',
-  'lambda:ListAliases',
-  'lambda:GetPolicy',
-  'states:DescribeStateMachine',
-  'states:ListStateMachines',
-  'states:DescribeExecution',
-  'states:ListExecutions',
-  'states:GetExecutionHistory',
-  'dynamodb:DescribeTable',
-  'dynamodb:DescribeTimeToLive',
-  'dynamodb:ListTables',
-  'sqs:GetQueueAttributes',
-  'sqs:ListQueues',
-  'sqs:ListDeadLetterSourceQueues',
-  'events:DescribeRule',
-  'events:ListRules',
-  'events:ListTargetsByRule',
-  'ssm:GetParameter',
-  'ssm:GetParameters',
-  'ses:GetAccount',
-  'ses:GetEmailIdentity',
-  'ses:ListEmailIdentities',
-  'ses:DescribeActiveReceiptRuleSet',
-  'ses:GetConfigurationSetEventDestinations',
-];
-
-// Tier 2 effective = diag + delta (computed, not hand-maintained)
-const SUPPORT_CONFIG_INSPECT_ALLOWED_ACTIONS = [
-  ...SUPPORT_DIAG_ALLOWED_ACTIONS,
-  ...SUPPORT_CONFIG_INSPECT_ADDITIONAL_ALLOWED_ACTIONS,
-];
-
-// Actions that cannot be scoped by resource tag (enumeration/account-level — declare no resource type).
-// These stay on resources: ['*'].
-const ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS = [
-  // Tier 1
-  'logs:DescribeLogGroups',
-  'logs:StopQuery',
-  'cloudwatch:GetMetricData',
-  'cloudwatch:GetMetricStatistics',
-  'cloudwatch:ListMetrics',
-  // Tier 2 additional
-  'lambda:ListFunctions',
-  'lambda:ListVersionsByFunction',
-  'lambda:ListAliases',
-  'states:ListStateMachines',
-  'states:ListExecutions',
-  'dynamodb:ListTables',
-  'sqs:ListQueues',
-  'sqs:ListDeadLetterSourceQueues',
-  'events:ListRules',
-  'events:ListTargetsByRule',
-  'ses:GetAccount',
-  'ses:ListEmailIdentities',
-];
+import {
+  ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS,
+  SUPPORT_CONFIG_READ_TIER,
+  SUPPORT_DIAG_TIER,
+  SUPPORT_TIERS,
+} from './support-tiers';
+import type { SupportTier } from './support-tiers';
 
 const SUPPORT_ROLE_MAX_SESSION_DURATION = Duration.seconds(3600);
-
-/** Construct id of a support tier's role; it is also the key the tier's role ARN is exposed under. */
-export type SupportTierId = 'support-diag' | 'support-config-read';
-
-/** One support access tier: the role it gets, the trust tag that gates it and the actions it may use. */
-interface SupportTier {
-  /** Determines the role's logical ID, so changing it replaces the role. */
-  readonly constructId: SupportTierId;
-  /** Role name slug used in Fn::join construction */
-  readonly roleNameSlug: string;
-  /** IAM tag key used in trust policy condition */
-  readonly tagKey:           string;
-  readonly inlinePolicyName: string;
-  readonly actions:          string[];
-  /** Environment variable name for the role ARN */
-  readonly envVarName:  string;
-  readonly description: string;
-}
-
-/** The support tiers. Order is significant: roles are created, and environment entries built, in this order. */
-const SUPPORT_TIERS: SupportTier[] = [
-  {
-    constructId:      'support-diag',
-    roleNameSlug:     'diag',
-    tagKey:           'serverless-inbox:support:diag',
-    inlinePolicyName: 'support-diag-access',
-    actions:          SUPPORT_DIAG_ALLOWED_ACTIONS,
-    envVarName:       'SUPPORT_DIAG_ROLE_ARN',
-    description:      'Support access role for diagnostics (CloudWatch, Lambda, Step Functions, DynamoDB, SQS introspection). Trust scoped by hop role serverless-inbox:support:diag tag.',
-  },
-  {
-    constructId:      'support-config-read',
-    roleNameSlug:     'config-read',
-    tagKey:           'serverless-inbox:support:config-read',
-    inlinePolicyName: 'support-config-read-access',
-    actions:          SUPPORT_CONFIG_INSPECT_ALLOWED_ACTIONS,
-    envVarName:       'SUPPORT_CONFIG_READ_ROLE_ARN',
-    description:      'Support access role for config reading (DynamoDB config table, stack parameters). Trust scoped by hop role serverless-inbox:support:config-read tag.',
-  },
-];
 
 /** Inputs of the support IAM roles. */
 export interface SupportRolesInfraProps {
   /** Vendor AWS account IDs permitted to assume the support hop role, already resolved by the caller. */
   readonly vendorAccountIds: string[];
+}
+
+/**
+ * What a Lambda that works with the support roles needs from them: the role ARNs and tag keys to
+ * run with, and the grants to hold. A Lambda grants itself through these methods.
+ */
+export interface ISupportRoles {
+  /** ARN of the hop role, which the case API tags to open and close access to the tier roles. */
+  readonly hopRoleArn:        string;
+  /** ARN of the support-diag tier role. */
+  readonly diagRoleArn:       string;
+  /** ARN of the support-config-read tier role. */
+  readonly configReadRoleArn: string;
+  /** Tag key on the hop role that opens access to the support-diag tier role. */
+  readonly diagTagKey:        string;
+  /** Tag key on the hop role that opens access to the support-config-read tier role. */
+  readonly configReadTagKey:  string;
+
+  /** Lets the grantee tag and untag the hop role, restricted to the tier tag keys. */
+  grantTagWrites(grantee: iam.IGrantable): void;
+
+  /** Lets the grantee list the tags on the hop role. */
+  grantTagRead(grantee: iam.IGrantable): void;
+
+  /** Lets the grantee look up the CloudTrail events of the support roles being assumed. */
+  grantAssumptionLookup(grantee: iam.IGrantable): void;
 }
 
 /**
@@ -136,9 +55,12 @@ export interface SupportRolesInfraProps {
  * - Each tier role trusts only the hop role, and only for sessions whose tier tag carries the case
  *   external ID. Its inline policy is attached permanently, with a one-hour maximum session.
  */
-export class SupportRolesInfra extends Construct {
-  readonly supportHopRoleArn: string;
-  readonly tierArns: Record<string, string>;
+export class SupportRolesInfra extends Construct implements ISupportRoles {
+  public readonly hopRoleArn:        string;
+  public readonly diagRoleArn:       string;
+  public readonly configReadRoleArn: string;
+  public readonly diagTagKey         = SUPPORT_DIAG_TIER.tagKey;
+  public readonly configReadTagKey   = SUPPORT_CONFIG_READ_TIER.tagKey;
 
   constructor(scope: Construct, id: string, props: SupportRolesInfraProps) {
     super(scope, id);
@@ -148,20 +70,52 @@ export class SupportRolesInfra extends Construct {
     const stackGuidSegment = StackIdentity.guidPrefix;
 
     // The name carries no parent group id, so its length is fixed and independent of construct position.
-    const supportHopRoleName = Fn.join('', ['support-', stackGuidSegment, '-hop']);
+    const hopRoleName = Fn.join('', ['support-', stackGuidSegment, '-hop']);
 
     // Role ARNs are formatted from the names rather than read from the roles: the roles reference these
     // ARNs in their own policies, and a GetAtt would make that a dependency cycle.
-    this.supportHopRoleArn = this.formatRoleArn(supportHopRoleName);
-    this.tierArns          = {};
-    for (const tier of SUPPORT_TIERS) {
-      this.tierArns[tier.constructId] = this.formatRoleArn(this.tierRoleName(stackGuidSegment, tier));
-    }
+    this.hopRoleArn        = this.formatRoleArn(hopRoleName);
+    this.diagRoleArn       = this.formatRoleArn(this.tierRoleName(stackGuidSegment, SUPPORT_DIAG_TIER));
+    this.configReadRoleArn = this.formatRoleArn(this.tierRoleName(stackGuidSegment, SUPPORT_CONFIG_READ_TIER));
 
-    const hopRole = this.createHopRole(supportHopRoleName, props.vendorAccountIds);
+    const hopRole = this.createHopRole(hopRoleName, props.vendorAccountIds);
     for (const tier of SUPPORT_TIERS) {
       this.createTierRole(tier, this.tierRoleName(stackGuidSegment, tier), hopRole);
     }
+  }
+
+  public grantTagWrites(grantee: iam.IGrantable): void {
+    // aws:TagKeys is multivalued and needs the ForAllValues set operator: with plain StringEquals the
+    // condition never matches and every tag write is silently denied. ForAllValues keeps every key of
+    // the request inside the tier tag keys.
+    iam.Grant.addToPrincipal({
+      grantee,
+      actions:      ['iam:TagRole', 'iam:UntagRole'],
+      resourceArns: [this.hopRoleArn],
+      conditions:   {
+        'ForAllValues:StringEquals': {
+          'aws:TagKeys': SUPPORT_TIERS.map((tier) => tier.tagKey),
+        },
+      },
+    });
+  }
+
+  public grantTagRead(grantee: iam.IGrantable): void {
+    // ListRoleTags carries no request tag keys, so an aws:TagKeys condition would never apply to it.
+    iam.Grant.addToPrincipal({
+      grantee,
+      actions:      ['iam:ListRoleTags'],
+      resourceArns: [this.hopRoleArn],
+    });
+  }
+
+  public grantAssumptionLookup(grantee: iam.IGrantable): void {
+    // CloudTrail actions declare no resource types, so resources: ['*'] is the only scope.
+    iam.Grant.addToPrincipal({
+      grantee,
+      actions:      ['cloudtrail:LookupEvents'],
+      resourceArns: ['*'],
+    });
   }
 
   private tierRoleName(stackGuidSegment: string, tier: SupportTier): string {
@@ -172,15 +126,16 @@ export class SupportRolesInfra extends Construct {
     return Stack.of(this).formatArn({
       service:      'iam',
       region:       '',
+      account:      Aws.ACCOUNT_ID,
       resource:     'role',
       resourceName: roleName,
     });
   }
 
   private createHopRole(roleName: string, vendorAccountIds: string[]): iam.Role {
-    const hopRole = new iam.Role(this, 'support-hop', {
+    return new iam.Role(this, 'support-hop', {
       roleName,
-      assumedBy:          new iam.ServicePrincipal('sts.amazonaws.com'),
+      assumedBy:          new iam.CompositePrincipal(...vendorAccountIds.map((accountId) => new iam.AccountPrincipal(accountId))),
       maxSessionDuration: SUPPORT_ROLE_MAX_SESSION_DURATION,
       inlinePolicies:     {
         'support-hop-assume': new iam.PolicyDocument({
@@ -189,32 +144,12 @@ export class SupportRolesInfra extends Construct {
       },
       description:        'Support access hop role. Static trust to vendor support account. Can assume support-diag and support-config-read roles based on runtime tags.',
     });
-
-    const hopCfnRole = hopRole.node.defaultChild;
-    if (!(hopCfnRole instanceof iam.CfnRole)) {
-      throw new Error('support-hop: expected defaultChild to be an iam.CfnRole');
-    }
-    const vendorPrincipals              = vendorAccountIds.map((accountId) => `arn:aws:iam::${accountId}:root`);
-    hopCfnRole.assumeRolePolicyDocument = {
-      Version:   '2012-10-17',
-      Statement: [
-        {
-          Effect:    'Allow',
-          Principal: {
-            AWS: vendorPrincipals.length === 1 ? vendorPrincipals[0] : vendorPrincipals,
-          },
-          Action:    'sts:AssumeRole',
-        },
-      ],
-    };
-
-    return hopRole;
   }
 
   private createTierRole(tier: SupportTier, roleName: string, hopRole: iam.Role): void {
     const supportRole = new iam.Role(this, tier.constructId, {
       roleName,
-      assumedBy:          new iam.PrincipalWithConditions(new iam.ArnPrincipal(this.supportHopRoleArn), {
+      assumedBy:          new iam.PrincipalWithConditions(new iam.ArnPrincipal(this.hopRoleArn), {
         StringLike: {
           // Delimiter is '/' not '|': IAM tag values reject '|' (not in [\p{L}\p{Z}\p{N}_.:/=+\-@]).
           // Nanoid IDs use alphabet A-Za-z0-9_- so '/' never appears in case IDs, making it a safe separator.
@@ -235,8 +170,8 @@ export class SupportRolesInfra extends Construct {
   }
 
   private buildTierStatements(tier: SupportTier): iam.PolicyStatement[] {
-    const tagScopedActions   = tier.actions.filter((a) => !ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(a));
-    const enumerationActions = tier.actions.filter((a) => ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(a));
+    const tagScopedActions   = tier.actions.filter((action) => !ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(action));
+    const enumerationActions = tier.actions.filter((action) => ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS.includes(action));
 
     const statements: iam.PolicyStatement[] = [];
 
@@ -247,8 +182,8 @@ export class SupportRolesInfra extends Construct {
       statements.push(enumerationStatement);
     }
 
-    if (tier.constructId === 'support-diag') {
-      statements.push(this.buildEdgeLogGroupStatement(Stack.of(this)));
+    if (tier.readsEdgeLogGroup) {
+      statements.push(this.buildEdgeLogGroupStatement());
     }
 
     statements.push(this.buildCloudFormationReadStatement());
@@ -260,7 +195,7 @@ export class SupportRolesInfra extends Construct {
     return new iam.PolicyStatement({
       effect:    iam.Effect.ALLOW,
       actions:   ['sts:AssumeRole'],
-      resources: Object.values(this.tierArns),
+      resources: [this.diagRoleArn, this.configReadRoleArn],
     });
   }
 
@@ -298,10 +233,12 @@ export class SupportRolesInfra extends Construct {
    * cannot reach it. The ARN is built from the same intrinsics as the pipeline log group names so the
    * name matches exactly.
    */
-  private buildEdgeLogGroupStatement(stack: Stack): iam.PolicyStatement {
+  private buildEdgeLogGroupStatement(): iam.PolicyStatement {
     const edgeLogGroupArn = Fn.join('', [
-      'arn:aws:logs:*:',
-      stack.account,
+      'arn:',
+      Aws.PARTITION,
+      ':logs:*:',
+      Aws.ACCOUNT_ID,
       ':log-group:/serverlessinbox/',
       Aws.STACK_NAME,
       '/jmap-',
@@ -334,49 +271,15 @@ export class SupportRolesInfra extends Construct {
         'cloudformation:DescribeStacks',
         'cloudformation:ListStackResources',
         'cloudformation:DescribeStackEvents',
-        // The console renders its resource tree from the CDK metadata inside the
-        // template body, so viewing it requires reading the template itself.
+        // The console renders its resource tree from the CDK metadata inside the template body, so
+        // viewing it requires reading the template itself (both template actions).
         'cloudformation:GetTemplate',
-        // The console renders its resource tree from the CDK metadata inside the
-        // template body, so viewing it requires reading the template itself.
         'cloudformation:GetTemplateSummary',
       ],
       resources: [
         Aws.STACK_ID,
-        `arn:aws:cloudformation:${Aws.REGION}:${Aws.ACCOUNT_ID}:stack/${Aws.STACK_NAME}-*/*`,
+        `arn:${Aws.PARTITION}:cloudformation:${Aws.REGION}:${Aws.ACCOUNT_ID}:stack/${Aws.STACK_NAME}-*/*`,
       ],
     });
   }
-}
-
-/** The IAM tag key of every support tier, in registry order. */
-export function getSupportTierTagKeys(): string[] {
-  return SUPPORT_TIERS.map((tier) => tier.tagKey);
-}
-
-function tagKeyForTier(constructId: SupportTierId): string {
-  const tier = SUPPORT_TIERS.find((t) => t.constructId === constructId);
-  if (!tier) {
-    throw new Error(`Unknown support tier constructId: ${constructId}`);
-  }
-  return tier.tagKey;
-}
-
-/** The support-diag tier's IAM tag key, sourced from the tier registry — never re-declare this string. */
-export const SUPPORT_DIAG_TAG_KEY = tagKeyForTier('support-diag');
-
-/** The support-config-read tier's IAM tag key, sourced from the tier registry — never re-declare this string. */
-export const SUPPORT_CONFIG_READ_TAG_KEY = tagKeyForTier('support-config-read');
-
-/**
- * Maps each tier's environment variable name to its role ARN, in registry order.
- *
- * @param tierRoleArns A map of tier constructId to role ARN, typically from SupportRolesInfra.tierArns
- */
-export function buildSupportTierEnvironment(tierRoleArns: Record<string, string>): Record<string, string> {
-  const env: Record<string, string> = {};
-  for (const tier of SUPPORT_TIERS) {
-    env[tier.envVarName] = tierRoleArns[tier.constructId];
-  }
-  return env;
 }

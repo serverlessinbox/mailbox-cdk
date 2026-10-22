@@ -9,9 +9,9 @@ import * as cdk                                         from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
 
 import type { AdminApiAddonContext }                    from '../../../core/apis/addons';
-import { DataTable }                                    from '../../../resources/tables/data-tables';
-import { AuditEventsQueue }                             from '../../../resources/queues/audit-events-queue';
 import type { IIdentityProvisioner }                    from '../../../resources/lambdas/identity-provisioner-lambda';
+import { AuditEventsQueue }                             from '../../../resources/queues/audit-events-queue';
+import { DataTable }                                    from '../../../resources/tables/data-tables';
 
 /** A resource of a synthesized template, as `Template.findResources` returns it. */
 export type SynthesizedResource = ReturnType<Template['findResources']>[string];
@@ -95,16 +95,25 @@ export interface SynthesizedFunction {
   readonly roleLogicalId: string;
 }
 
+/** The parts of a synthesized `AWS::Lambda::Function` that `findFunction` reads. */
+interface SynthesizedFunctionResource {
+  readonly Properties: {
+    readonly Role:         { readonly 'Fn::GetAtt': [string, string] };
+    readonly Environment?: { readonly Variables: Record<string, unknown> };
+  };
+}
+
 export function findFunction(template: Template, serviceName: string): SynthesizedFunction {
-  const matches = Object.entries(template.findResources('AWS::Lambda::Function'))
-    .filter(([, fn]) => fn.Properties.Environment?.Variables?.SERVICE_NAME === serviceName);
+  // cast: CDK's findResources returns untyped template JSON; this is the one framework boundary.
+  const functions = Object.entries(template.findResources('AWS::Lambda::Function')) as Array<[string, SynthesizedFunctionResource]>;
+  const matches   = functions.filter(([, fn]) => fn.Properties.Environment?.Variables.SERVICE_NAME === serviceName);
   if (matches.length !== 1) {
     throw new Error(`expected one Lambda with SERVICE_NAME ${serviceName}, found ${matches.length}`);
   }
-  const [logicalId, fn] = matches[0];
+  const [[logicalId, fn]] = matches;
   return {
     logicalId,
-    environment:   fn.Properties.Environment.Variables,
+    environment:   fn.Properties.Environment?.Variables ?? {},
     roleLogicalId: fn.Properties.Role['Fn::GetAtt'][0],
   };
 }

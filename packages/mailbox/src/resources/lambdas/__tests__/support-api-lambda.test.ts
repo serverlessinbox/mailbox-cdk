@@ -1,77 +1,98 @@
 /// <reference types="jest" />
 
 /**
- * SupportApiLambda tag-key env var tests.
- *
- * Verifies SUPPORT_DIAG_TAG_KEY and SUPPORT_CONFIG_READ_TAG_KEY are set from the support-tier
- * registry (support-roles-infra.ts) rather than a Go-side literal.
+ * Pins what `SupportApiLambda` passes to the Go handler and which grants it takes: the support role
+ * ARNs and tier tag keys the handler reads by name, and the grants on the roles, the config table,
+ * the audit queue and the vendor API. A renamed variable or a dropped grant breaks case handling at
+ * runtime, where nothing in the template reports it.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }                                     from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver }                                      from '@serverlessinbox/artifact-registry-cdk';
-import { VENDOR_ACCOUNT_ID }                                                        from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                                                          from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                                                     from 'aws-cdk-lib/aws-dynamodb';
-import * as cdk                                                                     from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                                            from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin }                               from '@serverlessinbox/artifact-registry-cdk';
+import { actionsOf }                                      from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                                       from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                           from 'aws-cdk-lib/aws-dynamodb';
+import { App, BootstraplessSynthesizer, Stack }           from 'aws-cdk-lib';
 
-import { SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY, getSupportTierTagKeys } from '../../../platform/support/support-roles-infra';
-import { DataTable }                                                                from '../../tables/data-tables';
-import { AuditEventsQueue }                                                         from '../../queues/audit-events-queue';
-import { SupportApiLambda }                                                         from '../support-api-lambda';
+import { SupportRolesInfra }                              from '../../../platform/support/support-roles-infra';
+import { AuditEventsQueue }                               from '../../queues/audit-events-queue';
+import { DataTable }                                      from '../../tables/data-tables';
+import { SupportApiLambda }                               from '../support-api-lambda';
 
-describe('SupportApiLambda tag-key env vars', () => {
-  let app: App;
-  let stack: cdk.Stack;
-  let artifactResolver: IArtifactResolver;
+import { onlyLambdaOf }                                   from './lambda-wrapper-helpers';
+import type { SynthesizedLambda }                         from './lambda-wrapper-helpers';
 
-  beforeEach(() => {
-    app = new App();
+const VENDOR_ACCOUNT = '999988887777';
 
-    stack = new cdk.Stack(app, 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
+interface SynthesizedSupportApi extends SynthesizedLambda {
+  readonly stack: Stack;
+  readonly roles: SupportRolesInfra;
+}
 
-    const packages: Record<string, ArtifactPin> = {
-      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    };
-    artifactResolver                            = new PinnedArtifactResolver({
-      packages,
-      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
-    });
+/** A token as the template renders it, as plain JSON. */
+function templateValue(stack: Stack, value: string): unknown {
+  return JSON.parse(JSON.stringify(stack.resolve(value))) as unknown;
+}
 
-    const configTable      = new DataTable(new Table(stack, 'config-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    const auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
+function synthesize(): SynthesizedSupportApi {
+  const stack = new Stack(new App(), 'TestStack', {
+    env:         { account: '123456789012', region: 'us-west-2' },
+    synthesizer: new BootstraplessSynthesizer(),
+  });
 
-    new SupportApiLambda(stack, 'support-api', {
-      supportHopRoleArn: 'arn:aws:iam::123456789012:role/support-hop',
-      tierRoleArns:      {
-        'support-diag':        'arn:aws:iam::123456789012:role/support-diag',
-        'support-config-read': 'arn:aws:iam::123456789012:role/support-config-read',
-      },
-      configTable,
-      auditEventsQueue,
-      artifactResolver,
-      vendorAccountIds:        [VENDOR_ACCOUNT_ID],
-      supportDiagTagKey:       SUPPORT_DIAG_TAG_KEY,
-      supportConfigReadTagKey: SUPPORT_CONFIG_READ_TAG_KEY,
-      supportTierTagKeys:      getSupportTierTagKeys(),
+  const packages: Record<string, ArtifactPin> = {
+    'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+  };
+  const artifactResolver                      = new PinnedArtifactResolver({
+    packages,
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    deploymentRegion: stack.region,
+  });
+
+  const roles = new SupportRolesInfra(stack, 'roles', { vendorAccountIds: [VENDOR_ACCOUNT] });
+  new SupportApiLambda(stack, 'support-api', {
+    supportRoles:     roles,
+    configTable:      new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
+    auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+    artifactResolver,
+    vendorAccountIds: [VENDOR_ACCOUNT],
+  });
+
+  return { stack, roles, ...onlyLambdaOf(Template.fromStack(stack)) };
+}
+
+describe('SupportApiLambda', () => {
+  const { stack, roles, environment, statements } = synthesize();
+  const actions                                   = statements.flatMap((statement) => actionsOf(statement));
+
+  it('passes the support role ARNs and tier tag keys to the handler by name', () => {
+    expect(environment).toMatchObject({
+      SUPPORT_HOP_ROLE_ARN:         templateValue(stack, roles.hopRoleArn),
+      SUPPORT_DIAG_ROLE_ARN:        templateValue(stack, roles.diagRoleArn),
+      SUPPORT_CONFIG_READ_ROLE_ARN: templateValue(stack, roles.configReadRoleArn),
+      SUPPORT_DIAG_TAG_KEY:         'serverless-inbox:support:diag',
+      SUPPORT_CONFIG_READ_TAG_KEY:  'serverless-inbox:support:config-read',
     });
   });
 
-  it('sets SUPPORT_DIAG_TAG_KEY and SUPPORT_CONFIG_READ_TAG_KEY from the tier registry', () => {
-    const template = Template.fromStack(stack);
-    template.hasResourceProperties('AWS::Lambda::Function', {
-      Environment: {
-        Variables: Match.objectLike({
-          SUPPORT_DIAG_TAG_KEY:        SUPPORT_DIAG_TAG_KEY,
-          SUPPORT_CONFIG_READ_TAG_KEY: SUPPORT_CONFIG_READ_TAG_KEY,
-        }),
-      },
-    });
+  it('passes the config table, audit queue and stack id to the handler by name', () => {
+    expect(Object.keys(environment)).toEqual(expect.arrayContaining(['CONFIG_TABLE_NAME', 'AUDIT_EVENTS_QUEUE_URL', 'STACK_ID']));
+  });
+
+  it('takes the tag grants on the hop role, the CloudTrail lookup, the table, the queue and the vendor API', () => {
+    expect(actions).toEqual(expect.arrayContaining([
+      'iam:TagRole',
+      'iam:UntagRole',
+      'cloudtrail:LookupEvents',
+      'dynamodb:PutItem',
+      'sqs:SendMessage',
+      'execute-api:Invoke',
+    ]));
+  });
+
+  it('may call the case sync route of every vendor account', () => {
+    const invoke = statements.find((statement) => actionsOf(statement).includes('execute-api:Invoke'));
+
+    expect(invoke?.Resource).toBe(`arn:aws:execute-api:*:${VENDOR_ACCOUNT}:*/*/POST/support-case-sync`);
   });
 });

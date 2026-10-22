@@ -1,20 +1,16 @@
 /**
- * Pins the IAM roles `SupportRolesInfra` declares and the tier registry it exports: who may assume the
- * hop role, how a tier role is reachable only through the hop role and a case external ID, and which
- * actions each tier is granted and under what scoping. Weakening these assertions can let a support
- * tier widen silently, trust the wrong AWS account, or let a tier role be assumed without a case.
+ * Pins the IAM roles `SupportRolesInfra` declares and the grants it hands to the Lambdas that work with
+ * them: who may assume the hop role, how a tier role is reachable only through the hop role and a case
+ * external ID, which actions each tier is granted and under what scoping, and what a Lambda may do to
+ * the hop role. Weakening these assertions can let a support tier widen silently, trust the wrong AWS
+ * account, let a tier role be assumed without a case, or let a Lambda tag keys outside the tier tags.
  */
 
 import { Template }                             from 'aws-cdk-lib/assertions';
+import * as iam                                 from 'aws-cdk-lib/aws-iam';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
-import {
-  SupportRolesInfra,
-  SUPPORT_CONFIG_READ_TAG_KEY,
-  SUPPORT_DIAG_TAG_KEY,
-  buildSupportTierEnvironment,
-  getSupportTierTagKeys,
-} from '../support-roles-infra';
+import { SupportRolesInfra }                    from '../support-roles-infra';
 
 const DIAG_TAG_KEY        = 'serverless-inbox:support:diag';
 const CONFIG_READ_TAG_KEY = 'serverless-inbox:support:config-read';
@@ -45,13 +41,32 @@ interface SynthesizedInfra {
   readonly infra:    SupportRolesInfra;
 }
 
-function synthesize(vendorAccountIds: string[]): SynthesizedInfra {
+function build(vendorAccountIds: string[]): { stack: Stack; infra: SupportRolesInfra } {
   const stack = new Stack(new App(), 'support-roles-stack', {
     env:         { account: '111122223333', region: 'us-east-1' },
     synthesizer: new BootstraplessSynthesizer(),
   });
-  const infra = new SupportRolesInfra(stack, 'roles-infra', { vendorAccountIds });
+  return { stack, infra: new SupportRolesInfra(stack, 'roles-infra', { vendorAccountIds }) };
+}
+
+function synthesize(vendorAccountIds: string[]): SynthesizedInfra {
+  const { stack, infra } = build(vendorAccountIds);
   return { stack, template: Template.fromStack(stack), infra };
+}
+
+/** The parts of a synthesized `AWS::IAM::Policy` these assertions read. */
+interface SynthesizedPolicy {
+  readonly Properties: { readonly PolicyDocument: { readonly Statement: StatementJson[] } };
+}
+
+/** A token as the template renders it, as plain JSON. */
+function templateValue(stack: Stack, value: string): unknown {
+  return JSON.parse(JSON.stringify(stack.resolve(value))) as unknown;
+}
+
+/** The root principal of an account, as a template renders it: partition-aware, never a literal `arn:aws`. */
+function accountRoot(accountId: string): unknown {
+  return { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, `:iam::${accountId}:root`]] };
 }
 
 function roleWithPolicy(template: Template, policyName: string): { logicalId: string; role: SynthesizedRole } {
@@ -88,7 +103,7 @@ describe('SupportRolesInfra', () => {
       const { role } = roleWithPolicy(template, HOP_POLICY);
 
       expect(role.Properties.AssumeRolePolicyDocument.Statement).toEqual([
-        { Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: 'arn:aws:iam::111111111111:root' } },
+        { Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: accountRoot('111111111111') } },
       ]);
       expect(role.Properties.MaxSessionDuration).toBe(3600);
     });
@@ -99,11 +114,8 @@ describe('SupportRolesInfra', () => {
       const { role } = roleWithPolicy(template, HOP_POLICY);
 
       expect(role.Properties.AssumeRolePolicyDocument.Statement).toEqual([
-        {
-          Effect:    'Allow',
-          Action:    'sts:AssumeRole',
-          Principal: { AWS: ['arn:aws:iam::111111111111:root', 'arn:aws:iam::222222222222:root'] },
-        },
+        { Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: accountRoot('111111111111') } },
+        { Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: accountRoot('222222222222') } },
       ]);
     });
 
@@ -116,7 +128,7 @@ describe('SupportRolesInfra', () => {
         {
           Effect:   'Allow',
           Action:   'sts:AssumeRole',
-          Resource: [stack.resolve(infra.tierArns['support-diag']), stack.resolve(infra.tierArns['support-config-read'])],
+          Resource: [stack.resolve(infra.diagRoleArn), stack.resolve(infra.configReadRoleArn)],
         },
       ]);
     });
@@ -136,7 +148,7 @@ describe('SupportRolesInfra', () => {
         {
           Effect:    'Allow',
           Action:    'sts:AssumeRole',
-          Principal: { AWS: stack.resolve(infra.supportHopRoleArn) },
+          Principal: { AWS: templateValue(stack, infra.hopRoleArn) },
           Condition: { StringLike: { [`aws:PrincipalTag/${tagKey}`]: '*/${sts:ExternalId}/*' } },
         },
       ]);
@@ -157,6 +169,9 @@ describe('SupportRolesInfra', () => {
       const diag       = actionsOf(roleWithPolicy(template, DIAG_POLICY).role);
       const configRead = actionsOf(roleWithPolicy(template, CONFIG_READ_POLICY).role);
 
+      // Tripwire: a changed count means a tier gained or lost an action. Review it, do not just update the number.
+      expect(diag.size).toBe(16);
+      expect(configRead.size).toBe(42);
       expect(diag.has('logs:GetLogEvents')).toBe(true);
       expect(diag.has('lambda:GetFunctionConfiguration')).toBe(false);
       expect(configRead.has('lambda:GetFunctionConfiguration')).toBe(true);
@@ -197,31 +212,83 @@ describe('SupportRolesInfra', () => {
       expect(statement.Condition).toBeUndefined();
       expect(JSON.stringify(statement.Resource)).toContain(':stack/');
     });
+
+    it('build the edge log group and nested stack ARNs from partition and account intrinsics, never literals', () => {
+      const { template } = synthesize(['111111111111']);
+      const { role }     = roleWithPolicy(template, DIAG_POLICY);
+
+      const edgeLogGroup = statementsOf(role).find((s) => JSON.stringify(s.Resource).includes(':log-group:'));
+      const nestedStacks = statementGranting(role, 'cloudformation:GetTemplate');
+      for (const statement of [edgeLogGroup, nestedStacks]) {
+        const resource = JSON.stringify(statement?.Resource);
+        expect(resource).toContain('"Ref":"AWS::Partition"');
+        expect(resource).not.toContain('arn:aws:');
+        expect(resource).not.toContain('111122223333');
+      }
+      expect(JSON.stringify(edgeLogGroup?.Resource)).toContain('"Ref":"AWS::AccountId"');
+    });
   });
 
-  describe('tier registry', () => {
-    it('exposes a role ARN per tier', () => {
+  describe('role handles', () => {
+    it('expose the tier tag keys', () => {
       const { infra } = synthesize(['111111111111']);
 
-      expect(Object.keys(infra.tierArns)).toEqual(['support-diag', 'support-config-read']);
+      expect(infra.diagTagKey).toBe(DIAG_TAG_KEY);
+      expect(infra.configReadTagKey).toBe(CONFIG_READ_TAG_KEY);
     });
 
-    it('lists the tier tag keys in registry order and exposes each as a constant', () => {
-      expect(getSupportTierTagKeys()).toEqual([DIAG_TAG_KEY, CONFIG_READ_TAG_KEY]);
-      expect(SUPPORT_DIAG_TAG_KEY).toBe(DIAG_TAG_KEY);
-      expect(SUPPORT_CONFIG_READ_TAG_KEY).toBe(CONFIG_READ_TAG_KEY);
+    it('expose role ARNs built from partition and account intrinsics, never literals', () => {
+      const { stack, infra } = synthesize(['111111111111']);
+
+      for (const arn of [infra.hopRoleArn, infra.diagRoleArn, infra.configReadRoleArn]) {
+        const rendered = JSON.stringify(stack.resolve(arn));
+        expect(rendered).toContain('"Ref":"AWS::Partition"');
+        expect(rendered).toContain('"Ref":"AWS::AccountId"');
+        expect(rendered).not.toContain('111122223333');
+      }
+    });
+  });
+
+  describe('grants to a Lambda', () => {
+    function grantTo(grant: (infra: SupportRolesInfra, grantee: iam.IGrantable) => void): { stack: Stack; infra: SupportRolesInfra; statements: StatementJson[] } {
+      const { stack, infra } = build(['111111111111']);
+      const grantee          = new iam.Role(stack, 'grantee', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
+
+      grant(infra, grantee);
+
+      // cast: CDK's findResources returns untyped template JSON; this is the one framework boundary.
+      const policies   = Object.values(Template.fromStack(stack).findResources('AWS::IAM::Policy')) as SynthesizedPolicy[];
+      const statements = policies.flatMap((policy) => policy.Properties.PolicyDocument.Statement);
+      return { stack, infra, statements };
+    }
+
+    it('grantTagWrites lets the grantee tag and untag only the hop role, with only the tier tag keys', () => {
+      const { stack, infra, statements } = grantTo((roles, grantee) => roles.grantTagWrites(grantee));
+
+      expect(statements).toEqual([
+        {
+          Effect:    'Allow',
+          Action:    ['iam:TagRole', 'iam:UntagRole'],
+          Resource:  templateValue(stack, infra.hopRoleArn),
+          Condition: { 'ForAllValues:StringEquals': { 'aws:TagKeys': [DIAG_TAG_KEY, CONFIG_READ_TAG_KEY] } },
+        },
+      ]);
     });
 
-    it('maps each tier role ARN to its environment variable', () => {
-      const environment = buildSupportTierEnvironment({
-        'support-diag':        'arn:diag',
-        'support-config-read': 'arn:config-read',
-      });
+    it('grantTagRead lets the grantee list the tags of the hop role only', () => {
+      const { stack, infra, statements } = grantTo((roles, grantee) => roles.grantTagRead(grantee));
 
-      expect(environment).toEqual({
-        SUPPORT_DIAG_ROLE_ARN:        'arn:diag',
-        SUPPORT_CONFIG_READ_ROLE_ARN: 'arn:config-read',
-      });
+      expect(statements).toEqual([
+        { Effect: 'Allow', Action: 'iam:ListRoleTags', Resource: templateValue(stack, infra.hopRoleArn) },
+      ]);
+    });
+
+    it('grantAssumptionLookup lets the grantee look up CloudTrail events', () => {
+      const { statements } = grantTo((roles, grantee) => roles.grantAssumptionLookup(grantee));
+
+      expect(statements).toEqual([
+        { Effect: 'Allow', Action: 'cloudtrail:LookupEvents', Resource: '*' },
+      ]);
     });
   });
 });

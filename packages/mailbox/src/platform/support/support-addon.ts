@@ -15,7 +15,7 @@ import { SupportRoleAssumptionCollectorLambda }                                 
 import type { IAuditEventsQueue }                                                                      from '../../resources/queues/audit-events-queue';
 import type { IDataTable }                                                                             from '../../resources/tables/data-tables';
 
-import { SupportRolesInfra, getSupportTierTagKeys, SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY } from './support-roles-infra';
+import { SupportRolesInfra }                                                                           from './support-roles-infra';
 
 /**
  * Whether the support feature is provisioned.
@@ -43,27 +43,25 @@ export interface SupportAddonProps {
   readonly auditEventsQueue: IAuditEventsQueue;
 }
 
+/** Whether the Admin UI offers the support feature. */
+type SupportAvailability = { readonly available: boolean };
+
+/** What the support addon contributes to the Admin UI configuration. */
+type SupportUiConfig = { readonly support: SupportAvailability };
+
 /**
- * Admin API addon for support case management and IAM trust policy binding.
- *
- * Mounts the support-api Lambda on the Admin API with its own execution role
- * that has IAM UpdateAssumeRolePolicy + GetRole (trust binding per-case with ExternalId and expiry).
- * Lambda cannot widen permissions: tier action lists and permissions boundary are CDK-managed,
- * permanently attached, and immutable from the lambda. Trust is the only gate; attachment is static.
+ * Admin API addon for support case management.
  *
  * Constructs the entire support feature:
- * - Support IAM roles (support-diag, support-config-read) with empty/deny default trust
- * - Tier managed policies (permanently attached to their corresponding roles)
- * - A permissions boundary (immutable from lambda, blocks scope creep)
- * - A Go Lambda for case RPCs and IAM trust policy binding
- * - An hourly collector Lambda for role-assumption archiving and expiry enforcement
- * - Config table read/write for grant records, SQS send for audit events
+ * - The support IAM roles: a hop role and one role per support tier
+ * - The support-api Lambda for case RPCs, mounted on the Admin API
+ * - The hourly collector Lambda for role-assumption archiving and expiry enforcement
  *
  * Every resource is gated by a CfnCondition on the mode, so a feature that is disabled at deploy
  * time leaves no live resources. A literal DISABLED mode synthesizes no resources at all.
  */
 export class SupportAddon extends Construct implements IAdminApiAddon {
-  public uiConfig?: Record<string, unknown>;
+  public readonly uiConfig: SupportUiConfig;
 
   private readonly apiHandler?: IFunction;
 
@@ -89,36 +87,27 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
       // applies the condition to each, so a false condition yields no live resources.
 
       // Resolved once here, as the composition root of the support feature, and threaded down as props.
-      const vendorAccountIds   = resolveVendorAccountIds(this);
-      const supportTierTagKeys = getSupportTierTagKeys();
+      const vendorAccountIds = resolveVendorAccountIds(this);
 
       // Support roles: the hop role plus the tier roles, with static trust scoped by hop role tags.
-      const rolesInfra = new SupportRolesInfra(this, 'roles-infra', {
+      const supportRoles = new SupportRolesInfra(this, 'roles-infra', {
         vendorAccountIds,
       });
 
       // Support API Lambda: case RPCs and tag-based access control via the support-hop role.
       this.apiHandler = new SupportApiLambda(this, 'lambda', {
-        supportHopRoleArn: rolesInfra.supportHopRoleArn,
-        tierRoleArns:      rolesInfra.tierArns,
-        configTable:       props.configTable,
-        auditEventsQueue:  props.auditEventsQueue,
-        artifactResolver:  props.artifactResolver,
+        supportRoles,
+        configTable:      props.configTable,
+        auditEventsQueue: props.auditEventsQueue,
+        artifactResolver: props.artifactResolver,
         vendorAccountIds,
-        supportDiagTagKey:       SUPPORT_DIAG_TAG_KEY,
-        supportConfigReadTagKey: SUPPORT_CONFIG_READ_TAG_KEY,
-        supportTierTagKeys,
       });
 
       // Role-assumption collector Lambda.
       new SupportRoleAssumptionCollectorLambda(this, 'collector', {
-        supportHopRoleArn:       rolesInfra.supportHopRoleArn,
-        tierRoleArns:            rolesInfra.tierArns,
-        configTable:             props.configTable,
-        artifactResolver:        props.artifactResolver,
-        supportDiagTagKey:       SUPPORT_DIAG_TAG_KEY,
-        supportConfigReadTagKey: SUPPORT_CONFIG_READ_TAG_KEY,
-        supportTierTagKeys,
+        supportRoles,
+        configTable:      props.configTable,
+        artifactResolver: props.artifactResolver,
       });
 
       cdk.Aspects.of(this).add(new GateOnConditionAspect(condition));

@@ -4,14 +4,16 @@ import { HttpLambdaAuthorizer }                                                 
 import { HttpLambdaIntegration }                                                               from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { HttpApi, HttpMethod }                                                                 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as cdk                                                                                from 'aws-cdk-lib';
+import { Aws }                                                                                 from 'aws-cdk-lib';
 import { Construct }                                                                           from 'constructs';
 
 import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider }                        from '../../core/apis/addons';
-import type { IDataTable }                                                                     from '../../resources/tables/data-tables';
-import type { IAuditEventsQueue }                                                              from '../../resources/queues/audit-events-queue';
 import { StackUpdateApiLambda }                                                                from '../../resources/lambdas/stack-update-api-lambda';
+import type { IAuditEventsQueue }                                                              from '../../resources/queues/audit-events-queue';
+import type { IDataTable }                                                                     from '../../resources/tables/data-tables';
 
-import { TemplateVersionParam, type ITemplateVersionParam }                                    from './template-version-param';
+import { DEFAULT_DIST_TAG }                                                                    from './default-dist-tag';
+import { TemplateVersionParam }                                                                from './template-version-param';
 
 /** Inputs of `StackUpdateAddon`, as threaded in by `StackUpdateAddonProvider`. */
 export interface StackUpdateAddonProps {
@@ -31,6 +33,9 @@ export interface StackUpdateAddonProps {
   readonly distTag?: string;
 }
 
+/** What the stack-update addon contributes to the Admin UI configuration. */
+type StackUpdateUiConfig = { readonly stackUpdate: { readonly available: boolean } };
+
 /**
  * Admin API addon for human-gated CloudFormation ChangeSet operations.
  *
@@ -40,10 +45,9 @@ export interface StackUpdateAddonProps {
  * Contributes { stackUpdate: { available: true } } to the admin UI config.
  */
 export class StackUpdateAddon extends Construct implements IAdminApiAddon {
-  public uiConfig?: Record<string, unknown>;
+  public readonly uiConfig: StackUpdateUiConfig;
 
   private readonly lambdaConstruct: StackUpdateApiLambda;
-  public readonly templateVersionParamAccess: ITemplateVersionParam;
 
   constructor(scope: Construct, id: string, props: StackUpdateAddonProps) {
     super(scope, id);
@@ -54,44 +58,35 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
       },
     };
 
-    const rootStackArn = cdk.Stack.of(this).stackId;
-    const stack        = cdk.Stack.of(this);
-    const region       = stack.region;
-
     const artifactLocation = props.artifactResolver.location;
 
     const pointerKey    = buildReleasePointerKey('template', props.templateName, {
-      distTag: props.distTag ?? 'stable',
+      distTag: props.distTag ?? DEFAULT_DIST_TAG,
       project: artifactLocation.project,
     });
-    const pointerBucket = buildArtifactBucketName(artifactLocation, region);
+    const pointerBucket = buildArtifactBucketName(artifactLocation, Aws.REGION);
 
     const templateUrlTemplate = buildArtifactUrl(
       pointerBucket,
-      region,
+      Aws.REGION,
       buildArtifactKey('template', props.templateName, { type: 'release-template', project: artifactLocation.project }),
     );
 
     // This resource is rendered into the CloudFormation template and survives quick-create deploys.
-    const templateVersionParamConstruct = new TemplateVersionParam(this, 'template-version', {
+    const templateVersionParam = new TemplateVersionParam(this, 'template-version', {
       templateVersion: props.templateVersion,
     });
-    this.templateVersionParamAccess     = templateVersionParamConstruct;
-    const templateVersionParam          = templateVersionParamConstruct.parameter;
 
     this.lambdaConstruct = new StackUpdateApiLambda(this, 'lambda', {
-      rootStackArn,
-      configTable:              props.configTable,
-      artifactBucketBase:       artifactLocation.bucketBase,
-      artifactResolver:         props.artifactResolver,
-      templateVersionParamName: templateVersionParam.parameterName,
+      rootStackArn:     cdk.Stack.of(this).stackId,
+      configTable:      props.configTable,
+      artifactResolver: props.artifactResolver,
+      templateVersionParam,
       pointerBucket,
       pointerKey,
       templateUrlTemplate,
-      auditEventsQueue: props.auditEventsQueue,
+      auditEventsQueue:    props.auditEventsQueue,
     });
-
-    templateVersionParam.grantRead(this.lambdaConstruct);
   }
 
   addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {

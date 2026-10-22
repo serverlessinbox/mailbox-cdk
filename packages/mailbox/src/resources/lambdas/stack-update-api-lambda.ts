@@ -1,34 +1,34 @@
-import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                from '@serverlessinbox/mailbox-cdk-shared';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Duration }                from 'aws-cdk-lib';
-import { Construct }               from 'constructs';
+import type { IArtifactResolver }                                     from '@serverlessinbox/artifact-registry-cdk';
+import { buildArtifactArn, buildReleasePointerKey }                   from '@serverlessinbox/artifact-registry';
+import { GoLambda }                                                   from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }                                            from 'aws-cdk-lib/aws-iam';
+import { Duration }                                                   from 'aws-cdk-lib';
+import { Construct }                                                  from 'constructs';
 
-import type { IDataTable }         from '../tables/data-tables';
-import type { IAuditEventsQueue }  from '../queues/audit-events-queue';
+import type { ITemplateVersionParam }                                 from '../../platform/update/template-version-param';
+import type { IAuditEventsQueue }                                     from '../queues/audit-events-queue';
+import type { IDataTable }                                            from '../tables/data-tables';
 
+/** Inputs of the stack-update API Lambda. */
 export interface StackUpdateApiLambdaProps {
-  readonly rootStackArn:             string;
-  readonly configTable:              IDataTable;
-  readonly artifactBucketBase:       string;
-  readonly artifactResolver:         IArtifactResolver;
-  readonly templateVersionParamName: string;
-  readonly pointerBucket:            string;
-  readonly pointerKey:               string;
-  readonly templateUrlTemplate:      string;
-  readonly auditEventsQueue:         IAuditEventsQueue;
+  readonly rootStackArn:     string;
+  readonly configTable:      IDataTable;
+  readonly artifactResolver: IArtifactResolver;
+  /** The parameter holding the deployed template version; the Lambda reads it and grants itself read access. */
+  readonly templateVersionParam: ITemplateVersionParam;
+  readonly pointerBucket:        string;
+  readonly pointerKey:           string;
+  readonly templateUrlTemplate:  string;
+  readonly auditEventsQueue:     IAuditEventsQueue;
 }
 
 /**
  * StackUpdate Lambda for human-gated CloudFormation ChangeSet operations
  * against the root stack.
  *
- * Prepares CloudFormation ChangeSets (CreateChangeSet, DescribeChangeSet, DeleteChangeSet,
- * ListChangeSets, DescribeStacks, GetTemplate) and reads template artifacts from S3.
- *
- * Does NOT execute ChangeSets or manage stack rollback — those are performed manually in the
- * AWS console under the operator's own credentials. Does NOT have cloudformation:SetStackPolicy
- * — that is exclusively for the Stack Policy custom resource.
+ * Prepares CloudFormation ChangeSets and reads template artifacts from S3. It does not execute
+ * ChangeSets or manage stack rollback: those are performed manually in the AWS console under the
+ * operator's own credentials.
  */
 export class StackUpdateApiLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: StackUpdateApiLambdaProps) {
@@ -41,7 +41,7 @@ export class StackUpdateApiLambda extends GoLambda {
       environment:      {
         ROOT_STACK_ARN:              props.rootStackArn,
         CONFIG_TABLE_NAME:           props.configTable.tableName,
-        TEMPLATE_VERSION_PARAM_NAME: props.templateVersionParamName,
+        TEMPLATE_VERSION_PARAM_NAME: props.templateVersionParam.parameterName,
         POINTER_BUCKET:              props.pointerBucket,
         POINTER_KEY:                 props.pointerKey,
         TEMPLATE_URL_TEMPLATE:       props.templateUrlTemplate,
@@ -49,67 +49,43 @@ export class StackUpdateApiLambda extends GoLambda {
       },
     });
 
-    this.grantChangeSetOperations(props.rootStackArn);
-    this.grantTemplateArtifactRead(props.artifactBucketBase);
-
-    // Grant config table read-only access for authentication
+    this.grantRootStackChangeSets(props.rootStackArn);
+    this.grantTemplateArtifactRead(props.artifactResolver);
     props.configTable.grantRead(this);
-
-    // Grant send permission on the audit-events queue (shared HTTP registry audit path)
     props.auditEventsQueue.grantSend(this);
-
-    this.grantSelfStackCfnMeta(props.rootStackArn);
+    props.templateVersionParam.grantRead(this);
   }
 
-  private grantChangeSetOperations(rootStackArn: string) {
-    // Grant CloudFormation permissions for ChangeSet preparation only (no execution)
-    // Human executes ChangeSets in AWS console under their own credentials
+  private grantRootStackChangeSets(rootStackArn: string): void {
     this.addToRolePolicy(
       new PolicyStatement({
-        effect:    Effect.ALLOW,
         actions:   [
           'cloudformation:CreateChangeSet',
           'cloudformation:DescribeChangeSet',
           'cloudformation:DeleteChangeSet',
           'cloudformation:ListChangeSets',
           'cloudformation:DescribeStacks',
-          'cloudformation:GetTemplate',
-        ],
-        resources: [rootStackArn],
-      })
-    );
-  }
-
-  private grantTemplateArtifactRead(artifactBucketBase: string) {
-    // Grant S3 read access for template artifacts
-    // Schema: {bucketBase}-{region}/serverlessinbox/templates/*/releases/*
-    this.addToRolePolicy(
-      new PolicyStatement({
-        effect:    Effect.ALLOW,
-        actions:   ['s3:GetObject'],
-        resources: [
-          `arn:aws:s3:::${artifactBucketBase}-*/serverlessinbox/templates/*/releases/*`,
-        ],
-      })
-    );
-  }
-
-
-  private grantSelfStackCfnMeta(rootStackArn: string) {
-    // Read-only access to root stack metadata: status updates, events, and template.
-    // Scoped to the root stack ARN only (not account-wide read of all stacks).
-    this.addToRolePolicy(
-      new PolicyStatement({
-        sid:       'SelfStackCfnMeta',
-        effect:    Effect.ALLOW,
-        actions:   [
-          'cloudformation:DescribeStacks',
           'cloudformation:DescribeStackEvents',
           'cloudformation:GetTemplate',
         ],
         resources: [rootStackArn],
-      })
+      }),
     );
   }
 
+  private grantTemplateArtifactRead(artifactResolver: IArtifactResolver): void {
+    const { bucketBase, project } = artifactResolver.location;
+    const bucketInEveryRegion     = `${bucketBase}-*`;
+
+    // A release pointer key ends in `<distTag>.json`; without the extension the pattern matches every
+    // object under `releases/`: the pointers and the versioned template objects.
+    const releaseObjectKeys = buildReleasePointerKey('template', '*', { project, distTag: '*' }).replace(/\.json$/, '');
+
+    this.addToRolePolicy(
+      new PolicyStatement({
+        actions:   ['s3:GetObject'],
+        resources: [buildArtifactArn(bucketInEveryRegion, releaseObjectKeys)],
+      }),
+    );
+  }
 }

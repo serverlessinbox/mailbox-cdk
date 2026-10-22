@@ -1,84 +1,93 @@
 /// <reference types="jest" />
 
 /**
- * SupportRoleAssumptionCollectorLambda tag-key env var tests.
- *
- * The Go handler resolves both tier tag keys (diag and config-read) to build the recomputed
- * tag set for the hop role, so both must be present — even though the ses-identity-ownership
- * plan's table only lists SUPPORT_CONFIG_READ_TAG_KEY for this construct; verified against
- * modules/lambdas/support-role-assumption-collector/main.go, which reads both.
+ * Pins what `SupportRoleAssumptionCollectorLambda` passes to the Go handler and which grants it
+ * takes: the support role ARNs and both tier tag keys the handler reads by name (it recomputes the
+ * hop role's whole tag set), the grants for expiry enforcement, and the hourly schedule. A renamed
+ * variable or a dropped grant stops expired cases from being revoked, with no error at deploy time.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }                                     from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver }                                      from '@serverlessinbox/artifact-registry-cdk';
-import { Match, Template }                                                          from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                                                     from 'aws-cdk-lib/aws-dynamodb';
-import * as cdk                                                                     from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                                            from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin }                               from '@serverlessinbox/artifact-registry-cdk';
+import { actionsOf }                                      from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                                       from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                           from 'aws-cdk-lib/aws-dynamodb';
+import { App, BootstraplessSynthesizer, Stack }           from 'aws-cdk-lib';
 
-import { SUPPORT_DIAG_TAG_KEY, SUPPORT_CONFIG_READ_TAG_KEY, getSupportTierTagKeys } from '../../../platform/support/support-roles-infra';
-import { DataTable }                                                                from '../../tables/data-tables';
-import { SupportRoleAssumptionCollectorLambda }                                     from '../support-role-assumption-collector-lambda';
+import { SupportRolesInfra }                              from '../../../platform/support/support-roles-infra';
+import { DataTable }                                      from '../../tables/data-tables';
+import { SupportRoleAssumptionCollectorLambda }           from '../support-role-assumption-collector-lambda';
 
-describe('SupportRoleAssumptionCollectorLambda tag-key env vars', () => {
-  let app: App;
-  let stack: cdk.Stack;
-  let artifactResolver: IArtifactResolver;
+import { onlyLambdaOf }                                   from './lambda-wrapper-helpers';
+import type { SynthesizedLambda }                         from './lambda-wrapper-helpers';
 
-  beforeEach(() => {
-    app = new App();
+interface SynthesizedCollector extends SynthesizedLambda {
+  readonly stack:    Stack;
+  readonly template: Template;
+  readonly roles:    SupportRolesInfra;
+}
 
-    stack = new cdk.Stack(app, 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
+/** A token as the template renders it, as plain JSON. */
+function templateValue(stack: Stack, value: string): unknown {
+  return JSON.parse(JSON.stringify(stack.resolve(value))) as unknown;
+}
 
-    const packages: Record<string, ArtifactPin> = {
-      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    };
-    artifactResolver                            = new PinnedArtifactResolver({
-      packages,
-      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
-    });
-
-    const configTable = new DataTable(new Table(stack, 'config-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-
-    new SupportRoleAssumptionCollectorLambda(stack, 'support-role-assumption-collector', {
-      supportHopRoleArn: 'arn:aws:iam::123456789012:role/support-hop',
-      tierRoleArns:      {
-        'support-diag':        'arn:aws:iam::123456789012:role/support-diag',
-        'support-config-read': 'arn:aws:iam::123456789012:role/support-config-read',
-      },
-      configTable,
-      artifactResolver,
-      supportDiagTagKey:       SUPPORT_DIAG_TAG_KEY,
-      supportConfigReadTagKey: SUPPORT_CONFIG_READ_TAG_KEY,
-      supportTierTagKeys:      getSupportTierTagKeys(),
-    });
+function synthesize(): SynthesizedCollector {
+  const stack = new Stack(new App(), 'TestStack', {
+    env:         { account: '123456789012', region: 'us-west-2' },
+    synthesizer: new BootstraplessSynthesizer(),
   });
 
-  it('sets SUPPORT_DIAG_TAG_KEY and SUPPORT_CONFIG_READ_TAG_KEY from the tier registry', () => {
-    const template = Template.fromStack(stack);
-    template.hasResourceProperties('AWS::Lambda::Function', {
-      Environment: {
-        Variables: Match.objectLike({
-          SUPPORT_DIAG_TAG_KEY:        SUPPORT_DIAG_TAG_KEY,
-          SUPPORT_CONFIG_READ_TAG_KEY: SUPPORT_CONFIG_READ_TAG_KEY,
-        }),
-      },
+  const packages: Record<string, ArtifactPin> = {
+    'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+  };
+  const artifactResolver                      = new PinnedArtifactResolver({
+    packages,
+    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+    deploymentRegion: stack.region,
+  });
+
+  const roles = new SupportRolesInfra(stack, 'roles', { vendorAccountIds: ['999988887777'] });
+  new SupportRoleAssumptionCollectorLambda(stack, 'support-role-assumption-collector', {
+    supportRoles: roles,
+    configTable:  new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
+    artifactResolver,
+  });
+
+  const template = Template.fromStack(stack);
+  return { stack, template, roles, ...onlyLambdaOf(template) };
+}
+
+describe('SupportRoleAssumptionCollectorLambda', () => {
+  const { stack, template, roles, logicalId, environment, statements } = synthesize();
+
+  it('passes the support role ARNs and both tier tag keys to the handler by name', () => {
+    expect(environment).toMatchObject({
+      SUPPORT_HOP_ROLE_ARN:         templateValue(stack, roles.hopRoleArn),
+      SUPPORT_DIAG_ROLE_ARN:        templateValue(stack, roles.diagRoleArn),
+      SUPPORT_CONFIG_READ_ROLE_ARN: templateValue(stack, roles.configReadRoleArn),
+      SUPPORT_DIAG_TAG_KEY:         'serverless-inbox:support:diag',
+      SUPPORT_CONFIG_READ_TAG_KEY:  'serverless-inbox:support:config-read',
     });
+    expect(Object.keys(environment)).toContain('CONFIG_TABLE_NAME');
+  });
+
+  it('takes the CloudTrail lookup, the tag grants on the hop role, the tag listing and the table', () => {
+    const actions = statements.flatMap((statement) => actionsOf(statement));
+
+    expect(actions).toEqual(expect.arrayContaining([
+      'cloudtrail:LookupEvents',
+      'iam:TagRole',
+      'iam:UntagRole',
+      'iam:ListRoleTags',
+      'dynamodb:PutItem',
+    ]));
   });
 
   it('is invoked on an hourly schedule', () => {
-    const template            = Template.fromStack(stack);
-    const [functionLogicalId] = Object.keys(template.findResources('AWS::Lambda::Function'));
-
     template.hasResourceProperties('AWS::Events::Rule', {
       ScheduleExpression: 'cron(0 * * * ? *)',
-      Targets:            [{ Arn: { 'Fn::GetAtt': [functionLogicalId, 'Arn'] }, Id: 'Target0' }],
+      Targets:            [{ Arn: { 'Fn::GetAtt': [logicalId, 'Arn'] }, Id: 'Target0' }],
     });
   });
 });

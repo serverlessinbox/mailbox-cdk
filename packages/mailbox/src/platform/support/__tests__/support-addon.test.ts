@@ -1,30 +1,32 @@
 /**
- * Pins what `SupportAddon` provisions: nothing for a literal DISABLED mode, a condition-gated
- * feature for a CloudFormation parameter token, and for ENABLED the support roles and their
- * trust, the support-api and collector Lambdas, and the least-privilege grants those Lambdas hold.
- * Weakening these assertions can let a support tier widen silently, let the feature leak into a
- * deployment that disabled it, or trust the wrong AWS account.
+ * Pins what `SupportAddon` itself decides: nothing is provisioned for a literal DISABLED mode, every
+ * resource sits behind a condition on the mode for a CloudFormation parameter token, the routes are
+ * mounted behind the Admin API authorizer, and both Lambdas are wired to the same support roles and
+ * to the vendor accounts of the CDK context. The roles' trust and actions are pinned by the roles'
+ * own tests, and each Lambda's grants by its own wrapper test. Weakening these assertions can let
+ * the feature leak into a deployment that disabled it, or trust the wrong AWS account.
  */
 
-import { statementsForRole }         from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { VENDOR_ACCOUNT_ID }         from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }           from 'aws-cdk-lib/assertions';
-import * as cdk                      from 'aws-cdk-lib';
+import { actionsOf, statementsForRole }          from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { VENDOR_ACCOUNT_ID }                     from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                       from 'aws-cdk-lib/assertions';
+import * as cdk                                  from 'aws-cdk-lib';
 
-import { SupportAddon, SupportMode } from '../support-addon';
+import { SupportAddon, SupportMode }             from '../support-addon';
 
 import {
   createApiWithAuthorizer,
   createSupportTestStack,
   findFunction,
   type SupportTestStack,
-  type SynthesizedResource,
 } from './support-test-fixtures';
 
-const DIAG_TAG_KEY        = 'serverless-inbox:support:diag';
-const CONFIG_READ_TAG_KEY = 'serverless-inbox:support:config-read';
-const SUPPORT_API         = 'support-api';
-const COLLECTOR           = 'support-role-assumption-collector';
+const SUPPORT_API = 'support-api';
+
+/** The root principal of an account, as a template renders it: partition-aware, never a literal `arn:aws`. */
+function accountRoot(accountId: string): unknown {
+  return { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, `:iam::${accountId}:root`]] };
+}
 
 function createAddon(inputs: SupportTestStack, mode: SupportMode): SupportAddon {
   return new SupportAddon(inputs.stack, 'addon', {
@@ -39,15 +41,6 @@ function synthesizeEnabled(context?: Record<string, unknown>): Template {
   const inputs = createSupportTestStack(context);
   createAddon(inputs, SupportMode.ENABLED);
   return Template.fromStack(inputs.stack);
-}
-
-interface InlinePolicyRoleProperties {
-  readonly Policies: Array<{ PolicyDocument: { Statement: Array<{ Action: string[] }> } }>;
-}
-
-function actionsOf(role: SynthesizedResource): Set<string> {
-  const { Policies } = role.Properties as InlinePolicyRoleProperties;
-  return new Set(Policies.flatMap((policy) => policy.PolicyDocument.Statement.flatMap((statement) => statement.Action)));
 }
 
 describe('SupportAddon', () => {
@@ -86,11 +79,11 @@ describe('SupportAddon', () => {
       const { template } = synthesizeWithParameter();
 
       template.hasCondition('*', { 'Fn::Equals': [{ Ref: 'supportMode' }, SupportMode.ENABLED] });
-      const [conditionName] = Object.keys(template.toJSON().Conditions);
+      const [conditionName] = Object.keys(template.toJSON().Conditions as Record<string, unknown>);
       for (const type of ['AWS::IAM::Role', 'AWS::IAM::Policy', 'AWS::Lambda::Function', 'AWS::Events::Rule']) {
         const resources = Object.values(template.findResources(type));
         expect(resources.length).toBeGreaterThan(0);
-        expect(resources.map((resource) => resource.Condition)).toEqual(resources.map(() => conditionName));
+        expect(resources.map((resource): unknown => resource.Condition)).toEqual(resources.map(() => conditionName));
       }
     });
 
@@ -118,140 +111,22 @@ describe('SupportAddon', () => {
       });
     });
 
-    describe('Lambdas', () => {
+    it('provisions the support-api Lambda and the role-assumption collector', () => {
       const template = synthesizeEnabled();
 
-      it('gives the support-api Lambda the hop role, tier roles, config table and audit queue', () => {
-        expect(findFunction(template, SUPPORT_API).environment).toEqual(expect.objectContaining({
-          SUPPORT_HOP_ROLE_ARN:         expect.anything(),
-          SUPPORT_DIAG_ROLE_ARN:        expect.anything(),
-          SUPPORT_CONFIG_READ_ROLE_ARN: expect.anything(),
-          CONFIG_TABLE_NAME:            expect.anything(),
-          AUDIT_EVENTS_QUEUE_URL:       expect.anything(),
-          SUPPORT_DIAG_TAG_KEY:         DIAG_TAG_KEY,
-          SUPPORT_CONFIG_READ_TAG_KEY:  CONFIG_READ_TAG_KEY,
-        }));
-      });
-
-      it('gives the collector Lambda the hop role, tier roles and config table', () => {
-        expect(findFunction(template, COLLECTOR).environment).toEqual(expect.objectContaining({
-          SUPPORT_HOP_ROLE_ARN:         expect.anything(),
-          SUPPORT_DIAG_ROLE_ARN:        expect.anything(),
-          SUPPORT_CONFIG_READ_ROLE_ARN: expect.anything(),
-          CONFIG_TABLE_NAME:            expect.anything(),
-        }));
-      });
-
-      it('triggers the collector hourly', () => {
-        template.hasResourceProperties('AWS::Events::Rule', {
-          ScheduleExpression: 'cron(0 * * * ? *)',
-          Targets:            [Match.objectLike({ Arn: { 'Fn::GetAtt': [findFunction(template, COLLECTOR).logicalId, 'Arn'] } })],
-        });
-      });
-    });
-
-    describe('support roles', () => {
-      const template = synthesizeEnabled();
-      const roles    = Object.entries(template.findResources('AWS::IAM::Role'));
-      const trusting = (needle: string) => roles.filter(([, role]) => JSON.stringify(role.Properties.AssumeRolePolicyDocument).includes(needle));
-
-      it('trusts only the vendor account root on the hop role', () => {
-        template.hasResourceProperties('AWS::IAM::Role', {
-          AssumeRolePolicyDocument: {
-            Statement: [{ Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: `arn:aws:iam::${VENDOR_ACCOUNT_ID}:root` } }],
-          },
-          MaxSessionDuration:       3600,
-        });
-      });
-
-      it.each([
-        ['diag', DIAG_TAG_KEY],
-        ['config-read', CONFIG_READ_TAG_KEY],
-      ])('trusts the hop role on the %s tier only for sessions tagged with the case external ID', (_tier, tagKey) => {
-        const [[, role]] = trusting(`aws:PrincipalTag/${tagKey}"`);
-
-        expect(role.Properties.MaxSessionDuration).toBe(3600);
-        expect(role.Properties.AssumeRolePolicyDocument.Statement).toEqual([
-          expect.objectContaining({
-            Effect:    'Allow',
-            Action:    'sts:AssumeRole',
-            Condition: { StringLike: { [`aws:PrincipalTag/${tagKey}`]: '*/${sts:ExternalId}/*' } },
-          }),
-        ]);
-      });
-
-      it('creates the tier roles only after the hop role they trust exists', () => {
-        const [[hopLogicalId]] = trusting(`:iam::${VENDOR_ACCOUNT_ID}:root`);
-
-        for (const tagKey of [DIAG_TAG_KEY, CONFIG_READ_TAG_KEY]) {
-          const [[, tierRole]] = trusting(`aws:PrincipalTag/${tagKey}"`);
-          expect(tierRole.DependsOn).toContain(hopLogicalId);
-        }
-      });
-
-      it('grants the diag tier a fixed action set and config-read that set plus configuration reads', () => {
-        const [[, diag]]       = trusting(`aws:PrincipalTag/${DIAG_TAG_KEY}"`);
-        const [[, configRead]] = trusting(`aws:PrincipalTag/${CONFIG_READ_TAG_KEY}"`);
-
-        // Tripwire: a changed count means a tier gained or lost an action. Review it, do not just update the number.
-        expect(actionsOf(diag).size).toBe(16);
-        expect(actionsOf(configRead).size).toBe(42);
-        expect(actionsOf(diag).has('lambda:GetFunctionConfiguration')).toBe(false);
-        expect(actionsOf(configRead).has('lambda:GetFunctionConfiguration')).toBe(true);
-        expect([...actionsOf(diag)].filter((action) => !actionsOf(configRead).has(action))).toEqual([]);
-      });
-    });
-
-    describe.each([SUPPORT_API, COLLECTOR])('%s Lambda role', (serviceName) => {
-      const template   = synthesizeEnabled();
-      const fn         = findFunction(template, serviceName);
-      const statements = statementsForRole(template, fn.roleLogicalId);
-
-      it('may only tag and untag the hop role, with only the two tier tag keys', () => {
-        expect(statements).toContainEqual({
-          Effect:    'Allow',
-          Action:    ['iam:TagRole', 'iam:UntagRole'],
-          Condition: { 'ForAllValues:StringEquals': { 'aws:TagKeys': [DIAG_TAG_KEY, CONFIG_READ_TAG_KEY] } },
-          Resource:  fn.environment.SUPPORT_HOP_ROLE_ARN,
-        });
-      });
-
-      it('reads and writes the config table it was given', () => {
-        const tableArn = { 'Fn::GetAtt': [(fn.environment.CONFIG_TABLE_NAME as { Ref: string }).Ref, 'Arn'] };
-
-        expect(statements).toContainEqual(expect.objectContaining({
-          Action:   expect.arrayContaining(['dynamodb:GetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem']),
-          Resource: expect.arrayContaining([tableArn]),
-        }));
-      });
-
-      it('may look up CloudTrail events', () => {
-        expect(statements).toContainEqual(expect.objectContaining({ Action: 'cloudtrail:LookupEvents' }));
-      });
-    });
-
-    describe('support-api Lambda role', () => {
-      const template   = synthesizeEnabled();
-      const fn         = findFunction(template, SUPPORT_API);
-      const statements = statementsForRole(template, fn.roleLogicalId);
-
-      it('may send messages to the audit queue it was given', () => {
-        const queueArn = { 'Fn::GetAtt': [(fn.environment.AUDIT_EVENTS_QUEUE_URL as { Ref: string }).Ref, 'Arn'] };
-
-        expect(statements).toContainEqual(expect.objectContaining({ Action: 'sqs:SendMessage', Resource: queueArn }));
-      });
+      expect(findFunction(template, SUPPORT_API).logicalId).not.toBe(findFunction(template, 'support-role-assumption-collector').logicalId);
     });
 
     describe('vendor account IDs', () => {
       const EXECUTE_API_SUFFIX  = ':*/*/POST/support-case-sync';
       const executeApiStatement = (template: Template) => statementsForRole(template, findFunction(template, SUPPORT_API).roleLogicalId)
-        .find((statement) => statement.Action === 'execute-api:Invoke');
+        .find((statement) => actionsOf(statement).includes('execute-api:Invoke'));
 
       it('defaults to the product vendor account for hop role trust and the execute-api grant', () => {
         const template = synthesizeEnabled();
 
         template.hasResourceProperties('AWS::IAM::Role', {
-          AssumeRolePolicyDocument: { Statement: [Match.objectLike({ Principal: { AWS: `arn:aws:iam::${VENDOR_ACCOUNT_ID}:root` } })] },
+          AssumeRolePolicyDocument: { Statement: [Match.objectLike({ Principal: { AWS: accountRoot(VENDOR_ACCOUNT_ID) } })] },
         });
         expect(executeApiStatement(template)?.Resource).toBe(`arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}${EXECUTE_API_SUFFIX}`);
       });
@@ -261,7 +136,10 @@ describe('SupportAddon', () => {
 
         template.hasResourceProperties('AWS::IAM::Role', {
           AssumeRolePolicyDocument: {
-            Statement: [Match.objectLike({ Principal: { AWS: ['arn:aws:iam::111122223333:root', 'arn:aws:iam::444455556666:root'] } })],
+            Statement: [
+              Match.objectLike({ Principal: { AWS: accountRoot('111122223333') } }),
+              Match.objectLike({ Principal: { AWS: accountRoot('444455556666') } }),
+            ],
           },
         });
         expect(executeApiStatement(template)?.Resource).toEqual([

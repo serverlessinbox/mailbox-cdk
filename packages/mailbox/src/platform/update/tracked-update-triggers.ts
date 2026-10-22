@@ -3,8 +3,11 @@ import * as lambda               from 'aws-cdk-lib/aws-lambda';
 import * as cdk                  from 'aws-cdk-lib';
 import { Construct, IConstruct } from 'constructs';
 
+/** Inputs of the tracked update triggers. */
 export interface TrackedUpdateTriggersProps {
+  /** The updater Lambda the post-deploy trigger invokes. */
   readonly updater:    lambda.IFunction;
+  /** The condition that is false when the updater does not follow releases; it gates every trigger. */
   readonly isTracking: cdk.CfnCondition;
 }
 

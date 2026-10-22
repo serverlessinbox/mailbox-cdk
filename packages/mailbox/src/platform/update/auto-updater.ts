@@ -1,5 +1,5 @@
 import type { IArtifactResolver, RegistryLocation, ResolvedArtifact }            from '@serverlessinbox/artifact-registry-cdk';
-import { MailboxArtifactResolverFactory, ServerlessInboxTagKeys, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
+import { ServerlessInboxTagKeys, StackIdentity }                                 from '@serverlessinbox/mailbox-cdk-shared';
 import * as iam                                                                  from 'aws-cdk-lib/aws-iam';
 import * as lambda                                                               from 'aws-cdk-lib/aws-lambda';
 import { Aws, Duration, Fn, Tags }                                               from 'aws-cdk-lib';
@@ -7,11 +7,11 @@ import * as cdk                                                                 
 import { Construct, IConstruct }                                                 from 'constructs';
 
 import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider }     from '../../core/apis/addons';
-import { loadMailboxArtifactVersions }                                           from '../../mailbox-artifact-versions';
-import { loadMailboxRegistryRecord }                                             from '../../mailbox-registry-record';
+import { createMailboxPinnedResolver }                                           from '../../mailbox-pinned-resolver';
 import { ArtifactUpdaterLambda }                                                 from '../../resources/lambdas/artifact-updater-lambda';
 
 import { ArtifactUpdaterAddon }                                                  from './artifact-updater-addon';
+import { DEFAULT_DIST_TAG }                                                      from './default-dist-tag';
 import { TrackedUpdateTriggers }                                                 from './tracked-update-triggers';
 
 /**
@@ -107,7 +107,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
 
   constructor(scope: Construct, id: string, props: AutoUpdaterProps = {}) {
     super(scope, id);
-    this.pinned   = MailboxArtifactResolverFactory.fromContext(this, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
+    this.pinned   = createMailboxPinnedResolver(this);
     this.location = this.pinned.location;
 
     // cast: the prop is a string so that a CloudFormation parameter token is accepted.
@@ -122,7 +122,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
     const updater        = new ArtifactUpdaterLambda(this, 'artifact-updater', {
       artifactResolver:   this.pinned,
       artifactBucketBase: this.location.bucketBase,
-      distTag:            props.distTag ?? 'stable',
+      distTag:            props.distTag ?? DEFAULT_DIST_TAG,
       granularity,
       rootStackTagValue: Aws.STACK_NAME,
       rootStackId:       StackIdentity.guid,
