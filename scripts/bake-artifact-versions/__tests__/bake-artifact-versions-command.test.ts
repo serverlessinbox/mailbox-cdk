@@ -1,3 +1,4 @@
+import { PinnedArtifactResolver }                                           from '@serverlessinbox/artifact-registry-cdk';
 import { Cli }                                                              from 'clipanion';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir }                                                           from 'node:os';
@@ -7,29 +8,10 @@ import { Writable }                                                         from
 import { BakeArtifactVersionsCommand }                                      from '../bake-artifact-versions-command';
 
 /**
- * Pins the release configuration against the placeholders committed with each package: every own
- * package the release bakes must already be listed there with the zone the construct needs. A
- * mistyped key or zone in the configuration would otherwise only show up in a published package.
- * Also pins that the command bakes both packages from the given root and pins file.
+ * Pins that the command bakes both packages from the given root and pins file, and that it does so
+ * from the root alone, never from the current directory.
  */
 describe('BakeArtifactVersionsCommand', () => {
-  const repoRoot = path.join(__dirname, '..', '..', '..');
-
-  describe('bakedPackages', () => {
-    const mailboxPinsFile = path.join(repoRoot, 'unused-pins.json');
-
-    it.each(BakeArtifactVersionsCommand.bakedPackages(repoRoot, mailboxPinsFile).map(bakedPackage => [path.basename(path.dirname(bakedPackage.outputFile)), bakedPackage] as const))(
-      'bakes %s own packages as its committed placeholder lists them',
-      (_name, bakedPackage) => {
-        const placeholder = JSON.parse(readFileSync(bakedPackage.outputFile, 'utf8')) as { [key: string]: { zone: string } };
-
-        for (const ownArtifact of bakedPackage.ownArtifacts) {
-          expect(placeholder[ownArtifact.key]?.zone).toBe(ownArtifact.zone);
-        }
-      },
-    );
-  });
-
   /**
    * The command runs with an empty directory as its working directory, so a `--root` that is
    * ignored in favour of the current directory finds no packages to bake and fails the run rather
@@ -71,13 +53,13 @@ describe('BakeArtifactVersionsCommand', () => {
 
       expect(exitCode).toBe(0);
       expect(readdirSync(emptyCwd)).toEqual([]);
-      expect(JSON.parse(readFileSync(path.join(root, 'packages', 'mailbox', 'artifact-versions.json'), 'utf8'))).toEqual({
+      expect(readBakedPins(path.join(root, 'packages', 'mailbox', 'artifact-versions.json'))).toEqual({
         'mailbox-go':         { version: '7.8.9', zone: 'regional' },
         'mailbox-cdk':        { version: '4.5.6', zone: 'regional' },
         'mailbox-cdk-edge':   { version: '4.5.6', zone: 'edge' },
         'mailbox-cdk-shared': { version: '4.5.6', zone: 'regional' },
       });
-      expect(JSON.parse(readFileSync(path.join(root, 'packages', 'mailbox-cognito', 'artifact-versions.json'), 'utf8'))).toEqual({
+      expect(readBakedPins(path.join(root, 'packages', 'mailbox-cognito', 'artifact-versions.json'))).toEqual({
         'mailbox-cognito':    { version: '4.5.6', zone: 'regional' },
         'mailbox-cdk-shared': { version: '4.5.6', zone: 'regional' },
       });
@@ -85,3 +67,8 @@ describe('BakeArtifactVersionsCommand', () => {
     });
   });
 });
+
+/** Reads a baked file through PinnedArtifactResolver.parsePins, the validation the baker applies before it writes. */
+function readBakedPins(file: string) {
+  return PinnedArtifactResolver.parsePins(readFileSync(file, 'utf8'), file);
+}

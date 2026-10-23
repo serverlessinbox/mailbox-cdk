@@ -1,9 +1,8 @@
-import { ArtifactZone }          from '@serverlessinbox/artifact-registry-cdk';
 import { Command, Option }       from 'clipanion';
 import * as path                 from 'node:path';
 
 import { ArtifactVersionsBaker } from './artifact-versions-baker';
-import type { BakedPackage }     from './baked-package';
+import { BakedPackages }         from './baked-packages';
 import { BumpedVersionReader }   from './bumped-version-reader';
 import { ExternalPinsReader }    from './external-pins-reader';
 
@@ -32,40 +31,12 @@ export class BakeArtifactVersionsCommand extends Command {
     description: 'Repository root holding the packages folder. Defaults to the current directory; given once.',
   });
 
-  /**
-   * The files to bake. `mailbox-cdk` and `mailbox-cdk-edge` are both published from the `mailbox`
-   * package folder (its `artifact-registry.json`), so they take its version.
-   */
-  static bakedPackages(root: string, mailboxPinsFile: string): BakedPackage[] {
-    const mailboxDirectory = path.join(root, 'packages', 'mailbox');
-    const cognitoDirectory = path.join(root, 'packages', 'mailbox-cognito');
-    const sharedDirectory  = path.join(root, 'packages', 'mailbox-cdk-shared');
-    return [
-      {
-        outputFile:       path.join(mailboxDirectory, 'artifact-versions.json'),
-        externalPinsFile: mailboxPinsFile,
-        ownArtifacts:     [
-          { key: 'mailbox-cdk', zone: ArtifactZone.REGIONAL, manifestDirectory: mailboxDirectory },
-          { key: 'mailbox-cdk-edge', zone: ArtifactZone.EDGE, manifestDirectory: mailboxDirectory },
-          { key: 'mailbox-cdk-shared', zone: ArtifactZone.REGIONAL, manifestDirectory: sharedDirectory },
-        ],
-      },
-      {
-        outputFile:   path.join(cognitoDirectory, 'artifact-versions.json'),
-        ownArtifacts: [
-          { key: 'mailbox-cognito', zone: ArtifactZone.REGIONAL, manifestDirectory: cognitoDirectory },
-          { key: 'mailbox-cdk-shared', zone: ArtifactZone.REGIONAL, manifestDirectory: sharedDirectory },
-        ],
-      },
-    ];
-  }
-
   async execute(): Promise<void> {
     const root            = path.resolve(this.root ?? process.cwd());
     const mailboxPinsFile = path.resolve(this.mailboxPins);
 
     const baker = new ArtifactVersionsBaker(new BumpedVersionReader(), new ExternalPinsReader());
-    for (const bakedPackage of BakeArtifactVersionsCommand.bakedPackages(root, mailboxPinsFile)) {
+    for (const bakedPackage of BakedPackages.forRepository(root, mailboxPinsFile)) {
       await baker.bake(bakedPackage);
       this.context.stdout.write(`Written: ${bakedPackage.outputFile}\n`);
     }

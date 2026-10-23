@@ -4,7 +4,7 @@ import { tmpdir }                                                          from 
 import * as path                                                           from 'node:path';
 
 import { ArtifactVersionsBaker }                                           from '../artifact-versions-baker';
-import type { BakedPackage }                                               from '../baked-package';
+import type { BakedPackage, PinsByPackage }                                from '../baked-package';
 import { BumpedVersionReader }                                             from '../bumped-version-reader';
 import { ExternalPinsReader }                                              from '../external-pins-reader';
 
@@ -25,7 +25,7 @@ describe('ArtifactVersionsBaker', () => {
     return directory;
   }
 
-  function externalPinsFile(name: string, pins: object): string {
+  function externalPinsFile(name: string, pins: PinsByPackage): string {
     const pinsFile = path.join(workDir, `${name}-external.json`);
     writeFileSync(pinsFile, JSON.stringify(pins));
     return pinsFile;
@@ -38,7 +38,7 @@ describe('ArtifactVersionsBaker', () => {
   it('merges the external pins with own packages at their bumped versions', async () => {
     const bakedPackage: BakedPackage = {
       outputFile:       path.join(workDir, 'merged.json'),
-      externalPinsFile: externalPinsFile('merged', { 'mailbox-go': { version: '3.1.4', zone: 'regional' } }),
+      externalPinsFile: externalPinsFile('merged', { 'mailbox-go': { version: '3.1.4', zone: ArtifactZone.REGIONAL } }),
       ownArtifacts:     [
         { key: 'mailbox-cdk', zone: ArtifactZone.REGIONAL, manifestDirectory: bumpedManifestDirectory('merged-app', '0.7.2') },
         { key: 'mailbox-cdk-edge', zone: ArtifactZone.EDGE, manifestDirectory: bumpedManifestDirectory('merged-app', '0.7.2') },
@@ -85,7 +85,7 @@ describe('ArtifactVersionsBaker', () => {
   it('rejects a package that is both an external pin and an own package', async () => {
     const bakedPackage: BakedPackage = {
       outputFile:       path.join(workDir, 'collision.json'),
-      externalPinsFile: externalPinsFile('collision', { 'mailbox-cdk': { version: '9.9.9', zone: 'regional' } }),
+      externalPinsFile: externalPinsFile('collision', { 'mailbox-cdk': { version: '9.9.9', zone: ArtifactZone.REGIONAL } }),
       ownArtifacts:     [
         { key: 'mailbox-cdk', zone: ArtifactZone.REGIONAL, manifestDirectory: bumpedManifestDirectory('collision-app', '0.1.0') },
       ],
@@ -94,15 +94,18 @@ describe('ArtifactVersionsBaker', () => {
     await expect(baker.bake(bakedPackage)).rejects.toThrow(`${bakedPackage.outputFile}: 'mailbox-cdk' is both an external pin and an own package`);
   });
 
-  it('writes nothing when the result is not a valid pin set', async () => {
+  it('writes nothing when an external pin is not a valid pin', async () => {
+    const pinsFile = path.join(workDir, 'invalid-external.json');
+    writeFileSync(pinsFile, JSON.stringify({ 'mailbox-go': { version: '3.1.4', zone: 'global' } }));
     const bakedPackage: BakedPackage = {
-      outputFile:   path.join(workDir, 'invalid.json'),
-      ownArtifacts: [
-        { key: 'mailbox-cdk', zone: 'global' as ArtifactZone, manifestDirectory: bumpedManifestDirectory('invalid-app', '0.1.0') },
+      outputFile:       path.join(workDir, 'invalid.json'),
+      externalPinsFile: pinsFile,
+      ownArtifacts:     [
+        { key: 'mailbox-cdk', zone: ArtifactZone.REGIONAL, manifestDirectory: bumpedManifestDirectory('invalid-app', '0.1.0') },
       ],
     };
 
-    await expect(baker.bake(bakedPackage)).rejects.toThrow(bakedPackage.outputFile);
+    await expect(baker.bake(bakedPackage)).rejects.toThrow(pinsFile);
     expect(existsSync(bakedPackage.outputFile)).toBe(false);
   });
 });

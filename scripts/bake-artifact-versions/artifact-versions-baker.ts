@@ -20,16 +20,11 @@ export class ArtifactVersionsBaker {
   public async bake(bakedPackage: BakedPackage): Promise<void> {
     const externalPins = await this.readExternalPins(bakedPackage);
     const ownPins      = await this.readOwnPins(bakedPackage);
+    this.assertNoOverlap(externalPins, ownPins, bakedPackage.outputFile);
 
-    for (const key of Object.keys(ownPins)) {
-      if (key in externalPins) {
-        throw new Error(`${bakedPackage.outputFile}: '${key}' is both an external pin and an own package`);
-      }
-    }
-
-    const text = JSON.stringify({ ...externalPins, ...ownPins }, null, 2) + '\n';
-    PinnedArtifactResolver.parsePins(text, bakedPackage.outputFile);
-    await writeFile(bakedPackage.outputFile, text);
+    const text = this.serialisePinSet(externalPins, ownPins);
+    this.assertValidPinSet(text, bakedPackage.outputFile);
+    await this.writePinSet(bakedPackage.outputFile, text);
   }
 
   private async readExternalPins(bakedPackage: BakedPackage): Promise<PinsByPackage> {
@@ -46,5 +41,26 @@ export class ArtifactVersionsBaker {
       ownPins[ownArtifact.key] = { version, zone: ownArtifact.zone };
     }
     return ownPins;
+  }
+
+  private assertNoOverlap(externalPins: PinsByPackage, ownPins: PinsByPackage, outputFile: string): void {
+    for (const key of Object.keys(ownPins)) {
+      // Never let an own package silently replace an external pin of the same name.
+      if (key in externalPins) {
+        throw new Error(`${outputFile}: '${key}' is both an external pin and an own package`);
+      }
+    }
+  }
+
+  private serialisePinSet(externalPins: PinsByPackage, ownPins: PinsByPackage): string {
+    return JSON.stringify({ ...externalPins, ...ownPins }, null, 2) + '\n';
+  }
+
+  private assertValidPinSet(text: string, outputFile: string): void {
+    PinnedArtifactResolver.parsePins(text, outputFile);
+  }
+
+  private async writePinSet(outputFile: string, text: string): Promise<void> {
+    await writeFile(outputFile, text);
   }
 }
