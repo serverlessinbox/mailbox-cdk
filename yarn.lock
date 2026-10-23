@@ -2011,10 +2011,13 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@serverlessinbox/mailbox-bundler@workspace:packages/mailbox-bundler"
   dependencies:
+    "@types/jest": "npm:^29.0.0"
     "@types/node": "npm:^24.10.1"
     clipanion: "npm:^4.0.0-rc.2"
     esbuild: "npm:^0.27.1"
     glob: "npm:^10.3.10"
+    jest: "npm:^29.0.0"
+    ts-jest: "npm:^29.0.0"
     ts-node: "npm:^10.9.2"
     typanion: "npm:^3.14.0"
     typescript: "npm:^5.9.3"

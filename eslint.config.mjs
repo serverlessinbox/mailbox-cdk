@@ -12,7 +12,7 @@ const mailboxPlugin = require('@serverlessinbox/eslint-plugin-mailbox');
 const lintTsconfigs = [
   'packages/mailbox/tsconfig.eslint.json',
   'packages/mailbox-admin-api/tsconfig.json',
-  'packages/mailbox-bundler/tsconfig.json',
+  'packages/mailbox-bundler/tsconfig.eslint.json',
   'packages/mailbox-cdk-shared/tsconfig.eslint.json',
   'packages/mailbox-cognito/tsconfig.eslint.json',
   'packages/eslint-plugin-mailbox/tsconfig.json',

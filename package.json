@@ -18,7 +18,7 @@
     "fetch-registry-record": "artifact-registry registry-record fetch --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1 --output packages/mailbox/registry-record.json && artifact-registry registry-record fetch --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1 --output packages/mailbox-cognito/registry-record.json",
     "test:scripts": "tsc -p tsconfig.scripts.json --noEmit && jest --config jest.config.js",
     "test:lint": "yarn workspace @serverlessinbox/eslint-plugin-mailbox test",
-    "test": "yarn test:scripts && yarn test:lint && yarn workspace @serverlessinbox/mailbox-cdk-shared test && yarn workspace @serverlessinbox/mailbox test && yarn workspace @serverlessinbox/mailbox-cognito test"
+    "test": "yarn test:scripts && yarn test:lint && yarn workspace @serverlessinbox/mailbox-cdk-shared test && yarn workspace @serverlessinbox/mailbox-bundler test && yarn workspace @serverlessinbox/mailbox test && yarn workspace @serverlessinbox/mailbox-cognito test"
   },
   "devDependencies": {
     "@jwpkg/gitversion": "^1.4.0-pack-order.3",

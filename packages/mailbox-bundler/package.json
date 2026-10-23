@@ -13,7 +13,8 @@
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "prepack": "yarn build",
-    "postpack": "rm -rf lib"
+    "postpack": "rm -rf lib",
+    "test": "tsc -p tsconfig.test.json && jest"
   },
   "preferUnplugged": true,
   "dependencies": {
@@ -22,8 +23,11 @@
     "typanion": "^3.14.0"
   },
   "devDependencies": {
+    "@types/jest": "^29.0.0",
     "@types/node": "^24.10.1",
     "esbuild": "^0.27.1",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
