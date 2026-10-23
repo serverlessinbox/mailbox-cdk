@@ -23,7 +23,7 @@ const isPropertyValue = t.isOneOf([t.isString(), t.isNumber(), t.isBoolean(), t.
 
 const isBootstrapUserResource = t.isPartial({ Properties: t.isRecord(isPropertyValue) });
 
-function synthesizeBootstrapUser(): Record<string, t.InferType<typeof isPropertyValue>> {
+function synthesizeBootstrapUser(passwordMinLength?: number): Record<string, t.InferType<typeof isPropertyValue>> {
   const app   = new App({
     context: {
       'serverlessinbox:artifacts':         {
@@ -45,6 +45,7 @@ function synthesizeBootstrapUser(): Record<string, t.InferType<typeof isProperty
   const pool  = new MailboxUserPool(stack, 'user-pool', {
     domain:           { kind: 'cognito', cognitoDomainPrefix: 'test-bootstrap' },
     artifactResolver: MailboxArtifactResolverFactory.fromContext(stack, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions()),
+    ...(passwordMinLength !== undefined ? { passwordMinLength } : {}),
   });
 
   pool.addBootstrapUser({ username: 'admin', groups: ['admin'], temporaryPassword: 'Temp1Password' });
@@ -66,5 +67,13 @@ describe('MailboxUserPool.addBootstrapUser', () => {
     const lambdaKeys = Object.keys(templateProperties({ username: 'admin', groups: ['admin'], temporaryPassword: 'Temp1Password' }));
     expect(Object.keys(properties).sort()).toEqual(lambdaKeys.sort());
     expect(properties.ServiceTimeout).toBe(templateProperties().ServiceTimeout);
+  });
+
+  it('writes the pool default minimum length as the password length the Lambda reads', () => {
+    expect(synthesizeBootstrapUser().passwordMinLength).toBe('8');
+  });
+
+  it('writes the pool minimum length it was configured with, so a generated password meets it', () => {
+    expect(synthesizeBootstrapUser(20).passwordMinLength).toBe('20');
   });
 });

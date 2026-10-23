@@ -12,7 +12,8 @@ import { BootstrapUserAnswers, PASSWORD_SET_AT_INSTALL_TIME, type BootstrapUserA
 import { UserEnsurer, type BootstrapUser }                                              from './ensure-user';
 import { isBootstrapUserProperties, type BootstrapUserProperties }                      from './properties';
 
-const DEFAULT_USERNAME = 'admin';
+const DEFAULT_USERNAME        = 'admin';
+const DEFAULT_PASSWORD_LENGTH = 16;
 
 /**
  * Answers the CloudFormation requests of the bootstrap user custom resource: a Create or Update makes sure the
@@ -38,7 +39,7 @@ export class BootstrapUserRequestHandler {
     }
 
     const properties        = this.readProperties(request);
-    const temporaryPassword = properties.temporaryPassword ?? generateSecurePassword();
+    const temporaryPassword = properties.temporaryPassword ?? generateSecurePassword(this.passwordLength(properties));
     const user              = this.toBootstrapUser(properties, temporaryPassword);
 
     const userWasCreated = await this.ensureUser(user);
@@ -56,6 +57,16 @@ export class BootstrapUserRequestHandler {
 
     this.logger.debug('bootstrap_user_validating', { userPoolIdLength: properties.userPoolId.length });
     return properties;
+  }
+
+  /**
+   * The length of a generated password: the pool's minimum length, never below the default of 16 characters.
+   */
+  private passwordLength(properties: BootstrapUserProperties): number {
+    // BWCOMPAT(2026-10-23): passwordMinLength may be absent from a template deployed before the property was added;
+    // the default applies then. Remove when: every live stack has had a Path 2 template update on/after 2026-10-23.
+    const minimumLength = Number(properties.passwordMinLength ?? DEFAULT_PASSWORD_LENGTH);
+    return Math.max(DEFAULT_PASSWORD_LENGTH, minimumLength);
   }
 
   private toBootstrapUser(properties: BootstrapUserProperties, temporaryPassword: string): BootstrapUser {

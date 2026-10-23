@@ -19,6 +19,7 @@ export function templateProperties(overrides: Partial<TemplateProperties> = {}):
     ServiceToken:            FUNCTION_ARN,
     ServiceTimeout:          '240',
     userPoolId:              USER_POOL_ID,
+    passwordMinLength:       '8',
     responseContractVersion: '1',
     ...overrides,
   };

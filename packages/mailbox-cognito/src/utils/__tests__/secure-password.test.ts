@@ -29,27 +29,27 @@ describe('secure-password module', () => {
       return { isValid: true };
     }
 
-    it('generates a 16-character password', () => {
-      const password = generateSecurePassword();
-      expect(password).toHaveLength(16);
+    it('generates a password of the requested length', () => {
+      expect(generateSecurePassword(16)).toHaveLength(16);
+      expect(generateSecurePassword(99)).toHaveLength(99);
     });
 
     it('generates passwords that meet Cognito policy requirements', () => {
-      const password   = generateSecurePassword();
+      const password   = generateSecurePassword(16);
       const validation = validatePassword(password);
       expect(validation.isValid).toBe(true);
     });
 
     it('generates different passwords on successive invocations', () => {
-      const password1 = generateSecurePassword();
-      const password2 = generateSecurePassword();
+      const password1 = generateSecurePassword(16);
+      const password2 = generateSecurePassword(16);
 
       expect(password1).not.toBe(password2);
     });
 
     it('generates multiple passwords all meeting policy requirements', () => {
       for (let i = 0; i < 10; i++) {
-        const password   = generateSecurePassword();
+        const password   = generateSecurePassword(16);
         const validation = validatePassword(password);
         if (!validation.isValid) {
           throw new Error(
@@ -65,7 +65,7 @@ describe('secure-password module', () => {
       const randomInt = jest.spyOn(jest.requireActual<typeof Crypto>('crypto'), 'randomInt');
 
       try {
-        const password = generateSecurePassword();
+        const password = generateSecurePassword(16);
 
         expect(validatePassword(password).isValid).toBe(true);
         expect(randomInt.mock.calls.length).toBeGreaterThan(15);

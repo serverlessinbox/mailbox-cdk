@@ -39,6 +39,10 @@ describe('BootstrapUserRequestHandler', () => {
     jest.restoreAllMocks();
   });
 
+  function appliedPasswordLength(): number | undefined {
+    return cognitoMock.commandCalls(AdminCreateUserCommand)[0].args[0].input.TemporaryPassword?.length;
+  }
+
   describe('handle', () => {
     it('Create answers the physical id and the password it applied when the properties supply one', async () => {
       const answer = await requestHandler.handle(request('Create', templateProperties({ username: 'testadmin', temporaryPassword: SUPPLIED_PASSWORD })));
@@ -62,6 +66,24 @@ describe('BootstrapUserRequestHandler', () => {
       const appliedPassword = cognitoMock.commandCalls(AdminCreateUserCommand)[0].args[0].input.TemporaryPassword;
       expect(answer.Data.temporaryPassword).toBe(appliedPassword);
       expect(answer.Data.temporaryPassword).not.toBe(PASSWORD_SET_AT_INSTALL_TIME);
+    });
+
+    it('Create generates a 16-character password when the pool minimum is the default of 8', async () => {
+      await requestHandler.handle(request('Create', templateProperties({ passwordMinLength: '8' })));
+
+      expect(appliedPasswordLength()).toBe(16);
+    });
+
+    it('Create generates a 99-character password when the pool minimum is 99', async () => {
+      await requestHandler.handle(request('Create', templateProperties({ passwordMinLength: '99' })));
+
+      expect(appliedPasswordLength()).toBe(99);
+    });
+
+    it('Create generates a 16-character password when the template does not carry passwordMinLength', async () => {
+      await requestHandler.handle(request('Create', templateProperties({ passwordMinLength: undefined })));
+
+      expect(appliedPasswordLength()).toBe(16);
     });
 
     it('reports the marker, not the supplied password, when the user already existed', async () => {

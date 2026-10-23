@@ -7,6 +7,7 @@ export const isBootstrapUserProperties = t.isPartial({
   username:                t.isOptional(t.isString()),
   groups:                  t.isOptional(t.isArray(t.isString())),
   temporaryPassword:       t.isOptional(t.isString()),
+  passwordMinLength:       t.isOptional(t.cascade(t.isString(), [t.matchesRegExp(/^(?:[6-9]|[1-9][0-9])$/)])),
   responseContractVersion: t.isOptional(t.isString()),
 });
 

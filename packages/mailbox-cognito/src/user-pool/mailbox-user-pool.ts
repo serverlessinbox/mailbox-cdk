@@ -22,7 +22,7 @@ import { Construct }                                                            
 import { CognitoIdpUsersAdminApiAddon }                                                                                    from '../cognito-idp-users-addon';
 import type { CognitoIdpUsersAuthorizationConfig }                                                                         from '../cognito-idp-users-pool-config';
 import { MailboxCognitoDataDeployer }                                                                                      from '../data-stack/mailbox-cognito-data-deployer';
-import { ADMIN_GROUP_NAME, RESOURCE_SERVER_IDENTIFIER, USER_GROUP_NAME }                                                   from '../data-stack/mailbox-cognito-data-stack-contract';
+import { ADMIN_GROUP_NAME, DEFAULT_PASSWORD_MIN_LENGTH, RESOURCE_SERVER_IDENTIFIER, USER_GROUP_NAME }                      from '../data-stack/mailbox-cognito-data-stack-contract';
 import { JmapOAuthAddon }                                                                                                  from '../jmap-oauth-addon';
 import { loadMailboxCognitoArtifactVersions }                                                                              from '../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }                                                                                from '../mailbox-cognito-registry-record';
@@ -303,6 +303,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   private readonly artifacts: IArtifactResolver;
   private readonly enableJmapOAuthDiscovery: boolean;
   private readonly dynamicClientRegistration: DynamicClientRegistrationMode;
+  private readonly passwordMinLength: number;
   private bootstrapUserCount = 0;
 
   constructor(scope: Construct, id: string, props: MailboxUserPoolProps) {
@@ -310,6 +311,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
 
     this.enableJmapOAuthDiscovery  = props.enableJmapOAuthDiscovery ?? false;
     this.dynamicClientRegistration = props.dynamicClientRegistration ?? DynamicClientRegistrationMode.DISABLED;
+    this.passwordMinLength         = props.passwordMinLength ?? DEFAULT_PASSWORD_MIN_LENGTH;
     this.artifacts                 = props.artifactResolver
       ?? MailboxArtifactResolverFactory.fromContext(this, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions());
     this.authzConfig               = {
@@ -332,7 +334,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
         ? { domainName: props.domain.domainName, certificateArn: props.domain.certificateArn }
         : undefined,
       mfaMode:             props.mfaMode,
-      passwordMinLength:   props.passwordMinLength,
+      passwordMinLength:   this.passwordMinLength,
       artifactResolver:    this.artifacts,
       deployerType,
       rootStack:           { name: Aws.STACK_NAME, id: StackIdentity.guid },
@@ -484,6 +486,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       username:          config.username,
       groups:            config.groups,
       temporaryPassword: config.temporaryPassword,
+      passwordMinLength: String(this.passwordMinLength),
       // Force re-invocation when response contract changes (e.g., Data field added)
       responseContractVersion: '1',
     };
