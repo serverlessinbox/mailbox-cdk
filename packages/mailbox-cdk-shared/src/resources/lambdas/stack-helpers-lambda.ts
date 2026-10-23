@@ -23,14 +23,13 @@ export class StackHelpersLambda extends TypeScriptLambda {
       timeout:          cdk.Duration.seconds(30),
       memorySize:       256,
     });
-
-    this.grantRoute53HostedZoneRead();
   }
 
-  private grantRoute53HostedZoneRead(): void {
+  /** Lets the Lambda read the one hosted zone a resolver call names. */
+  public grantHostedZoneRead(hostedZoneId: string): void {
     this.addToRolePolicy(new iam.PolicyStatement({
       actions:   ['route53:GetHostedZone'],
-      resources: ['*'],
+      resources: [`arn:${cdk.Aws.PARTITION}:route53:::hostedzone/${hostedZoneId}`],
     }));
   }
 }

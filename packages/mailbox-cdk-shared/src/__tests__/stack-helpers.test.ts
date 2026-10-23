@@ -7,12 +7,13 @@
  * the compiler, and CloudFormation would only report it when the resource is created.
  */
 
-import { Match, Template }         from 'aws-cdk-lib/assertions';
-import { Construct }               from 'constructs';
+import { Match, Template }                from 'aws-cdk-lib/assertions';
+import { Construct }                      from 'constructs';
 
-import { StackHelpers }            from '../stack-helpers';
+import { actionsOf, allPolicyStatements } from '../cdk-test-support';
+import { StackHelpers }                   from '../stack-helpers';
 
-import { createStackWithResolver } from './stack-helpers-helpers';
+import { createStackWithResolver }        from './stack-helpers-helpers';
 
 describe('StackHelpers', () => {
   const { stack, resolver } = createStackWithResolver();
@@ -67,6 +68,33 @@ describe('StackHelpers', () => {
 
       expect(zoneStack.resolve(zoneName)).toEqual({ 'Fn::GetAtt': [logicalId, 'domainName'] });
     });
+
+    it('grants the stack-helpers Lambda route53:GetHostedZone on that zone only', () => {
+      const route53Statements = allPolicyStatements(template)
+        .filter((statement) => actionsOf(statement).some((action) => action.startsWith('route53:')));
+
+      expect(route53Statements).toEqual([
+        {
+          Effect:   'Allow',
+          Action:   'route53:GetHostedZone',
+          Resource: { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':route53:::hostedzone/Z123']] },
+        },
+      ]);
+    });
+
+    it('grants no route53 statement for a literal empty zone id', () => {
+      const { stack: emptyStack, resolver: emptyResolver } = createStackWithResolver();
+      StackHelpers.getOrCreate(emptyStack, emptyResolver).resolveHostedZoneName(
+        new Construct(emptyStack, 'Caller'),
+        'zone-name',
+        '',
+      );
+
+      const route53Statements = allPolicyStatements(Template.fromStack(emptyStack))
+        .filter((statement) => actionsOf(statement).some((action) => action.startsWith('route53:')));
+
+      expect(route53Statements).toEqual([]);
+    });
   });
 
   describe('resolveS3SafeStackName', () => {
@@ -90,6 +118,13 @@ describe('StackHelpers', () => {
       const logicalId = logicalIdOfOnlyCustomResource(template);
 
       expect(nameStack.resolve(s3SafeName)).toEqual({ 'Fn::GetAtt': [logicalId, 's3SafeDataStackName'] });
+    });
+
+    it('grants no route53 statement, since no zone is looked up', () => {
+      const route53Statements = allPolicyStatements(template)
+        .filter((statement) => actionsOf(statement).some((action) => action.startsWith('route53:')));
+
+      expect(route53Statements).toEqual([]);
     });
   });
 

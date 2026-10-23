@@ -49,6 +49,10 @@ export class StackHelpers extends Construct {
    * name of the hosted zone without its trailing dot, empty when `hostedZoneId` is empty.
    */
   resolveHostedZoneName(scope: Construct, id: string, hostedZoneId: string): string {
+    const isLiteralEmpty = !cdk.Token.isUnresolved(hostedZoneId) && hostedZoneId === '';
+    if (!isLiteralEmpty) {
+      this.helperLambda.grantHostedZoneRead(hostedZoneId);
+    }
     const customResource = this.attach(scope, id, { HostedZoneId: hostedZoneId });
     return customResource.getAttString('domainName');
   }

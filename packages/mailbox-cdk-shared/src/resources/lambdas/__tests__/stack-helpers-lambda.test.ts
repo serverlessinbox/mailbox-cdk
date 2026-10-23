@@ -1,9 +1,9 @@
 /// <reference types="jest" />
 
 /**
- * Pins the deployed shape of the stack-helpers Lambda: it runs the stack-helpers bundle and may call
- * Route 53 GetHostedZone and nothing else of Route 53. Without the grant every lookup fails at deploy
- * time with AccessDenied, which no synth-time check reports.
+ * Pins the deployed shape of the stack-helpers Lambda's Route 53 access: it runs the stack-helpers
+ * bundle, and it gets `route53:GetHostedZone` only on the one zone a resolver call names. Without the
+ * grant every zone lookup fails at deploy time with AccessDenied, which no synth-time check reports.
  */
 
 import { Match, Template }                         from 'aws-cdk-lib/assertions';
@@ -15,7 +15,7 @@ import { StackHelpersLambda }                      from '../stack-helpers-lambda
 describe('StackHelpersLambda', () => {
   const { stack, resolver } = createStackWithResolver();
   new StackHelpersLambda(stack, 'handler', { artifactResolver: resolver });
-  const template = Template.fromStack(stack);
+  const template            = Template.fromStack(stack);
 
   it('loads its code from the stack-helpers bundle of mailbox-cdk-shared', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
@@ -23,12 +23,26 @@ describe('StackHelpersLambda', () => {
     });
   });
 
-  it('may only get hosted zones, and may not list them', () => {
+  it('grants no route53 statement while no zone is named', () => {
     const route53Statements = allPolicyStatements(template)
       .filter((statement) => actionsOf(statement).some((action) => action.startsWith('route53:')));
 
+    expect(route53Statements).toEqual([]);
+  });
+
+  it('grants route53:GetHostedZone on the named zone\'s ARN and nothing else', () => {
+    const { stack: zoneStack, resolver: zoneResolver } = createStackWithResolver();
+    new StackHelpersLambda(zoneStack, 'handler', { artifactResolver: zoneResolver }).grantHostedZoneRead('Z123');
+
+    const route53Statements = allPolicyStatements(Template.fromStack(zoneStack))
+      .filter((statement) => actionsOf(statement).some((action) => action.startsWith('route53:')));
+
     expect(route53Statements).toEqual([
-      { Effect: 'Allow', Action: 'route53:GetHostedZone', Resource: '*' },
+      {
+        Effect:   'Allow',
+        Action:   'route53:GetHostedZone',
+        Resource: { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':route53:::hostedzone/Z123']] },
+      },
     ]);
   });
 });
