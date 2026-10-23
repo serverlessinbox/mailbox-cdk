@@ -1,4 +1,4 @@
-import { context }                      from 'esbuild';
+import { build }                        from 'esbuild';
 import { glob }                         from 'glob';
 import { join }                         from 'path';
 
@@ -18,7 +18,7 @@ export async function bundleJsiiPackage(absoluteFolder: string, jsiiExcludes: st
   const ignorePatterns = jsiiExcludes.map(excludePath => join(absoluteFolder, excludePath));
   const entryPoints    = await glob(join(absoluteFolder, sourcesWithoutDeclarationsGlob), { ignore: ignorePatterns });
 
-  const tsToJs = await context({
+  await build({
     plugins: [
       jsiiIgnorePlugin(absoluteFolder),
       localLibImportPlugin(absoluteFolder),
@@ -30,7 +30,4 @@ export async function bundleJsiiPackage(absoluteFolder: string, jsiiExcludes: st
     platform: 'node',
     logLevel: 'info',
   });
-
-  await tsToJs.rebuild();
-  await tsToJs.dispose();
 }

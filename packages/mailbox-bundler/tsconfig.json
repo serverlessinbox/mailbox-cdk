@@ -8,14 +8,10 @@
     "declaration": true,
     "declarationMap": false,
     "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "esModuleInterop": true,
     "types": ["node"]
   },
   "include": ["src/**/*.ts"]

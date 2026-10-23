@@ -1,7 +1,7 @@
 import { Command, Option } from 'clipanion';
 import { resolve }         from 'path';
 
-import { bundleLambdaZip } from '../bundle-lambda-zip';
+import { bundleLambdaZip } from '../lambda-zip/bundle-lambda-zip';
 
 /**
  * CLI entry point of `mailbox-bundler lambda-zip`: turns the flags into a bundle request and runs it.

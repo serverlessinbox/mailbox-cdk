@@ -11,8 +11,8 @@ export function jsiiIgnorePlugin(packageFolder: string): Plugin {
   const packageRequire = createRequire(require.resolve(packageFolder));
   return {
     name: 'jsiiIgnore',
-    setup(buildInstance: PluginBuild) {
-      buildInstance.onResolve({ filter: /.*/ }, async args => {
+    setup(build: PluginBuild) {
+      build.onResolve({ filter: /.*/ }, args => {
         if (args.kind === 'import-statement') {
           if (isJsiiPackage(packageRequire, args.path)) {
             return { external: true };
