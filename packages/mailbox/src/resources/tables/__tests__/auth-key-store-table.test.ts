@@ -68,7 +68,7 @@ describe('AuthKeyStoreTable', () => {
     const template = Template.fromStack(stack);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(defaultCfnResource(role)) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
@@ -97,7 +97,7 @@ describe('AuthKeyStoreTable', () => {
     const template = Template.fromStack(stack);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(defaultCfnResource(role)) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({

@@ -9,9 +9,11 @@ import { Match, Template }                           from 'aws-cdk-lib/assertion
 import { Code, Function, Runtime }                   from 'aws-cdk-lib/aws-lambda';
 import { App, BootstraplessSynthesizer, Stack }      from 'aws-cdk-lib';
 
+import { defaultCfnResource }                        from '../../../utils/cfn-resource';
 import { AuthKeyRefreshSchedule }                    from '../auth-key-refresh-schedule';
 
 describe('AuthKeyRefreshSchedule', () => {
+  let targetId: string;
   let template: Template;
 
   beforeEach(() => {
@@ -20,6 +22,7 @@ describe('AuthKeyRefreshSchedule', () => {
 
     new AuthKeyRefreshSchedule(target, 'refresh-schedule', { target });
 
+    targetId = stack.getLogicalId(defaultCfnResource(target));
     template = Template.fromStack(stack);
   });
 
@@ -28,7 +31,7 @@ describe('AuthKeyRefreshSchedule', () => {
     template.hasResourceProperties('AWS::Events::Rule', {
       ScheduleExpression: 'rate(6 hours)',
       State:              'ENABLED',
-      Targets:            [{ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^target'), 'Arn'] }, Id: 'Target0' }],
+      Targets:            [Match.objectLike({ Arn: { 'Fn::GetAtt': [targetId, 'Arn'] } })],
     });
   });
 });

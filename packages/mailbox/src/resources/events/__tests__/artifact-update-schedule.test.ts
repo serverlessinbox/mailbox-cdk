@@ -9,9 +9,11 @@ import { Match, Template }                                from 'aws-cdk-lib/asse
 import { Code, Function, Runtime }                        from 'aws-cdk-lib/aws-lambda';
 import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
 
+import { defaultCfnResource }                             from '../../../utils/cfn-resource';
 import { ArtifactUpdateSchedule }                         from '../artifact-update-schedule';
 
 describe('ArtifactUpdateSchedule', () => {
+  let targetId: string;
   let template: Template;
 
   beforeEach(() => {
@@ -20,6 +22,7 @@ describe('ArtifactUpdateSchedule', () => {
 
     new ArtifactUpdateSchedule(target, 'update-schedule', { target, interval: Duration.hours(3) });
 
+    targetId = stack.getLogicalId(defaultCfnResource(target));
     template = Template.fromStack(stack);
   });
 
@@ -28,7 +31,7 @@ describe('ArtifactUpdateSchedule', () => {
     template.hasResourceProperties('AWS::Events::Rule', {
       ScheduleExpression: 'rate(3 hours)',
       State:              'ENABLED',
-      Targets:            [Match.objectLike({ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^target'), 'Arn'] } })],
+      Targets:            [Match.objectLike({ Arn: { 'Fn::GetAtt': [targetId, 'Arn'] } })],
     });
   });
 });

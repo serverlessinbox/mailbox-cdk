@@ -10,10 +10,13 @@ import { Code, Function, Runtime }              from 'aws-cdk-lib/aws-lambda';
 import { Queue }                                from 'aws-cdk-lib/aws-sqs';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
+import { defaultCfnResource }                   from '../../../utils/cfn-resource';
 import { SearchIndexingSchedule }               from '../search-indexing-schedule';
 
 describe('SearchIndexingSchedule', () => {
-  let template: Template;
+  let dlqId:      string;
+  let targetId:   string;
+  let template:   Template;
 
   beforeEach(() => {
     const stack           = new Stack(new App(), 'TestStack', { synthesizer: new BootstraplessSynthesizer() });
@@ -22,6 +25,8 @@ describe('SearchIndexingSchedule', () => {
 
     new SearchIndexingSchedule(target, 'indexing-schedule', { target, deadLetterQueue });
 
+    targetId = stack.getLogicalId(defaultCfnResource(target));
+    dlqId    = stack.getLogicalId(defaultCfnResource(deadLetterQueue));
     template = Template.fromStack(stack);
   });
 
@@ -31,13 +36,13 @@ describe('SearchIndexingSchedule', () => {
       ScheduleExpression: 'rate(6 hours)',
       Description:        'Trigger Tantivy indexing every 6 hours',
       State:              'ENABLED',
-      Targets:            [Match.objectLike({ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^target'), 'Arn'] } })],
+      Targets:            [Match.objectLike({ Arn: { 'Fn::GetAtt': [targetId, 'Arn'] } })],
     });
   });
 
   it('sends invocations EventBridge cannot deliver to the dead-letter queue', () => {
     template.hasResourceProperties('AWS::Events::Rule', {
-      Targets: [Match.objectLike({ DeadLetterConfig: { Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^dlq'), 'Arn'] } } })],
+      Targets: [Match.objectLike({ DeadLetterConfig: { Arn: { 'Fn::GetAtt': [dlqId, 'Arn'] } } })],
     });
   });
 });

@@ -1,9 +1,10 @@
-import { Match, Template }               from 'aws-cdk-lib/assertions';
-import * as kms                          from 'aws-cdk-lib/aws-kms';
-import * as cdk                          from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
+import { Match, Template }      from 'aws-cdk-lib/assertions';
+import * as kms                 from 'aws-cdk-lib/aws-kms';
 
-import { EmailProcessingQueue }          from '../email-processing-queue';
+import { defaultCfnResource }   from '../../../utils/cfn-resource';
+import { EmailProcessingQueue } from '../email-processing-queue';
+
+import { createStack }          from './queue-helpers';
 
 /**
  * EmailProcessingQueue tests.
@@ -12,14 +13,6 @@ import { EmailProcessingQueue }          from '../email-processing-queue';
  * encryption it chooses. A regression redelivers messages mid-processing, drops failed messages early, or
  * encrypts one of the queues differently from the other.
  */
-
-function createStack(): cdk.Stack {
-  const app = new App();
-  return new cdk.Stack(app, 'TestStack', {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
-}
 
 describe('EmailProcessingQueue', () => {
   it('queue visibility timeout is 6 minutes, so a message is not redelivered while its consumer works', () => {
@@ -39,7 +32,7 @@ describe('EmailProcessingQueue', () => {
     new EmailProcessingQueue(stack, 'email-processing-queue');
 
     const template = Template.fromStack(stack);
-    const dlqId    = stack.getLogicalId(stack.node.findChild('email-processing-queue-dlq').node.defaultChild as cdk.CfnResource);
+    const dlqId    = stack.getLogicalId(defaultCfnResource(stack.node.findChild('email-processing-queue-dlq')));
 
     template.hasResourceProperties('AWS::SQS::Queue', {
       RedrivePolicy: { deadLetterTargetArn: { 'Fn::GetAtt': [dlqId, 'Arn'] }, maxReceiveCount: 3 },
@@ -64,7 +57,7 @@ describe('EmailProcessingQueue', () => {
     new EmailProcessingQueue(stack, 'email-processing-queue', { queueProps: { encryptionMasterKey: key } });
 
     Template.fromStack(stack).allResourcesProperties('AWS::SQS::Queue', {
-      KmsMasterKeyId: { 'Fn::GetAtt': [stack.getLogicalId(key.node.defaultChild as cdk.CfnResource), 'Arn'] },
+      KmsMasterKeyId: { 'Fn::GetAtt': [stack.getLogicalId(defaultCfnResource(key)), 'Arn'] },
     });
   });
 });

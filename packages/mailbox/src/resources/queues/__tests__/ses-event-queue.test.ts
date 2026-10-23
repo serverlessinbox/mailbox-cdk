@@ -1,10 +1,10 @@
-import { Match, Template }               from 'aws-cdk-lib/assertions';
-import * as kms                          from 'aws-cdk-lib/aws-kms';
-import { Topic }                         from 'aws-cdk-lib/aws-sns';
-import * as cdk                          from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
+import { Match, Template }    from 'aws-cdk-lib/assertions';
+import * as kms               from 'aws-cdk-lib/aws-kms';
+import { Topic }              from 'aws-cdk-lib/aws-sns';
 
-import { SesEventQueue }                 from '../ses-event-queue';
+import { SesEventQueue }      from '../ses-event-queue';
+
+import { createStack }        from './queue-helpers';
 
 /**
  * SesEventQueue tests.
@@ -13,14 +13,6 @@ import { SesEventQueue }                 from '../ses-event-queue';
  * permission on a customer-managed key, raw message delivery); SNS cannot deliver to a queue under the
  * AWS-managed SQS key, so a regression drops notifications silently.
  */
-
-function createStack(): cdk.Stack {
-  const app = new App();
-  return new cdk.Stack(app, 'TestStack', {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
-}
 
 describe('SesEventQueue', () => {
   it('is unencrypted, with a 6 minute visibility timeout, when no key is supplied', () => {

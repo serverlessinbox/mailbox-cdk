@@ -9,12 +9,14 @@ import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Code, Function, Runtime }              from 'aws-cdk-lib/aws-lambda';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
+import { defaultCfnResource }                   from '../../../utils/cfn-resource';
 import { EmailProcessingQueue }                 from '../../queues/email-processing-queue';
 import { EmailProcessingQueueEvent }            from '../email-processing-queue-event';
 
 describe('EmailProcessingQueueEvent', () => {
   let stack: Stack;
   let queue: EmailProcessingQueue;
+  let targetId: string;
   let template: Template;
 
   beforeEach(() => {
@@ -24,6 +26,7 @@ describe('EmailProcessingQueueEvent', () => {
 
     new EmailProcessingQueueEvent(target, 'email-processing-queue', { target, queue });
 
+    targetId = stack.getLogicalId(defaultCfnResource(target));
     template = Template.fromStack(stack);
   });
 
@@ -33,7 +36,7 @@ describe('EmailProcessingQueueEvent', () => {
     template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
       EventSourceArn:                 queueArn,
-      FunctionName:                   Match.objectLike({ Ref: Match.stringLikeRegexp('^target') }),
+      FunctionName:                   { Ref: targetId },
       BatchSize:                      10,
       MaximumBatchingWindowInSeconds: 15,
       FunctionResponseTypes:          Match.arrayEquals(['ReportBatchItemFailures']),

@@ -5,18 +5,12 @@
  * queue; a regression loses failed invocation records early.
  */
 
-import { Template }                                from 'aws-cdk-lib/assertions';
-import * as cdk                                    from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer, Duration } from 'aws-cdk-lib';
+import { Template }                   from 'aws-cdk-lib/assertions';
+import { Duration }                   from 'aws-cdk-lib';
 
-import { TantivyIndexingScheduleDlq }              from '../tantivy-indexing-schedule-dlq';
+import { TantivyIndexingScheduleDlq } from '../tantivy-indexing-schedule-dlq';
 
-function createStack(): cdk.Stack {
-  return new cdk.Stack(new App(), 'TestStack', {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
-}
+import { createStack }                from './queue-helpers';
 
 describe('TantivyIndexingScheduleDlq', () => {
   it('retains messages for 14 days', () => {

@@ -10,12 +10,14 @@ import { Code, Function, Runtime }              from 'aws-cdk-lib/aws-lambda';
 import { Topic }                                from 'aws-cdk-lib/aws-sns';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
+import { defaultCfnResource }                   from '../../../utils/cfn-resource';
 import { SesEventQueue }                        from '../../queues/ses-event-queue';
 import { SesNotificationsQueueEvent }           from '../ses-notifications-queue-event';
 
 describe('SesNotificationsQueueEvent', () => {
   let stack: Stack;
   let queue: SesEventQueue;
+  let targetId: string;
   let template: Template;
 
   beforeEach(() => {
@@ -25,6 +27,7 @@ describe('SesNotificationsQueueEvent', () => {
 
     new SesNotificationsQueueEvent(target, 'ses-notifications-queue', { target, queue });
 
+    targetId = stack.getLogicalId(defaultCfnResource(target));
     template = Template.fromStack(stack);
   });
 
@@ -34,7 +37,7 @@ describe('SesNotificationsQueueEvent', () => {
     template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
       EventSourceArn:                 queueArn,
-      FunctionName:                   Match.objectLike({ Ref: Match.stringLikeRegexp('^target') }),
+      FunctionName:                   { Ref: targetId },
       BatchSize:                      100,
       MaximumBatchingWindowInSeconds: 30,
       ScalingConfig:                  Match.objectEquals({ MaximumConcurrency: 5 }),

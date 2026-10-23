@@ -9,9 +9,11 @@ import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Code, Function, Runtime }              from 'aws-cdk-lib/aws-lambda';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
+import { defaultCfnResource }                   from '../../../utils/cfn-resource';
 import { SupportCollectionSchedule }            from '../support-collection-schedule';
 
 describe('SupportCollectionSchedule', () => {
+  let targetId: string;
   let template: Template;
 
   beforeEach(() => {
@@ -20,6 +22,7 @@ describe('SupportCollectionSchedule', () => {
 
     new SupportCollectionSchedule(target, 'collection-schedule', { target });
 
+    targetId = stack.getLogicalId(defaultCfnResource(target));
     template = Template.fromStack(stack);
   });
 
@@ -29,7 +32,7 @@ describe('SupportCollectionSchedule', () => {
       ScheduleExpression: 'cron(0 * * * ? *)',
       Description:        'Hourly trigger for support role assumption collector and expiry enforcement',
       State:              'ENABLED',
-      Targets:            [Match.objectLike({ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^target'), 'Arn'] } })],
+      Targets:            [Match.objectLike({ Arn: { 'Fn::GetAtt': [targetId, 'Arn'] } })],
     });
   });
 });

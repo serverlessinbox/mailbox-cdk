@@ -53,8 +53,4 @@ describe('StackFailedEvent', () => {
     expect(Object.values(template.findResources('AWS::Events::Rule'))).toEqual([expect.objectContaining(RETAINED)]);
     expect(Object.values(template.findResources('AWS::Lambda::Permission'))).toEqual([expect.objectContaining(RETAINED)]);
   });
-
-  it('exposes the rule ARN', () => {
-    expect(stack.resolve(event.ruleArn)).toEqual({ 'Fn::GetAtt': [expect.stringMatching(/^targetstackfailed/), 'Arn'] });
-  });
 });

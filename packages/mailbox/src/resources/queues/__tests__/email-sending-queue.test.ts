@@ -4,19 +4,12 @@
  * processed; a dead-letter queue that is missing or kept for less than 14 days would lose the submissions that
  * failed.
  */
-import { Match, Template }               from 'aws-cdk-lib/assertions';
-import * as cdk                          from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
+import { Match, Template }    from 'aws-cdk-lib/assertions';
 
-import { EmailSendingQueue }             from '../email-sending-queue';
+import { defaultCfnResource } from '../../../utils/cfn-resource';
+import { EmailSendingQueue }  from '../email-sending-queue';
 
-function createStack(): cdk.Stack {
-  const app = new App();
-  return new cdk.Stack(app, 'TestStack', {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
-}
+import { createStack }        from './queue-helpers';
 
 describe('EmailSendingQueue', () => {
   it('sets the visibility timeout to 6 minutes on the main queue, not only its dead-letter queue', () => {
@@ -36,7 +29,7 @@ describe('EmailSendingQueue', () => {
     new EmailSendingQueue(stack, 'email-sending-queue');
 
     const template = Template.fromStack(stack);
-    const dlqId    = stack.getLogicalId(stack.node.findChild('email-sending-queue-dlq').node.defaultChild as cdk.CfnResource);
+    const dlqId    = stack.getLogicalId(defaultCfnResource(stack.node.findChild('email-sending-queue-dlq')));
 
     template.hasResourceProperties('AWS::SQS::Queue', {
       RedrivePolicy: { deadLetterTargetArn: { 'Fn::GetAtt': [dlqId, 'Arn'] }, maxReceiveCount: 5 },

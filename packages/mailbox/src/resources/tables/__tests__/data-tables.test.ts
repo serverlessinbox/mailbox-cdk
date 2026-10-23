@@ -14,6 +14,7 @@ import * as iam                          from 'aws-cdk-lib/aws-iam';
 import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
+import { defaultCfnResource }            from '../../../utils/cfn-resource';
 import { DataTable }                     from '../data-tables';
 
 type GrantMethod = 'grantRead' | 'grantReadWrite';
@@ -29,10 +30,10 @@ function expectGrantedStatement(method: GrantMethod, actions: string[]): void {
 
   new DataTable(table)[method](role);
 
-  const tableArn = { 'Fn::GetAtt': [stack.getLogicalId(table.node.defaultChild as cdk.CfnResource), 'Arn'] };
+  const tableArn = { 'Fn::GetAtt': [stack.getLogicalId(defaultCfnResource(table)), 'Arn'] };
 
   Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
-    Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+    Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(defaultCfnResource(role)) }]),
     PolicyDocument: {
       Statement: Match.arrayEquals([
         Match.objectEquals({
