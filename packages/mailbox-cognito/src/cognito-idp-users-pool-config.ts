@@ -30,7 +30,7 @@ export interface ICognitoIdpUsersPoolConfig {
    * Grants the users API Lambda the permissions to administer users in this pool. It is called once, with the
    * Lambda; without the grant the Lambda's calls to Cognito are denied.
    */
-  grantAdminAccess(fn: IFunction): void;
+  grantAdminAccess(grantee: IFunction): void;
 
   /**
    * Returns the groups that mark admins and users. Leave it out when your pool defines no such groups: the API

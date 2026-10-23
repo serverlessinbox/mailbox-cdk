@@ -503,9 +503,9 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
    * Grant a Lambda the permissions to administer users in this pool: list, create, delete, enable and
    * disable users, reset their passwords, and manage their group membership.
    */
-  public grantAdminAccess(fn: lambda.IFunction): void {
+  public grantAdminAccess(grantee: lambda.IFunction): void {
     this.userPool.grant(
-      fn,
+      grantee,
       'cognito-idp:ListUsers',
       'cognito-idp:ListUsersInGroup',
       'cognito-idp:ListGroups',

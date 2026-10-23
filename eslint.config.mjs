@@ -129,7 +129,7 @@ export default [
         {
           min: 3,
           properties: 'always',
-          exceptions: ['i', 'j', 'k', 'id', 'ui', 's3', 't'],
+          exceptions: ['i', 'j', 'k', 'id', 'ui', 's3', 't', 'ws', 'op', 'of', 'is'],
           exceptionPatterns: ['^[A-Z]'],
         },
       ],
