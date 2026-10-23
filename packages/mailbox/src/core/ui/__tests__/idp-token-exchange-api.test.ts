@@ -69,4 +69,20 @@ describe('IdpTokenExchangeApi', () => {
 
     expect(dependsOn).toContain(stack.getLogicalId(prerequisite));
   });
+
+  it('routes every method under /auth/{proxy+} to the token-exchange function', () => {
+    createApi();
+
+    Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Route', {
+      RouteKey: 'ANY /auth/{proxy+}',
+    });
+  });
+
+  it('backs the route with a proxy integration', () => {
+    createApi();
+
+    Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Integration', {
+      IntegrationType: 'AWS_PROXY',
+    });
+  });
 });

@@ -78,6 +78,16 @@ describe('MailboxEncryption', () => {
       expect(plan.blobStore).toEqual({ encryptionKey: blobStore });
     });
 
+    it('falls back to the shared key for each resource type that perResource leaves out', () => {
+      const { shared, blobStore } = newKeys();
+
+      const plan = MailboxEncryption.plan({ mode: 'customer-managed', key: shared, perResource: { blobStore } });
+
+      expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.CUSTOMER_MANAGED, encryptionKey: shared });
+      expect(plan.queues).toEqual({ encryption: QueueEncryption.KMS, encryptionMasterKey: shared });
+      expect(plan.blobStore).toEqual({ encryptionKey: blobStore });
+    });
+
     it('needs only the blob store key when the tables and the queues are excluded', () => {
       const { blobStore } = newKeys();
 

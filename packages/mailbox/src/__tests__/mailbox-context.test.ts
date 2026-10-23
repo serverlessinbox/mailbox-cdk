@@ -4,10 +4,12 @@
  * Pins the two branches of the foundation a Mailbox resolves. A supplied artifact resolver is used as
  * is, so its `mailbox-cdk` version becomes the stack version every base tag carries. Without one, the
  * resolver is pinned from the versions the package ships with, so consumers that pass nothing still
- * deploy the release they were built against. The vendor link is keyed by the root-stack identity tag.
+ * deploy the release they were built against. The vendor link is keyed by the root-stack identity tag,
+ * and the encryption plan is the one the KMS settings it is given resolve to.
  */
 
 import { ServerlessInboxTagKeys }                      from '@serverlessinbox/mailbox-cdk-shared';
+import { TableEncryption }                             from 'aws-cdk-lib/aws-dynamodb';
 
 import { loadMailboxArtifactVersions }                 from '../mailbox-artifact-versions';
 import { MailboxContext }                              from '../mailbox-context';
@@ -38,5 +40,13 @@ describe('MailboxContext', () => {
     const context = MailboxContext.resolve(stack, { artifactResolver });
 
     expect(context.vendorLink.stackIdentityTagKey).toBe(ServerlessInboxTagKeys.rootStack);
+  });
+
+  it('resolves the encryption plan from the KMS settings it is given', () => {
+    const { stack, artifactResolver } = newDeployerTestStack();
+
+    const context = MailboxContext.resolve(stack, { artifactResolver, kms: { mode: 'none' } });
+
+    expect(context.encryptionPlan.dynamoTables).toEqual({ encryption: TableEncryption.DEFAULT });
   });
 });

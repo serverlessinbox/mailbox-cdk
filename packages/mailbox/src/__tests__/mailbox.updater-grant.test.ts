@@ -6,20 +6,15 @@
  * The auto-updater writes new UI content into a bucket it does not create, so Mailbox grants the
  * resolver's own principal on that bucket's ARN rather than the updater guessing a bucket name from
  * a pattern. These cases pin that the grant lands on the updater's own role, scoped to the bucket
- * the template creates and never by tag (a tag condition denies S3 object writes), and that a
- * resolver without a principal is skipped: granting it unconditionally dereferences a principal it
- * does not have and crashes synthesis.
+ * the template creates and never by tag (a tag condition denies S3 object writes).
  */
 
 import { actionsOf, statementsForRole }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import type { PolicyStatementJson }                      from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { MailboxArtifactResolverFactory }                from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                      from 'aws-cdk-lib/assertions';
 import * as cdk                                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
 
-import { loadMailboxArtifactVersions }                   from '../mailbox-artifact-versions';
-import { loadMailboxRegistryRecord }                     from '../mailbox-registry-record';
 import { Mailbox }                                       from '../mailbox';
 import { AutoUpdater }                                   from '../platform/update/auto-updater';
 
@@ -109,19 +104,5 @@ describe('Mailbox with a grantable artifact resolver (AutoUpdater)', () => {
 
   it.each(['content/*', 'config/*'])("grants the updater's role listing of the admin UI bucket limited to %s", (prefix) => {
     expect(listsOnly(prefix)).toHaveLength(1);
-  });
-});
-
-describe('Mailbox with a resolver that has no principal (the default pinned resolver)', () => {
-  it('synthesizes without error', () => {
-    const stack          = buildStack('TestAutoUpdaterPinned');
-    const pinnedResolver = MailboxArtifactResolverFactory.fromContext(stack, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
-
-    expect(() => {
-      new Mailbox(stack, 'mailbox', {
-        authProvider:     createMockAuthProvider(),
-        artifactResolver: pinnedResolver,
-      });
-    }).not.toThrow();
   });
 });

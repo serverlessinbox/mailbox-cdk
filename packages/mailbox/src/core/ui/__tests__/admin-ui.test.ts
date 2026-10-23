@@ -3,8 +3,9 @@
 /**
  * AdminUi tests: what the Admin UI adds on top of MailboxUi.
  *
- * The token-exchange function reads the `ADMIN_UI` config row, and the OAuth client is requested
- * from the auth provider as an Admin-API client named after the app.
+ * The token-exchange function reads the `ADMIN_UI` config row, the OAuth client is requested from the
+ * auth provider as an Admin-API client named after the app, and the runtime config the Admin UI writes
+ * to `config/config.json` carries the URLs it is given alongside the config it is given.
  */
 
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
@@ -12,11 +13,45 @@ import { Template }                             from 'aws-cdk-lib/assertions';
 import * as dynamodb                            from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+import * as t                                   from 'typanion';
 
 import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
 import { DataTable }                            from '../../../resources/tables/data-tables';
 import type { IMailboxAuthProvider }            from '../../auth/types';
 import { AdminUi }                              from '../admin-ui';
+import type { AdminUiProps }                    from '../admin-ui';
+
+const CONFIG_JSON_KEY = 'config/config.json';
+
+const isContentDeploymentProperties = t.isPartial({
+  sources: t.isArray(t.isPartial({ kind: t.isString() })),
+});
+
+const isDataSource = t.isPartial({ key: t.isString(), body: t.isString() });
+
+const isWrittenConfig = t.isObject({
+  featureFlag: t.isBoolean(),
+  apiUrl:      t.isString(),
+  webmailUrl:  t.isString(),
+});
+
+/** The bodies of every `config/config.json` source the template deploys into the Admin UI bucket. */
+function writtenConfigBodies(template: Template): string[] {
+  const bodies: string[] = [];
+  for (const resource of Object.values(template.findResources('Custom::ContentDeployment'))) {
+    t.assert(resource.Properties, isContentDeploymentProperties);
+    for (const source of resource.Properties.sources) {
+      if (source.kind !== 'data') {
+        continue;
+      }
+      t.assert(source, isDataSource);
+      if (source.key === CONFIG_JSON_KEY) {
+        bodies.push(source.body);
+      }
+    }
+  }
+  return bodies;
+}
 
 describe('AdminUi', () => {
   let stack: cdk.Stack;
@@ -37,7 +72,7 @@ describe('AdminUi', () => {
     };
   }
 
-  function createAdminUi(): AdminUi {
+  function createAdminUi(overrides: Partial<AdminUiProps> = {}): AdminUi {
     return new AdminUi(stack, 'admin-ui', {
       domainName:       'admin.example.com',
       configTable:      new DataTable(new dynamodb.Table(stack, 'config-table', {
@@ -54,6 +89,7 @@ describe('AdminUi', () => {
         location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
         deploymentRegion: stack.region,
       }),
+      ...overrides,
     });
   }
 
@@ -83,6 +119,24 @@ describe('AdminUi', () => {
 
     template.hasResourceProperties('AWS::Lambda::Function', {
       Environment: { Variables: { SERVICE_NAME: 'idp-token-exchange-admin-ui', OAUTH_CLIENT_NAME: 'ADMIN_UI' } },
+    });
+  });
+
+  it('writes the UI config it is given with the API and webmail URLs merged in', () => {
+    createAdminUi({
+      apiUrl:     'https://api.admin.example.com',
+      webmailUrl: 'https://mail.example.com',
+      uiConfig:   { featureFlag: true },
+    });
+
+    const bodies = writtenConfigBodies(Template.fromStack(stack));
+    expect(bodies).toHaveLength(1);
+    const written: unknown = JSON.parse(bodies[0] ?? '');
+    t.assert(written, isWrittenConfig);
+    expect(written).toEqual({
+      featureFlag: true,
+      apiUrl:      'https://api.admin.example.com',
+      webmailUrl:  'https://mail.example.com',
     });
   });
 });

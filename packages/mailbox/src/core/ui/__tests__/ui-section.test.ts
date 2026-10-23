@@ -2,14 +2,17 @@
 
 /**
  * UiSection takes over the `ui` group node. These tests pin what the section owns: the component
- * tag its subtree carries, and the UIs it builds under itself at fixed ids and under their enabling
+ * tag its subtree carries, the UIs it builds under itself at fixed ids and under their enabling
  * conditions (the ids are part of every resource's logical ID, so a rename replaces deployed
- * resources).
+ * resources), the certificate each UI is served with, and the content-deploy grant it gives the
+ * artifact resolver when that resolver has a principal to grant.
  */
 import { ArtifactZone, PinnedArtifactResolver }                   from '@serverlessinbox/artifact-registry-cdk';
 import { ServerlessInboxTagKeys }                                 from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                               from 'aws-cdk-lib/assertions';
+import { Match, Template }                                        from 'aws-cdk-lib/assertions';
+import * as acm                                                   from 'aws-cdk-lib/aws-certificatemanager';
 import { Table, AttributeType }                                   from 'aws-cdk-lib/aws-dynamodb';
+import * as iam                                                   from 'aws-cdk-lib/aws-iam';
 import * as cdk                                                   from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer, CfnResource, TagManager } from 'aws-cdk-lib';
 import { DependencyGroup }                                        from 'constructs';
@@ -21,8 +24,25 @@ import { MailboxDomains }                                         from '../../do
 import { UiSection }                                              from '../ui-section';
 import type { UiSectionProps }                                    from '../ui-section';
 
+const OPERATOR_ADMIN_CERTIFICATE_ARN = 'arn:aws:acm:us-east-1:123456789012:certificate/operator-admin';
+const EDGE_UI_CERTIFICATE_ARN        = 'arn:aws:acm:us-east-1:123456789012:certificate/edge-ui';
+
 describe('UiSection', () => {
   let stack: cdk.Stack;
+
+  function newResolver(): PinnedArtifactResolver {
+    return new PinnedArtifactResolver({
+      packages:         {
+        'mailbox-cdk':        { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+        'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+        'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+        'mailbox-admin-ui':   { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+        'mailbox-webmail-ui': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+      },
+      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
+      deploymentRegion: stack.region,
+    });
+  }
 
   function newSection(overrides: Partial<UiSectionProps> = {}): UiSection {
     const authProvider: IMailboxAuthProvider = {
@@ -38,17 +58,7 @@ describe('UiSection', () => {
       createAdminApiAddons:    () => [],
     };
     return new UiSection(stack, 'ui', {
-      artifactResolver: new PinnedArtifactResolver({
-        packages:         {
-          'mailbox-cdk':        { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-admin-ui':   { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-webmail-ui': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-        },
-        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-        deploymentRegion: stack.region,
-      }),
+      artifactResolver: newResolver(),
       authProvider,
       enableAdminUi:   true,
       enableWebmailUi: true,
@@ -105,5 +115,48 @@ describe('UiSection', () => {
     expect(section.node.tryFindChild('admin-ui')).toBeUndefined();
     expect(section.node.tryFindChild('webmail-ui')).toBeDefined();
     expect(section.adminUiOrigins).toEqual([]);
+  });
+
+  it('serves the Admin UI with the operator certificate over the edge UI certificate', () => {
+    newSection({
+      enableWebmailUi:      false,
+      certificateOverrides: { adminUi: acm.Certificate.fromCertificateArn(stack, 'operator-admin-cert', OPERATOR_ADMIN_CERTIFICATE_ARN) },
+      edge:                 { uiCertificate: acm.Certificate.fromCertificateArn(stack, 'edge-ui-cert', EDGE_UI_CERTIFICATE_ARN) },
+    });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: { ViewerCertificate: { AcmCertificateArn: OPERATOR_ADMIN_CERTIFICATE_ARN } },
+    });
+  });
+
+  it('serves the Admin UI with the edge UI certificate when the operator gives none', () => {
+    newSection({
+      enableWebmailUi: false,
+      edge:            { uiCertificate: acm.Certificate.fromCertificateArn(stack, 'edge-ui-cert', EDGE_UI_CERTIFICATE_ARN) },
+    });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: { ViewerCertificate: { AcmCertificateArn: EDGE_UI_CERTIFICATE_ARN } },
+    });
+  });
+
+  it('grants the artifact resolver it is given content deploy on the Admin UI bucket when the resolver has a principal', () => {
+    const role = new iam.Role(stack, 'resolver-role', { assumedBy: new iam.AccountRootPrincipal() });
+
+    newSection({
+      enableWebmailUi:  false,
+      artifactResolver: Object.assign(newResolver(), { grantPrincipal: role }),
+    });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: { Statement: Match.arrayWith([Match.objectLike({ Action: Match.arrayWith(['s3:PutObject']) })]) },
+      Roles:          [stack.resolve(role.roleName)],
+    });
+  });
+
+  it('builds the Admin UI without a grant when the artifact resolver has no principal', () => {
+    const section = newSection({ enableWebmailUi: false });
+
+    expect(section.adminUi).toBeDefined();
   });
 });

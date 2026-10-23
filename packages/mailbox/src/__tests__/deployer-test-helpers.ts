@@ -20,6 +20,7 @@ export function newDeployerTestStack(): DeployerTestStack {
   const artifactResolver = new PinnedArtifactResolver({
     packages:         {
       mailbox:              { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
+      'mailbox-go':         { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
       'mailbox-cdk':        { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
       'mailbox-cdk-shared': { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
       'mailbox-cdk-edge':   { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.EDGE },

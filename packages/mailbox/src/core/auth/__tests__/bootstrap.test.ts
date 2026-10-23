@@ -106,6 +106,56 @@ describe('Bootstrap', () => {
     Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', { hostedZoneId: Match.absent() });
   });
 
+  it('sends the OIDC provider and the auth policies it is given', () => {
+    createBootstrap({
+      oidcProvider: {
+        tokenEndpoint:         'https://example.com/token',
+        authorizationEndpoint: 'https://example.com/authorize',
+        authMethod:            'header',
+        usePkce:               true,
+      },
+      authPolicies: { adminApi: { audiences: ['admin-audience'] } },
+    });
+
+    Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
+      oidcProvider: Match.objectLike({ tokenEndpoint: 'https://example.com/token', usePkce: true }),
+      authPolicies: { adminApi: Match.objectLike({ audiences: ['admin-audience'] }) },
+    });
+  });
+
+  it('sends no OIDC provider and no auth policies when none are given', () => {
+    createBootstrap();
+
+    Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
+      oidcProvider: Match.absent(),
+      authPolicies: Match.absent(),
+    });
+  });
+
+  it('sets SES_SEND_ENABLED to on in the Lambda environment when send is enabled', () => {
+    createBootstrap({ sesSendEnabled: true });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: { SES_SEND_ENABLED: 'on' } },
+    });
+  });
+
+  it('leaves SES_SEND_ENABLED out of the Lambda environment when send is not enabled', () => {
+    createBootstrap({ sesSendEnabled: false });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: { SES_SEND_ENABLED: Match.absent() } },
+    });
+  });
+
+  it('passes the SES receiving mode it is given to the Lambda environment', () => {
+    createBootstrap({ sesReceivingMode: 'forced' });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: { SES_RECEIVING_MODE: 'forced' } },
+    });
+  });
+
   it('sends the default tenant name and local part', () => {
     createBootstrap();
     Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
