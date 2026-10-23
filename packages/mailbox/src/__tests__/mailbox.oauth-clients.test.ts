@@ -10,14 +10,15 @@
  * on the bootstrap custom resource that writes the row it reads.
  */
 
-import { Template }                      from 'aws-cdk-lib/assertions';
-import * as cdk                          from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
+import { Template }                                      from 'aws-cdk-lib/assertions';
+import * as cdk                                          from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
 
-import { Permission }                    from '../core/auth/jmap-scopes';
-import type { IMailboxAuthProvider }     from '../core/auth/types';
-import type { MailboxProps }             from '../mailbox-props';
-import { Mailbox }                       from '../mailbox';
+import { Permission }                                    from '../core/auth/jmap-scopes';
+import type { MailboxProps }                             from '../mailbox-props';
+import { Mailbox }                                       from '../mailbox';
+
+import { createMockAuthProvider, TEST_ARTIFACT_CONTEXT } from './mailbox-helpers';
 
 interface SynthesizedResource {
   Properties?: Record<string, unknown>;
@@ -25,36 +26,17 @@ interface SynthesizedResource {
 }
 
 describe('Mailbox OAuth client wiring', () => {
-  function createAuthProvider(): IMailboxAuthProvider {
-    return {
-      issuer:                  'https://example.com/issuer',
-      tokenEndpoint:           'https://example.com/token',
-      authorizationEndpoint:   'https://example.com/authorize',
-      authMethod:              'header',
-      usePkce:                 false,
-      scopeMap:                { 'mail.read': [Permission.MAIL_READ] },
-      policies:                { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
-      provisionAdminApiClient: () => ({ clientId: 'test-admin-ui', requestScopeList: [], groups: [] }),
-      provisionJmapApiClient:  () => ({ clientId: 'test-webmail-ui', requestScopeList: [], groups: [] }),
-      createAdminApiAddons:    () => [],
-    };
+  /** The webmail client and a mail.read-only scope map: the values the cases below assert on. */
+  function createAuthProvider() {
+    return createMockAuthProvider({
+      jmapClientId: 'test-webmail-ui',
+      scopeMap:     { 'mail.read': [Permission.MAIL_READ] },
+    });
   }
 
   function synthesize(extraProps: Partial<MailboxProps> = {}): { mailbox: Mailbox; template: Template } {
     const app   = new App({
-      context: {
-        'serverlessinbox:artifacts': {
-          bucketBase: 'test-artifacts',
-          packages:   {
-            'mailbox-go':         { zone: 'regional', version: '1.0.0' },
-            'mailbox-cdk':        { zone: 'regional', version: '1.0.0' },
-            'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
-            'mailbox-cdk-edge':   { zone: 'edge', version: '1.0.0' },
-            'mailbox-admin-ui':   { zone: 'regional', version: '1.0.0' },
-            'mailbox-webmail-ui': { zone: 'regional', version: '1.0.0' },
-          },
-        },
-      },
+      context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT },
     });
     const stack = new cdk.Stack(app, 'TestMailboxOAuthClients', {
       env:         { account: '123456789012', region: 'us-west-2' },

@@ -16,11 +16,10 @@ import * as cdk                                                                 
 import { App, BootstraplessSynthesizer }                                               from 'aws-cdk-lib';
 import * as t                                                                          from 'typanion';
 
-import { Permission }                                                                  from '../core/auth/jmap-scopes';
-import type { IMailboxAuthProvider }                                                   from '../core/auth/types';
 import { Mailbox }                                                                     from '../mailbox';
 import { SendStackFailuresMode }                                                       from '../platform/ops/stack-failure-detection';
 
+import { createMockAuthProvider, TEST_ARTIFACT_CONTEXT }                               from './mailbox-helpers';
 import { isTemplateValue, resourcesOfType, type TemplateValue }                        from './template-resources';
 
 const isDeferredRemovalProperties = t.isDict(isTemplateValue);
@@ -32,42 +31,9 @@ const isLambdaFunctionProperties  = t.isPartial({
   Environment:  t.isOptional(t.isPartial({ Variables: t.isOptional(t.isDict(isTemplateValue)) })),
 });
 
-function createMockAuthProvider(): IMailboxAuthProvider {
-  return {
-    issuer:                  'https://example.com/issuer',
-    tokenEndpoint:           'https://example.com/token',
-    authorizationEndpoint:   'https://example.com/authorize',
-    authMethod:              'header',
-    usePkce:                 false,
-    scopeMap:                {
-      'mail.read':  [Permission.MAIL_READ],
-      'mail.write': [Permission.MAIL_WRITE],
-    },
-    policies:                {
-      adminApi: { audiences: ['admin-api'] },
-      jmapApi:  { audiences: ['jmap-api'] },
-    },
-    provisionAdminApiClient: () => ({ clientId: 'test-admin-ui', requestScopeList: [], groups: [] }),
-    provisionJmapApiClient:  () => ({ clientId: 'test-jmap-ui', requestScopeList: [], groups: [] }),
-    createAdminApiAddons:    () => [],
-  };
-}
-
 function synthMailboxTemplate(sendStackFailures?: SendStackFailuresMode): Template {
   const app   = new App({
-    context: {
-      'serverlessinbox:artifacts': {
-        bucketBase: 'test-artifacts',
-        packages:   {
-          'mailbox-go':         { zone: 'regional', version: '1.0.0' },
-          'mailbox-cdk':        { zone: 'regional', version: '1.0.0' },
-          'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
-          'mailbox-cdk-edge':   { zone: 'edge', version: '1.0.0' },
-          'mailbox-admin-ui':   { zone: 'regional', version: '1.0.0' },
-          'mailbox-webmail-ui': { zone: 'regional', version: '1.0.0' },
-        },
-      },
-    },
+    context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT },
   });
   const stack = new cdk.Stack(app, `TestMailboxSweeperRemovalWiring-${sendStackFailures ?? 'default'}`, {
     env:         { account: '123456789012', region: 'us-west-2' },
@@ -196,13 +162,8 @@ describe('Mailbox: sweeper removal wiring', () => {
   it('the state machine definition contains steps contributed by each registered removal', () => {
     const definition = sweeperDefinition();
 
-    // This test's Mailbox config has no custom regional-SAN certificate, so CertificateRemoval is
-    // never registered (mirrors mailbox.ts's own `if (regionalSanCertificate)` gate) — only assert
-    // the cert steps when the underlying certificate resource actually exists in the template.
-    const hasCertificate = Object.keys(template.findResources('AWS::CertificateManager::Certificate')).length > 0;
-    if (hasCertificate) {
-      expect(parseMachine(definition).States[retryWaitOf(definition, invokeOf(definition, 'cert'))].Type).toBe('Wait');
-    }
+    // The cert removal is not registered in this config (see the props case above), so the definition
+    // carries the steps of edge-fn and detector only.
 
     // Edge-fn is always registered.
     expect(parseMachine(definition).States[retryWaitOf(definition, invokeOf(definition, 'edge-fn'))].Type).toBe('Wait');

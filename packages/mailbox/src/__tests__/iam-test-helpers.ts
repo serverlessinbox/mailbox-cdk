@@ -1,8 +1,6 @@
 /**
- * IAM Test Helpers — Shared interfaces, constants, and utility functions
- *
- * Used by both mailbox-data-stack.test.ts and mailbox-edge-stack.test.ts
- * for CloudFormation template introspection and IAM policy analysis.
+ * Introspection helpers for synthesized CloudFormation templates: the resource shape, the tag reader,
+ * the resource-type check, and the allowlist of IAM wildcards that cannot be scoped by tag or name.
  */
 
 import * as t from 'typanion';
@@ -15,8 +13,8 @@ const isCloudFormationTags = t.isArray(t.isObject({
 export type CloudFormationTag = t.InferType<typeof isCloudFormationTags>[number];
 
 export interface CloudFormationResource {
-  Type:        string;
-  Properties?: Record<string, unknown>;
+  readonly Type:        string;
+  readonly Properties?: Readonly<Record<string, unknown>>;
 }
 
 /**
@@ -27,7 +25,7 @@ export interface CloudFormationResource {
  * When a test fails on a wildcard, verify it's not a regression: check if it's in this list,
  * and if not, review the security implication before adding it.
  */
-export const KNOWN_WILDCARDS: Record<string, string> = {
+export const KNOWN_WILDCARDS: Readonly<Record<string, string>> = {
   // CloudFormation needs to read/list any resource to manage stacks
   'cloudformation:GetTemplateSummary':  'CloudFormation resource introspection (read-only)',
   'cloudformation:DescribeStackEvents': 'CloudFormation stack event retrieval (read-only)',
@@ -60,10 +58,6 @@ export const KNOWN_WILDCARDS: Record<string, string> = {
   'logs:CreateLogStream': 'CloudWatch log stream creation (standard Lambda execution permission)',
   'logs:PutLogEvents':    'CloudWatch log event writes (standard Lambda execution permission)',
 };
-
-export function getTagValue(tag: CloudFormationTag): CloudFormationTag['Value'] {
-  return tag.Value;
-}
 
 /** The tags of the resource, or undefined when it has none. A `Tags` property that is not a list of key/value tags fails the test with what was wrong. */
 export function readTags(resource: CloudFormationResource): CloudFormationTag[] | undefined {

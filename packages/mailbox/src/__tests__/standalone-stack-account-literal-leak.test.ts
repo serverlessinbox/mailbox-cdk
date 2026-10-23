@@ -16,9 +16,8 @@
  * leaked", and scans the ENTIRE serialized template (not selected properties) for any 12-digit
  * account-number-shaped literal that isn't the known, separately-tracked placeholder.
  *
- * MailboxDataStack: Exempted findings from utils/named-table.ts and mailbox-cdk-shared/named-bucket.ts
- * embedding the concrete account in construct ids are filtered by `isPostponedNamedResource` until the
- * owner lands the named-resource change.
+ * The MailboxDataStack scan tolerates exactly the named-resource findings `isPostponedNamedResource`
+ * matches, and the placeholder account below; every other account-shaped literal fails the test.
  */
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
@@ -29,16 +28,13 @@ import { MailboxEdgeStack }              from '../core/edge/mailbox-edge-stack';
 // never be confused with a legitimate value, and never a real account number.
 const FAKE_ACCOUNT = '111122223333';
 
-// TEMPORARY exemption. The data stack's logical ids/tag values currently bake in the
-// CDK_DEFAULT_ACCOUNT fallback placeholder '000000000000' as a separate, already-known defect that
-// is being fixed elsewhere (logical-id rework). Delete this constant and its use below once that
-// work lands — at that point the scan should tolerate zero account-shaped literals.
+/** The CDK_DEFAULT_ACCOUNT fallback the standalone builders use when the variable is unset. */
 const KNOWN_PLACEHOLDER_ACCOUNT = '000000000000';
 
-// TEMPORARY exemption, owner-postponed: StackNamedTable (utils/named-table.ts) and named-bucket
-// (mailbox-cdk-shared) embed the concrete account in construct ids, which leaks into logical ids,
-// Ref/GetAtt targets and the name tag. Fixing it replaces deployed data resources, so it lands with
-// the named-resource change — delete this exemption in that change.
+/**
+ * Named data resources whose construct ids embed the concrete account (StackNamedTable and the named
+ * bucket). The scan tolerates their logical ids and name tags only.
+ */
 const POSTPONED_NAMED_RESOURCES = ['blob-store', 'config-table', 'item-table', 'changelog-table', 'auditlog-table', 'mailfeedback-table'];
 
 interface AccountLiteralViolation {
@@ -144,9 +140,9 @@ describe('Standalone sub-stack account-literal leak (regression gate)', () => {
       synthesizer: new BootstraplessSynthesizer(),
     });
 
-    const assembly = app.synth();
-    const artifact = assembly.getStackArtifact(stack.artifactId);
-    const template = artifact.template;
+    const assembly          = app.synth();
+    const artifact          = assembly.getStackArtifact(stack.artifactId);
+    const template: unknown = artifact.template;
 
     const violations = findAccountLiterals(template, new Set([KNOWN_PLACEHOLDER_ACCOUNT]))
       .filter(v => !isPostponedNamedResource(v.value));
@@ -164,9 +160,9 @@ describe('Standalone sub-stack account-literal leak (regression gate)', () => {
       synthesizer: new BootstraplessSynthesizer(),
     });
 
-    const assembly = app.synth();
-    const artifact = assembly.getStackArtifact(stack.artifactId);
-    const template = artifact.template;
+    const assembly          = app.synth();
+    const artifact          = assembly.getStackArtifact(stack.artifactId);
+    const template: unknown = artifact.template;
 
     const violations = findAccountLiterals(template, new Set([KNOWN_PLACEHOLDER_ACCOUNT]));
 

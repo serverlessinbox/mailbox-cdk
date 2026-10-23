@@ -6,63 +6,34 @@
  * begins with `aws/`, and each carries the support-scoping tag.
  */
 
-import { Template }                      from 'aws-cdk-lib/assertions';
-import * as cdk                          from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
+import { Template }                                      from 'aws-cdk-lib/assertions';
+import * as cdk                                          from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
+import * as t                                            from 'typanion';
 
-import { Permission }                    from '../core/auth/jmap-scopes';
-import type { IMailboxAuthProvider }     from '../core/auth/types';
-import { Mailbox }                       from '../mailbox';
+import { Mailbox }                                       from '../mailbox';
 
-function createMockAuthProvider(): IMailboxAuthProvider {
-  return {
-    issuer:                  'https://example.com/issuer',
-    tokenEndpoint:           'https://example.com/token',
-    authorizationEndpoint:   'https://example.com/authorize',
-    authMethod:              'header',
-    usePkce:                 false,
-    scopeMap:                {
-      'mail.read':  [Permission.MAIL_READ],
-      'mail.write': [Permission.MAIL_WRITE],
-    },
-    policies:                {
-      adminApi: {
-        audiences: ['admin-api'],
-      },
-      jmapApi:  {
-        audiences: ['jmap-api'],
-      },
-    },
-    provisionAdminApiClient: () => ({
-      clientId:         'test-admin-ui',
-      requestScopeList: [],
-      groups:           [],
-    }),
-    provisionJmapApiClient:  () => ({
-      clientId:         'test-jmap-ui',
-      requestScopeList: [],
-      groups:           [],
-    }),
-    createAdminApiAddons:    () => [],
-  };
-}
+import { createMockAuthProvider, TEST_ARTIFACT_CONTEXT } from './mailbox-helpers';
+import { isTemplateValue, resourcesOfType }              from './template-resources';
+
+const isLogGroupProperties = t.isPartial({
+  LogGroupName: t.isOptional(t.isOneOf([
+    t.isString(),
+    t.isPartial({ 'Fn::Join': t.isTuple([t.isString(), t.isArray(isTemplateValue)]) }),
+  ])),
+  Tags:         t.isOptional(t.isArray(t.isPartial({ Key: t.isString(), Value: t.isOptional(isTemplateValue) }))),
+});
+
+const isFunctionProperties = t.isPartial({
+  LoggingConfig: t.isOptional(t.isPartial({
+    LogGroup: t.isOptional(t.isPartial({ Ref: t.isString() })),
+  })),
+});
 
 describe('Mailbox stack pipeline log groups', () => {
   function synth() {
     const app   = new App({
-      context: {
-        'serverlessinbox:artifacts': {
-          bucketBase: 'test-artifacts',
-          packages:   {
-            'mailbox-go':         { zone: 'regional', version: '1.0.0' },
-            'mailbox-cdk':        { zone: 'regional', version: '1.0.0' },
-            'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
-            'mailbox-cdk-edge':   { zone: 'edge', version: '1.0.0' },
-            'mailbox-admin-ui':   { zone: 'regional', version: '1.0.0' },
-            'mailbox-webmail-ui': { zone: 'regional', version: '1.0.0' },
-          },
-        },
-      },
+      context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT },
     });
     const stack = new cdk.Stack(app, 'TestMailboxPipelineLogGroups', {
       env:         { account: '123456789012', region: 'us-west-2' },
@@ -77,53 +48,35 @@ describe('Mailbox stack pipeline log groups', () => {
   }
 
   it('every Lambda function resolves to one of the pipeline log groups', () => {
-    const template  = synth();
-    const resources = template.toJSON().Resources as Record<string, { Type?: string; Properties?: Record<string, any> }>;
-
-    const logGroupLogicalIds = new Set(
-      Object.entries(resources)
-        .filter(([, r]) => r.Type === 'AWS::Logs::LogGroup')
-        .map(([id]) => id),
-    );
-
-    const functions = Object.entries(resources).filter(([, r]) => r.Type === 'AWS::Lambda::Function');
+    const template    = synth();
+    const logGroupIds = new Set(resourcesOfType(template, 'AWS::Logs::LogGroup', isLogGroupProperties).map((group) => group.logicalId));
+    const functions   = resourcesOfType(template, 'AWS::Lambda::Function', isFunctionProperties);
     expect(functions.length).toBeGreaterThan(5);
 
-    for (const [, fn] of functions) {
-      const ref = fn.Properties?.LoggingConfig?.LogGroup?.Ref;
-      expect(typeof ref).toBe('string');
-      expect(logGroupLogicalIds.has(ref)).toBe(true);
+    for (const fn of functions) {
+      expect(logGroupIds.has(String(fn.properties.LoggingConfig?.LogGroup?.Ref))).toBe(true);
     }
   });
 
   it('no synthesized log group name begins with "aws/"', () => {
-    const template  = synth();
-    const resources = template.toJSON().Resources as Record<string, { Type?: string; Properties?: Record<string, any> }>;
+    const groups = resourcesOfType(synth(), 'AWS::Logs::LogGroup', isLogGroupProperties);
 
-    for (const [, resource] of Object.entries(resources)) {
-      if (resource.Type !== 'AWS::Logs::LogGroup') {continue;}
-      const nameProp = resource.Properties?.LogGroupName;
-      // Name is built via Fn::Join from literal parts; the first part is the literal prefix.
-      const joinParts    = nameProp?.['Fn::Join']?.[1] as unknown[] | undefined;
-      const firstLiteral = Array.isArray(joinParts) ? joinParts[0] : nameProp;
-      if (typeof firstLiteral === 'string') {
-        expect(firstLiteral.startsWith('aws/')).toBe(false);
-      }
+    for (const group of groups) {
+      // The name is built via Fn::Join from literal parts; the first part is the literal prefix.
+      const name         = group.properties.LogGroupName;
+      const firstLiteral = typeof name === 'string' ? name : name?.['Fn::Join'][1][0];
+      expect(String(firstLiteral).startsWith('aws/')).toBe(false);
     }
   });
 
   it('each pipeline log group carries the serverless-inbox:root-stack tag', () => {
-    const template  = synth();
-    const resources = template.toJSON().Resources as Record<string, { Type?: string; Properties?: Record<string, any> }>;
-
-    const pipelineGroups = Object.entries(resources).filter(([logicalId, r]) =>
-      r.Type === 'AWS::Logs::LogGroup' && logicalId.toLowerCase().includes('loggroup'));
+    const pipelineGroups = resourcesOfType(synth(), 'AWS::Logs::LogGroup', isLogGroupProperties)
+      .filter((group) => group.logicalId.toLowerCase().includes('loggroup'));
 
     expect(pipelineGroups.length).toBeGreaterThan(0);
 
-    for (const [, resource] of pipelineGroups) {
-      const tags            = (resource.Properties?.Tags ?? []) as Array<{ Key: string; Value: unknown }>;
-      const hasRootStackTag = tags.some((t) => t.Key === 'serverless-inbox:root-stack');
+    for (const group of pipelineGroups) {
+      const hasRootStackTag = (group.properties.Tags ?? []).some((tag) => tag.Key === 'serverless-inbox:root-stack');
       expect(hasRootStackTag).toBe(true);
     }
   });

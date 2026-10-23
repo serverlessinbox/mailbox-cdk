@@ -1,11 +1,15 @@
 /// <reference types="jest" />
 
 /**
- * Pins the one branch of the foundation a Mailbox resolves: a supplied artifact resolver is used
- * as is, and its `mailbox-cdk` version becomes the stack version every base tag carries. Ignoring
- * the supplied resolver would pin consumers to the package's baked versions instead of their own.
+ * Pins the two branches of the foundation a Mailbox resolves. A supplied artifact resolver is used as
+ * is, so its `mailbox-cdk` version becomes the stack version every base tag carries. Without one, the
+ * resolver is pinned from the versions the package ships with, so consumers that pass nothing still
+ * deploy the release they were built against. The vendor link is keyed by the root-stack identity tag.
  */
 
+import { ServerlessInboxTagKeys }                      from '@serverlessinbox/mailbox-cdk-shared';
+
+import { loadMailboxArtifactVersions }                 from '../mailbox-artifact-versions';
 import { MailboxContext }                              from '../mailbox-context';
 
 import { newDeployerTestStack, TEST_ARTIFACT_VERSION } from './deployer-test-helpers';
@@ -18,5 +22,21 @@ describe('MailboxContext', () => {
 
     expect(context.artifactResolver).toBe(artifactResolver);
     expect(context.stackVersion).toBe(TEST_ARTIFACT_VERSION);
+  });
+
+  it('pins the shipped mailbox-cdk version when no resolver is supplied', () => {
+    const { stack } = newDeployerTestStack();
+
+    const context = MailboxContext.resolve(stack, {});
+
+    expect(context.stackVersion).toBe(loadMailboxArtifactVersions()['mailbox-cdk'].version);
+  });
+
+  it('keys the vendor link by the root-stack identity tag', () => {
+    const { stack, artifactResolver } = newDeployerTestStack();
+
+    const context = MailboxContext.resolve(stack, { artifactResolver });
+
+    expect(context.vendorLink.stackIdentityTagKey).toBe(ServerlessInboxTagKeys.rootStack);
   });
 });

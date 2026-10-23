@@ -8,49 +8,16 @@
  * of an unchanged app reports changes and may replace resources.
  */
 
-import { Template }                      from 'aws-cdk-lib/assertions';
-import * as cdk                          from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
+import { Template }                                      from 'aws-cdk-lib/assertions';
+import * as cdk                                          from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
 
-import { Permission }                    from '../core/auth/jmap-scopes';
-import type { IMailboxAuthProvider }     from '../core/auth/types';
-import { Mailbox }                       from '../mailbox';
+import { Mailbox }                                       from '../mailbox';
 
-const ARTIFACT_CONTEXT = {
-  bucketBase: 'test-artifacts',
-  packages:   {
-    'mailbox-go':         { zone: 'regional', version: '1.0.0' },
-    'mailbox-cdk':        { zone: 'regional', version: '1.0.0' },
-    'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
-    'mailbox-cdk-edge':   { zone: 'edge', version: '1.0.0' },
-    'mailbox-admin-ui':   { zone: 'regional', version: '1.0.0' },
-    'mailbox-webmail-ui': { zone: 'regional', version: '1.0.0' },
-  },
-};
-
-function createMockAuthProvider(): IMailboxAuthProvider {
-  return {
-    issuer:                  'https://example.com/issuer',
-    tokenEndpoint:           'https://example.com/token',
-    authorizationEndpoint:   'https://example.com/authorize',
-    authMethod:              'header',
-    usePkce:                 false,
-    scopeMap:                {
-      'mail.read':  [Permission.MAIL_READ],
-      'mail.write': [Permission.MAIL_WRITE],
-    },
-    policies:                {
-      adminApi: { audiences: ['admin-api'] },
-      jmapApi:  { audiences: ['jmap-api'] },
-    },
-    provisionAdminApiClient: () => ({ clientId: 'test-admin-ui', requestScopeList: [], groups: [] }),
-    provisionJmapApiClient:  () => ({ clientId: 'test-jmap-ui', requestScopeList: [], groups: [] }),
-    createAdminApiAddons:    () => [],
-  };
-}
+import { createMockAuthProvider, TEST_ARTIFACT_CONTEXT } from './mailbox-helpers';
 
 function synthesizeMailboxTemplate(): string {
-  const app   = new App({ context: { 'serverlessinbox:artifacts': ARTIFACT_CONTEXT } });
+  const app   = new App({ context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT } });
   const stack = new cdk.Stack(app, 'TestDeterminism', {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),

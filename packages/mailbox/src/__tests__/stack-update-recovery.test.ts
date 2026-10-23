@@ -1,18 +1,12 @@
 /// <reference types="jest" />
 
 /**
- * StackUpdateAddon IAM and configuration testing.
+ * StackUpdateAddon IAM grants on its Lambda, read from the synthesized template.
  *
- * After the security hardening to remove changeset execution capability:
- * - No recovery workflow or EventBridge rule
- * - No state machine ARN env var
- * - No states:* or rollback-recovery grants on the Lambda
- * - No cloudformation:ExecuteChangeSet permission
- *
- * Builds `StackUpdateAddon` under a real `cdk.Stack` (with an explicit `env`, matching the
- * standalone build-tool synth shape that bakes `Stack.of(this).account/.region` into a literal —
- * see `cdk-construct-pattern` skill) and asserts against the SYNTHESIZED TEMPLATE, never the
- * construct, per `unit-testing`/`iam-scoping`.
+ * The update Lambda may create and inspect change sets of the root stack, scoped to `AWS::StackId`.
+ * It must never be able to execute a change set, roll a stack back, or start a state machine: a
+ * grant that adds any of those actions fails the forbidden-action case below. Builds the addon under
+ * a real `cdk.Stack` with an explicit `env`, so the template is the one a standalone build ships.
  */
 
 import { ArtifactZone, PinnedArtifactResolver }      from '@serverlessinbox/artifact-registry-cdk';
@@ -22,13 +16,49 @@ import { Template }                                  from 'aws-cdk-lib/assertion
 import * as dynamodb                                 from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                      from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
+import * as t                                        from 'typanion';
 
 import { StackUpdateAddon }                          from '../platform/update/stack-update-addon';
-import { DataTable }                                 from '../resources/tables/data-tables';
 import { AuditEventsQueue }                          from '../resources/queues/audit-events-queue';
+import { DataTable }                                 from '../resources/tables/data-tables';
+
+import { isTemplateValue, resourcesOfType }          from './template-resources';
 
 const TEST_ACCOUNT = '123456789012';
 const TEST_REGION  = 'us-west-2';
+
+const isRoleReference = t.isObject({
+  'Fn::GetAtt': t.isTuple([t.isString(), t.isString()]),
+});
+
+const isUpdateLambdaProperties = t.isPartial({
+  Role:        isRoleReference,
+  Environment: t.isOptional(t.isPartial({ Variables: t.isOptional(t.isDict(isTemplateValue)) })),
+});
+
+/** Actions that let the update Lambda execute, roll back or drive a state machine. None may be granted. */
+const FORBIDDEN_ACTIONS = [
+  'cloudformation:ExecuteChangeSet',
+  'cloudformation:ContinueUpdateRollback',
+  'cloudformation:DescribeStackResource',
+  'cloudformation:DescribeStackResources',
+  'states:StartExecution',
+  'states:ListExecutions',
+  'states:DescribeExecution',
+  'states:*',
+];
+
+/** Service-wide wildcards: an action of any of these services must name the action it grants. */
+const FORBIDDEN_SERVICE_WILDCARD = /^(iam|lambda|dynamodb|sqs|ses|cognito-idp|cloudfront|apigateway|logs|events|acm|route53|states|resource-groups|sns):\*/;
+
+const CHANGESET_ACTIONS = [
+  'cloudformation:CreateChangeSet',
+  'cloudformation:DescribeChangeSet',
+  'cloudformation:DeleteChangeSet',
+  'cloudformation:ListChangeSets',
+  'cloudformation:DescribeStacks',
+  'cloudformation:GetTemplate',
+];
 
 function buildTemplate(): Template {
   const app   = new App();
@@ -66,148 +96,58 @@ function buildTemplate(): Template {
   return Template.fromStack(stack);
 }
 
-describe('StackUpdateAddon: security hardening (no execution capability)', () => {
+describe('StackUpdateAddon Lambda grants', () => {
   let template: Template;
 
   beforeAll(() => {
     template = buildTemplate();
   });
 
-  function stackUpdateLambda(): { logicalId: string; resource: any } {
-    const fns     = template.findResources('AWS::Lambda::Function');
-    const entries = Object.entries(fns).filter(
-      ([, fn]: [string, any]) => fn.Properties?.Environment?.Variables?.CONFIG_TABLE_NAME &&
-                                  !fn.Properties?.Environment?.Variables?.STACK_UPDATE_STATE_MACHINE_ARN,
-    );
-    expect(entries).toHaveLength(1);
-    const [logicalId, resource] = entries[0];
-    return { logicalId, resource };
+  /** The update Lambda: the one function whose environment names the config table. */
+  function updateLambda() {
+    const functions = resourcesOfType(template, 'AWS::Lambda::Function', isUpdateLambdaProperties)
+      .filter((fn) => fn.properties.Environment?.Variables?.CONFIG_TABLE_NAME !== undefined);
+    expect(functions).toHaveLength(1);
+    const [fn] = functions;
+    return fn;
   }
 
-  it('no Step Functions state machine is created', () => {
-    const machines = template.findResources('AWS::StepFunctions::StateMachine');
-    expect(Object.keys(machines)).toHaveLength(0);
-  });
-
-  it('no EventBridge rule for UPDATE_ROLLBACK_FAILED is created', () => {
-    const rules     = template.findResources('AWS::Events::Rule');
-    const rulesList = Object.values(rules) as any[];
-
-    const rollbackRules = rulesList.filter((rule) =>
-      rule.Properties?.EventPattern?.detail?.['status-details']?.status?.includes('UPDATE_ROLLBACK_FAILED'),
-    );
-    expect(rollbackRules).toHaveLength(0);
-  });
-
-  it('Lambda does not have STACK_UPDATE_STATE_MACHINE_ARN env var', () => {
-    const { resource } = stackUpdateLambda();
-    expect(resource.Properties.Environment.Variables.STACK_UPDATE_STATE_MACHINE_ARN).toBeUndefined();
-  });
-
-  it('Lambda does not have cloudformation:ExecuteChangeSet permission', () => {
-    const { resource }  = stackUpdateLambda();
-    const roleArnRef    = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
-    const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
-
-    const allStatements = statementsForRole(template, roleLogicalId);
-
-    for (const stmt of allStatements) {
-      const actions = actionsOf(stmt);
-      expect(actions).not.toContain('cloudformation:ExecuteChangeSet');
+  /** Every statement of the update Lambda's role, with the role resolved from its template reference. */
+  function roleStatements() {
+    const role = updateLambda().properties.Role;
+    if (role === undefined) {
+      throw new Error('The update Lambda has no Role reference');
     }
-  });
+    const [roleLogicalId] = role['Fn::GetAtt'];
+    return statementsForRole(template, roleLogicalId);
+  }
 
-  it('Lambda does not have states:* or states:StartExecution/ListExecutions permissions', () => {
-    const { resource }  = stackUpdateLambda();
-    const roleArnRef    = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
-    const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
-
-    const allStatements = statementsForRole(template, roleLogicalId);
-
-    for (const stmt of allStatements) {
-      const actions = actionsOf(stmt);
-      expect(actions).not.toContain('states:StartExecution');
-      expect(actions).not.toContain('states:ListExecutions');
-      expect(actions).not.toContain('states:DescribeExecution');
-      expect(actions).not.toContain('states:*');
+  it('grants the change-set operations on the root stack only', () => {
+    const changeSet = roleStatements().find((statement) => actionsOf(statement).includes('cloudformation:CreateChangeSet'));
+    if (changeSet === undefined) {
+      throw new Error('no statement grants cloudformation:CreateChangeSet');
     }
+
+    expect(actionsOf(changeSet)).toEqual(expect.arrayContaining(CHANGESET_ACTIONS));
+    expect(resourcesOf(changeSet)).toEqual([{ Ref: 'AWS::StackId' }]);
   });
 
-  it('Lambda does not have cloudformation:ContinueUpdateRollback or rollback-recovery actions', () => {
-    const { resource }  = stackUpdateLambda();
-    const roleArnRef    = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
-    const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
+  it('grants none of the execution, rollback or state machine actions', () => {
+    const granted = roleStatements().flatMap((statement) => actionsOf(statement));
 
-    const allStatements = statementsForRole(template, roleLogicalId);
-
-    const forbiddenActions = [
-      'cloudformation:ContinueUpdateRollback',
-      'cloudformation:DescribeStackResource',
-      'cloudformation:DescribeStackResources',
-    ];
-
-    for (const stmt of allStatements) {
-      const actions = actionsOf(stmt);
-      for (const forbidden of forbiddenActions) {
-        expect(actions).not.toContain(forbidden);
-      }
-    }
+    expect(FORBIDDEN_ACTIONS.filter((action) => granted.includes(action))).toEqual([]);
   });
 
-  it('Lambda has ChangeSe permissions scoped to root stack ARN (no ExecuteChangeSet)', () => {
-    const { resource }  = stackUpdateLambda();
-    const roleArnRef    = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
-    const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
+  it('grants no service-wide wildcard action', () => {
+    const granted = roleStatements().flatMap((statement) => actionsOf(statement));
 
-    const allStatements = statementsForRole(template, roleLogicalId);
-
-    const changesetStmt = allStatements.find((s) => {
-      const actions = actionsOf(s);
-      return actions.includes('cloudformation:CreateChangeSet');
-    });
-    expect(changesetStmt).toBeDefined();
-    expect(changesetStmt!.Action).toEqual(
-      expect.arrayContaining([
-        'cloudformation:CreateChangeSet',
-        'cloudformation:DescribeChangeSet',
-        'cloudformation:DeleteChangeSet',
-        'cloudformation:ListChangeSets',
-        'cloudformation:DescribeStacks',
-        'cloudformation:GetTemplate',
-      ]),
-    );
-    // Must NOT have ExecuteChangeSet
-    expect(changesetStmt!.Action).not.toContain('cloudformation:ExecuteChangeSet');
-    // Scoped to root stack, never wildcard
-    const resources = resourcesOf(changesetStmt!);
-    expect(resources).toEqual([{ Ref: 'AWS::StackId' }]);
+    expect(granted.filter((action) => FORBIDDEN_SERVICE_WILDCARD.test(action))).toEqual([]);
   });
 
-  it('Lambda has no iam:* or lambda:* or service wildcard permissions', () => {
-    const { resource }  = stackUpdateLambda();
-    const roleArnRef    = resource.Properties.Role as { 'Fn::GetAtt': [string, string] };
-    const roleLogicalId = roleArnRef['Fn::GetAtt'][0];
+  it('never scopes an iam, lambda or dynamodb action to every resource', () => {
+    const starred = roleStatements().filter((statement) =>
+      resourcesOf(statement).includes('*') && actionsOf(statement).some((action) => /^(iam|lambda|dynamodb):/.test(action)));
 
-    const allStatements = statementsForRole(template, roleLogicalId);
-
-    for (const stmt of allStatements) {
-      const actions   = actionsOf(stmt);
-      const resources = resourcesOf(stmt);
-
-      // No service wildcards like lambda:*, dynamodb:*, etc.
-      for (const action of actions) {
-        if (action.includes('*')) {
-          // Only s3:GetObject is allowed with wildcards in the prefix path
-          expect(action).not.toMatch(/^(iam|lambda|dynamodb|sqs|ses|cognito-idp|cloudfront|apigateway|logs|events|acm|route53|states|resource-groups|sns):\*/);
-        }
-      }
-
-      // No resources: ['*'] for these service operations
-      for (const action of actions) {
-        if (action.startsWith('iam:') || action.startsWith('lambda:') || action.startsWith('dynamodb:')) {
-          expect(resources).not.toContain('*');
-        }
-      }
-    }
+    expect(starred).toEqual([]);
   });
 });

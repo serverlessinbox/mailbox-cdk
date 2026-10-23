@@ -167,40 +167,24 @@ describe('Mailbox Resource Naming', () => {
         throw new Error('No resources found in template');
       }
 
-      // Expected table logical IDs from data stack
-      const expectedTableIds = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];
-      let tablesFound        = 0;
+      // Each data table's name is built from the nameBase parameter followed by its own name segment.
+      const expectedNameSegments: Record<string, string> = {
+        configTable:       'config-table',
+        itemTable:         'item-table',
+        changelogTable:    'changelog-table',
+        auditLogTable:     'auditlog-table',
+        mailFeedbackTable: 'mailfeedback-table',
+      };
 
-      for (const [logicalId, resource] of Object.entries(resources)) {
-        if (!isResourceOfType(resource, 'AWS::DynamoDB::Table')) {continue;}
+      for (const [logicalId, segment] of Object.entries(expectedNameSegments)) {
+        const tableName    = resources[logicalId];
+        expect(isResourceOfType(tableName, 'AWS::DynamoDB::Table')).toBe(true);
 
-        if (!expectedTableIds.includes(logicalId)) {continue;}
-        tablesFound++;
-
-        const tableName = resource.Properties?.TableName;
-        expect(tableName).toBeDefined();
-
-        // Each table name should include Ref to nameBase parameter followed by -<tableName>
-        // Pattern: { "Fn::Join": ["", [{ "Ref": "AWS::AccountId" }, "-", { "Ref": "nameBase" }, "-", "config-table"]] }
-        const tableNameStr = JSON.stringify(tableName);
+        const tableNameStr = JSON.stringify(tableName.Properties?.TableName);
         expect(tableNameStr).toContain('nameBase');
+        expect(tableNameStr).toContain(segment);
         expect(tableNameStr).not.toContain('AWS::StackName');
-
-        // Verify it references the correct resource name (config-table, item-table, etc.)
-        if (logicalId === 'configTable') {
-          expect(tableNameStr).toContain('config-table');
-        } else if (logicalId === 'itemTable') {
-          expect(tableNameStr).toContain('item-table');
-        } else if (logicalId === 'changelogTable') {
-          expect(tableNameStr).toContain('changelog-table');
-        } else if (logicalId === 'auditLogTable') {
-          expect(tableNameStr).toContain('auditlog-table');
-        } else if (logicalId === 'mailFeedbackTable') {
-          expect(tableNameStr).toContain('mailfeedback-table');
-        }
       }
-
-      expect(tablesFound).toBe(5);
     });
 
     it('should synthesize blob-store bucket name with nameBase parameter reference', () => {

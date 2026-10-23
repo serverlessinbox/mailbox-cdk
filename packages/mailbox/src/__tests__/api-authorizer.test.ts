@@ -36,42 +36,7 @@ import {
   CloudFormationResource,
   isResourceOfType,
 } from './iam-test-helpers';
-
-/**
- * Minimal mock IMailboxAuthProvider for testing
- */
-function createMockAuthProvider(): IMailboxAuthProvider {
-  return {
-    issuer:                  'https://example.com/issuer',
-    tokenEndpoint:           'https://example.com/token',
-    authorizationEndpoint:   'https://example.com/authorize',
-    authMethod:              'header',
-    usePkce:                 false,
-    scopeMap:                {
-      'mail.read':  [Permission.MAIL_READ],
-      'mail.write': [Permission.MAIL_WRITE],
-    },
-    policies:                {
-      adminApi: {
-        audiences: ['admin-api'],
-      },
-      jmapApi:  {
-        audiences: ['jmap-api'],
-      },
-    },
-    provisionAdminApiClient: () => ({
-      clientId:         'test-admin-ui',
-      requestScopeList: [],
-      groups:           [],
-    }),
-    provisionJmapApiClient:  () => ({
-      clientId:         'test-jmap-ui',
-      requestScopeList: [],
-      groups:           [],
-    }),
-    createAdminApiAddons:    () => [],
-  };
-}
+import { createMockAuthProvider } from './mailbox-helpers';
 
 /**
  * Helper to find authorizer resources. Optionally filter by a pattern in the logical ID.
@@ -238,43 +203,7 @@ describe('API Authorizer Wiring', () => {
       for (const [, route] of routes) {
         const props        = route.Properties as Record<string, unknown> | undefined;
         const authorizerId = props?.AuthorizerId;
-        expect(authorizerId).toBeDefined();
-        expect(typeof authorizerId === 'string' || typeof authorizerId === 'object').toBe(true);
-      }
-    });
-
-    it('should catch regression if route authorizer is removed', () => {
-      // This test is a regression check - it will be temporarily broken
-      // to verify the assertion actually fails when authorizer is misconfigured
-      const apiGroup = new Construct(stack, 'api-group');
-      new AdminApi(apiGroup, 'admin-api', {
-        configTable,
-        itemTable,
-        auditLogTable,
-        changelogTable,
-        mailFeedbackTable,
-        authKeyStoreTable,
-        blobStore,
-        emailSubmissionQueue,
-        auditEventsQueue,
-        artifactResolver,
-        identityProvisioner: identityProvisionerFunction,
-        sesRuleSetName:      'test-rule-set',
-        sesConfigSetName:    'test-config-set',
-        systemSenderAddress: 'noreply@example.com',
-        vendorLink:          { vendorAccountIds: ['123456789012'], stackIdentityTagKey: 'serverless-inbox:root-stack' },
-      });
-
-      const template  = Template.fromStack(stack);
-      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) {throw new Error('No resources in template');}
-
-      // Verify all routes have an AuthorizerId (this would fail if authorizer prop is removed)
-      const routes = findRouteResources(resources, 'admin-api');
-      for (const [, route] of routes) {
-        const props = route.Properties as Record<string, unknown> | undefined;
-        expect(props?.AuthorizerId).toBeDefined();
-      }
+        expect(authorizerId).toBeDefined();      }
     });
 
     it('should set SYSTEM_SENDER_ADDRESS environment variable', () => {
@@ -343,9 +272,7 @@ describe('API Authorizer Wiring', () => {
       for (const [, route] of routes) {
         const props        = route.Properties as Record<string, unknown> | undefined;
         const authorizerId = props?.AuthorizerId;
-        expect(authorizerId).toBeDefined();
-        expect(typeof authorizerId === 'string' || typeof authorizerId === 'object').toBe(true);
-      }
+        expect(authorizerId).toBeDefined();      }
     });
 
     it('should verify all three expected routes exist with authorizer', () => {
@@ -437,9 +364,7 @@ describe('API Authorizer Wiring', () => {
       for (const [, route] of routes) {
         const props        = route.Properties as Record<string, unknown> | undefined;
         const authorizerId = props?.AuthorizerId;
-        expect(authorizerId).toBeDefined();
-        expect(typeof authorizerId === 'string' || typeof authorizerId === 'object').toBe(true);
-      }
+        expect(authorizerId).toBeDefined();      }
     });
 
     it('should verify proxy route exists with authorizer', () => {

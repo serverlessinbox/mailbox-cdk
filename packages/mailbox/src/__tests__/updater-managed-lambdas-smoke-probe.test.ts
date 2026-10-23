@@ -19,15 +19,15 @@ import {
   probeManagedLambda,
   type ManagedLambda,
 } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Template }                      from 'aws-cdk-lib/assertions';
-import * as cdk                          from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import * as path                         from 'node:path';
+import { Template }                                      from 'aws-cdk-lib/assertions';
+import * as cdk                                          from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
+import * as path                                         from 'node:path';
 
-import { Permission }                    from '../core/auth/jmap-scopes';
-import type { IMailboxAuthProvider }     from '../core/auth/types';
-import { MailboxEdgeStack }              from '../core/edge/mailbox-edge-stack';
-import { Mailbox }                       from '../mailbox';
+import { MailboxEdgeStack }                              from '../core/edge/mailbox-edge-stack';
+import { Mailbox }                                       from '../mailbox';
+
+import { createMockAuthProvider, TEST_ARTIFACT_CONTEXT } from './mailbox-helpers';
 
 const GO_PACKAGE = 'mailbox-go';
 
@@ -61,36 +61,9 @@ const GO_ARTIFACTS = new Set<string>([
   'websocket-message',
 ]);
 
-function createMockAuthProvider(): IMailboxAuthProvider {
-  return {
-    issuer:                  'https://example.com/issuer',
-    tokenEndpoint:           'https://example.com/token',
-    authorizationEndpoint:   'https://example.com/authorize',
-    authMethod:              'header',
-    usePkce:                 false,
-    scopeMap:                { 'mail.read': [Permission.MAIL_READ], 'mail.write': [Permission.MAIL_WRITE] },
-    policies:                { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },
-    provisionAdminApiClient: () => ({ clientId: 'test-admin-ui', requestScopeList: [], groups: [] }),
-    provisionJmapApiClient:  () => ({ clientId: 'test-jmap-ui', requestScopeList: [], groups: [] }),
-    createAdminApiAddons:    () => [],
-  };
-}
-
 function synthesizeMailbox(): Template {
   const app   = new App({
-    context: {
-      'serverlessinbox:artifacts': {
-        bucketBase: 'test-artifacts',
-        packages:   {
-          'mailbox-go':         { zone: 'regional', version: '1.0.0' },
-          'mailbox-cdk':        { zone: 'regional', version: '1.0.0' },
-          'mailbox-cdk-shared': { zone: 'regional', version: '1.0.0' },
-          'mailbox-cdk-edge':   { zone: 'edge', version: '1.0.0' },
-          'mailbox-admin-ui':   { zone: 'regional', version: '1.0.0' },
-          'mailbox-webmail-ui': { zone: 'regional', version: '1.0.0' },
-        },
-      },
-    },
+    context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT },
   });
   const stack = new cdk.Stack(app, 'TestManagedLambdas', {
     env:         { account: '123456789012', region: 'us-west-2' },

@@ -1,12 +1,10 @@
 /**
- * MailboxDataStack Template Synthesis Tests
+ * MailboxDataStack template synthesis tests.
  *
- * Tests for synthesized CloudFormation templates from MailboxDataStack.
- * Verifies: tag contracts, IAM wildcard guards, deployer policy shapes, and construct quality.
- *
- * Security audit findings (2026-07-09):
- * - S2 critical: Data deployer granted unscoped iam:* and logs:* write actions on Resource "*"
- * These tests lock in the fixes and catch regressions.
+ * Pins the synthesized template of the data stack: the root-stack tag contract on its tables and
+ * buckets, the S3 public-access and lifecycle settings, the DynamoDB retention and PITR settings, and
+ * the grants of the data deployer worker. A regression that tagged a table with the wrong value,
+ * exposed a bucket, or granted writes on `*` fails the matching case below.
  */
 
 import { ArtifactZone, PinnedArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
@@ -22,123 +20,99 @@ import { MailboxDataDeployerWorkerLambda }              from '../resources/lambd
 
 import {
   CloudFormationResource,
-  CloudFormationTag,
   KNOWN_WILDCARDS,
-  getTagValue,
   isResourceOfType,
   readTags,
 } from './iam-test-helpers';
 
-describe('MailboxDataStack Template Synthesis', () => {
-  /**
-   * S2.1: Tag Contract — every taggable resource carries serverless-inbox:root-stack
-   */
-  describe('Tag Contract (S2.1)', () => {
-    it('data stack: all taggable resources have correct root-stack tag', () => {
-      const app   = new App();
-      const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env:         { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
+/** IAM and CloudWatch Logs actions that change state. Granted on `*` only when allowlisted. */
+const WRITE_ACTIONS = new Set([
+  'iam:CreateRole',
+  'iam:DeleteRole',
+  'iam:PutRolePolicy',
+  'iam:DeleteRolePolicy',
+  'iam:AttachRolePolicy',
+  'iam:DetachRolePolicy',
+  'logs:CreateLogGroup',
+  'logs:DeleteLogGroup',
+  'logs:CreateLogStream',
+  'logs:DeleteLogStream',
+  'logs:PutLogEvents',
+]);
 
-      const template  = Template.fromStack(stack);
-      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) {
-        throw new Error('No resources found in template');
-      }
+/** The DynamoDB and S3 actions the worker must scope to the deterministic resource-name pattern. */
+const SCOPED_WRITE_ACTIONS = new Set([
+  'dynamodb:CreateTable', 'dynamodb:DeleteTable', 'dynamodb:UpdateTable',
+  's3:CreateBucket', 's3:DeleteBucket', 's3:PutBucketPolicy',
+]);
+
+function synthDataStack(): Template {
+  const app   = new App();
+  const stack = new MailboxDataStack(app, 'TestMailboxData', {
+    env:         { account: '123456789012', region: 'us-west-2' },
+    synthesizer: new BootstraplessSynthesizer(),
+  });
+  return Template.fromStack(stack);
+}
+
+function resourcesOfTemplate(template: Template): Record<string, CloudFormationResource> {
+  const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
+  if (!resources) {
+    throw new Error('No resources found in template');
+  }
+  return resources;
+}
+
+describe('MailboxDataStack template synthesis', () => {
+  describe('tag contract', () => {
+    it('tags every table and bucket with the rootStack parameter', () => {
+      const resources = resourcesOfTemplate(synthDataStack());
 
       let taggedResourceCount = 0;
-      for (const [, resource] of Object.entries(resources)) {
-        const isTable  = isResourceOfType(resource, 'AWS::DynamoDB::Table');
-        const isBucket = isResourceOfType(resource, 'AWS::S3::Bucket');
-        if (!isTable && !isBucket) {continue;}
+      for (const resource of Object.values(resources)) {
+        if (!isResourceOfType(resource, 'AWS::DynamoDB::Table') && !isResourceOfType(resource, 'AWS::S3::Bucket')) {continue;}
 
         const tags = readTags(resource);
         if (tags === undefined) {continue;}
         taggedResourceCount++;
 
-        const rootStackTag = tags.find((t) => t.Key === 'serverless-inbox:root-stack');
-        expect(rootStackTag).toBeDefined();
-        const tagValue = rootStackTag ? getTagValue(rootStackTag) : undefined;
-        expect(tagValue).toEqual({ Ref: 'rootStack' });
+        const rootStackTag = tags.find((tag) => tag.Key === 'serverless-inbox:root-stack');
+        expect(rootStackTag?.Value).toEqual({ Ref: 'rootStack' });
       }
 
-      // Data stack should have multiple DynamoDB tables and S3 buckets
       expect(taggedResourceCount).toBeGreaterThan(2);
     });
 
-    it('data stack: declares a mandatory rootStackId parameter and tags its tables and buckets with it', () => {
-      const app   = new App();
-      const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env:         { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
-
-      const template   = Template.fromStack(stack);
+    it('declares a mandatory rootStackId parameter and tags its tables and buckets with it', () => {
+      const template   = synthDataStack();
       const parameters = template.toJSON().Parameters as Record<string, { Type: string; Default?: string }>;
       expect(parameters.rootStackId).toEqual(expect.objectContaining({ Type: 'String' }));
       expect(parameters.rootStackId.Default).toBeUndefined();
 
-      const resources = Object.values(template.toJSON().Resources as Record<string, CloudFormationResource>);
-      const tagged    = resources.filter(
-        (r) => (isResourceOfType(r, 'AWS::DynamoDB::Table') || isResourceOfType(r, 'AWS::S3::Bucket')) && Array.isArray(r.Properties?.Tags),
+      const tagged = Object.values(resourcesOfTemplate(template)).filter(
+        (resource) => (isResourceOfType(resource, 'AWS::DynamoDB::Table') || isResourceOfType(resource, 'AWS::S3::Bucket')) && readTags(resource) !== undefined,
       );
       expect(tagged.length).toBeGreaterThan(2);
       for (const resource of tagged) {
-        const tag = (resource.Properties?.Tags as CloudFormationTag[]).find((t) => t.Key === 'serverless-inbox:root-stack-id');
-        expect(tag ? getTagValue(tag) : undefined).toEqual({ Ref: 'rootStackId' });
+        const tag = readTags(resource)?.find((candidate) => candidate.Key === 'serverless-inbox:root-stack-id');
+        expect(tag?.Value).toEqual({ Ref: 'rootStackId' });
       }
     });
   });
 
-  /**
-   * S2.2: IAM Wildcard Guard - no iam or logs write actions on Resource * without Condition
-   */
-  describe('IAM Wildcard Guard (S2.2)', () => {
-    it('data stack: no unscoped iam:* or logs:* write actions on Resource "*"', () => {
-      const app   = new App();
-      const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env:         { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
-
-      const template  = Template.fromStack(stack);
-      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) {
-        throw new Error('No resources found in template');
-      }
-
-      const writeActions = new Set([
-        'iam:CreateRole',
-        'iam:DeleteRole',
-        'iam:PutRolePolicy',
-        'iam:DeleteRolePolicy',
-        'iam:AttachRolePolicy',
-        'iam:DetachRolePolicy',
-        'logs:CreateLogGroup',
-        'logs:DeleteLogGroup',
-        'logs:CreateLogStream',
-        'logs:DeleteLogStream',
-        'logs:PutLogEvents',
-      ]);
-
+  describe('IAM wildcard guard', () => {
+    it('grants no IAM or logs write action on Resource "*" without a Condition, in any policy of the stack', () => {
       const violations: string[] = [];
 
-      for (const [logicalId, resource] of Object.entries(resources)) {
+      for (const [logicalId, resource] of Object.entries(resourcesOfTemplate(synthDataStack()))) {
         if (!isResourceOfType(resource, 'AWS::IAM::Policy')) {continue;}
 
-        const policyDoc  = resource.Properties?.PolicyDocument;
-        const statements = statementsOfDocument(policyDoc);
+        for (const statement of statementsOfDocument(resource.Properties?.PolicyDocument)) {
+          const resourceList = resourcesOf(statement);
 
-        for (const stmt of statements) {
-          const actions      = actionsOf(stmt);
-          const resourceList = resourcesOf(stmt);
-
-          for (const action of actions) {
-            if (writeActions.has(action) && resourceList.includes('*') && !stmt.Condition) {
-              if (!KNOWN_WILDCARDS[action]) {
-                violations.push(`${logicalId}: ${action} on Resource "*" without Condition`);
-              }
+          for (const action of actionsOf(statement)) {
+            if (WRITE_ACTIONS.has(action) && resourceList.includes('*') && !statement.Condition && !KNOWN_WILDCARDS[action]) {
+              violations.push(`${logicalId}: ${action} on Resource "*" without Condition`);
             }
           }
         }
@@ -148,153 +122,87 @@ describe('MailboxDataStack Template Synthesis', () => {
     });
   });
 
-  /**
-   * L5: Construct Quality Assertions
-   */
-  describe('Construct Quality (L5)', () => {
-    it('data stack: Template.fromStack succeeds with sane resource counts', () => {
-      const app   = new App();
-      const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env:         { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
+  describe('construct quality', () => {
+    it('synthesizes at least four data tables and one blob bucket', () => {
+      const resources = Object.values(resourcesOfTemplate(synthDataStack()));
 
-      const template  = Template.fromStack(stack);
-      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-
-      // Data stack should have multiple DynamoDB tables and S3 buckets
-      const resourceEntries = Object.values(resources || {});
-      const tableCount      = resourceEntries.filter((r) => isResourceOfType(r, 'AWS::DynamoDB::Table')).length;
-      const bucketCount     = resourceEntries.filter((r) => isResourceOfType(r, 'AWS::S3::Bucket')).length;
-
-      expect(tableCount).toBeGreaterThanOrEqual(4); // At least 4 data tables expected
-      expect(bucketCount).toBeGreaterThanOrEqual(1); // At least 1 blob store bucket
+      expect(resources.filter((resource) => isResourceOfType(resource, 'AWS::DynamoDB::Table')).length).toBeGreaterThanOrEqual(4);
+      expect(resources.filter((resource) => isResourceOfType(resource, 'AWS::S3::Bucket')).length).toBeGreaterThanOrEqual(1);
     });
 
-    it('data stack: S3 buckets exist in template', () => {
-      const app   = new App();
-      const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env:         { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
+    it('exposes the root-stack correlation parameters', () => {
+      const parameters: unknown = synthDataStack().toJSON().Parameters ?? {};
 
-      const template  = Template.fromStack(stack);
-      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) {
-        throw new Error('No resources found in template');
-      }
-
-      // Verify S3 buckets exist in the template
-      const buckets = Object.values(resources).filter((r) => isResourceOfType(r, 'AWS::S3::Bucket'));
-      expect(buckets.length).toBeGreaterThanOrEqual(1);
-
-      // Verify at least one bucket has proper configurations
-      for (const bucket of buckets) {
-        if (!isResourceOfType(bucket, 'AWS::S3::Bucket')) {continue;}
-        // Buckets should exist with some configuration (versioning, encryption, etc.)
-        expect(bucket.Properties).toBeDefined();
-      }
-    });
-
-    it('data stack: template has expected parameter schema', () => {
-      const app   = new App();
-      const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env:         { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
-
-      const template            = Template.fromStack(stack);
-      const parameters: unknown = template.toJSON().Parameters ?? {};
-
-      // Data stack should have root stack correlation parameters
       expect(parameters).toHaveProperty('rootStack');
       expect(parameters).toHaveProperty('nameBase');
     });
-  });
 
-  /**
-   * Extended L5 Assertions
-   */
-  describe('Extended L5 Assertions', () => {
-    /**
-     * S3 Bucket Configuration Verification
-     */
-    it('data stack: S3 buckets have proper configuration', () => {
-      const app   = new App();
-      const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env:         { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
+    it('gives every bucket the public access block with all four flags set', () => {
+      const buckets = Object.values(resourcesOfTemplate(synthDataStack())).filter((resource) => isResourceOfType(resource, 'AWS::S3::Bucket'));
 
-      const template  = Template.fromStack(stack);
-      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) {
-        throw new Error('No resources found in template');
+      expect(buckets.length).toBeGreaterThan(0);
+      for (const bucket of buckets) {
+        const blockConfig = bucket.Properties?.PublicAccessBlockConfiguration as Record<string, boolean> | undefined;
+        expect(blockConfig).toEqual({
+          BlockPublicAcls:       true,
+          BlockPublicPolicy:     true,
+          IgnorePublicAcls:      true,
+          RestrictPublicBuckets: true,
+        });
       }
-
-      // Verify S3 buckets exist and have PublicAccessBlockConfiguration
-      let bucketWithBlocksCount = 0;
-
-      for (const [, resource] of Object.entries(resources)) {
-        if (isResourceOfType(resource, 'AWS::S3::Bucket')) {
-          const props = resource.Properties as Record<string, unknown>;
-          // Buckets should have PublicAccessBlockConfiguration with all flags true
-          const blockConfig = props.PublicAccessBlockConfiguration as Record<string, boolean> | undefined;
-          if (blockConfig) {
-            // Assert the actual security property is present, not just checking that properties exist
-            expect(blockConfig.BlockPublicAcls).toEqual(true);
-            expect(blockConfig.BlockPublicPolicy).toEqual(true);
-            expect(blockConfig.IgnorePublicAcls).toEqual(true);
-            expect(blockConfig.RestrictPublicBuckets).toEqual(true);
-            bucketWithBlocksCount++;
-          }
-        }
-      }
-
-      // Should have at least one S3 bucket with public access block configured
-      expect(bucketWithBlocksCount).toBeGreaterThan(0);
     });
 
-    /**
-     * DynamoDB Table Configuration Verification
-     */
-    it('data stack: DynamoDB tables are retained on delete/update (not accidentally destroyable)', () => {
-      const app   = new App();
-      const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env:         { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
+    it('retains every DynamoDB table on delete and update', () => {
+      const tables = Object.values(resourcesOfTemplate(synthDataStack())).filter((resource) => isResourceOfType(resource, 'AWS::DynamoDB::Table')) as Array<CloudFormationResource & { DeletionPolicy?: string; UpdateReplacePolicy?: string }>;
 
-      const template  = Template.fromStack(stack);
-      const resources = template.toJSON().Resources as Record<string, CloudFormationResource & { DeletionPolicy?: string; UpdateReplacePolicy?: string }> | undefined;
-      if (!resources) {
-        throw new Error('No resources found in template');
+      expect(tables.length).toBeGreaterThanOrEqual(4);
+      for (const table of tables) {
+        // Values from the synthesized output of RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE (base-table.ts).
+        expect(table.DeletionPolicy).toEqual('RetainExceptOnCreate');
+        expect(table.UpdateReplacePolicy).toEqual('Retain');
       }
-
-      let tableCount = 0;
-      for (const [, resource] of Object.entries(resources)) {
-        if (!isResourceOfType(resource, 'AWS::DynamoDB::Table')) {continue;}
-        tableCount++;
-
-        // Bug caught: if removalPolicy is ever changed to RemovalPolicy.DESTROY, DeletionPolicy
-        // becomes "Delete" and this assertion fails. Values confirmed empirically against the
-        // real synthesized output for RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE (base-table.ts).
-        expect(resource.DeletionPolicy).toEqual('RetainExceptOnCreate');
-        expect(resource.UpdateReplacePolicy).toEqual('Retain');
-      }
-
-      expect(tableCount).toBeGreaterThanOrEqual(4);
     });
   });
 
-  /**
-   * Deployer Worker IAM
-   * Tests MailboxDataDeployerWorkerLambda's own IAM grants directly — instead of the full
-   * customer-facing stack (which lives in a different repo, mailbox-apps, and can't be
-   * synthesized from here due to separate Yarn PnP roots).
-   */
-  describe('Deployer Worker IAM', () => {
-    it('data deployer worker: DynamoDB/S3 write actions are scoped to the deterministic resource-name pattern, never Resource "*"', () => {
+  describe('point-in-time recovery', () => {
+    it('enables PITR on all five data tables', () => {
+      const tables = Object.values(resourcesOfTemplate(synthDataStack())).filter((resource) => isResourceOfType(resource, 'AWS::DynamoDB::Table'));
+
+      expect(tables.length).toBeGreaterThanOrEqual(5);
+      for (const table of tables) {
+        const pitrSpec = table.Properties?.PointInTimeRecoverySpecification as Record<string, unknown> | undefined;
+        expect(pitrSpec?.PointInTimeRecoveryEnabled).toBe(true);
+      }
+    });
+  });
+
+  describe('S3 lifecycle rules', () => {
+    it('expires uploads/ objects after one day through a prefix filter with no tag filter', () => {
+      const bucketRules = Object.values(resourcesOfTemplate(synthDataStack()))
+        .filter((resource) => isResourceOfType(resource, 'AWS::S3::Bucket'))
+        .map((bucket) => (bucket.Properties?.LifecycleConfiguration as { Rules?: Array<Record<string, unknown>> } | undefined)?.Rules ?? []);
+
+      const uploadRules = bucketRules.flat().filter((rule) => rule.Id === 'DeleteUploadedBlobs');
+      expect(uploadRules).toHaveLength(1);
+      const [uploadRule] = uploadRules;
+      expect(uploadRule).toMatchObject({ Status: 'Enabled', Prefix: 'uploads/', ExpirationInDays: 1 });
+      expect(uploadRule).not.toHaveProperty('TagFilters');
+    });
+
+    it('expires unhandled incoming emails after seven days through a prefix filter', () => {
+      const bucketRules = Object.values(resourcesOfTemplate(synthDataStack()))
+        .filter((resource) => isResourceOfType(resource, 'AWS::S3::Bucket'))
+        .map((bucket) => (bucket.Properties?.LifecycleConfiguration as { Rules?: Array<Record<string, unknown>> } | undefined)?.Rules ?? []);
+
+      const incomingRules = bucketRules.flat().filter((rule) => rule.Id === 'DeleteUnhandledIncomingEmails');
+      expect(incomingRules).toHaveLength(1);
+      const [incomingRule] = incomingRules;
+      expect(incomingRule).toMatchObject({ Status: 'Enabled', Prefix: 'incoming-emails/', ExpirationInDays: 7 });
+    });
+  });
+
+  describe('deployer worker IAM', () => {
+    it('scopes DynamoDB and S3 write actions to the deterministic resource-name pattern, never Resource "*"', () => {
       const app       = new App();
       const testStack = new cdk.Stack(app, 'TestDataDeployerStack', {
         env:         { account: '123456789012', region: 'us-west-2' },
@@ -318,162 +226,32 @@ describe('MailboxDataStack Template Synthesis', () => {
         nameBase:      'test-root-data',
       });
 
-      const template  = Template.fromStack(testStack);
-      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) {
-        throw new Error('No resources found in template');
-      }
-
-      const scopedWriteActions   = new Set([
-        'dynamodb:CreateTable', 'dynamodb:DeleteTable', 'dynamodb:UpdateTable',
-        's3:CreateBucket', 's3:DeleteBucket', 's3:PutBucketPolicy',
-      ]);
-      const violations: string[] = [];
-      let sawAnyScopedAction     = false;
+      const resources              = resourcesOfTemplate(Template.fromStack(testStack));
+      const violations: string[]   = [];
+      const scopedGrants: string[] = [];
 
       for (const [logicalId, resource] of Object.entries(resources)) {
         if (!isResourceOfType(resource, 'AWS::IAM::Policy')) {continue;}
-        const statements = statementsOfDocument(resource.Properties?.PolicyDocument);
 
-        for (const stmt of statements) {
-          const actions      = actionsOf(stmt);
-          const resourceList = resourcesOf(stmt);
+        for (const statement of statementsOfDocument(resource.Properties?.PolicyDocument)) {
+          const resourceList = resourcesOf(statement);
 
-          for (const action of actions) {
-            if (!scopedWriteActions.has(action)) {continue;}
-            sawAnyScopedAction = true;
-            if (resourceList.includes('*')) {
-              violations.push(`${logicalId}: ${action} granted on bare Resource "*" (expected deterministic name-pattern scoping)`);
+          for (const action of actionsOf(statement)) {
+            if (SCOPED_WRITE_ACTIONS.has(action)) {
+              scopedGrants.push(action);
+              if (resourceList.includes('*')) {
+                violations.push(`${logicalId}: ${action} granted on bare Resource "*" (expected deterministic name-pattern scoping)`);
+              }
+            }
+            if (WRITE_ACTIONS.has(action) && resourceList.includes('*') && !statement.Condition && !KNOWN_WILDCARDS[action]) {
+              violations.push(`${logicalId}: ${action} on Resource "*" without Condition`);
             }
           }
         }
       }
 
-      expect(sawAnyScopedAction).toBe(true);
+      expect(scopedGrants.length).toBeGreaterThan(0);
       expect(violations).toEqual([]);
     });
   });
-
-  /**
-   * PITR Configuration Tests
-   */
-  describe('PITR Configuration', () => {
-    it('data stack (non-dev): all five data tables have PITR enabled', () => {
-      const app   = new App();
-      const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env:         { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
-
-      const template  = Template.fromStack(stack);
-      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) {
-        throw new Error('No resources found in template');
-      }
-
-      const tableResources = Object.values(resources).filter((r) => isResourceOfType(r, 'AWS::DynamoDB::Table'));
-
-      // Verify we have at least 5 tables (the data tables)
-      expect(tableResources.length).toBeGreaterThanOrEqual(5);
-
-      // Check PITR for each table
-      for (const table of tableResources) {
-        const props    = table.Properties as Record<string, unknown>;
-        const pitrSpec = props.PointInTimeRecoverySpecification as Record<string, unknown> | undefined;
-
-        // All tables in non-dev mode should have PITR enabled
-        // (In prod/non-dev, all five data tables have PITR enabled)
-        const pitrEnabled = pitrSpec?.PointInTimeRecoveryEnabled as boolean | undefined;
-        expect(pitrEnabled).toBe(true);
-      }
-    });
-  });
-
-  /**
-   * S3 Lifecycle Rule Configuration Tests
-   */
-  describe('S3 Lifecycle Rule Configuration', () => {
-    it('data stack: DeleteUploadedBlobs rule uses prefix filter for uploads/', () => {
-      const app   = new App();
-      const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env:         { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
-
-      const template  = Template.fromStack(stack);
-      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) {
-        throw new Error('No resources found in template');
-      }
-
-      // Find the S3 bucket and verify lifecycle rules
-      let foundBucket = false;
-      for (const [, resource] of Object.entries(resources)) {
-        if (!isResourceOfType(resource, 'AWS::S3::Bucket')) {continue;}
-        foundBucket = true;
-
-        const props           = resource.Properties as Record<string, unknown>;
-        const lifecycleConfig = props.LifecycleConfiguration as Record<string, unknown> | undefined;
-        const lifecycleRules  = lifecycleConfig?.Rules as Array<Record<string, unknown>> | undefined;
-        expect(lifecycleRules).toBeDefined();
-        expect(Array.isArray(lifecycleRules)).toBe(true);
-
-        // Find DeleteUploadedBlobs rule
-        const uploadRule = lifecycleRules?.find((rule) => rule.Id === 'DeleteUploadedBlobs');
-        expect(uploadRule).toBeDefined();
-        expect(uploadRule?.Status).toEqual('Enabled');
-
-        // Verify prefix filter exists and is 'uploads/'
-        expect(uploadRule?.Prefix).toEqual('uploads/');
-
-        // Verify NO tag filters (should be undefined)
-        const tagFilters = uploadRule?.TagFilters as Array<Record<string, string>> | undefined;
-        expect(tagFilters).toBeUndefined();
-
-        // Verify expiration is 1 day
-        expect(uploadRule?.ExpirationInDays).toEqual(1);
-      }
-
-      expect(foundBucket).toBe(true);
-    });
-
-    it('data stack: incoming-emails rule still uses prefix filter', () => {
-      const app   = new App();
-      const stack = new MailboxDataStack(app, 'TestMailboxData', {
-        env:         { account: '123456789012', region: 'us-west-2' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
-
-      const template  = Template.fromStack(stack);
-      const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-      if (!resources) {
-        throw new Error('No resources found in template');
-      }
-
-      // Find the S3 bucket and verify incoming-emails rule
-      let foundRule = false;
-      for (const [, resource] of Object.entries(resources)) {
-        if (!isResourceOfType(resource, 'AWS::S3::Bucket')) {continue;}
-
-        const props           = resource.Properties as Record<string, unknown>;
-        const lifecycleConfig = props.LifecycleConfiguration as Record<string, unknown> | undefined;
-        const lifecycleRules  = lifecycleConfig?.Rules as Array<Record<string, unknown>> | undefined;
-
-        const incomingRule = lifecycleRules?.find((rule) => rule.Id === 'DeleteUnhandledIncomingEmails');
-        if (!incomingRule) {continue;}
-
-        foundRule = true;
-        expect(incomingRule.Status).toEqual('Enabled');
-
-        // Verify prefix filter exists and is 'incoming-emails/'
-        expect(incomingRule.Prefix).toEqual('incoming-emails/');
-
-        // Verify expiration is 7 days
-        expect(incomingRule.ExpirationInDays).toEqual(7);
-      }
-
-      expect(foundRule).toBe(true);
-    });
-  });
-
 });
