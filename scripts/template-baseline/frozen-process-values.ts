@@ -1,3 +1,6 @@
+const BASELINE_TIME_MILLIS  = 1_700_000_000_000;
+const BASELINE_RANDOM_VALUE = 0.5;
+
 /**
  * Holds the clock and the random number generator of this process at fixed values while a piece of
  * work runs, so a synth that stamps the time or draws a random number produces the same template
@@ -11,7 +14,7 @@ export class FrozenProcessValues {
   ) {}
 
   static forBaseline(): FrozenProcessValues {
-    return new FrozenProcessValues(1_700_000_000_000, 0.5);
+    return new FrozenProcessValues(BASELINE_TIME_MILLIS, BASELINE_RANDOM_VALUE);
   }
 
   /** Both are restored also when `work` throws; `work` must be synchronous, since the freeze ends when it returns. */

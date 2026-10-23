@@ -6,6 +6,6 @@ module.exports = {
   rootDir: 'scripts',
   testMatch: ['**/__tests__/**/*.test.ts'],
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { tsconfig: { ...scriptsCompilerOptions, isolatedModules: true } }],
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: { ...scriptsCompilerOptions, isolatedModules: true, rootDir: '.' } }],
   },
 };

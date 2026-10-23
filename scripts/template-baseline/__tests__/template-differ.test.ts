@@ -1,20 +1,12 @@
-import type { JsonObject }               from '../../utils/json-value';
-import { TemplateDiffer }                from '../template-differ';
-import type { NonDeterministicProperty } from '../template-diff';
+import type { JsonObject }        from '../../utils/json-value';
+import { TemplateDiffer }         from '../template-differ';
 
 /**
  * Pins what the refactor gate reports: every added, removed and changed entry with the exact paths
- * that changed, and a known non-deterministic property reported apart. Loosening the path or entry
- * comparison lets a template change pass the gate unnoticed; letting a non-deterministic rule
- * swallow a real change hides it.
+ * that changed. Loosening the path or entry comparison lets a template change pass the gate unnoticed.
  */
 describe('TemplateDiffer', () => {
-  const nonceRule: NonDeterministicProperty = {
-    resourceType: 'Custom::ContentInvalidation',
-    propertyPath: 'Properties.deploymentNonce',
-    reason:       'unstable',
-  };
-  const differ                              = new TemplateDiffer([nonceRule]);
+  const differ = new TemplateDiffer();
 
   function resources(entries: JsonObject): JsonObject {
     return { Resources: entries };
@@ -24,7 +16,7 @@ describe('TemplateDiffer', () => {
     const before = resources({ Queue: { Type: 'AWS::SQS::Queue', Properties: { A: 1, B: 2 } } });
     const after  = resources({ Queue: { Properties: { B: 2, A: 1 }, Type: 'AWS::SQS::Queue' } });
 
-    expect(differ.diff(before, after)).toEqual({ added: [], removed: [], changed: [], knownNonDeterministic: [], identical: true });
+    expect(differ.diff(before, after)).toEqual({ added: [], removed: [], changed: [], identical: true });
   });
 
   it('reports added and removed entries by section and logical ID', () => {
@@ -70,37 +62,5 @@ describe('TemplateDiffer', () => {
     const diff = differ.diff({ Description: 'before' }, { Description: 'after' });
 
     expect(diff.changed).toEqual([{ entryId: 'Description', propertyPaths: ['(value)'] }]);
-  });
-
-  it('reports a known non-deterministic property apart and still counts the template as identical', () => {
-    const before = resources({ Inv: { Type: 'Custom::ContentInvalidation', Properties: { deploymentNonce: 'one', Paths: ['/*'] } } });
-    const after  = resources({ Inv: { Type: 'Custom::ContentInvalidation', Properties: { deploymentNonce: 'two', Paths: ['/*'] } } });
-
-    const diff = differ.diff(before, after);
-
-    expect(diff.knownNonDeterministic).toEqual([{ entryId: 'Resources/Inv', propertyPaths: ['Properties.deploymentNonce'] }]);
-    expect(diff.changed).toEqual([]);
-    expect(diff.identical).toBe(true);
-  });
-
-  it('keeps a real change in the same entry as a known non-deterministic one in the failing list', () => {
-    const before = resources({ Inv: { Type: 'Custom::ContentInvalidation', Properties: { deploymentNonce: 'one', Paths: ['/a'] } } });
-    const after  = resources({ Inv: { Type: 'Custom::ContentInvalidation', Properties: { deploymentNonce: 'two', Paths: ['/b'] } } });
-
-    const diff = differ.diff(before, after);
-
-    expect(diff.changed).toEqual([{ entryId: 'Resources/Inv', propertyPaths: ['Properties.Paths[0]'] }]);
-    expect(diff.knownNonDeterministic).toEqual([{ entryId: 'Resources/Inv', propertyPaths: ['Properties.deploymentNonce'] }]);
-    expect(diff.identical).toBe(false);
-  });
-
-  it('does not treat the same property of another resource type as non-deterministic', () => {
-    const before = resources({ Other: { Type: 'Custom::Other', Properties: { deploymentNonce: 'one' } } });
-    const after  = resources({ Other: { Type: 'Custom::Other', Properties: { deploymentNonce: 'two' } } });
-
-    const diff = differ.diff(before, after);
-
-    expect(diff.changed).toEqual([{ entryId: 'Resources/Other', propertyPaths: ['Properties.deploymentNonce'] }]);
-    expect(diff.knownNonDeterministic).toEqual([]);
   });
 });
