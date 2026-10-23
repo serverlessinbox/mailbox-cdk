@@ -9,7 +9,11 @@ import { Construct }             from 'constructs';
 
 import { defaultCfnResource }    from '../../utils/cfn-resource';
 
-/** Props of {@link JmapBlobDownloadLambda}. */
+/**
+ * The artifact bucket and resolved artifact the Lambda@Edge code is loaded from, its pre-created
+ * execution role and log group, and the product version it reports. The edge stack does not create
+ * the role or the log group; it only references them.
+ */
 export interface JmapBlobDownloadLambdaProps {
   /** Bucket holding the artifact. */
   readonly artifactBucket: s3.IBucket;

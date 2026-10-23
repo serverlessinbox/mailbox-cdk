@@ -9,7 +9,11 @@ import type { ITemplateVersionParam }                                 from '../.
 import type { IAuditEventsQueue }                                     from '../queues/audit-events-queue';
 import type { IDataTable }                                            from '../tables/data-tables';
 
-/** Inputs of the stack-update API Lambda. */
+/**
+ * The root stack, config table, template location and audit queue the stack-update API works against.
+ * It does not create the root stack or the template artifacts; the caller supplies their names and
+ * references.
+ */
 export interface StackUpdateApiLambdaProps {
   readonly rootStackArn:     string;
   readonly configTable:      IDataTable;

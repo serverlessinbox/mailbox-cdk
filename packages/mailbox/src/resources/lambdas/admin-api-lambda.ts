@@ -13,6 +13,10 @@ import type { IDataTable }                                                      
 
 import type { IIdentityProvisioner }                                                                from './identity-provisioner-lambda';
 
+/**
+ * The tables, queues, bucket, identity provisioner and SES and vendor settings the admin-api Lambda
+ * is wired to. The caller creates every resource here; this type only passes them through.
+ */
 export interface AdminApiLambdaProps {
   readonly configTable:          IDataTable;
   readonly itemTable:            IDataTable;

@@ -6,7 +6,10 @@ import { Construct }                from 'constructs';
 
 import { MAILBOX_ARTIFACT_PACKAGE } from '../../contracts/mailbox-artifact-package';
 
-/** Inputs of {@link ResourceSweeperWorkerLambda}. */
+/**
+ * The artifact resolver for this Lambda's code and the IAM role it runs as. The removal target is
+ * supplied per invocation, not configured here.
+ */
 export interface ResourceSweeperWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
 

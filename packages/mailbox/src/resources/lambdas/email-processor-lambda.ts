@@ -9,13 +9,17 @@ import { EmailProcessingQueueEvent }                               from '../even
 import type { IEmailProcessingQueueConsumer }                      from '../queues/email-processing-queue';
 import type { IDataTable }                                         from '../tables/data-tables';
 
+/**
+ * The tables and blob store the processor reads and writes, and the email-processing queue it
+ * consumes. The caller creates them; this Lambda does not own them.
+ */
 export interface EmailProcessorLambdaProps {
-  configTable:          IDataTable;
-  itemTable:            IDataTable;
-  changelogTable:       IDataTable;
-  blobStore:            IDataBlobStore;
-  emailProcessingQueue: IEmailProcessingQueueConsumer;
-  artifactResolver:     IArtifactResolver;
+  readonly configTable:          IDataTable;
+  readonly itemTable:            IDataTable;
+  readonly changelogTable:       IDataTable;
+  readonly blobStore:            IDataBlobStore;
+  readonly emailProcessingQueue: IEmailProcessingQueueConsumer;
+  readonly artifactResolver:     IArtifactResolver;
 }
 
 /**
@@ -39,12 +43,10 @@ export class EmailProcessorLambda extends GoLambda implements IWebSocketPushTarg
     });
     ComponentDescription.describe(this, 'Inbound email processing — parses MIME, stores raw content to S3, and indexes messages into the mailbox.');
 
-    // Grant the Lambda function read/write permissions to the DynamoDB tables
     props.configTable.grantReadWrite(this);
     props.itemTable.grantReadWrite(this);
     props.changelogTable.grantReadWrite(this);
 
-    // Consume the raw message SES delivered, then write it into standard email-blob storage
     props.blobStore.grantIncomingEmailConsume(this);
     props.blobStore.grantEmailBlobWrite(this);
 

@@ -10,14 +10,18 @@ import { EmailSubmissionsQueueEvent }                              from '../even
 import type { IEmailSendingQueueConsumer }                         from '../queues/email-sending-queue';
 import type { IDataTable }                                         from '../tables/data-tables';
 
+/**
+ * The tables, blob store and submission queue the sender reads and writes, and the SES configuration
+ * set it sends through. The caller creates them; this Lambda does not own them.
+ */
 export interface EmailSenderLambdaProps {
-  configTable:      IDataTable;
-  itemTable:        IDataTable;
-  changelogTable:   IDataTable;
-  blobStore:        IDataBlobStore;
-  sesConfigSetName: string;
-  submissionQueue:  IEmailSendingQueueConsumer;
-  artifactResolver: IArtifactResolver;
+  readonly configTable:      IDataTable;
+  readonly itemTable:        IDataTable;
+  readonly changelogTable:   IDataTable;
+  readonly blobStore:        IDataBlobStore;
+  readonly sesConfigSetName: string;
+  readonly submissionQueue:  IEmailSendingQueueConsumer;
+  readonly artifactResolver: IArtifactResolver;
 }
 
 /**
@@ -41,7 +45,6 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
       },
     });
 
-    // Grant permissions
     props.configTable.grantRead(this);
     props.itemTable.grantReadWrite(this);
     props.changelogTable.grantReadWrite(this);
@@ -60,7 +63,6 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
   }
 
   private grantSesSendRawEmail(sesConfigSetName: string) {
-    // Grant SES send permissions for email identities and the configuration set.
     // SES ignores aws:ResourceTag conditions for SendRawEmail, so we scope by explicit resource ARNs instead.
     this.addToRolePolicy(
       new PolicyStatement({

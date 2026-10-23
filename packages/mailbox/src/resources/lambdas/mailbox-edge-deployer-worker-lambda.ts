@@ -11,6 +11,11 @@ import type { IRole }                                      from 'aws-cdk-lib/aws
 import { ArnFormat, Aws, Stack }                           from 'aws-cdk-lib';
 import { Construct }                                       from 'constructs';
 
+/**
+ * The edge stack and root-stack identity this worker deploys, the template and artifacts CloudFormation
+ * reads, the Lambda@Edge role it may pass, and the optional hosted zone for certificate validation.
+ * The caller supplies every value; the worker does not create the resources they describe.
+ */
 export interface MailboxEdgeDeployerWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
   /**

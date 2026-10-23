@@ -9,15 +9,19 @@ import type { AuthPolicyName, OAuthClientName } from '../../contracts/auth-names
 import type { IAuditEventsQueue }               from '../queues/audit-events-queue';
 import type { IDataTable }                      from '../tables/data-tables';
 
+/**
+ * The config table and audit queue the exchange uses, and the auth policy and OAuth client it is bound
+ * to. The caller creates the tables and queue and chooses the policy and client.
+ */
 export interface IdpTokenExchangeLambdaProps {
-  configTable:      IDataTable;
-  auditEventsQueue: IAuditEventsQueue;
-  authPolicyName:   AuthPolicyName;
-  oauthClientName:  OAuthClientName;
-  artifactResolver: IArtifactResolver;
+  readonly configTable:      IDataTable;
+  readonly auditEventsQueue: IAuditEventsQueue;
+  readonly authPolicyName:   AuthPolicyName;
+  readonly oauthClientName:  OAuthClientName;
+  readonly artifactResolver: IArtifactResolver;
 
   /** SERVICE_NAME for this physical function; distinguishes it from other IdpTokenExchangeLambda instances sharing the 'idp-token-exchange' lambdaId. */
-  serviceName: string;
+  readonly serviceName: string;
 
   /** This one code site is instantiated for both webmail-ui ('jmap') and admin-ui ('admin'); the caller states which. */
   readonly pipeline: Pipeline;
@@ -26,6 +30,10 @@ export interface IdpTokenExchangeLambdaProps {
   readonly dependsOn?: IDependable[];
 }
 
+/**
+ * The Go Lambda that performs the identity-provider token exchange for the auth policy and OAuth
+ * client it is given. It does not own the config table or the audit queue.
+ */
 export class IdpTokenExchangeLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: IdpTokenExchangeLambdaProps) {
     super(scope, id, {

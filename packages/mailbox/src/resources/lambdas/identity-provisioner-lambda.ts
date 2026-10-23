@@ -23,12 +23,16 @@ export interface IIdentityProvisioner {
   grantInvoke(grantee: IGrantable): void;
 }
 
+/**
+ * The tables, queues, blob store and SES settings the provisioner uses to create a mailbox user. The
+ * caller creates every resource here; this Lambda only writes to them.
+ */
 export interface IdentityProvisionerLambdaProps {
-  configTable:      IDataTable;
-  itemTable:        IDataTable;
-  changelogTable:   IDataTable;
-  auditEventsQueue: IAuditEventsQueue;
-  artifactResolver: IArtifactResolver;
+  readonly configTable:      IDataTable;
+  readonly itemTable:        IDataTable;
+  readonly changelogTable:   IDataTable;
+  readonly auditEventsQueue: IAuditEventsQueue;
+  readonly artifactResolver: IArtifactResolver;
   /** Full URL of the Admin UI (e.g. https://admin.example.com). Used in welcome email CTA. Absent when no Admin UI is deployed. */
   readonly adminUIURL?: string;
   /** Blob store bucket for email attachments/bodies (used by the email service). */
@@ -43,6 +47,10 @@ export interface IdentityProvisionerLambdaProps {
   readonly vendorAccountIds: string[];
 }
 
+/**
+ * The Lambda that provisions mailbox users. It is invoked through {@link IIdentityProvisioner}, so
+ * callers never receive the function itself.
+ */
 export class IdentityProvisionerLambda extends GoLambda implements IIdentityProvisioner {
   constructor(scope: Construct, id: string, props: IdentityProvisionerLambdaProps) {
     super(scope, id, {

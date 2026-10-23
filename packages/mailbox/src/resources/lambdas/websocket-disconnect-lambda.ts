@@ -6,12 +6,17 @@ import { Construct }              from 'constructs';
 import type { IDataTable }        from '../tables/data-tables';
 import { IWebSocketTable }        from '../tables/websocket-table';
 
+/**
+ * The connections table the disconnect handler writes and the config table it reads. The caller creates
+ * both.
+ */
 export interface WebSocketDisconnectLambdaProps {
-  connectionsTable: IWebSocketTable;
-  configTable:      IDataTable;
-  artifactResolver: IArtifactResolver;
+  readonly connectionsTable: IWebSocketTable;
+  readonly configTable:      IDataTable;
+  readonly artifactResolver: IArtifactResolver;
 }
 
+/** The Go Lambda that removes a WebSocket connection when it closes. */
 export class WebSocketDisconnectLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: WebSocketDisconnectLambdaProps) {
     super(scope, id, {
@@ -26,7 +31,6 @@ export class WebSocketDisconnectLambda extends GoLambda {
       },
     });
 
-    // Grant permissions
     props.connectionsTable.grantReadWrite(this);
     props.configTable.grantRead(this);
   }

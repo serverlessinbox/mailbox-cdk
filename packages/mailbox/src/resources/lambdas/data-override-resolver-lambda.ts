@@ -6,7 +6,10 @@ import { Construct }                from 'constructs';
 
 import { MAILBOX_ARTIFACT_PACKAGE } from '../../contracts/mailbox-artifact-package';
 
-/** Props of the data override resolver Lambda. */
+/**
+ * The artifact resolver the resolver's code is loaded from. It carries no table ARNs; each custom
+ * resource event supplies those.
+ */
 export interface DataOverrideResolverLambdaProps {
   readonly artifactResolver: IArtifactResolver;
 }

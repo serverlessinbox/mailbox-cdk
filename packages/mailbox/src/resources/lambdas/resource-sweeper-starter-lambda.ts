@@ -6,16 +6,20 @@ import { Construct }                from 'constructs';
 
 import { MAILBOX_ARTIFACT_PACKAGE } from '../../contracts/mailbox-artifact-package';
 
+/**
+ * The artifact resolver for this Lambda's code and the state machine it starts. The caller creates the
+ * state machine.
+ */
 export interface ResourceSweeperStarterLambdaProps {
-  artifactResolver: IArtifactResolver;
+  readonly artifactResolver: IArtifactResolver;
 
   /** ARN of the state machine to start */
-  stateMachineArn: string;
+  readonly stateMachineArn: string;
 }
 
 /**
- * Resource Sweeper Starter Lambda wrapper.
- * Handles CloudFormation custom resource invocations to start the sweeper state machine.
+ * Starts the resource sweeper state machine when CloudFormation invokes it as a custom resource.
+ * It does not sweep resources itself; the worker Lambda does.
  */
 export class ResourceSweeperStarterLambda extends TypeScriptLambda {
   constructor(scope: Construct, id: string, props: ResourceSweeperStarterLambdaProps) {

@@ -7,10 +7,14 @@ import { AuditEventsQueueEvent }          from '../events/audit-events-queue-eve
 import type { IAuditEventsQueueConsumer } from '../queues/audit-events-queue';
 import type { IDataTable }                from '../tables/data-tables';
 
+/**
+ * The audit log table the writer writes to and the audit-events queue it consumes. The caller
+ * creates both; this Lambda does not own them.
+ */
 export interface AuditWriterLambdaProps {
-  auditLogTable:    IDataTable;
-  auditEventsQueue: IAuditEventsQueueConsumer;
-  artifactResolver: IArtifactResolver;
+  readonly auditLogTable:    IDataTable;
+  readonly auditEventsQueue: IAuditEventsQueueConsumer;
+  readonly artifactResolver: IArtifactResolver;
 }
 
 /**
@@ -30,7 +34,6 @@ export class AuditWriterLambda extends GoLambda {
       },
     });
 
-    // Grant permissions
     props.auditLogTable.grantReadWrite(this);
 
     props.auditEventsQueue.grantConsume(this);

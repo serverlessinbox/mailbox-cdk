@@ -14,20 +14,24 @@ import type { IDataTable }                                                     f
 
 import type { IIdentityProvisioner }                                           from './identity-provisioner-lambda';
 
+/**
+ * The tables, blob store, queues and identity provisioner the JMAP API reads and writes, plus its CDN
+ * host, API base URL and OAuth scope map. The caller creates every resource here.
+ */
 export interface JmapApiLambdaProps {
-  configTable:          IDataTable;
-  itemTable:            IDataTable;
-  changelogTable:       IDataTable;
-  authKeyStoreTable:    IAuthKeyStoreTable;
-  blobStore:            IDataBlobStore;
-  emailSubmissionQueue: IEmailSendingQueue;
-  auditEventsQueue:     IAuditEventsQueue;
-  cdnHost:              string;
-  apiBaseUrl:           string;
-  artifactResolver:     IArtifactResolver;
-  identityProvisioner:  IIdentityProvisioner;
+  readonly configTable:          IDataTable;
+  readonly itemTable:            IDataTable;
+  readonly changelogTable:       IDataTable;
+  readonly authKeyStoreTable:    IAuthKeyStoreTable;
+  readonly blobStore:            IDataBlobStore;
+  readonly emailSubmissionQueue: IEmailSendingQueue;
+  readonly auditEventsQueue:     IAuditEventsQueue;
+  readonly cdnHost:              string;
+  readonly apiBaseUrl:           string;
+  readonly artifactResolver:     IArtifactResolver;
+  readonly identityProvisioner:  IIdentityProvisioner;
   /** The OAuth scope map; delivered to the Go handler in the OAUTH_HANDLER_CONFIG variable. */
-  scopeMap:             ScopeMap;
+  readonly scopeMap:             ScopeMap;
   /** Optional: fully-resolved RFC 9728 protected-resource document URL (e.g. https://jmap.example.com/.well-known/oauth-protected-resource).
    *  The Go handler advertises this URL via 401 WWW-Authenticate: Bearer resource_metadata="...". */
   readonly oauthProtectedResourceUrl?: string;
@@ -35,6 +39,10 @@ export interface JmapApiLambdaProps {
   readonly vendorAccountIds: string[];
 }
 
+/**
+ * The Go Lambda that serves the JMAP API. It does not own the tables, blobs or queues it is given;
+ * websocket push is wired through {@link JmapApiLambda.enableWebSocketPush}.
+ */
 export class JmapApiLambda extends GoLambda implements IWebSocketPushTargetWithUrl {
   constructor(scope: Construct, id: string, props: JmapApiLambdaProps) {
     super(scope, id, {
@@ -62,11 +70,9 @@ export class JmapApiLambda extends GoLambda implements IWebSocketPushTargetWithU
       },
     });
 
-    // Grant the Lambda function read permissions to the config table
     props.configTable.grantRead(this);
     props.authKeyStoreTable.grantRead(this);
 
-    // Grant the Lambda function read/write permissions to the DynamoDB tables
     props.itemTable.grantReadWrite(this);
     props.changelogTable.grantReadWrite(this);
     // JMAP API reads/writes/deletes email, upload, contact, and principal blobs, and reads the
@@ -77,13 +83,10 @@ export class JmapApiLambda extends GoLambda implements IWebSocketPushTargetWithU
     props.blobStore.grantPrincipalBlobReadWriteDelete(this);
     props.blobStore.grantSearchIndexRead(this);
 
-    // Grant SQS permissions to send email submission messages
     props.emailSubmissionQueue.grantSend(this);
 
-    // Grant SQS permissions to send audit events
     props.auditEventsQueue.grantSend(this);
 
-    // Grant the User provisioning function to be invoked
     props.identityProvisioner.grantInvoke(this);
 
     this.grantLicenseApiAccess(props.vendorAccountIds);

@@ -5,12 +5,20 @@ import { Construct }                     from 'constructs';
 import { AuthKeyRefreshSchedule }        from '../events/auth-key-refresh-schedule';
 import type { IAuthKeyStoreTable }       from '../tables/auth-key-store-table';
 
+/**
+ * The issuers whose keys are refreshed, the key store table they are written to and the artifact
+ * resolver for the function's code. The caller creates the table.
+ */
 export interface AuthKeyStoreUpdaterLambdaProps {
-  issuers:           string[];
-  authKeyStoreTable: IAuthKeyStoreTable;
-  artifactResolver:  IArtifactResolver;
+  readonly issuers:           string[];
+  readonly authKeyStoreTable: IAuthKeyStoreTable;
+  readonly artifactResolver:  IArtifactResolver;
 }
 
+/**
+ * Refreshes the auth key store on a schedule and after each stack deployment. It does not own the
+ * key store table.
+ */
 export class AuthKeyStoreUpdaterLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: AuthKeyStoreUpdaterLambdaProps) {
     super(scope, id, {

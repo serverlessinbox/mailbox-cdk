@@ -8,7 +8,11 @@ import type { ISupportRoles }              from '../../contracts/support-roles';
 import type { IAuditEventsQueue }          from '../queues/audit-events-queue';
 import type { IDataTable }                 from '../tables/data-tables';
 
-/** Inputs of the support API Lambda. */
+/**
+ * The support roles the Lambda opens and closes, the config table and audit queue it writes to, the
+ * artifact resolver for its code and the vendor accounts it invokes. The caller creates the roles,
+ * table and queue.
+ */
 export interface SupportApiLambdaProps {
   /** The support roles the Lambda opens and closes access to, and the grants it holds on them. */
   readonly supportRoles: ISupportRoles;

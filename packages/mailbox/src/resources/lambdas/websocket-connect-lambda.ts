@@ -6,12 +6,17 @@ import { Construct }              from 'constructs';
 import type { IDataTable }        from '../tables/data-tables';
 import { IWebSocketTable }        from '../tables/websocket-table';
 
+/**
+ * The connections table the connect handler writes and the config table it reads. The caller creates
+ * both.
+ */
 export interface WebSocketConnectLambdaProps {
-  connectionsTable: IWebSocketTable;
-  configTable:      IDataTable;
-  artifactResolver: IArtifactResolver;
+  readonly connectionsTable: IWebSocketTable;
+  readonly configTable:      IDataTable;
+  readonly artifactResolver: IArtifactResolver;
 }
 
+/** The Go Lambda that records a WebSocket connection when it opens. */
 export class WebSocketConnectLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: WebSocketConnectLambdaProps) {
     super(scope, id, {
@@ -26,7 +31,6 @@ export class WebSocketConnectLambda extends GoLambda {
       },
     });
 
-    // Grant permissions
     props.connectionsTable.grantReadWrite(this);
     props.configTable.grantRead(this);
   }

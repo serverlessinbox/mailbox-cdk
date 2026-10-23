@@ -5,9 +5,13 @@ import { Construct }                  from 'constructs';
 
 import type { IEmailProcessingQueue } from '../queues/email-processing-queue';
 
+/**
+ * The email-processor queue the forwarder enqueues onto and the artifact resolver for its code. The
+ * caller creates the queue.
+ */
 export interface SesReceiptForwarderLambdaProps {
-  emailProcessorQueue: IEmailProcessingQueue;
-  artifactResolver:    IArtifactResolver;
+  readonly emailProcessorQueue: IEmailProcessingQueue;
+  readonly artifactResolver:    IArtifactResolver;
 }
 
 /**

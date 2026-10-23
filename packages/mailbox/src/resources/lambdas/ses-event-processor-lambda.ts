@@ -10,15 +10,19 @@ import type { IAuditEventsQueue }                                  from '../queu
 import type { ISesEventQueue }                                     from '../queues/ses-event-queue';
 import type { IDataTable }                                         from '../tables/data-tables';
 
+/**
+ * The tables, blob store, audit queue and SES event queue the processor reads, writes and consumes.
+ * The caller creates every resource here; this Lambda does not own them.
+ */
 export interface SesEventProcessorLambdaProps {
-  itemTable:         IDataTable;
-  changelogTable:    IDataTable;
-  mailFeedbackTable: IDataTable;
-  configTable:       IDataTable;
-  blobStore:         IDataBlobStore;
-  auditEventsQueue:  IAuditEventsQueue;
-  sesEventQueue:     ISesEventQueue;
-  artifactResolver:  IArtifactResolver;
+  readonly itemTable:         IDataTable;
+  readonly changelogTable:    IDataTable;
+  readonly mailFeedbackTable: IDataTable;
+  readonly configTable:       IDataTable;
+  readonly blobStore:         IDataBlobStore;
+  readonly auditEventsQueue:  IAuditEventsQueue;
+  readonly sesEventQueue:     ISesEventQueue;
+  readonly artifactResolver:  IArtifactResolver;
 }
 
 /**
@@ -43,7 +47,6 @@ export class SesEventProcessorLambda extends GoLambda implements IWebSocketPushT
       },
     });
 
-    // Grant permissions
     props.itemTable.grantReadWrite(this);
     props.changelogTable.grantReadWrite(this);
     props.mailFeedbackTable.grantReadWrite(this);

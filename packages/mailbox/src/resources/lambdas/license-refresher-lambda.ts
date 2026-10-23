@@ -7,10 +7,14 @@ import { Construct }                        from 'constructs';
 import { LicenseRefreshSchedule }           from '../events/license-refresh-schedule';
 import type { IDataTable }                  from '../tables/data-tables';
 
+/**
+ * The config table the refresher reads and writes, the core domain it refreshes against, the vendor
+ * accounts it calls and the daily schedule time. The caller supplies all of them.
+ */
 export interface LicenseRefresherLambdaProps {
-  configTable:      IDataTable;
-  artifactResolver: IArtifactResolver;
-  coreDomain:       string;
+  readonly configTable:      IDataTable;
+  readonly artifactResolver: IArtifactResolver;
+  readonly coreDomain:       string;
   /** AWS account IDs hosting the vendor service API, resolved by the caller. Scopes the execute-api:Invoke permission. */
   readonly vendorAccountIds: string[];
   /** Hour of the daily refresh. */
@@ -19,6 +23,10 @@ export interface LicenseRefresherLambdaProps {
   readonly scheduleMinute: string;
 }
 
+/**
+ * Refreshes the license on a daily schedule and after each stack deployment. It does not own the
+ * config table.
+ */
 export class LicenseRefresherLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: LicenseRefresherLambdaProps) {
     super(scope, id, {

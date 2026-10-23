@@ -10,16 +10,20 @@ import type { Granularity }                                                     
 import { MAILBOX_ARTIFACT_PACKAGE }                                                                        from '../../contracts/mailbox-artifact-package';
 import { ArtifactUpdateSchedule }                                                                          from '../events/artifact-update-schedule';
 
+/**
+ * The release channel, granularity, root stack and schedule the artifact updater tracks. The caller
+ * supplies the root stack and the artifact bucket; this type does not create either.
+ */
 export interface ArtifactUpdaterLambdaProps {
-  artifactResolver:   IArtifactResolver;
-  distTag:            string;
-  granularity:        Granularity;
-  rootStackTagValue:  string;
-  rootStackId:        string;
-  artifactBucketBase: string;
-  updateInterval:     Duration;
+  readonly artifactResolver:   IArtifactResolver;
+  readonly distTag:            string;
+  readonly granularity:        Granularity;
+  readonly rootStackTagValue:  string;
+  readonly rootStackId:        string;
+  readonly artifactBucketBase: string;
+  readonly updateInterval:     Duration;
   /** The scheduled update exists only while this condition holds; the function itself always exists. */
-  isTracking: CfnCondition;
+  readonly isTracking: CfnCondition;
 }
 
 /**

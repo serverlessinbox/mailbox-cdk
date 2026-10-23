@@ -7,13 +7,18 @@ import type { IWebSocketPushApi } from '../../contracts/websocket-push';
 import type { IDataTable }        from '../tables/data-tables';
 import { IWebSocketTable }        from '../tables/websocket-table';
 
+/**
+ * The connections table it reads, the config table it reads, the WebSocket push API it posts to and the
+ * artifact resolver for its code. The caller creates the tables and the push API.
+ */
 export interface WebSocketBroadcastLambdaProps {
-  connectionsTable: IWebSocketTable;
-  configTable:      IDataTable;
-  webSocketPushApi: IWebSocketPushApi;
-  artifactResolver: IArtifactResolver;
+  readonly connectionsTable: IWebSocketTable;
+  readonly configTable:      IDataTable;
+  readonly webSocketPushApi: IWebSocketPushApi;
+  readonly artifactResolver: IArtifactResolver;
 }
 
+/** The Go Lambda that pushes messages to subscribed WebSocket connections. */
 export class WebSocketBroadcastLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: WebSocketBroadcastLambdaProps) {
     super(scope, id, {
@@ -29,11 +34,9 @@ export class WebSocketBroadcastLambda extends GoLambda {
       },
     });
 
-    // Grant permissions
     props.connectionsTable.grantReadWrite(this);
     props.configTable.grantRead(this);
 
-    // Grant API Gateway Management API permissions
     props.webSocketPushApi.grantManageConnections(this);
   }
 }

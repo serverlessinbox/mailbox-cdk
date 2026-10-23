@@ -7,15 +7,20 @@ import type { IWebSocketPushApi } from '../../contracts/websocket-push';
 import type { IDataTable }        from '../tables/data-tables';
 import { IWebSocketTable }        from '../tables/websocket-table';
 
+/**
+ * The connections, config and item tables it reads or writes, the per-connection subscription limit and
+ * the WebSocket push API it posts to. The caller creates the tables and the push API.
+ */
 export interface WebSocketMessageLambdaProps {
-  connectionsTable: IWebSocketTable;
-  configTable:      IDataTable;
-  itemTable:        IDataTable;
-  maxSubscriptions: number;
-  webSocketPushApi: IWebSocketPushApi;
-  artifactResolver: IArtifactResolver;
+  readonly connectionsTable: IWebSocketTable;
+  readonly configTable:      IDataTable;
+  readonly itemTable:        IDataTable;
+  readonly maxSubscriptions: number;
+  readonly webSocketPushApi: IWebSocketPushApi;
+  readonly artifactResolver: IArtifactResolver;
 }
 
+/** The Go Lambda that handles messages from WebSocket clients, including subscriptions. */
 export class WebSocketMessageLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: WebSocketMessageLambdaProps) {
     super(scope, id, {
@@ -33,12 +38,10 @@ export class WebSocketMessageLambda extends GoLambda {
       },
     });
 
-    // Grant permissions
     props.connectionsTable.grantReadWrite(this);
     props.configTable.grantRead(this);
     props.itemTable.grantRead(this);
 
-    // Grant API Gateway Management API permissions
     props.webSocketPushApi.grantManageConnections(this);
   }
 }

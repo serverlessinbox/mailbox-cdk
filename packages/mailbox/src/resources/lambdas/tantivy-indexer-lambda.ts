@@ -8,15 +8,20 @@ import type { IDataBlobStore }    from '../buckets/data-blob-store';
 import { SearchIndexingSchedule } from '../events/search-indexing-schedule';
 import type { IDataTable }        from '../tables/data-tables';
 
+/**
+ * The index bucket the indexer writes, the tables it reads, the artifact resolver for its code and the
+ * dead-letter queue its schedule uses. The caller creates every resource here.
+ */
 export interface TantivyIndexerLambdaProps {
-  indexBucket:         IDataBlobStore;
-  itemTable:           IDataTable;
-  configTable:         IDataTable;
-  changelogTable:      IDataTable;
-  artifactResolver:    IArtifactResolver;
-  indexingScheduleDlq: IQueue;
+  readonly indexBucket:         IDataBlobStore;
+  readonly itemTable:           IDataTable;
+  readonly configTable:         IDataTable;
+  readonly changelogTable:      IDataTable;
+  readonly artifactResolver:    IArtifactResolver;
+  readonly indexingScheduleDlq: IQueue;
 }
 
+/** The Go Lambda that indexes mailbox items into the search index bucket on a schedule. */
 export class TantivyIndexerLambda extends GoLambda {
   constructor(scope: Construct, id: string, props: TantivyIndexerLambdaProps) {
     super(scope, id, {
@@ -33,7 +38,6 @@ export class TantivyIndexerLambda extends GoLambda {
       },
     });
 
-    // Grant permissions
     props.indexBucket.grantSearchIndexReadWrite(this);
     props.itemTable.grantRead(this);
     props.configTable.grantRead(this);

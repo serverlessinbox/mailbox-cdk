@@ -5,6 +5,10 @@ import { Effect, PolicyStatement }              from 'aws-cdk-lib/aws-iam';
 import { Aws, IResolvable }                     from 'aws-cdk-lib';
 import { Construct }                            from 'constructs';
 
+/**
+ * The data stack to deploy and the template and name base it deploys with. The caller supplies the
+ * stack, the template and the name base; this worker does not create them.
+ */
 export interface MailboxDataDeployerWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
   readonly dataStack:        IDeployedStack;

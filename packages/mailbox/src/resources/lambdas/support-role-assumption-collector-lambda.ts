@@ -7,7 +7,10 @@ import type { ISupportRoles }            from '../../contracts/support-roles';
 import { SupportCollectionSchedule }     from '../events/support-collection-schedule';
 import type { IDataTable }               from '../tables/data-tables';
 
-/** Inputs of the support role-assumption collector Lambda. */
+/**
+ * The support roles whose assumptions it archives and whose tier tags it recomputes, the config table it
+ * writes to and the artifact resolver for its code. The caller creates all of them.
+ */
 export interface SupportRoleAssumptionCollectorLambdaProps {
   /** The support roles whose assumptions are collected and whose hop role tags it recomputes, and the grants it holds on them. */
   readonly supportRoles: ISupportRoles;

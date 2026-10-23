@@ -11,6 +11,10 @@ import type { IDnsZone }                                                        
 import type { IAuthKeyStoreTable }                                                                  from '../tables/auth-key-store-table';
 import type { IDataTable }                                                                          from '../tables/data-tables';
 
+/**
+ * The inputs the bootstrap Lambda runs with: its timeout, the tables and SES rule set it configures,
+ * and the domain and optional hosted zone it registers. The caller creates those resources.
+ */
 export interface BootstrapLambdaProps {
   /** How long one bootstrap invocation may run. */
   readonly timeout:           Duration;

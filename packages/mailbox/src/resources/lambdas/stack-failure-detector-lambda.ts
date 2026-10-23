@@ -7,7 +7,10 @@ import { Construct }              from 'constructs';
 import { StackFailedEvent }       from '../events/stack-failed-event';
 import type { IStackFailedEvent } from '../events/stack-failed-event';
 
-/** Inputs of {@link StackFailureDetectorLambda}. */
+/**
+ * The artifact resolver for this Lambda's code, the pre-created role and explicit function name it runs
+ * under, and the log group it reads. The role's permissions are granted by the caller.
+ */
 export interface StackFailureDetectorLambdaProps {
   readonly artifactResolver: IArtifactResolver;
   /** Pre-created execution role the Lambda runs as. */
