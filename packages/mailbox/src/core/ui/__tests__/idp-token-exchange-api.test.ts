@@ -48,7 +48,7 @@ describe('IdpTokenExchangeApi', () => {
 
   function tokenExchangeFunctionDependsOn(template: Template): string[] {
     const matching = Object.values<SynthesizedFunction>(template.findResources('AWS::Lambda::Function')).filter(
-      (fn) => fn.Properties?.Environment?.Variables?.SERVICE_NAME === 'idp-token-exchange-test',
+      (functionResource) => functionResource.Properties?.Environment?.Variables?.SERVICE_NAME === 'idp-token-exchange-test',
     );
     expect(matching).toHaveLength(1);
     return matching[0].DependsOn ?? [];

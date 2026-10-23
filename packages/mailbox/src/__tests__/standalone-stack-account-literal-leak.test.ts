@@ -97,7 +97,7 @@ function findAccountLiterals(node: unknown, allowed: ReadonlySet<string>, path =
  */
 function assertNoAccountLiterals(violations: AccountLiteralViolation[], stackLabel: string): void {
   if (violations.length === 0) {return;}
-  const report = violations.map((v) => `  ${v.path} = ${JSON.stringify(v.value)}`).join('\n');
+  const report = violations.map((violation) => `  ${violation.path} = ${JSON.stringify(violation.value)}`).join('\n');
   throw new Error(`Account-literal leak found in ${stackLabel} template (${violations.length} occurrence(s)):\n${report}`);
 }
 
@@ -145,7 +145,7 @@ describe('Standalone sub-stack account-literal leak (regression gate)', () => {
     const template: unknown = artifact.template;
 
     const violations = findAccountLiterals(template, new Set([KNOWN_PLACEHOLDER_ACCOUNT]))
-      .filter(v => !isPostponedNamedResource(v.value));
+      .filter(violation => !isPostponedNamedResource(violation.value));
 
     assertNoAccountLiterals(violations, 'MailboxDataStack');
   });

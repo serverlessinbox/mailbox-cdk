@@ -53,8 +53,8 @@ describe('Mailbox stack pipeline log groups', () => {
     const functions   = resourcesOfType(template, 'AWS::Lambda::Function', isFunctionProperties);
     expect(functions.length).toBeGreaterThan(5);
 
-    for (const fn of functions) {
-      expect(logGroupIds.has(String(fn.properties.LoggingConfig?.LogGroup?.Ref))).toBe(true);
+    for (const functionResource of functions) {
+      expect(logGroupIds.has(String(functionResource.properties.LoggingConfig?.LogGroup?.Ref))).toBe(true);
     }
   });
 

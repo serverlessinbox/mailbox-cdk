@@ -134,18 +134,18 @@ describe('EdgeSection', () => {
   it('gives each regional API the operator certificate, else the regional SAN certificate', () => {
     const { stack: probe } = newDeployerTestStack();
     const jmap             = acm.Certificate.fromCertificateArn(probe, 'jmap', 'arn:aws:acm:us-west-2:111122223333:certificate/jmap');
-    const ws               = acm.Certificate.fromCertificateArn(probe, 'ws', 'arn:aws:acm:us-west-2:111122223333:certificate/ws');
-    const { section }      = newSection({ certificateOverrides: { jmap, ws } });
+    const wsCertificate    = acm.Certificate.fromCertificateArn(probe, 'ws', 'arn:aws:acm:us-west-2:111122223333:certificate/ws');
+    const { section }      = newSection({ certificateOverrides: { jmap, ws: wsCertificate } });
 
     expect(section.apiCertificate).toBe(section.regionalCertificate);
     expect(section.jmapCertificate).toBe(jmap);
-    expect(section.wsCertificate).toBe(ws);
+    expect(section.wsCertificate).toBe(wsCertificate);
   });
 
   it('offers no WebSocket certificate without a hosted zone, even when the operator provides one', () => {
     const { stack: probe } = newDeployerTestStack();
-    const ws               = acm.Certificate.fromCertificateArn(probe, 'ws', 'arn:aws:acm:us-west-2:111122223333:certificate/ws');
-    const { section }      = newSection({ ...WITHOUT_ZONE, certificateOverrides: { ws } });
+    const wsCertificate    = acm.Certificate.fromCertificateArn(probe, 'ws', 'arn:aws:acm:us-west-2:111122223333:certificate/ws');
+    const { section }      = newSection({ ...WITHOUT_ZONE, certificateOverrides: { ws: wsCertificate } });
 
     expect(section.wsCertificate).toBeUndefined();
   });

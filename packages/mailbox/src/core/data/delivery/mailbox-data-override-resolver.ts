@@ -40,7 +40,7 @@ export class MailboxDataOverrideResolver extends Construct {
   constructor(scope: Construct, id: string, props: MailboxDataOverrideResolverProps) {
     super(scope, id);
 
-    const fn = new DataOverrideResolverLambda(this, 'handler', {
+    const resolverLambda = new DataOverrideResolverLambda(this, 'handler', {
       artifactResolver: props.artifactResolver,
     });
 
@@ -60,7 +60,7 @@ export class MailboxDataOverrideResolver extends Construct {
     };
 
     this.resource = new cdk.CustomResource(this, 'resource', {
-      serviceToken:   fn.functionArn,
+      serviceToken:   resolverLambda.functionArn,
       resourceType:   'Custom::MailboxDataOverrideResolver',
       serviceTimeout: cdk.Duration.seconds(120),
       properties:     resolverProps,

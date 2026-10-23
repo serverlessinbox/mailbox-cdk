@@ -67,7 +67,7 @@ describe('WebmailUi', () => {
 
   function tokenExchangeFunction(template: Template): SynthesizedFunction {
     const matching = Object.values<SynthesizedFunction>(template.findResources('AWS::Lambda::Function')).filter(
-      (fn) => fn.Properties?.Environment?.Variables?.SERVICE_NAME === 'idp-token-exchange-webmail-ui',
+      (functionResource) => functionResource.Properties?.Environment?.Variables?.SERVICE_NAME === 'idp-token-exchange-webmail-ui',
     );
     expect(matching).toHaveLength(1);
     return matching[0];
@@ -104,17 +104,17 @@ describe('WebmailUi', () => {
   it('points the token exchange at the WEBMAIL_UI config row', () => {
     createWebmailUi();
 
-    const fn = tokenExchangeFunction(Template.fromStack(stack));
+    const tokenExchangeResource = tokenExchangeFunction(Template.fromStack(stack));
 
-    expect(fn.Properties?.Environment?.Variables?.OAUTH_CLIENT_NAME).toBe('WEBMAIL_UI');
+    expect(tokenExchangeResource.Properties?.Environment?.Variables?.OAUTH_CLIENT_NAME).toBe('WEBMAIL_UI');
   });
 
   it('makes the token-exchange function wait on the resources it is given', () => {
     const prerequisite = new cdk.CfnResource(stack, 'prerequisite', { type: 'Custom::Prerequisite' });
     createWebmailUi([prerequisite]);
 
-    const fn = tokenExchangeFunction(Template.fromStack(stack));
+    const tokenExchangeResource = tokenExchangeFunction(Template.fromStack(stack));
 
-    expect(fn.DependsOn).toContain(stack.getLogicalId(prerequisite));
+    expect(tokenExchangeResource.DependsOn).toContain(stack.getLogicalId(prerequisite));
   });
 });
