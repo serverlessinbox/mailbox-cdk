@@ -1,4 +1,4 @@
-import type { JsonObject }               from '../json-value';
+import type { JsonObject }               from '../../utils/json-value';
 import { TemplateDiffer }                from '../template-differ';
 import type { NonDeterministicProperty } from '../template-diff';
 

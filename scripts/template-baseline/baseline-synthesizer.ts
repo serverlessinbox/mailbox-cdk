@@ -14,10 +14,10 @@ import { SupportAddonProvider }          from '../../packages/mailbox/src/platfo
 import { SupportMode }                   from '../../packages/mailbox/src/platform/support/support-addon';
 import { AutoUpdater }                   from '../../packages/mailbox/src/platform/update/auto-updater';
 import { StackUpdateAddonProvider }      from '../../packages/mailbox/src/platform/update/stack-update-addon-provider';
+import { parseJsonObject }               from '../utils/json-value';
 
 import type { FrozenProcessValues }      from './frozen-process-values';
 import type { StackTemplate }            from './stack-template';
-import type { TemplateJsonParser }       from './template-json-parser';
 
 const BASELINE_ACCOUNT = '123456789012';
 const BASELINE_REGION  = 'us-west-2';
@@ -30,10 +30,7 @@ const EDGE_REGION      = 'us-east-1';
  * judge the templates; it only produces them, with the clock and random numbers frozen.
  */
 export class BaselineSynthesizer {
-  constructor(
-    private readonly frozenValues: FrozenProcessValues,
-    private readonly parser: TemplateJsonParser,
-  ) {}
+  constructor(private readonly frozenValues: FrozenProcessValues) {}
 
   synthesize(): StackTemplate[] {
     return this.frozenValues.run(() => [
@@ -45,7 +42,7 @@ export class BaselineSynthesizer {
   }
 
   private stackTemplate(stackName: string, stack: cdk.Stack): StackTemplate {
-    const template = this.parser.parse(JSON.stringify(Template.fromStack(stack).toJSON()), `Synthesized template of ${stackName}`);
+    const template = parseJsonObject(JSON.stringify(Template.fromStack(stack).toJSON()), `Synthesized template of ${stackName}`);
     return { stackName, template };
   }
 

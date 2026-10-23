@@ -4,7 +4,6 @@ import * as path               from 'node:path';
 import { BaselineStore }       from './baseline-store';
 import { BaselineSynthesizer } from './baseline-synthesizer';
 import { FrozenProcessValues } from './frozen-process-values';
-import { TemplateJsonParser }  from './template-json-parser';
 
 const BASELINE_ROOT = path.resolve(__dirname, '..', '..', '.template-baseline');
 
@@ -18,10 +17,10 @@ export abstract class BaselineCommand extends Command {
   });
 
   protected createStore(): BaselineStore {
-    return new BaselineStore(BASELINE_ROOT, new TemplateJsonParser());
+    return new BaselineStore(BASELINE_ROOT);
   }
 
   protected createSynthesizer(): BaselineSynthesizer {
-    return new BaselineSynthesizer(FrozenProcessValues.forBaseline(), new TemplateJsonParser());
+    return new BaselineSynthesizer(FrozenProcessValues.forBaseline());
   }
 }

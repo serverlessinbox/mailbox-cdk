@@ -1,9 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import * as path                      from 'node:path';
 
-import type { JsonObject }            from './json-value';
+import { errorMessage }               from '../utils/error-message';
+import { parseJsonObject }            from '../utils/json-value';
+import type { JsonObject }            from '../utils/json-value';
+
 import type { StackTemplate }         from './stack-template';
-import type { TemplateJsonParser }    from './template-json-parser';
 
 const LABEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
@@ -12,10 +14,7 @@ const LABEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
  * `<stack>.template.json` file per stack inside it.
  */
 export class BaselineStore {
-  constructor(
-    private readonly baselineRoot: string,
-    private readonly parser: TemplateJsonParser,
-  ) {}
+  constructor(private readonly baselineRoot: string) {}
 
   /** Writes each template as formatted JSON into the folder of `label`, replacing a file of the same stack. Returns the paths written. */
   async write(label: string, templates: StackTemplate[]): Promise<string[]> {
@@ -35,14 +34,14 @@ export class BaselineStore {
   async readStackTemplate(label: string, stackName: string): Promise<JsonObject> {
     const file = this.templateFile(label, stackName);
     const text = await this.readBaselineFile(file);
-    return this.parser.parse(text, `Baseline template ${file}`);
+    return parseJsonObject(text, `Baseline template ${file}`);
   }
 
   private async readBaselineFile(file: string): Promise<string> {
     try {
       return await readFile(file, 'utf8');
     } catch (error) {
-      throw new Error(`Cannot read baseline template ${file}; capture it first with "yarn template-baseline capture": ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Cannot read baseline template ${file}; capture it first with "yarn template-baseline capture": ${errorMessage(error)}`);
     }
   }
 

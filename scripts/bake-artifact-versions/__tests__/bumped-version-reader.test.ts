@@ -32,6 +32,12 @@ describe('BumpedVersionReader', () => {
     await expect(reader.readBumpedVersion(directory)).rejects.toThrow(`${path.join(directory, 'package.json')}: cannot be read`);
   });
 
+  it('names the manifest when it is not valid JSON', async () => {
+    const directory = packageDirectory('not-json', '{ name: ');
+
+    await expect(reader.readBumpedVersion(directory)).rejects.toThrow(`${path.join(directory, 'package.json')}: is not valid JSON`);
+  });
+
   it('names the manifest when it has no version', async () => {
     const directory = packageDirectory('unversioned', JSON.stringify({ name: 'x' }));
 

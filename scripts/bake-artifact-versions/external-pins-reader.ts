@@ -1,6 +1,8 @@
 import { PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { readFile }               from 'node:fs/promises';
 
+import { errorMessage }           from '../utils/error-message';
+
 import type { PinsByPackage }     from './baked-package';
 
 /**
@@ -13,7 +15,7 @@ export class ExternalPinsReader {
     try {
       text = await readFile(pinsFile, 'utf8');
     } catch (error) {
-      throw new Error(`external pins ${pinsFile}: cannot be read: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`external pins ${pinsFile}: cannot be read: ${errorMessage(error)}`);
     }
     return PinnedArtifactResolver.parsePins(text, pinsFile);
   }

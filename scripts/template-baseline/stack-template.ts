@@ -1,4 +1,4 @@
-import type { JsonObject } from './json-value';
+import type { JsonObject } from '../utils/json-value';
 
 /** The synthesized CloudFormation template of one stack the product deploys. */
 export interface StackTemplate {

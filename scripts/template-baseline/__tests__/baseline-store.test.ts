@@ -3,7 +3,6 @@ import { tmpdir }                    from 'node:os';
 import * as path                     from 'node:path';
 
 import { BaselineStore }             from '../baseline-store';
-import { TemplateJsonParser }        from '../template-json-parser';
 
 /**
  * Pins the on-disk layout of a baseline (`<root>/<label>/<stack>.template.json`, formatted JSON),
@@ -16,7 +15,7 @@ describe('BaselineStore', () => {
 
   beforeEach(() => {
     root  = mkdtempSync(path.join(tmpdir(), 'baseline-store-'));
-    store = new BaselineStore(root, new TemplateJsonParser());
+    store = new BaselineStore(root);
   });
 
   it('writes each template as formatted JSON under the label and reads it back', async () => {

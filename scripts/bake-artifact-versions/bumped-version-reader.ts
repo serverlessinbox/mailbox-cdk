@@ -1,6 +1,8 @@
-import { readFile } from 'node:fs/promises';
-import * as path    from 'node:path';
-import * as t       from 'typanion';
+import { readFile }     from 'node:fs/promises';
+import * as path        from 'node:path';
+import * as t           from 'typanion';
+
+import { errorMessage } from '../utils/error-message';
 
 const SEMVER = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/;
 
@@ -27,14 +29,14 @@ export class BumpedVersionReader {
     try {
       text = await readFile(manifestPath, 'utf8');
     } catch (error) {
-      throw new Error(`${manifestPath}: cannot be read: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`${manifestPath}: cannot be read: ${errorMessage(error)}`);
     }
 
     let parsed: unknown;
     try {
       parsed = JSON.parse(text);
     } catch (error) {
-      throw new Error(`${manifestPath}: is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`${manifestPath}: is not valid JSON: ${errorMessage(error)}`);
     }
 
     const errors: string[] = [];

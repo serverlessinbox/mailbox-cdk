@@ -1,4 +1,6 @@
-import type { JsonObject, JsonValue }                               from './json-value';
+import { isJsonObjectNode }                                         from '../utils/json-value';
+import type { JsonObject, JsonValue }                               from '../utils/json-value';
+
 import type { EntryChange, NonDeterministicProperty, TemplateDiff } from './template-diff';
 
 const RESOURCES_SECTION_PREFIX = 'Resources/';
@@ -44,7 +46,7 @@ export class TemplateDiffer {
   private entriesOf(template: JsonObject): Map<string, JsonValue> {
     const entries = new Map<string, JsonValue>();
     for (const [section, value] of Object.entries(template)) {
-      if (this.isObject(value)) {
+      if (isJsonObjectNode(value)) {
         for (const [logicalId, entry] of Object.entries(value)) {
           entries.set(`${section}/${logicalId}`, entry);
         }
@@ -56,7 +58,7 @@ export class TemplateDiffer {
   }
 
   private changedPaths(before: JsonValue, after: JsonValue, path: string): string[] {
-    if (this.isObject(before) && this.isObject(after)) {
+    if (isJsonObjectNode(before) && isJsonObjectNode(after)) {
       const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])].sort();
       return keys.flatMap((key) => {
         const childPath = path === '' ? key : `${path}.${key}`;
@@ -77,7 +79,7 @@ export class TemplateDiffer {
   }
 
   private resourceTypeOf(entryId: string, entry: JsonValue): string | undefined {
-    if (!entryId.startsWith(RESOURCES_SECTION_PREFIX) || !this.isObject(entry)) {
+    if (!entryId.startsWith(RESOURCES_SECTION_PREFIX) || !isJsonObjectNode(entry)) {
       return undefined;
     }
     const type = entry.Type;
@@ -91,9 +93,4 @@ export class TemplateDiffer {
         known.resourceType === resourceType &&
         (path === known.propertyPath || path.startsWith(`${known.propertyPath}.`) || path.startsWith(`${known.propertyPath}[`)),
     );
-  }
-
-  private isObject(value: JsonValue): value is JsonObject {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-  }
-}
+  }}
