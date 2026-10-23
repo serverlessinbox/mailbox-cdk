@@ -68,7 +68,11 @@ export class OwnershipCheckedDelete {
       return this.results.retry(error.describe());
     }
 
-    this.logger.error(`${resource.label} deletion error`, { errorName: error.name, errorMessage: error.message });
+    this.logger.error(`${resource.label} deletion error`, { errorName: error.name, errorMessage: error.message, stack: this.stackOf(thrown) });
     return this.results.failed(error.describe());
+  }
+
+  private stackOf(thrown: unknown): string | undefined {
+    return thrown instanceof Error ? thrown.stack : undefined;
   }
 }

@@ -7,12 +7,20 @@
  */
 
 import { LoggerBuffer, type LogLevel }                from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import * as t                                         from 'typanion';
 
 import { OwnershipCheckedDelete, type OwnedResource } from '../ownership-checked-delete';
 import type { TargetResult }                          from '../removal';
 import { TargetResults }                              from '../target-results';
 
 const MISMATCH = 'Root stack mismatch (expected a, got b)';
+
+/** The fields of the error-level line for an unexpected removal error. */
+const isErrorLogFields = t.isObject({
+  errorName:    t.isString(),
+  errorMessage: t.isString(),
+  stack:        t.isString(),
+});
 
 interface FakeResource extends OwnedResource {
   readonly findRootStackMismatch: jest.Mock<Promise<string | undefined>, []>;
@@ -40,7 +48,7 @@ function sweep(resource: OwnedResource, logLevel: LogLevel = 'error') {
 }
 
 describe('OwnershipCheckedDelete', () => {
-  let consoleError: jest.SpyInstance;
+  let consoleError: jest.SpyInstance<void, [unknown?, ...unknown[]]>;
   let consoleWarn:  jest.SpyInstance;
 
   beforeEach(() => {
@@ -93,7 +101,15 @@ describe('OwnershipCheckedDelete', () => {
 
     await expect(sweep(resource)).resolves.toEqual({ target: 'cert', status: 'FAILED', reason: 'AccessDeniedException: denied' });
 
-    expect(consoleError).toHaveBeenCalledWith('Widget deletion error', { errorName: 'AccessDeniedException', errorMessage: 'denied' });
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    const fields: unknown  = consoleError.mock.calls[0]?.[1];
+    const errors: string[] = [];
+    if (!isErrorLogFields(fields, { errors })) {
+      throw new Error(`The error-level line does not carry its fields: ${errors.join('; ')}`);
+    }
+    expect(fields.errorName).toBe('AccessDeniedException');
+    expect(fields.errorMessage).toBe('denied');
+    expect(fields.stack).toMatch(/^AccessDeniedException: denied\n\s+at /);
   });
 
   it('retries, naming the error, and warns for a resource whose other errors retry', async () => {
