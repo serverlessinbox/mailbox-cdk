@@ -10,11 +10,9 @@
 import type * as LambdaSdk                                                          from '@aws-sdk/client-lambda';
 import type * as TaggingSdk                                                         from '@aws-sdk/client-resource-groups-tagging-api';
 import type * as LambdaRuntime                                                      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { captureCfnResponse }                                                       from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
 import { mockClient }                                                               from 'aws-sdk-client-mock';
 import type { AwsClientStub }                                                       from 'aws-sdk-client-mock';
-import type * as Https                                                              from 'https';
-import { Writable }                                                                 from 'stream';
-import * as t                                                                       from 'typanion';
 
 import type * as HandlerModule                                                      from '../handler';
 
@@ -36,15 +34,6 @@ jest.mock('@serverlessinbox/artifact-registry', () =>
 /** The deployment region is the edge region here, so one scan of the tagging API covers the cycle. */
 const GOOD_ENVIRONMENT = { ...SHARED_ENVIRONMENT, AWS_REGION: 'us-east-1' };
 
-const isCfnResponseBody = t.isPartial({
-  Status:             t.isString(),
-  Reason:             t.isOptional(t.isString()),
-  PhysicalResourceId: t.isOptional(t.isString()),
-});
-
-/** The fields of the body the handler PUTs to the ResponseURL that these tests assert on. */
-type CfnResponseBody = t.InferType<typeof isCfnResponseBody>;
-
 /** The faked AWS clients of one loaded handler, with the SDK modules whose command classes they answer. */
 interface Fakes {
   tagging:       AwsClientStub<TaggingSdk.ResourceGroupsTaggingAPIClient>;
@@ -52,12 +41,6 @@ interface Fakes {
   taggingSdk:    typeof TaggingSdk;
   lambdaSdk:     typeof LambdaSdk;
   lambdaRuntime: typeof LambdaRuntime;
-}
-
-function parseCfnResponse(json: string): CfnResponseBody {
-  const parsed: unknown = JSON.parse(json);
-  t.assert(parsed, isCfnResponseBody);
-  return parsed;
 }
 
 describe('artifact-updater handler', () => {
@@ -103,17 +86,7 @@ describe('artifact-updater handler', () => {
     };
     arrange(fakes);
 
-    let responseJson = '';
-    const https      = require('https') as typeof Https;
-    jest.mocked(https.request).mockImplementation(((_options: unknown, callback: (res: object) => void) => {
-      callback({ statusCode: 200 });
-      return new Writable({
-        write(chunk: Buffer, _encoding, done) {
-          responseJson += chunk.toString();
-          done();
-        },
-      });
-    }) as typeof https.request);
+    const cfnResponse = captureCfnResponse();
 
     const { handler }                               = require('../handler') as typeof HandlerModule;
     let result: Awaited<ReturnType<typeof handler>> = undefined;
@@ -125,8 +98,7 @@ describe('artifact-updater handler', () => {
     }
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    const response: CfnResponseBody = responseJson === '' ? { Status: 'NOT SENT' } : parseCfnResponse(responseJson);
-    return { result, failure, response, fakes };
+    return { result, failure, cfnResponse, fakes };
   }
 
   function tracedStart() {
@@ -135,9 +107,9 @@ describe('artifact-updater handler', () => {
 
   describe('routing', () => {
     it('routes a CloudFormation Delete to the deploy-end trigger, which answers without running the cycle', async () => {
-      const { response, fakes } = await invoke(deployEndTriggerEvent('Delete'), GOOD_ENVIRONMENT);
+      const { cfnResponse, fakes } = await invoke(deployEndTriggerEvent('Delete'), GOOD_ENVIRONMENT);
 
-      expect(response.Status).toBe('SUCCESS');
+      expect(cfnResponse().Status).toBe('SUCCESS');
       expect(fakes.tagging.calls()).toHaveLength(0);
     });
 

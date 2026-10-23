@@ -10,6 +10,7 @@
  */
 
 import { InvokeCommand }      from '@aws-sdk/client-lambda';
+import { captureCfnResponse } from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
 import { mockClient }         from 'aws-sdk-client-mock';
 
 import { UpdateCycle }        from '../update-cycle';
@@ -18,7 +19,6 @@ import { UpdaterComposition } from '../updater-composition';
 
 import {
   BAD_CONFIG_ERROR,
-  captureCloudFormationResponse,
   deployEndTriggerEvent,
   failedRuntime,
   fakeLambdaContext,
@@ -39,7 +39,7 @@ describe('UpdaterComposition', () => {
     jest.clearAllMocks();
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    captureCloudFormationResponse();
+    captureCfnResponse();
   });
 
   afterEach(() => {

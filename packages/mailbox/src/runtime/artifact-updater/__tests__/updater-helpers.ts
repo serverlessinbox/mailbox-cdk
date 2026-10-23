@@ -6,8 +6,6 @@ import { ResourceGroupsTaggingAPIClient }                                       
 import { S3Client }                                                                 from '@aws-sdk/client-s3';
 import { LoggerBuffer, toRegion, type Region }                                      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { APIGatewayProxyEventV2, CloudFormationCustomResourceEvent, Context }  from 'aws-lambda';
-import * as https                                                                   from 'https';
-import { Writable }                                                                 from 'stream';
 
 import type { LambdaTarget, UiTarget }                                              from '../artifact-target';
 import type { Config }                                                              from '../config';
@@ -299,24 +297,6 @@ export function fakeLambdaContext(): Context {
     fail:                           () => undefined,
     succeed:                        () => undefined,
   };
-}
-
-/**
- * Routes the mocked `https.request` (the suite must `jest.mock('https', ...)`) into memory, answering the PUT
- * with status 200, and returns a function yielding the body that was sent to CloudFormation's response URL.
- */
-export function captureCloudFormationResponse(): () => string {
-  let body = '';
-  jest.mocked(https.request).mockImplementation(((...args: [unknown, (res: object) => void]) => {
-    args[1]({ statusCode: 200 });
-    return new Writable({
-      write(chunk: Buffer, ...rest: [BufferEncoding, (error?: Error | null) => void]) {
-        body += chunk.toString();
-        rest[1]();
-      },
-    });
-  }) as typeof https.request);
-  return () => body;
 }
 
 /** A successful Lambda invoke response whose payload is the given text, as bytes like the real SDK returns it. */

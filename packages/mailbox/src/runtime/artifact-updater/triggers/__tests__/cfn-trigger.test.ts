@@ -12,11 +12,9 @@
 
 import { CloudFormationClient, DescribeStacksCommand, type StackStatus } from '@aws-sdk/client-cloudformation';
 import { ParentStackStatus }                                             from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { captureCfnResponse, type CapturedCfnResponse }                  from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
 import type { CloudFormationCustomResourceEvent }                        from 'aws-lambda';
 import { mockClient }                                                    from 'aws-sdk-client-mock';
-import * as https                                                        from 'https';
-import { Writable }                                                      from 'stream';
-import * as t                                                            from 'typanion';
 
 import {
   BAD_CONFIG_ERROR,
@@ -34,46 +32,22 @@ jest.mock('https', () => ({
   request: jest.fn(),
 }));
 
-const isCfnResponseBody = t.isPartial({
-  Status:             t.isString(),
-  Reason:             t.isOptional(t.isString()),
-  PhysicalResourceId: t.isOptional(t.isString()),
-});
-
-/** The fields of the body the trigger PUTs to the ResponseURL that these tests assert on. */
-type CfnResponseBody = t.InferType<typeof isCfnResponseBody>;
-
 describe('CfnTrigger', () => {
   const cloudFormationMock       = mockClient(CloudFormationClient);
   const badConfigReason: unknown = expect.stringContaining(BAD_CONFIG_ERROR);
-  let responseJson: string;
+  let cfnResponse: () => CapturedCfnResponse;
 
   beforeEach(() => {
     jest.clearAllMocks();
     cloudFormationMock.reset();
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    responseJson = '';
-    jest.mocked(https.request).mockImplementation(((...[, callback]: [unknown, (res: object) => void]) => {
-      callback({ statusCode: 200 });
-      return new Writable({
-        write(...[chunk, , done]: [Buffer, BufferEncoding, () => void]) {
-          responseJson += chunk.toString();
-          done();
-        },
-      });
-    }) as typeof https.request);
+    cfnResponse = captureCfnResponse();
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
-
-  function sentResponse(): CfnResponseBody {
-    const sent: unknown = JSON.parse(responseJson);
-    t.assert(sent, isCfnResponseBody);
-    return sent;
-  }
 
   const cycleRuns = () => jest.mocked(UpdateCycle.prototype.run);
 
@@ -100,7 +74,7 @@ describe('CfnTrigger', () => {
     await healthyTrigger(deployEndTriggerEvent('Delete')).handle();
 
     expect(cycleRuns()).not.toHaveBeenCalled();
-    expect(sentResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'deploy-end-physical-id' });
+    expect(cfnResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'deploy-end-physical-id' });
   });
 
   it.each(['Create', 'Update'] as const)('runs the update cycle on %s and answers with the logical id as physical id', async (requestType) => {
@@ -109,7 +83,7 @@ describe('CfnTrigger', () => {
     await healthyTrigger(event).handle();
 
     expect(cycleRuns()).toHaveBeenCalledTimes(1);
-    expect(sentResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: event.LogicalResourceId });
+    expect(cfnResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: event.LogicalResourceId });
   });
 
   it('answers SUCCESS when the update cycle fails, then throws what the cycle threw', async () => {
@@ -118,7 +92,7 @@ describe('CfnTrigger', () => {
 
     await expect(healthyTrigger(event).handle()).rejects.toThrow('tagging unavailable');
 
-    expect(sentResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: event.LogicalResourceId });
+    expect(cfnResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: event.LogicalResourceId });
   });
 
   it('emits the manual-finalize hint under the configured service name', async () => {
@@ -131,7 +105,7 @@ describe('CfnTrigger', () => {
     it('answers FAILED naming the problem on Create, without running the update cycle', async () => {
       await misconfiguredTrigger(deployEndTriggerEvent('Create')).handle();
 
-      expect(sentResponse()).toMatchObject({ Status: 'FAILED', Reason: badConfigReason });
+      expect(cfnResponse()).toMatchObject({ Status: 'FAILED', Reason: badConfigReason });
       expect(cycleRuns()).not.toHaveBeenCalled();
     });
 
@@ -141,7 +115,7 @@ describe('CfnTrigger', () => {
 
       await misconfiguredTrigger(event).handle();
 
-      expect(sentResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'deploy-end-physical-id' });
+      expect(cfnResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'deploy-end-physical-id' });
       expect(cloudFormationMock.commandCalls(DescribeStacksCommand)[0].args[0].input).toEqual({ StackName: event.StackId });
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Configuration error on Update'), {
         error: BAD_CONFIG_ERROR,
@@ -153,7 +127,7 @@ describe('CfnTrigger', () => {
 
       await misconfiguredTrigger(deployEndTriggerEvent('Update')).handle();
 
-      expect(sentResponse()).toMatchObject({ Status: 'FAILED', Reason: badConfigReason });
+      expect(cfnResponse()).toMatchObject({ Status: 'FAILED', Reason: badConfigReason });
     });
 
     it('answers FAILED on a Create even while the parent stack rolls back, without reading its status', async () => {
@@ -161,14 +135,14 @@ describe('CfnTrigger', () => {
 
       await misconfiguredTrigger(deployEndTriggerEvent('Create')).handle();
 
-      expect(sentResponse()).toMatchObject({ Status: 'FAILED', Reason: badConfigReason });
+      expect(cfnResponse()).toMatchObject({ Status: 'FAILED', Reason: badConfigReason });
       expect(cloudFormationMock.commandCalls(DescribeStacksCommand)).toHaveLength(0);
     });
 
     it('answers SUCCESS on Delete with the physical id CloudFormation sent, and logs the problem', async () => {
       await misconfiguredTrigger(deployEndTriggerEvent('Delete')).handle();
 
-      expect(sentResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'deploy-end-physical-id' });
+      expect(cfnResponse()).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'deploy-end-physical-id' });
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Configuration error on Delete'), {
         error: BAD_CONFIG_ERROR,
       });
