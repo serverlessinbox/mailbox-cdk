@@ -11,10 +11,8 @@ import type * as CloudFormationSdk                                              
 import type * as S3Sdk                                                                                from '@aws-sdk/client-s3';
 import { mockClient }                                                                                 from 'aws-sdk-client-mock';
 import type { AwsClientStub }                                                                         from 'aws-sdk-client-mock';
-import type * as Https                                                                                from 'https';
-import { Writable }                                                                                   from 'stream';
-import * as t                                                                                         from 'typanion';
 
+import { captureCfnResponse }                                                                         from '../../../runtime-test-support';
 import type { SmokeTestProbe }                                                                        from '../../../runtime/handler-kit/smoke-test';
 import type * as HandlerModule                                                                        from '../handler';
 
@@ -24,16 +22,6 @@ import type { FakeCfnEvent }                                                    
 jest.mock('https', () => ({
   request: jest.fn(),
 }));
-
-const isCfnResponseBody = t.isPartial({
-  Status:             t.isString(),
-  Reason:             t.isOptional(t.isString()),
-  PhysicalResourceId: t.isOptional(t.isString()),
-  Data:               t.isOptional(t.isRecord(t.isString())),
-});
-
-/** The body the handler PUTs to the ResponseURL, or `NOT SENT` when it sent none. */
-type CfnResponseBody = t.InferType<typeof isCfnResponseBody>;
 
 /** The faked AWS clients of one loaded handler, with the SDK modules whose command classes they answer. */
 interface Fakes {
@@ -84,29 +72,19 @@ describe('bucket-auto-empty handler', () => {
     };
     arrange(fakes);
 
-    let responseJson = '';
-    const https      = require('https') as typeof Https;
-    jest.mocked(https.request).mockImplementation(((_options: unknown, onResponse: (res: object) => void) => {
-      onResponse({ statusCode: 200 });
-      return new Writable({
-        write(chunk: Buffer, _encoding: BufferEncoding, done: (error?: Error | null) => void) {
-          responseJson += chunk.toString();
-          done();
-        },
-      });
-    }) as typeof https.request);
+    const readResponse = captureCfnResponse();
 
     const { handler } = require('../handler') as typeof HandlerModule;
     const result      = await handler(event, fakeLambdaContext(remainingMs));
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    let response: CfnResponseBody = { Status: 'NOT SENT' };
-    if (responseJson !== '') {
-      const sent: unknown = JSON.parse(responseJson);
-      t.assert(sent, isCfnResponseBody);
-      response = sent;
-    }
-    return { result, response, fakes };
+    return {
+      result,
+      get response() {
+        return readResponse();
+      },
+      fakes,
+    };
   }
 
   function bucketHolds(fakes: Fakes, keys: string[]): void {

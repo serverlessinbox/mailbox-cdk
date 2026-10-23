@@ -15,6 +15,7 @@ import {
   NotAuthorizedException,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { ParentStackStatus, type LoggerBuffer }                                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { captureCfnResponse }                                                             from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
 import type { CloudFormationCustomResourceEvent, Context }                                from 'aws-lambda';
 import { mockClient }                                                                     from 'aws-sdk-client-mock';
 import * as t                                                                             from 'typanion';
@@ -25,22 +26,9 @@ import { handler }                                                              
 
 import { FUNCTION_ARN, PHYSICAL_RESOURCE_ID, STACK_ID, templateProperties, USER_POOL_ID } from './bootstrap-user-helpers';
 
-const mockSentResponseBodies: string[] = [];
 jest.mock('https', () => ({
   ...jest.requireActual<typeof import('https')>('https'),
-  request: (_options: unknown, onResponse: (res: { statusCode: number; headers: Record<string, string> }) => void) => {
-    const chunks: string[] = [];
-    return {
-      on:    () => undefined,
-      write: (chunk: string) => {
-        chunks.push(chunk);
-      },
-      end:   () => {
-        mockSentResponseBodies.push(chunks.join(''));
-        onResponse({ statusCode: 200, headers: {} });
-      },
-    };
-  },
+  request: jest.fn(),
 }));
 
 const isCfnResponse = t.isPartial({
@@ -98,12 +86,16 @@ function cfnEvent(requestType: 'Create' | 'Update' | 'Delete', resourcePropertie
 
 type HandlerOf = typeof handler;
 
+/**
+ * Reads the response the handler under test PUT. Re-captured wherever a handler is loaded: a handler loaded in
+ * an isolated module registry sends through that registry's `https`, so its response is read from there.
+ */
+let readResponse: ReturnType<typeof captureCfnResponse>;
+
 /** Invokes the handler and parses the one response it PUT to CloudFormation. */
 async function invoke(invokedHandler: HandlerOf, event: CloudFormationCustomResourceEvent): Promise<CfnResponse> {
-  mockSentResponseBodies.length = 0;
   await invokedHandler(event, context).catch(() => undefined);
-  expect(mockSentResponseBodies).toHaveLength(1);
-  const body: unknown    = JSON.parse(mockSentResponseBodies[0]);
+  const body: unknown    = readResponse();
   const errors: string[] = [];
   if (!isCfnResponse(body, { errors })) {
     throw new Error(`Unexpected CloudFormation response body: ${errors.join('; ')}`);
@@ -116,7 +108,8 @@ function loadHandlerWithBadConfig(): HandlerOf {
   process.env.LOG_LEVEL = 'verbose';
   let loaded: HandlerOf | undefined;
   jest.isolateModules(() => {
-    loaded = jest.requireActual<{ handler: HandlerOf }>('../index').handler;
+    readResponse = captureCfnResponse();
+    loaded       = jest.requireActual<{ handler: HandlerOf }>('../index').handler;
   });
   if (loaded === undefined) {
     throw new Error('the handler was not loaded');
@@ -150,7 +143,8 @@ function loadHandlerWhoseRequestHandlerRejectsOnPurpose(): HandlerOf {
         },
       };
     });
-    loaded = jest.requireActual<{ handler: HandlerOf }>('../index').handler;
+    readResponse = captureCfnResponse();
+    loaded       = jest.requireActual<{ handler: HandlerOf }>('../index').handler;
   });
   if (loaded === undefined) {
     throw new Error('the handler was not loaded');
@@ -173,6 +167,7 @@ describe('bootstrap-user handler', () => {
 
   beforeEach(() => {
     originalEnvironment = { ...process.env };
+    readResponse        = captureCfnResponse();
     cognitoMock.reset();
     cloudFormationMock.reset();
     cognitoMock.on(AdminCreateUserCommand).resolves({});

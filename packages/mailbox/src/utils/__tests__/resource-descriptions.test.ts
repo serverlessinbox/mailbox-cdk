@@ -1,3 +1,9 @@
+/**
+ * Pins how `MailboxResourceDescriptions` describes a resource: the sentence of a described component on its path
+ * wins over the `fallbackDescription` option, the option is used when no component on the path is described, and
+ * a description is derived from the group and path when neither applies.
+ */
+
 import { ComponentDescription, ServerlessInboxTagKeys }   from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                                from 'aws-cdk-lib/assertions';
 import * as sqs                                           from 'aws-cdk-lib/aws-sqs';

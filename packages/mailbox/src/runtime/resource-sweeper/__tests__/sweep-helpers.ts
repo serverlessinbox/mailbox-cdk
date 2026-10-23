@@ -1,18 +1,18 @@
 /**
- * Fixtures shared by the starter-side tests: CloudFormation custom-resource events that each carry
- * one removal entry, and the capture of the response a `wrapHandler`-wrapped handler PUTs.
+ * Fixtures shared by the starter-side tests: CloudFormation custom-resource events that each carry one removal
+ * entry, with the `ServiceTimeout` the deferred-removal construct sends.
  */
 
-import { CloudFormationClient }                            from '@aws-sdk/client-cloudformation';
-import { SFNClient }                                       from '@aws-sdk/client-sfn';
-import { LoggerBuffer, ParentStackStatus, toRegion }       from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
-import * as https                                          from 'https';
-import { Writable }                                        from 'stream';
-import * as t                                              from 'typanion';
+import { DeleteCertificateCommand, DescribeCertificateCommand, ListTagsForCertificateCommand } from '@aws-sdk/client-acm';
+import type { ACMClient }                                                                      from '@aws-sdk/client-acm';
+import { CloudFormationClient }                                                                from '@aws-sdk/client-cloudformation';
+import { SFNClient }                                                                           from '@aws-sdk/client-sfn';
+import { LoggerBuffer, ParentStackStatus, toRegion }                                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { CloudFormationCustomResourceEvent, Context }                                     from 'aws-lambda';
+import type { AwsClientStub }                                                                  from 'aws-sdk-client-mock';
 
-import { SweepStarter }                                    from '../sweep-starter';
-import { SweepTargetPlanner }                              from '../sweep-target-planner';
+import { SweepStarter }                                                                        from '../sweep-starter';
+import { SweepTargetPlanner }                                                                  from '../sweep-target-planner';
 
 export const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:mailbox-sweeper-ops-abc123';
 
@@ -28,15 +28,6 @@ export function createSweepStarter(): SweepStarter {
   );
 }
 
-const isCapturedCfnResponse = t.isPartial({
-  Status:             t.isString(),
-  Reason:             t.isOptional(t.isString()),
-  PhysicalResourceId: t.isOptional(t.isString()),
-});
-
-/** The fields of the CloudFormation response the starter PUTs that its tests assert on. */
-export type CapturedCfnResponse = t.InferType<typeof isCapturedCfnResponse>;
-
 export const PARENT_STACK_ID = 'arn:aws:cloudformation:us-west-2:123456789012:stack/test/abc';
 const OLD_CERT_ARN           = 'arn:aws:acm:us-west-2:123456789012:certificate/old';
 
@@ -49,11 +40,14 @@ const baseEvent = {
   ResourceType:      'Custom::DeferredRemoval',
 };
 
+/** The custom-resource properties the deferred-removal construct sends: its service token and timeout, then the removal entries. */
+const TEMPLATE_KEYS = { ServiceToken: baseEvent.ServiceToken, ServiceTimeout: '120' };
+
 export function createEvent(): CloudFormationCustomResourceEvent {
   return {
     ...baseEvent,
     RequestType:        'Create',
-    ResourceProperties: { ServiceToken: baseEvent.ServiceToken, cert: { certArn: OLD_CERT_ARN } },
+    ResourceProperties: { ...TEMPLATE_KEYS, cert: { certArn: OLD_CERT_ARN } },
   };
 }
 
@@ -63,7 +57,7 @@ export function deleteEvent(): CloudFormationCustomResourceEvent {
     ...baseEvent,
     RequestType:        'Delete',
     PhysicalResourceId: 'mailbox-deferred-removal',
-    ResourceProperties: { ServiceToken: baseEvent.ServiceToken, cert: { certArn: OLD_CERT_ARN } },
+    ResourceProperties: { ...TEMPLATE_KEYS, cert: { certArn: OLD_CERT_ARN } },
   };
 }
 
@@ -73,12 +67,21 @@ export function updateEvent(): CloudFormationCustomResourceEvent {
     ...baseEvent,
     RequestType:           'Update',
     PhysicalResourceId:    'mailbox-deferred-removal',
-    ResourceProperties:    { ServiceToken: baseEvent.ServiceToken },
-    OldResourceProperties: { ServiceToken: baseEvent.ServiceToken, cert: { certArn: OLD_CERT_ARN } },
+    ResourceProperties:    { ...TEMPLATE_KEYS },
+    OldResourceProperties: { ...TEMPLATE_KEYS, cert: { certArn: OLD_CERT_ARN } },
   };
 }
 
 export const OLD_REMOVAL_ENTRY = { certArn: OLD_CERT_ARN };
+
+/** The ACM answers of a cert removal whose root-stack tag matches and whose certificate is not in use, so the worker deletes it. */
+export function answerCertificateRemoval(acmMock: AwsClientStub<ACMClient>): void {
+  acmMock.on(ListTagsForCertificateCommand).resolves({
+    Tags: [{ Key: 'serverless-inbox:root-stack', Value: 'test-stack' }],
+  });
+  acmMock.on(DescribeCertificateCommand).resolves({ Certificate: { InUseBy: [] } });
+  acmMock.on(DeleteCertificateCommand).resolves({});
+}
 
 export function lambdaContext(): Context {
   return {
@@ -86,28 +89,4 @@ export function lambdaContext(): Context {
     logStreamName:            'log-stream',
     logGroupName:             'log-group',
   } as unknown as Context;
-}
-
-/**
- * Routes the mocked `https.request` (the test file must `jest.mock('https', ...)`) into a Writable
- * and returns a function yielding the CloudFormation response body the handler PUT to ResponseURL.
- */
-export function captureCfnResponse(): () => CapturedCfnResponse {
-  let body = '';
-  jest.mocked(https.request).mockImplementation(((...[, callback]: [unknown, ((res: { statusCode: number }) => void)?]) => {
-    if (callback) {
-      callback({ statusCode: 200 });
-    }
-    return new Writable({
-      write(...[chunk, , done]: [Buffer, BufferEncoding, () => void]) {
-        body += chunk.toString();
-        done();
-      },
-    });
-  }) as typeof https.request);
-  return () => {
-    const sent: unknown = JSON.parse(body);
-    t.assert(sent, isCapturedCfnResponse);
-    return sent;
-  };
 }

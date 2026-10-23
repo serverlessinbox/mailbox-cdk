@@ -1,15 +1,9 @@
-/// <reference types="jest" />
-
 /**
- * Fixtures shared by the data override resolver's tests: the resource properties the construct sends,
- * CloudFormation custom-resource events carrying them, and the capture of the response a
- * `wrapHandler`-wrapped handler PUTs.
+ * Fixtures shared by the data override resolver's tests: the resource properties the construct sends, with the
+ * `ServiceTimeout` the construct adds, and CloudFormation custom-resource events carrying them.
  */
 
 import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
-import * as https                                          from 'https';
-import { Writable }                                        from 'stream';
-import * as t                                              from 'typanion';
 
 import type { ResourceProperties, TableRole }              from '../resource-properties';
 
@@ -27,9 +21,13 @@ export const INCOMING_ARNS: Record<TableRole, string> = {
   mailFeedbackTable: tableArn('incoming-mailfeedback'),
 };
 
-/** The properties as CloudFormation delivers them, `ServiceToken` included, with every override equal to its incoming ARN. */
-export const PROPERTIES_WITHOUT_OVERRIDES: ResourceProperties & { ServiceToken: string } = {
+/**
+ * The properties as CloudFormation delivers them, `ServiceToken` and `ServiceTimeout` included, with every
+ * override equal to its incoming ARN. The keys and the timeout are the ones the construct's synthesized template sends.
+ */
+export const PROPERTIES_WITHOUT_OVERRIDES: ResourceProperties & { ServiceToken: string; ServiceTimeout: string } = {
   ServiceToken:                 SERVICE_TOKEN,
+  ServiceTimeout:               '120',
   configTableIncomingArn:       INCOMING_ARNS.configTable,
   configTableOverrideArn:       INCOMING_ARNS.configTable,
   itemTableIncomingArn:         INCOMING_ARNS.itemTable,
@@ -79,38 +77,5 @@ export function lambdaContext(): Context {
     done:                           () => undefined,
     fail:                           () => undefined,
     succeed:                        () => undefined,
-  };
-}
-
-const isCapturedCfnResponse = t.isPartial({
-  Status:             t.isString(),
-  Reason:             t.isOptional(t.isString()),
-  PhysicalResourceId: t.isOptional(t.isString()),
-  Data:               t.isOptional(t.isRecord(t.isString())),
-});
-
-/** The fields of the CloudFormation response that the handler tests assert on. */
-export type CapturedCfnResponse = t.InferType<typeof isCapturedCfnResponse>;
-
-/**
- * Routes the mocked `https.request` (the test file must `jest.mock('https', ...)`) into a stream
- * and returns a function yielding the CloudFormation response body the handler PUT to ResponseURL.
- */
-export function captureCfnResponse(): () => CapturedCfnResponse {
-  let body = '';
-  jest.mocked(https.request).mockImplementation(((...args: [unknown, ((res: object) => void)?]) => {
-    args[1]?.({ statusCode: 200 });
-    return new Writable({
-      write(chunk: Buffer, ...rest: [BufferEncoding, (error?: Error | null) => void]) {
-        body += chunk.toString();
-        rest[1]();
-      },
-    });
-  }) as typeof https.request);
-
-  return () => {
-    const response: unknown = JSON.parse(body);
-    t.assert(response, isCapturedCfnResponse);
-    return response;
   };
 }

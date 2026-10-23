@@ -42,7 +42,7 @@ function deleteEvent(resourceProperties: Record<string, unknown>): CloudFormatio
     ...COMMON,
     RequestType:        'Delete',
     PhysicalResourceId: 'mailbox-deferred-removal',
-    ResourceProperties: { ServiceToken: SERVICE_TOKEN, ...resourceProperties },
+    ResourceProperties: { ServiceToken: SERVICE_TOKEN, ServiceTimeout: '120', ...resourceProperties },
   };
 }
 
@@ -54,8 +54,8 @@ function updateEvent(
     ...COMMON,
     RequestType:           'Update',
     PhysicalResourceId:    'mailbox-deferred-removal',
-    ResourceProperties:    { ServiceToken: SERVICE_TOKEN, ...resourceProperties },
-    OldResourceProperties: { ServiceToken: SERVICE_TOKEN, ...oldResourceProperties },
+    ResourceProperties:    { ServiceToken: SERVICE_TOKEN, ServiceTimeout: '120', ...resourceProperties },
+    OldResourceProperties: { ServiceToken: SERVICE_TOKEN, ServiceTimeout: '120', ...oldResourceProperties },
   };
 }
 
@@ -63,7 +63,7 @@ function createEvent(resourceProperties: Record<string, unknown>): CloudFormatio
   return {
     ...COMMON,
     RequestType:        'Create',
-    ResourceProperties: { ServiceToken: SERVICE_TOKEN, ...resourceProperties },
+    ResourceProperties: { ServiceToken: SERVICE_TOKEN, ServiceTimeout: '120', ...resourceProperties },
   };
 }
 

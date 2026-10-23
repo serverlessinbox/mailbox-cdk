@@ -7,13 +7,17 @@
 
 import { DynamoDBClient }       from '@aws-sdk/client-dynamodb';
 
+import { EU_WEST_1, US_EAST_1 } from '../../__tests__/jmap-blob-download-helpers';
 import { RegionBoundVerifiers } from '../region-bound-verifiers';
 
-import { EU_WEST_1, US_EAST_1 } from '../../__tests__/jmap-blob-download-helpers';
+/** The factory the verifiers are built with: a spy that records each region asked for and returns a real client of that region. */
+function createRegionClient(): jest.Mock<DynamoDBClient, [string]> {
+  return jest.fn((region: string) => new DynamoDBClient({ region }));
+}
 
 describe('RegionBoundVerifiers', () => {
   it('creates the DynamoDB client in the region of the request', () => {
-    const createDynamoDBClient = jest.fn((region: string) => new DynamoDBClient({ region }));
+    const createDynamoDBClient = createRegionClient();
 
     new RegionBoundVerifiers(createDynamoDBClient).get(EU_WEST_1);
 
@@ -21,7 +25,7 @@ describe('RegionBoundVerifiers', () => {
   });
 
   it('serves a later request for the same region from the verifiers it built before', () => {
-    const createDynamoDBClient = jest.fn((region: string) => new DynamoDBClient({ region }));
+    const createDynamoDBClient = createRegionClient();
     const verifiers            = new RegionBoundVerifiers(createDynamoDBClient);
 
     const first  = verifiers.get(EU_WEST_1);
@@ -32,7 +36,7 @@ describe('RegionBoundVerifiers', () => {
   });
 
   it('builds verifiers with a client of their own for each region it is asked for', () => {
-    const createDynamoDBClient = jest.fn((region: string) => new DynamoDBClient({ region }));
+    const createDynamoDBClient = createRegionClient();
     const verifiers            = new RegionBoundVerifiers(createDynamoDBClient);
 
     const inEuWest1 = verifiers.get(EU_WEST_1);

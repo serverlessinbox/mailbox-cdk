@@ -6,9 +6,8 @@
 
 import { ExpectedFailure }                     from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { firstHeaderValue, readOriginRequest } from '../cloudfront-event';
-
 import { cloudFrontEventOf }                   from '../../__tests__/jmap-blob-download-helpers';
+import { firstHeaderValue, readOriginRequest } from '../cloudfront-event';
 
 const VALID_REQUEST = {
   method:      'GET',

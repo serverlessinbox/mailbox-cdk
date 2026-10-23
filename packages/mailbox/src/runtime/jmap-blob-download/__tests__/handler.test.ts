@@ -56,7 +56,8 @@ describe('handler', () => {
   it('answers an event that is not a CloudFront event with a generic 500, writes the reason and does not flush', async () => {
     await expect(handler({ Records: [] })).resolves.toMatchObject({ status: '500', statusDescription: 'Internal server error' });
 
-    expect(consoleError).toHaveBeenCalledWith('Authorization error', { error: expect.stringContaining('Malformed CloudFront event') });
+    const malformedMessage: unknown = expect.stringContaining('Malformed CloudFront event');
+    expect(consoleError).toHaveBeenCalledWith('Authorization error', { error: malformedMessage });
     expect(flush).not.toHaveBeenCalled();
   });
 
@@ -80,7 +81,8 @@ describe('handler', () => {
       statusDescription: 'Internal server error',
     });
     expect(flush).toHaveBeenCalledTimes(1);
-    expect(consoleError).toHaveBeenCalledWith('Authorization error', { error: expect.stringContaining('socket hang up') });
+    const hangUpMessage: unknown = expect.stringContaining('socket hang up');
+    expect(consoleError).toHaveBeenCalledWith('Authorization error', { error: hangUpMessage });
   });
 
   it('builds the DynamoDB client of the verifiers in the region it is asked for', async () => {

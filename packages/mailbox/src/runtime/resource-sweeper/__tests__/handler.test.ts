@@ -20,21 +20,17 @@ process.env['SERVICE_NAME']                      = 'resource-sweeper';
 process.env['AWS_REGION']                        = 'us-west-2';
 process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'] = STATE_MACHINE_ARN;
 
-import {
-  ACMClient,
-  DescribeCertificateCommand,
-  DeleteCertificateCommand,
-  ListTagsForCertificateCommand,
-} from '@aws-sdk/client-acm';
-import { SFNClient, StartExecutionCommand, ListExecutionsCommand }     from '@aws-sdk/client-sfn';
-import { ExpectedFailure, LoggerBuffer }                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                                  from 'aws-sdk-client-mock';
+import { ACMClient, DeleteCertificateCommand }                                                   from '@aws-sdk/client-acm';
+import { SFNClient, StartExecutionCommand, ListExecutionsCommand }                               from '@aws-sdk/client-sfn';
+import { ExpectedFailure, LoggerBuffer }                                                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { captureCfnResponse }                                                                    from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
+import { mockClient }                                                                            from 'aws-sdk-client-mock';
 
-import { starterHandler, workerHandler }                               from '../handler';
-import { SweepStarter }                                                from '../sweep-starter';
-import { SweepWorker }                                                 from '../sweep-worker';
+import { starterHandler, workerHandler }                                                         from '../handler';
+import { SweepStarter }                                                                          from '../sweep-starter';
+import { SweepWorker }                                                                           from '../sweep-worker';
 
-import { captureCfnResponse, createEvent, lambdaContext, updateEvent } from './sweep-helpers';
+import { createEvent, lambdaContext, updateEvent, answerCertificateRemoval }                     from './sweep-helpers';
 
 // wrapHandler PUTs the CFN response over real `https`; captureCfnResponse routes it into memory.
 jest.mock('https', () => ({ request: jest.fn() }));
@@ -86,11 +82,7 @@ describe('starterHandler logger scope', () => {
 describe('workerHandler with a valid config', () => {
   it('hands the removal payload to the SweepWorker and returns its output', async () => {
     acmMock.reset();
-    acmMock.on(ListTagsForCertificateCommand).resolves({
-      Tags: [{ Key: 'serverless-inbox:root-stack', Value: 'test-stack' }],
-    });
-    acmMock.on(DescribeCertificateCommand).resolves({ Certificate: { InUseBy: [] } });
-    acmMock.on(DeleteCertificateCommand).resolves({});
+    answerCertificateRemoval(acmMock);
 
     const output = await workerHandler({
       removalType:   'cert',
@@ -119,11 +111,7 @@ describe('handler flush', () => {
     sfnMock.on(ListExecutionsCommand).resolves({ executions: [] });
     sfnMock.on(StartExecutionCommand).resolves({ executionArn: 'arn:execution', startDate: new Date() });
     acmMock.reset();
-    acmMock.on(ListTagsForCertificateCommand).resolves({
-      Tags: [{ Key: 'serverless-inbox:root-stack', Value: 'test-stack' }],
-    });
-    acmMock.on(DescribeCertificateCommand).resolves({ Certificate: { InUseBy: [] } });
-    acmMock.on(DeleteCertificateCommand).resolves({});
+    answerCertificateRemoval(acmMock);
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
     jest.spyOn(console, 'info').mockImplementation(() => undefined);
     jest.spyOn(console, 'error').mockImplementation(() => undefined);

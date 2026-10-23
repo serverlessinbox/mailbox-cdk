@@ -16,6 +16,10 @@
     "./cdk-test-support": {
       "types": "./src/cdk-test-support.ts",
       "default": "./src/cdk-test-support.ts"
+    },
+    "./runtime-test-support": {
+      "types": "./src/runtime-test-support.ts",
+      "default": "./src/runtime-test-support.ts"
     }
   },
   "publishConfig": {
@@ -33,6 +37,10 @@
       "./cdk-test-support": {
         "types": "./lib/cdk-test-support.d.ts",
         "default": "./lib/cdk-test-support.js"
+      },
+      "./runtime-test-support": {
+        "types": "./lib/runtime-test-support.d.ts",
+        "default": "./lib/runtime-test-support.js"
       }
     }
   },

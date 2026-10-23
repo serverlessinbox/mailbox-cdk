@@ -11,10 +11,8 @@
 import type * as Route53Sdk                                    from '@aws-sdk/client-route-53';
 import { mockClient }                                          from 'aws-sdk-client-mock';
 import type { AwsClientStub }                                  from 'aws-sdk-client-mock';
-import type * as Https                                         from 'https';
-import { Writable }                                            from 'stream';
-import * as t                                                  from 'typanion';
 
+import { captureCfnResponse }                                  from '../../../runtime-test-support';
 import type * as LoggerBufferModule                            from '../../handler-kit/logger-buffer';
 import type { SmokeTestProbe }                                 from '../../handler-kit/smoke-test';
 import type * as HandlerModule                                 from '../handler';
@@ -25,15 +23,6 @@ import type { FakeCfnEvent }                                   from './cfn-helpe
 jest.mock('https', () => ({
   request: jest.fn(),
 }));
-
-const isCfnResponseBody = t.isPartial({
-  Status: t.isString(),
-  Reason: t.isOptional(t.isString()),
-  Data:   t.isOptional(t.isRecord(t.isString())),
-});
-
-/** The body the handler PUTs to the ResponseURL, or `NOT SENT` when it sent none. */
-type CfnResponseBody = t.InferType<typeof isCfnResponseBody>;
 
 describe('stack-helpers handler', () => {
   const originalEnv = process.env;
@@ -70,29 +59,19 @@ describe('stack-helpers handler', () => {
     });
     arrange(route53Mock, route53Sdk);
 
-    let responseJson = '';
-    const https      = require('https') as typeof Https;
-    jest.mocked(https.request).mockImplementation(((_options: unknown, callback: (res: object) => void) => {
-      callback({ statusCode: 200 });
-      return new Writable({
-        write(chunk: Buffer, _encoding, done) {
-          responseJson += chunk.toString();
-          done();
-        },
-      });
-    }) as typeof https.request);
+    const readResponse = captureCfnResponse();
 
     const { handler } = require('../handler') as typeof HandlerModule;
     const result      = await handler(event, fakeLambdaContext());
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    let response: CfnResponseBody = { Status: 'NOT SENT' };
-    if (responseJson !== '') {
-      const sent: unknown = JSON.parse(responseJson);
-      t.assert(sent, isCfnResponseBody);
-      response = sent;
-    }
-    return { result, response, hostedZoneLookups: route53Mock.commandCalls(GetHostedZoneCommand) };
+    return {
+      result,
+      get response() {
+        return readResponse();
+      },
+      hostedZoneLookups: route53Mock.commandCalls(GetHostedZoneCommand),
+    };
   }
 
   it('reports the smoke-test probe unhealthy when the configuration is bad', async () => {

@@ -12,18 +12,14 @@ process.env['SERVICE_NAME'] = 'resource-sweeper-starter';
 process.env['AWS_REGION']   = 'us-west-2';
 delete process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'];
 
-import {
-  ACMClient,
-  DescribeCertificateCommand,
-  DeleteCertificateCommand,
-  ListTagsForCertificateCommand,
-} from '@aws-sdk/client-acm';
-import { SFNClient }                                                   from '@aws-sdk/client-sfn';
-import { mockClient }                                                  from 'aws-sdk-client-mock';
+import { ACMClient, DeleteCertificateCommand }                                                   from '@aws-sdk/client-acm';
+import { SFNClient }                                                                             from '@aws-sdk/client-sfn';
+import { captureCfnResponse }                                                                    from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
+import { mockClient }                                                                            from 'aws-sdk-client-mock';
 
-import { starterHandler, workerHandler }                               from '../handler';
+import { starterHandler, workerHandler }                                                         from '../handler';
 
-import { captureCfnResponse, createEvent, deleteEvent, lambdaContext } from './sweep-helpers';
+import { createEvent, deleteEvent, lambdaContext, answerCertificateRemoval }                     from './sweep-helpers';
 
 jest.mock('https', () => ({ request: jest.fn() }));
 
@@ -63,11 +59,7 @@ describe('handlers — starter config invalid', () => {
   });
 
   it('leaves the worker working: a cert removal succeeds without the starter\'s variable', async () => {
-    acmMock.on(ListTagsForCertificateCommand).resolves({
-      Tags: [{ Key: 'serverless-inbox:root-stack', Value: 'test-stack' }],
-    });
-    acmMock.on(DescribeCertificateCommand).resolves({ Certificate: { InUseBy: [] } });
-    acmMock.on(DeleteCertificateCommand).resolves({});
+    answerCertificateRemoval(acmMock);
 
     const output = await workerHandler({
       removalType:   'cert',

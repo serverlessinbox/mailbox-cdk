@@ -14,11 +14,12 @@
 process.env['SERVICE_NAME'] = 'data-override-resolver';
 
 import { ExpectedFailure, LoggerBuffer }                                                             from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { captureCfnResponse }                                                                        from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
 
 import { handler }                                                                                   from '../handler';
 import { TableOverrideResolver, type ResolvedTableArns }                                             from '../table-override-resolver';
 
-import { captureCfnResponse, createEvent, deleteEvent, lambdaContext, PROPERTIES_WITHOUT_OVERRIDES } from './data-override-resolver-helpers';
+import { createEvent, deleteEvent, lambdaContext, PROPERTIES_WITHOUT_OVERRIDES }                     from './data-override-resolver-helpers';
 
 // wrapHandler PUTs the CFN response over real `https`; captureCfnResponse routes it into memory.
 jest.mock('https', () => ({ request: jest.fn() }));
