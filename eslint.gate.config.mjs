@@ -21,15 +21,15 @@ const scopedBase = base.map((entry) => {
   };
 });
 
-// The alignment rule applies to every package, joined or not. It reuses the base `custom`
+// The alignment rule applies to every package, joined or not. It reuses the base `mailbox`
 // plugin object because flat config rejects a second, different object under one name.
-const customPlugin = base.find((entry) => entry.plugins && entry.plugins.custom).plugins.custom;
+const mailboxPlugin = base.find((entry) => entry.plugins && entry.plugins.mailbox).plugins.mailbox;
 
 const alignEverywhere = {
   files: ['**/*.ts'],
   languageOptions: { parser: ts.parser },
-  plugins: { custom: customPlugin },
-  rules: { 'custom/align': 'error' },
+  plugins: { mailbox: mailboxPlugin },
+  rules: { 'mailbox/align': 'error' },
 };
 
 export default [...scopedBase, alignEverywhere, ...boundaryConfig, ...modelConfig];

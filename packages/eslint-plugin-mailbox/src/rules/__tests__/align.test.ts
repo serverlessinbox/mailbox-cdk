@@ -1,19 +1,16 @@
-import { describe, it } from 'node:test';
-import { RuleTester } from 'eslint';
-import ts from 'typescript-eslint';
-import { alignRule } from './eslint.align.mjs';
+import { RuleTester }   from '@typescript-eslint/rule-tester';
+import typescriptEslint from 'typescript-eslint';
 
-RuleTester.describe = describe;
-RuleTester.it = it;
+import { align }        from '../align';
 
-const code = (...rows) => rows.join('\n');
+const code = (...rows: string[]): string => rows.join('\n');
 
 const tester = new RuleTester({
-  languageOptions: { parser: ts.parser },
+  languageOptions: { parser: typescriptEslint.parser },
 });
 
-tester.run('custom/align', alignRule, {
-  valid: [
+tester.run('align', align, {
+  valid:   [
     {
       name: 'an already aligned declaration group',
       code: code('export const a      = 1;', 'export const bcd    = 2;', 'export const efghij = 3;'),
@@ -49,74 +46,74 @@ tester.run('custom/align', alignRule, {
   ],
   invalid: [
     {
-      name: 'three consecutive export const lines align',
-      code: code('export const a = 1;', 'export const bcd = 2;', 'export const efghij = 3;'),
+      name:   'three consecutive export const lines align',
+      code:   code('export const a = 1;', 'export const bcd = 2;', 'export const efghij = 3;'),
       output: code('export const a      = 1;', 'export const bcd    = 2;', 'export const efghij = 3;'),
       errors: [{ messageId: 'alignEquals' }, { messageId: 'alignEquals' }],
     },
     {
-      name: 'a comment line between the second and third makes two groups',
-      code: code('export const a = 1;', 'export const bcd = 2;', '// note', 'export const efghij = 3;'),
+      name:   'a comment line between the second and third makes two groups',
+      code:   code('export const a = 1;', 'export const bcd = 2;', '// note', 'export const efghij = 3;'),
       output: code('export const a   = 1;', 'export const bcd = 2;', '// note', 'export const efghij = 3;'),
       errors: [{ messageId: 'alignEquals' }],
     },
     {
-      name: 'a blank line splits a declaration group',
-      code: code('const a = 1;', 'const bcd = 2;', '', 'const efghij = 3;', 'const k = 4;'),
+      name:   'a blank line splits a declaration group',
+      code:   code('const a = 1;', 'const bcd = 2;', '', 'const efghij = 3;', 'const k = 4;'),
       output: code('const a   = 1;', 'const bcd = 2;', '', 'const efghij = 3;', 'const k      = 4;'),
       errors: [{ messageId: 'alignEquals' }, { messageId: 'alignEquals' }],
     },
     {
-      name: 'assignments and declarations share a group and type annotations count as left side',
-      code: code('let a: number = 1;', 'bcd = 2;', 'const efghijklmnop = 3;'),
+      name:   'assignments and declarations share a group and type annotations count as left side',
+      code:   code('let a: number = 1;', 'bcd = 2;', 'const efghijklmnop = 3;'),
       output: code('let a: number      = 1;', 'bcd                = 2;', 'const efghijklmnop = 3;'),
       errors: [{ messageId: 'alignEquals' }, { messageId: 'alignEquals' }],
     },
     {
-      name: 'a multi-line statement with = on its first line takes part',
-      code: code('const a = {', '  x: 1,', '};', 'const bcd = 2;'),
+      name:   'a multi-line statement with = on its first line takes part',
+      code:   code('const a = {', '  x: 1,', '};', 'const bcd = 2;'),
       output: code('const a   = {', '  x: 1,', '};', 'const bcd = 2;'),
       errors: [{ messageId: 'alignEquals' }],
     },
     {
-      name: 'object keys align',
-      code: code('const o = {', '  a: 1,', '  bcd: 2,', '};'),
+      name:   'object keys align',
+      code:   code('const o = {', '  a: 1,', '  bcd: 2,', '};'),
       output: code('const o = {', '  a:   1,', '  bcd: 2,', '};'),
       errors: [{ messageId: 'alignValue' }],
     },
     {
-      name: 'a comment line between object keys makes two groups',
-      code: code('const o = {', '  a: 1,', '  bcd: 2,', '  // note', '  efghij: 3,', '};'),
+      name:   'a comment line between object keys makes two groups',
+      code:   code('const o = {', '  a: 1,', '  bcd: 2,', '  // note', '  efghij: 3,', '};'),
       output: code('const o = {', '  a:   1,', '  bcd: 2,', '  // note', '  efghij: 3,', '};'),
       errors: [{ messageId: 'alignValue' }],
     },
     {
-      name: 'a blank line between object keys makes two groups',
-      code: code('const o = {', '  a: 1,', '  bcd: 2,', '', '  efghij: 3,', '  k: 4,', '};'),
+      name:   'a blank line between object keys makes two groups',
+      code:   code('const o = {', '  a: 1,', '  bcd: 2,', '', '  efghij: 3,', '  k: 4,', '};'),
       output: code('const o = {', '  a:   1,', '  bcd: 2,', '', '  efghij: 3,', '  k:      4,', '};'),
       errors: [{ messageId: 'alignValue' }, { messageId: 'alignValue' }],
     },
     {
-      name: 'interface members with readonly and optional align on the colon',
-      code: code('interface I {', '  readonly a: string;', '  b?: number;', '  cdef: boolean;', '}'),
+      name:   'interface members with readonly and optional align on the colon',
+      code:   code('interface I {', '  readonly a: string;', '  b?: number;', '  cdef: boolean;', '}'),
       output: code('interface I {', '  readonly a: string;', '  b?:         number;', '  cdef:       boolean;', '}'),
       errors: [{ messageId: 'alignValue' }, { messageId: 'alignValue' }],
     },
     {
-      name: 'type literal members align',
-      code: code('type T = {', '  a: string;', '  bcd: number;', '};'),
+      name:   'type literal members align',
+      code:   code('type T = {', '  a: string;', '  bcd: number;', '};'),
       output: code('type T = {', '  a:   string;', '  bcd: number;', '};'),
       errors: [{ messageId: 'alignValue' }],
     },
     {
-      name: 'a method and a spread end a group',
-      code: code('const o = {', '  a: 1,', '  bcd: 2,', '  m() {},', '  efghij: 3,', '  k: 4,', '  ...rest,', '  lmnopq: 5,', '};'),
+      name:   'a method and a spread end a group',
+      code:   code('const o = {', '  a: 1,', '  bcd: 2,', '  m() {},', '  efghij: 3,', '  k: 4,', '  ...rest,', '  lmnopq: 5,', '};'),
       output: code('const o = {', '  a:   1,', '  bcd: 2,', '  m() {},', '  efghij: 3,', '  k:      4,', '  ...rest,', '  lmnopq: 5,', '};'),
       errors: [{ messageId: 'alignValue' }, { messageId: 'alignValue' }],
     },
     {
-      name: 'a multi-line value ends its member on a later line and the next member joins the group',
-      code: code('const o = {', '  a: {', '    x: 1,', '  },', '  bcd: 2,', '};'),
+      name:   'a multi-line value ends its member on a later line and the next member joins the group',
+      code:   code('const o = {', '  a: {', '    x: 1,', '  },', '  bcd: 2,', '};'),
       output: code('const o = {', '  a:   {', '    x: 1,', '  },', '  bcd: 2,', '};'),
       errors: [{ messageId: 'alignValue' }],
     },

@@ -1,6 +1,11 @@
+import { createRequire } from 'node:module';
 import arca from 'eslint-plugin-arca';
 import ts from 'typescript-eslint';
-import { alignRule } from './eslint.align.mjs';
+
+// The plugin's TypeScript sources load through ts-node, which the register entry point installs.
+const require = createRequire(import.meta.url);
+require('@serverlessinbox/eslint-plugin-mailbox/register');
+const mailboxPlugin = require('@serverlessinbox/eslint-plugin-mailbox');
 
 // Lint-only tsconfigs, so tests, tools and scripts parse with type information
 // without changing any package's build or test tsconfig.
@@ -13,32 +18,6 @@ const lintTsconfigs = [
   'packages/eslint-plugin-mailbox/tsconfig.json',
   'tsconfig.scripts.json',
 ];
-
-// Custom rule for plan labels and change narration
-const planLabelRule = {
-  meta: {
-    type: 'problem',
-    docs: {
-      description: 'disallow plan labels and change narration in comments',
-    },
-  },
-  create(context) {
-    const pattern = /\bsubplan\b|\bPhase [A-Z0-9]\b|\bplan-[a-e]\b|\.claude\/|\bmoved (to|from)\b|\bpreviously\b|\bno longer\b/i;
-    return {
-      Program() {
-        const sourceCode = context.sourceCode;
-        sourceCode.getAllComments().forEach((comment) => {
-          if (pattern.test(comment.value)) {
-            context.report({
-              node: comment,
-              message: `Found plan label or change narration in comment: "${comment.value.trim()}"`,
-            });
-          }
-        });
-      },
-    };
-  },
-};
 
 export default [
   {
@@ -72,12 +51,7 @@ export default [
     plugins: {
       '@typescript-eslint': ts.plugin,
       arca,
-      custom: {
-        rules: {
-          align: alignRule,
-          'plan-labels': planLabelRule,
-        },
-      },
+      mailbox: mailboxPlugin,
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
@@ -123,8 +97,8 @@ export default [
       'arca/import-quotes': 'error',
       'arca/newline-after-import-section': 'error',
       curly: ['error', 'all'],
-      'custom/align': 'error',
-      'custom/plan-labels': 'error',
+      'mailbox/align': 'error',
+      'mailbox/plan-labels': 'error',
       'id-length': [
         'error',
         {
