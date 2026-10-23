@@ -545,10 +545,6 @@ const RAW_RUNTIME_STATE =
       "npm:4.12.2"\
     ],\
     [\
-      "@eslint/compat",\
-      "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:2.1.1"\
-    ],\
-    [\
       "@eslint/config-array",\
       "npm:0.23.5"\
     ],\
@@ -3159,8 +3155,6 @@ const RAW_RUNTIME_STATE =
       [null, {\
         "packageLocation": "./",\
         "packageDependencies": [\
-          ["@aws-sdk/client-s3", "npm:3.1132.0"],\
-          ["@eslint/compat", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:2.1.1"],\
           ["@jwpkg/gitversion", "npm:1.4.0-pack-order.3"],\
           ["@serverlessinbox/artifact-registry", "npm:0.3.0"],\
           ["@serverlessinbox/artifact-registry-cdk", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.3.0"],\
@@ -5100,29 +5094,6 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "../../../../../.yarn/berry/cache/@eslint-community-regexpp-npm-4.12.2-3d54624470-10c0.zip/node_modules/@eslint-community/regexpp/",\
         "packageDependencies": [\
           ["@eslint-community/regexpp", "npm:4.12.2"]\
-        ],\
-        "linkType": "HARD"\
-      }]\
-    ]],\
-    ["@eslint/compat", [\
-      ["npm:2.1.1", {\
-        "packageLocation": "../../../../../.yarn/berry/cache/@eslint-compat-npm-2.1.1-c4a16d6190-10c0.zip/node_modules/@eslint/compat/",\
-        "packageDependencies": [\
-          ["@eslint/compat", "npm:2.1.1"]\
-        ],\
-        "linkType": "SOFT"\
-      }],\
-      ["virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:2.1.1", {\
-        "packageLocation": "./.yarn/__virtual__/@eslint-compat-virtual-6d354af8c5/6/.yarn/berry/cache/@eslint-compat-npm-2.1.1-c4a16d6190-10c0.zip/node_modules/@eslint/compat/",\
-        "packageDependencies": [\
-          ["@eslint/compat", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:2.1.1"],\
-          ["@eslint/core", "npm:1.2.1"],\
-          ["@types/eslint", null],\
-          ["eslint", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:10.13.0"]\
-        ],\
-        "packagePeers": [\
-          "@types/eslint",\
-          "eslint"\
         ],\
         "linkType": "HARD"\
       }]\
@@ -11960,8 +11931,6 @@ const RAW_RUNTIME_STATE =
       ["workspace:.", {\
         "packageLocation": "./",\
         "packageDependencies": [\
-          ["@aws-sdk/client-s3", "npm:3.1132.0"],\
-          ["@eslint/compat", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:2.1.1"],\
           ["@jwpkg/gitversion", "npm:1.4.0-pack-order.3"],\
           ["@serverlessinbox/artifact-registry", "npm:0.3.0"],\
           ["@serverlessinbox/artifact-registry-cdk", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.3.0"],\
