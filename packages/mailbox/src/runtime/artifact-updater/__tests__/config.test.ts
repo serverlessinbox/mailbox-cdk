@@ -6,27 +6,17 @@
  * variables are pinned in the suite of the shared base configuration.
  */
 
-import { env }  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { env }              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { load } from '../config';
+import { load }             from '../config';
 
-const ENVIRONMENT = {
-  SERVICE_NAME:             'artifact-updater',
-  AWS_REGION:               'eu-west-1',
-  AWS_LAMBDA_FUNCTION_NAME: 'artifact-updater-function',
-  PROJECT:                  'serverlessinbox',
-  DIST_TAG:                 'latest',
-  GRANULARITY:              'major',
-  ARTIFACT_BUCKET_BASE:     'mailbox-artifacts',
-  ROOT_STACK_TAG_VALUE:     'my-stack',
-  ROOT_STACK_ID:            'guid-1',
-};
+import { GOOD_ENVIRONMENT } from './updater-helpers';
 
 describe('artifact-updater config', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    process.env = { ...originalEnv, ...ENVIRONMENT };
+    process.env = { ...originalEnv, ...GOOD_ENVIRONMENT };
   });
 
   afterEach(() => {

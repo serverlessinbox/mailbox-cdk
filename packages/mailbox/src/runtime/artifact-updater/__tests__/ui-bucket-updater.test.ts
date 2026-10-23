@@ -12,6 +12,7 @@ import type { S3Client }                                                        
 import {
   invalidateCloudFront as invalidateCloudFrontFunction,
   LoggerBuffer,
+  ServerlessInboxTagKeys,
   type Region,
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type * as LambdaRuntime                                                                       from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
@@ -20,13 +21,11 @@ import { mockClient }                                                           
 import { ReleaseArtifacts }                                                                          from '../release-artifacts';
 import { UiBucketUpdater }                                                                           from '../ui-bucket-updater';
 
-import { DISTRIBUTION_ARN, EU_WEST_1, fakeUpdaterClients, testConfig, uiTarget, type RegistryMocks } from './updater-helpers';
+import { DISTRIBUTION_ARN, EU_WEST_1, fakeUpdaterClients, registryMocks, testConfig, uiTarget }      from './updater-helpers';
 
-jest.mock('@serverlessinbox/artifact-registry', () => ({
-  deriveTrack:        jest.fn(),
-  buildArtifactKey:   jest.fn(),
-  readReleasePointer: jest.fn(),
-}));
+jest.mock('@serverlessinbox/artifact-registry', () =>
+  (jest.requireActual('./updater-helpers') as typeof import('./updater-helpers')).artifactRegistryModuleMock(),
+);
 
 jest.mock('@serverlessinbox/mailbox-cdk-shared/lambda-runtime', () => ({
   ...jest.requireActual<typeof LambdaRuntime>('@serverlessinbox/mailbox-cdk-shared/lambda-runtime'),
@@ -46,9 +45,7 @@ interface UpdaterFixture {
   readonly registryS3: S3Client;
 }
 
-const { readReleasePointer, deriveTrack, buildArtifactKey } = jest.requireMock(
-  '@serverlessinbox/artifact-registry',
-) as RegistryMocks;
+const { readReleasePointer, deriveTrack, buildArtifactKey } = registryMocks();
 const { deployZipToPrefix, invalidateCloudFront }           = jest.requireMock(
   '@serverlessinbox/mailbox-cdk-shared/lambda-runtime',
 ) as ContentOperationMocks;
@@ -112,7 +109,7 @@ describe('UiBucketUpdater', () => {
     expect(invalidation.callerReference).toContain('ui-update:ui-content-bucket:1.2.4:');
     expect(cloudFrontMock.commandCalls(TagResourceCommand)[0].args[0].input).toEqual({
       Resource: DISTRIBUTION_ARN,
-      Tags:     { Items: [{ Key: 'serverless-inbox:artifact-version', Value: '1.2.4' }] },
+      Tags:     { Items: [{ Key: ServerlessInboxTagKeys.artifactVersion, Value: '1.2.4' }] },
     });
   });
 

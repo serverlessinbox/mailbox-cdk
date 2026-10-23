@@ -12,17 +12,13 @@ import { SemVer }                                                               
 
 import { ReleaseArtifacts }                                                                      from '../release-artifacts';
 
-import { EU_WEST_1, fakeUpdaterClients, lambdaTarget, testConfig, uiTarget, type RegistryMocks } from './updater-helpers';
+import { EU_WEST_1, fakeUpdaterClients, lambdaTarget, registryMocks, testConfig, uiTarget }      from './updater-helpers';
 
-jest.mock('@serverlessinbox/artifact-registry', () => ({
-  deriveTrack:        jest.fn(),
-  buildArtifactKey:   jest.fn(),
-  readReleasePointer: jest.fn(),
-}));
+jest.mock('@serverlessinbox/artifact-registry', () =>
+  (jest.requireActual('./updater-helpers') as typeof import('./updater-helpers')).artifactRegistryModuleMock(),
+);
 
-const { readReleasePointer, deriveTrack, buildArtifactKey } = jest.requireMock(
-  '@serverlessinbox/artifact-registry',
-) as RegistryMocks;
+const { readReleasePointer, deriveTrack, buildArtifactKey } = registryMocks();
 
 describe('ReleaseArtifacts', () => {
   const registryS3                                         = fakeUpdaterClients().registryS3;

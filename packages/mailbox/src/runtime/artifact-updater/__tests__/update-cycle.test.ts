@@ -11,29 +11,10 @@ import {
   ResourceGroupsTaggingAPIClient,
   type ResourceTagMapping,
 } from '@aws-sdk/client-resource-groups-tagging-api';
-import { LoggerBuffer, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                from 'aws-sdk-client-mock';
+import { ServerlessInboxTagKeys }                                                             from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                                         from 'aws-sdk-client-mock';
 
-import { EdgeLambdaUpdater }         from '../edge-lambda-updater';
-import { FunctionSmokeTester }       from '../lambda-code/function-smoke-tester';
-import { LambdaCodeRollback }        from '../lambda-code/lambda-code-rollback';
-import { LambdaCodeUpdater }         from '../lambda-code/lambda-code-updater';
-import { LambdaFunctionCode }        from '../lambda-code/lambda-function-code';
-import { ReleaseArtifacts }          from '../release-artifacts';
-import { UiBucketUpdater }           from '../ui-bucket-updater';
-import { UpdateCycle }               from '../update-cycle';
-
-import {
-  DISTRIBUTION_ARN,
-  LAMBDA_ARN,
-  fakeUpdaterClients,
-  lambdaTarget,
-  noSleep,
-  testConfig,
-  testRootStackResources,
-  uiTarget,
-  US_WEST_2,
-} from './updater-helpers';
+import { buildUpdaterParts, DISTRIBUTION_ARN, LAMBDA_ARN, lambdaTarget, uiTarget, US_WEST_2 } from './updater-helpers';
 
 jest.mock('../lambda-code/lambda-code-updater');
 jest.mock('../edge-lambda-updater');
@@ -48,54 +29,29 @@ function resource(arn: string, tags: Record<string, string>): ResourceTagMapping
 
 function lambdaWithType(autoUpdateType: string, arn: string = LAMBDA_ARN): ResourceTagMapping {
   return resource(arn, {
-    'serverless-inbox:root-stack':       'my-stack',
-    'serverless-inbox:root-stack-id':    'guid-1',
-    'serverless-inbox:artifact-package': 'mailbox-go',
-    'serverless-inbox:artifact-name':    'mailbox-go',
-    'serverless-inbox:artifact-version': '1.2.3',
-    'serverless-inbox:auto-update-type': autoUpdateType,
+    [ServerlessInboxTagKeys.rootStack]:       'my-stack',
+    [ServerlessInboxTagKeys.rootStackId]:     'guid-1',
+    [ServerlessInboxTagKeys.artifactPackage]: 'mailbox-go',
+    [ServerlessInboxTagKeys.artifactName]:    'mailbox-go',
+    [ServerlessInboxTagKeys.artifactVersion]: '1.2.3',
+    [ServerlessInboxTagKeys.autoUpdateType]:  autoUpdateType,
   });
 }
 
 function distributionWithType(autoUpdateType: string, bucketName?: string): ResourceTagMapping {
   return resource(DISTRIBUTION_ARN, {
-    'serverless-inbox:root-stack':       'my-stack',
-    'serverless-inbox:root-stack-id':    'guid-1',
-    'serverless-inbox:artifact-package': 'ui-bundle',
-    'serverless-inbox:artifact-name':    'ui-bundle.zip',
-    'serverless-inbox:artifact-version': '1.2.3',
-    'serverless-inbox:auto-update-type': autoUpdateType,
-    ...(bucketName ? { 'serverless-inbox:bucket-name': bucketName } : {}),
+    [ServerlessInboxTagKeys.rootStack]:       'my-stack',
+    [ServerlessInboxTagKeys.rootStackId]:     'guid-1',
+    [ServerlessInboxTagKeys.artifactPackage]: 'ui-bundle',
+    [ServerlessInboxTagKeys.artifactName]:    'ui-bundle.zip',
+    [ServerlessInboxTagKeys.artifactVersion]: '1.2.3',
+    [ServerlessInboxTagKeys.autoUpdateType]:  autoUpdateType,
+    ...(bucketName ? { [ServerlessInboxTagKeys.bucketName]: bucketName } : {}),
   });
 }
 
 describe('UpdateCycle', () => {
   const taggingMock = mockClient(ResourceGroupsTaggingAPIClient);
-
-  function newCycle(deploymentRegion?: Region) {
-    const clients            = fakeUpdaterClients(deploymentRegion);
-    const logger             = new LoggerBuffer(undefined, 'debug');
-    const releases           = new ReleaseArtifacts(clients.registryS3, testConfig, logger);
-    const functionCode       = new LambdaFunctionCode(noSleep);
-    const smokeTester        = new FunctionSmokeTester(logger);
-    const rollback           = new LambdaCodeRollback(functionCode, logger);
-    const codeUpdater        = new LambdaCodeUpdater(releases, functionCode, smokeTester, rollback, logger);
-    const rootStackResources = testRootStackResources();
-    const edgeUpdater        = new EdgeLambdaUpdater(
-      clients.edge,
-      clients.cloudFront,
-      rootStackResources,
-      releases,
-      functionCode,
-      smokeTester,
-      rollback,
-      logger,
-      noSleep,
-    );
-    const uiUpdater          = new UiBucketUpdater(clients.registryS3, clients.deployment, clients.cloudFront, releases, logger);
-    const cycle              = new UpdateCycle(testConfig, clients, rootStackResources, logger, codeUpdater, edgeUpdater, uiUpdater);
-    return { cycle, clients, codeUpdater, edgeUpdater, uiUpdater };
-  }
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -114,17 +70,17 @@ describe('UpdateCycle', () => {
     it('asks for the lambda functions and distributions the root stack owns, by id and by name', async () => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [] });
 
-      await newCycle().cycle.run();
+      await buildUpdaterParts().cycle.run();
 
       const filters = taggingMock.commandCalls(GetResourcesCommand).map((call) => call.args[0].input);
       expect(filters).toEqual([
         {
-          TagFilters:          [{ Key: 'serverless-inbox:root-stack-id', Values: ['guid-1'] }],
+          TagFilters:          [{ Key: ServerlessInboxTagKeys.rootStackId, Values: ['guid-1'] }],
           ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
           PaginationToken:     undefined,
         },
         {
-          TagFilters:          [{ Key: 'serverless-inbox:root-stack', Values: ['my-stack'] }],
+          TagFilters:          [{ Key: ServerlessInboxTagKeys.rootStack, Values: ['my-stack'] }],
           ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
           PaginationToken:     undefined,
         },
@@ -133,7 +89,7 @@ describe('UpdateCycle', () => {
 
     it('scans the deployment region and the edge region when they differ', async () => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [] });
-      const { cycle, clients } = newCycle(US_WEST_2);
+      const { cycle, clients } = buildUpdaterParts({ deploymentRegion: US_WEST_2 });
 
       await cycle.run();
 
@@ -144,7 +100,7 @@ describe('UpdateCycle', () => {
     it('scans the region once when the deployment region is the edge region', async () => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [] });
 
-      await newCycle().cycle.run();
+      await buildUpdaterParts().cycle.run();
 
       expect(taggingMock.commandCalls(GetResourcesCommand)).toHaveLength(2);
     });
@@ -152,7 +108,7 @@ describe('UpdateCycle', () => {
     it('rejects and logs when the scan itself fails', async () => {
       taggingMock.on(GetResourcesCommand).rejects(new Error('ThrottlingException'));
 
-      await expect(newCycle().cycle.run()).rejects.toThrow('ThrottlingException');
+      await expect(buildUpdaterParts().cycle.run()).rejects.toThrow('ThrottlingException');
 
       expect(console.error).toHaveBeenCalledWith('artifact update cycle failed', { error: 'ThrottlingException' });
     });
@@ -163,15 +119,15 @@ describe('UpdateCycle', () => {
       { state: 'opted out', skipped: lambdaWithType('none') },
       {
         state:   'opted out and carrying no artifact tags',
-        skipped: resource(LAMBDA_ARN, { 'serverless-inbox:auto-update-type': 'none' }),
+        skipped: resource(LAMBDA_ARN, { [ServerlessInboxTagKeys.autoUpdateType]: 'none' }),
       },
       {
         state:   'untagged, which defaults to opted out',
-        skipped: resource(LAMBDA_ARN, { 'serverless-inbox:root-stack': 'my-stack' }),
+        skipped: resource(LAMBDA_ARN, { [ServerlessInboxTagKeys.rootStack]: 'my-stack' }),
       },
     ])('skips a resource that is $state, before looking at its artifact tags', async ({ skipped }) => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [skipped] });
-      const { cycle, codeUpdater, edgeUpdater, uiUpdater } = newCycle();
+      const { cycle, codeUpdater, edgeUpdater, uiUpdater } = buildUpdaterParts();
 
       await cycle.run();
 
@@ -182,31 +138,32 @@ describe('UpdateCycle', () => {
       expect(console.warn).not.toHaveBeenCalled();
     });
 
-    it.each(['serverless-inbox:artifact-package', 'serverless-inbox:artifact-name', 'serverless-inbox:artifact-version'])(
-      'skips an opted-in resource that lacks the tag %s',
-      async (missingTag) => {
-        const incomplete = lambdaWithType('code');
-        taggingMock.on(GetResourcesCommand).resolves({
-          ResourceTagMappingList: [{ ...incomplete, Tags: incomplete.Tags?.filter((tag) => tag.Key !== missingTag) }],
-        });
-        const { cycle, codeUpdater } = newCycle();
+    it.each([
+      ServerlessInboxTagKeys.artifactPackage,
+      ServerlessInboxTagKeys.artifactName,
+      ServerlessInboxTagKeys.artifactVersion,
+    ])('skips an opted-in resource that lacks the tag %s', async (missingTag) => {
+      const incomplete = lambdaWithType('code');
+      taggingMock.on(GetResourcesCommand).resolves({
+        ResourceTagMappingList: [{ ...incomplete, Tags: incomplete.Tags?.filter((tag) => tag.Key !== missingTag) }],
+      });
+      const { cycle, codeUpdater } = buildUpdaterParts();
 
-        await cycle.run();
+      await cycle.run();
 
-        expect(codeUpdater.advanceIfStale).not.toHaveBeenCalled();
-        expect(console.warn).toHaveBeenCalledWith(
-          'resource missing artifact tags',
-          expect.objectContaining({ arn: LAMBDA_ARN, resourceType: 'lambda' }),
-        );
-      },
-    );
+      expect(codeUpdater.advanceIfStale).not.toHaveBeenCalled();
+      expect(console.warn).toHaveBeenCalledWith(
+        'resource missing artifact tags',
+        expect.objectContaining({ arn: LAMBDA_ARN, resourceType: 'lambda' }),
+      );
+    });
 
     it.each([
       { kind: 'function', resource: lambdaWithType('canary'), resourceType: 'lambda' },
       { kind: 'distribution', resource: distributionWithType('canary', 'ui-content-bucket'), resourceType: 'cloudfront' },
     ])('skips a $kind whose auto-update-type is none of the types it knows, and says so at debug level', async ({ resource: unknownType, resourceType }) => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [unknownType] });
-      const { cycle, codeUpdater, edgeUpdater, uiUpdater } = newCycle();
+      const { cycle, codeUpdater, edgeUpdater, uiUpdater } = buildUpdaterParts();
 
       await cycle.run();
 
@@ -223,14 +180,14 @@ describe('UpdateCycle', () => {
     it('skips a resource in the response that has no ARN', async () => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [{ Tags: [] }] });
 
-      await expect(newCycle().cycle.run()).resolves.toBeUndefined();
+      await expect(buildUpdaterParts().cycle.run()).resolves.toBeUndefined();
     });
 
     it('skips a resource of a service the updater does not manage, and says so at debug level', async () => {
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [lambdaWithType('code', 'arn:aws:s3:::some-bucket')],
       });
-      const { cycle, codeUpdater } = newCycle();
+      const { cycle, codeUpdater } = buildUpdaterParts();
 
       await cycle.run();
 
@@ -247,7 +204,7 @@ describe('UpdateCycle', () => {
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [lambdaWithType('code', 'not-an-arn'), lambdaWithType('code')],
       });
-      const { cycle, codeUpdater } = newCycle();
+      const { cycle, codeUpdater } = buildUpdaterParts();
 
       await expect(cycle.run()).resolves.toBeUndefined();
 
@@ -262,7 +219,7 @@ describe('UpdateCycle', () => {
   describe('which updater a resource goes to', () => {
     it('sends a code function to the code updater with the region it was found in', async () => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [lambdaWithType('code')] });
-      const { cycle, clients, codeUpdater } = newCycle();
+      const { cycle, clients, codeUpdater } = buildUpdaterParts();
 
       await cycle.run();
 
@@ -271,7 +228,7 @@ describe('UpdateCycle', () => {
 
     it('sends an edge function found in the edge region to the edge updater', async () => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [lambdaWithType('edge')] });
-      const { cycle, edgeUpdater, codeUpdater } = newCycle();
+      const { cycle, edgeUpdater, codeUpdater } = buildUpdaterParts();
 
       await cycle.run();
 
@@ -284,7 +241,7 @@ describe('UpdateCycle', () => {
         .on(GetResourcesCommand)
         .resolvesOnce({ ResourceTagMappingList: [lambdaWithType('edge')] })
         .resolves({ ResourceTagMappingList: [] });
-      const { cycle, edgeUpdater } = newCycle(US_WEST_2);
+      const { cycle, edgeUpdater } = buildUpdaterParts({ deploymentRegion: US_WEST_2 });
 
       await cycle.run();
 
@@ -293,7 +250,7 @@ describe('UpdateCycle', () => {
 
     it('leaves a function of an unknown update type alone, and says so at debug level', async () => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [lambdaWithType('ui')] });
-      const { cycle, codeUpdater, edgeUpdater } = newCycle();
+      const { cycle, codeUpdater, edgeUpdater } = buildUpdaterParts();
 
       await cycle.run();
 
@@ -306,7 +263,7 @@ describe('UpdateCycle', () => {
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [distributionWithType('ui', 'ui-content-bucket')],
       });
-      const { cycle, uiUpdater } = newCycle();
+      const { cycle, uiUpdater } = buildUpdaterParts();
 
       await cycle.run();
 
@@ -318,7 +275,7 @@ describe('UpdateCycle', () => {
       { kind: 'a distribution of another update type', distribution: distributionWithType('code', 'ui-content-bucket') },
     ])('leaves $kind alone', async ({ distribution }) => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [distribution] });
-      const { cycle, uiUpdater } = newCycle();
+      const { cycle, uiUpdater } = buildUpdaterParts();
 
       await cycle.run();
 
@@ -334,7 +291,7 @@ describe('UpdateCycle', () => {
           lambdaWithType('code', 'arn:aws:lambda:us-east-1:123456789012:function:admin-api'),
         ],
       });
-      const { cycle, codeUpdater } = newCycle();
+      const { cycle, codeUpdater } = buildUpdaterParts();
       jest.mocked(codeUpdater.advanceIfStale).mockRejectedValueOnce(new Error('UpdateFunctionCode failed'));
 
       await expect(cycle.run()).resolves.toBeUndefined();
@@ -354,7 +311,7 @@ describe('UpdateCycle', () => {
           lambdaWithType('code', 'arn:aws:lambda:us-east-1:123456789012:function:admin-api'),
         ],
       });
-      const { cycle, codeUpdater } = newCycle();
+      const { cycle, codeUpdater } = buildUpdaterParts();
       jest
         .mocked(codeUpdater.advanceIfStale)
         .mockRejectedValueOnce(new Error('UpdateFunctionCode failed'))
@@ -370,7 +327,7 @@ describe('UpdateCycle', () => {
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [lambdaWithType('code'), lambdaWithType('ui', 'arn:aws:lambda:us-east-1:123456789012:function:admin-api')],
       });
-      const { cycle, codeUpdater } = newCycle();
+      const { cycle, codeUpdater } = buildUpdaterParts();
       jest.mocked(codeUpdater.advanceIfStale).mockRejectedValueOnce(new Error('UpdateFunctionCode failed'));
 
       await expect(cycle.run()).rejects.toThrow('all 1 resource updates failed');
@@ -380,7 +337,7 @@ describe('UpdateCycle', () => {
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [lambdaWithType('code', 'arn:aws:lambda:us-east-1:123456789012:layer:shared:3'), lambdaWithType('code')],
       });
-      const { cycle, codeUpdater } = newCycle();
+      const { cycle, codeUpdater } = buildUpdaterParts();
 
       await cycle.run();
 

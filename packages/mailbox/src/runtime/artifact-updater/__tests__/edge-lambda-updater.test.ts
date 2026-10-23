@@ -29,35 +29,22 @@ import {
   UpdateFunctionCodeCommand,
 } from '@aws-sdk/client-lambda';
 import { GetResourcesCommand, ResourceGroupsTaggingAPIClient } from '@aws-sdk/client-resource-groups-tagging-api';
-import { LoggerBuffer }                                        from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { ServerlessInboxTagKeys }                              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }                                          from 'aws-sdk-client-mock';
 
-import { EdgeLambdaUpdater }                                   from '../edge-lambda-updater';
-import { FunctionSmokeTester }                                 from '../lambda-code/function-smoke-tester';
-import { LambdaCodeRollback }                                  from '../lambda-code/lambda-code-rollback';
-import { LambdaFunctionCode }                                  from '../lambda-code/lambda-function-code';
-import { ReleaseArtifacts }                                    from '../release-artifacts';
-
 import {
-  fakeUpdaterClients,
+  buildUpdaterParts,
   invokeResponse,
   lambdaTarget,
-  noSleep,
-  testConfig,
-  testRootStackResources,
+  registryMocks,
   type BuildArtifactKeyArguments,
-  type RegistryMocks,
 } from './updater-helpers';
 
-jest.mock('@serverlessinbox/artifact-registry', () => ({
-  deriveTrack:        jest.fn(),
-  buildArtifactKey:   jest.fn(),
-  readReleasePointer: jest.fn(),
-}));
+jest.mock('@serverlessinbox/artifact-registry', () =>
+  (jest.requireActual('./updater-helpers') as typeof import('./updater-helpers')).artifactRegistryModuleMock(),
+);
 
-const { readReleasePointer, deriveTrack, buildArtifactKey } = jest.requireMock(
-  '@serverlessinbox/artifact-registry',
-) as RegistryMocks;
+const { readReleasePointer, deriveTrack, buildArtifactKey } = registryMocks();
 
 const EDGE_ARN        = 'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda';
 const OTHER_ARN       = 'arn:aws:lambda:us-east-1:123456789012:function:other-lambda';
@@ -72,10 +59,13 @@ function cacheBehavior(associations: LambdaFunctionAssociation[]): DefaultCacheB
     TargetOriginId:             'origin',
     ViewerProtocolPolicy:       'allow-all',
     LambdaFunctionAssociations: { Quantity: associations.length, Items: associations },
-  } as DefaultCacheBehavior;
+  };
 }
 
-function behaviorsOf(defaults: LambdaFunctionAssociation[], additional: LambdaFunctionAssociation[]) {
+function behaviorsOf(
+  defaults: LambdaFunctionAssociation[],
+  additional: LambdaFunctionAssociation[],
+): Pick<DistributionConfig, 'DefaultCacheBehavior' | 'CacheBehaviors'> {
   return {
     DefaultCacheBehavior: cacheBehavior(defaults),
     CacheBehaviors:       {
@@ -90,38 +80,31 @@ function distributionArn(id: string): string {
 }
 
 function distributionConfig(defaults: LambdaFunctionAssociation[], additional: LambdaFunctionAssociation[] = []): DistributionConfig {
-  return { CallerReference: 'ref', Comment: 'test', Enabled: true, ...behaviorsOf(defaults, additional) } as DistributionConfig;
+  return {
+    CallerReference: 'ref',
+    Comment:         'test',
+    Enabled:         true,
+    Origins:         { Quantity: 0, Items: [] },
+    ...behaviorsOf(defaults, additional),
+  };
 }
 
 describe('EdgeLambdaUpdater', () => {
   const lambdaMock     = mockClient(LambdaClient);
   const cloudFrontMock = mockClient(CloudFrontClient);
   const taggingMock    = mockClient(ResourceGroupsTaggingAPIClient);
-  const clients        = fakeUpdaterClients();
   const sleep          = jest.fn(async () => undefined);
   const target         = lambdaTarget({ arn: EDGE_ARN, packageName: 'edge-pkg', artifactName: 'edge-lambda' });
 
-  function newUpdater(): EdgeLambdaUpdater {
-    const logger       = new LoggerBuffer();
-    const functionCode = new LambdaFunctionCode(noSleep);
-    return new EdgeLambdaUpdater(
-      clients.edge,
-      clients.cloudFront,
-      testRootStackResources(),
-      new ReleaseArtifacts(clients.registryS3, testConfig, logger),
-      functionCode,
-      new FunctionSmokeTester(logger),
-      new LambdaCodeRollback(functionCode, logger),
-      logger,
-      sleep,
-    );
+  function newUpdater() {
+    return buildUpdaterParts({ sleep }).edgeUpdater;
   }
 
   function taggedDistributions(...ids: string[]): void {
     taggingMock.on(GetResourcesCommand).resolves({
       ResourceTagMappingList: ids.map((id) => ({
         ResourceARN: distributionArn(id),
-        Tags:        [{ Key: 'serverless-inbox:root-stack-id', Value: 'guid-1' }],
+        Tags:        [{ Key: ServerlessInboxTagKeys.rootStackId, Value: 'guid-1' }],
       })),
     });
   }
@@ -189,7 +172,7 @@ describe('EdgeLambdaUpdater', () => {
       NEW_VERSION_ARN,
     );
     expect(lambdaMock.commandCalls(TagResourceCommand)[0].args[0].input.Tags).toEqual({
-      'serverless-inbox:artifact-version': '1.2.4',
+      [ServerlessInboxTagKeys.artifactVersion]: '1.2.4',
     });
   });
 
@@ -201,8 +184,8 @@ describe('EdgeLambdaUpdater', () => {
 
     const filters = taggingMock.commandCalls(GetResourcesCommand).map((call) => call.args[0].input.TagFilters);
     expect(filters).toEqual([
-      [{ Key: 'serverless-inbox:root-stack-id', Values: ['guid-1'] }],
-      [{ Key: 'serverless-inbox:root-stack', Values: ['my-stack'] }],
+      [{ Key: ServerlessInboxTagKeys.rootStackId, Values: ['guid-1'] }],
+      [{ Key: ServerlessInboxTagKeys.rootStack, Values: ['my-stack'] }],
     ]);
   });
 

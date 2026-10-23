@@ -12,12 +12,13 @@ import {
   ResourceGroupsTaggingAPIClient,
   type ResourceTagMapping,
 } from '@aws-sdk/client-resource-groups-tagging-api';
-import { mockClient }         from 'aws-sdk-client-mock';
+import { ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }             from 'aws-sdk-client-mock';
 
-import { RootStackResources } from '../updater-clients';
+import { RootStackResources }     from '../updater-clients';
 
-const ID_KEY   = 'serverless-inbox:root-stack-id';
-const NAME_KEY = 'serverless-inbox:root-stack';
+const ID_KEY   = ServerlessInboxTagKeys.rootStackId;
+const NAME_KEY = ServerlessInboxTagKeys.rootStack;
 const TYPES    = ['lambda:function'];
 
 function mapping(arn: string, tags: Record<string, string>): ResourceTagMapping {

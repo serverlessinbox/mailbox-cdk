@@ -6,10 +6,9 @@
  * is thrown and `answerFailure` throws what it is given. The update cycle is faked because it reads and writes AWS.
  */
 
-import { ScheduledTrigger }                                 from '../scheduled-trigger';
-import { UpdateCycle }                                      from '../../update-cycle';
-
 import { BAD_CONFIG_ERROR, badConfigCycle, newUpdateCycle } from '../../__tests__/updater-helpers';
+import { UpdateCycle }                                      from '../../update-cycle';
+import { ScheduledTrigger }                                 from '../scheduled-trigger';
 
 jest.mock('../../update-cycle');
 

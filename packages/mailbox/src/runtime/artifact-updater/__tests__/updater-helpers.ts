@@ -80,6 +80,19 @@ export const testConfig: Config = {
   rootStackId:        'guid-1',
 };
 
+/** The environment the entry point reads, with every variable the updater configuration requires. */
+export const GOOD_ENVIRONMENT: Record<string, string> = {
+  SERVICE_NAME:             'artifact-updater',
+  AWS_REGION:               'eu-west-1',
+  AWS_LAMBDA_FUNCTION_NAME: 'artifact-updater-function',
+  PROJECT:                  'serverlessinbox',
+  DIST_TAG:                 'latest',
+  GRANULARITY:              'major',
+  ARTIFACT_BUCKET_BASE:     'mailbox-artifacts',
+  ROOT_STACK_TAG_VALUE:     'my-stack',
+  ROOT_STACK_ID:            'guid-1',
+};
+
 /** The resources of the root stack the updater tests run against. */
 export function testRootStackResources(): RootStackResources {
   return new RootStackResources(testConfig.rootStackTagValue, testConfig.rootStackId);
@@ -87,6 +100,23 @@ export function testRootStackResources(): RootStackResources {
 
 /** Resolves at once, so a test does not wait out a poll interval or a retry delay. */
 export const noSleep: Sleep = async () => undefined;
+
+/**
+ * The module a suite's `jest.mock('@serverlessinbox/artifact-registry', ...)` factory returns: the registry's three
+ * functions as jest mocks, which the suite then reads back with registryMocks().
+ */
+export function artifactRegistryModuleMock(): RegistryMocks {
+  return {
+    deriveTrack:        jest.fn(),
+    buildArtifactKey:   jest.fn(),
+    readReleasePointer: jest.fn(),
+  };
+}
+
+/** The registered registry mock of the suite, typed. Call it after the suite's `jest.mock` of the registry. */
+export function registryMocks(): RegistryMocks {
+  return jest.requireMock('@serverlessinbox/artifact-registry') as RegistryMocks;
+}
 
 function regionClients(region: Region): RegionClients {
   return { region, lambda: new LambdaClient({ region }), tagging: new ResourceGroupsTaggingAPIClient({ region }) };
@@ -126,34 +156,53 @@ export function uiTarget(values: TargetValues = {}): UiTarget {
   };
 }
 
-/** An update cycle wired from real parts over fake clients; a suite that fakes the cycle's module gets a fake instead. */
-export function newUpdateCycle(): UpdateCycle {
-  const clients            = fakeUpdaterClients();
-  const logger             = new LoggerBuffer();
+/** What a test may replace when it builds the update cycle's graph. */
+export interface UpdaterOverrides {
+  readonly deploymentRegion?: Region;
+  readonly sleep?:            Sleep;
+}
+
+/** The update cycle and the updaters it holds, so a suite can read back the one it exercises. */
+export interface UpdaterParts {
+  readonly cycle:       UpdateCycle;
+  readonly clients:     UpdaterClients;
+  readonly codeUpdater: LambdaCodeUpdater;
+  readonly edgeUpdater: EdgeLambdaUpdater;
+  readonly uiUpdater:   UiBucketUpdater;
+}
+
+/**
+ * Wires the update cycle and its updaters from real parts over fake clients. A suite that fakes one of the updater
+ * modules still gets the same graph; the overrides change only the deployment region and the sleep between polls.
+ */
+export function buildUpdaterParts(overrides: UpdaterOverrides = {}): UpdaterParts {
+  const clients            = fakeUpdaterClients(overrides.deploymentRegion);
+  const logger             = new LoggerBuffer(undefined, 'debug');
   const releases           = new ReleaseArtifacts(clients.registryS3, testConfig, logger);
   const functionCode       = new LambdaFunctionCode(noSleep);
   const smokeTester        = new FunctionSmokeTester(logger);
   const rollback           = new LambdaCodeRollback(functionCode, logger);
   const rootStackResources = testRootStackResources();
-  return new UpdateCycle(
-    testConfig,
-    clients,
+  const codeUpdater        = new LambdaCodeUpdater(releases, functionCode, smokeTester, rollback, logger);
+  const edgeUpdater        = new EdgeLambdaUpdater(
+    clients.edge,
+    clients.cloudFront,
     rootStackResources,
+    releases,
+    functionCode,
+    smokeTester,
+    rollback,
     logger,
-    new LambdaCodeUpdater(releases, functionCode, smokeTester, rollback, logger),
-    new EdgeLambdaUpdater(
-      clients.edge,
-      clients.cloudFront,
-      rootStackResources,
-      releases,
-      functionCode,
-      smokeTester,
-      rollback,
-      logger,
-      noSleep,
-    ),
-    new UiBucketUpdater(clients.registryS3, clients.deployment, clients.cloudFront, releases, logger),
+    overrides.sleep ?? noSleep,
   );
+  const uiUpdater          = new UiBucketUpdater(clients.registryS3, clients.deployment, clients.cloudFront, releases, logger);
+  const cycle              = new UpdateCycle(testConfig, clients, rootStackResources, logger, codeUpdater, edgeUpdater, uiUpdater);
+  return { cycle, clients, codeUpdater, edgeUpdater, uiUpdater };
+}
+
+/** An update cycle built by buildUpdaterParts, for the triggers that take a factory for one. */
+export function newUpdateCycle(): UpdateCycle {
+  return buildUpdaterParts().cycle;
 }
 
 export const BAD_CONFIG_ERROR = 'LOG_LEVEL: invalid log level "verbose"';

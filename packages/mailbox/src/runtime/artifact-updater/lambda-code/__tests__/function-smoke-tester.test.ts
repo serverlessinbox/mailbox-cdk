@@ -9,10 +9,20 @@
 import { InvokeCommand, LambdaClient }  from '@aws-sdk/client-lambda';
 import { LoggerBuffer }                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }                   from 'aws-sdk-client-mock';
-
-import { FunctionSmokeTester }          from '../function-smoke-tester';
+import * as t                           from 'typanion';
 
 import { invokeResponse, lambdaTarget } from '../../__tests__/updater-helpers';
+import { FunctionSmokeTester }          from '../function-smoke-tester';
+
+/** The warning a parse failure logs: its message, then the function probed, the parser's message and the service. */
+const isParseFailureWarning = t.isTuple([
+  t.isString(),
+  t.isObject({
+    functionArn: t.isString(),
+    error:       t.isString(),
+    service:     t.isString(),
+  }),
+]);
 
 describe('FunctionSmokeTester', () => {
   const lambdaMock  = mockClient(LambdaClient);
@@ -94,10 +104,12 @@ describe('FunctionSmokeTester', () => {
     lambdaMock.on(InvokeCommand).resolves(invokeResponse('{ invalid json'));
 
     await expect(smokeTester.probe(lambda, functionArn)).resolves.toBe('unprobeable');
-    expect(console.warn).toHaveBeenCalledWith(
-      'smoke test unprobeable: failed to parse response payload',
-      expect.objectContaining({ functionArn, error: expect.any(String) }),
-    );
+    const recorded: unknown = jest.mocked(console.warn).mock.calls[0];
+    t.assert(recorded, isParseFailureWarning);
+    const [message, fields] = recorded;
+    expect(message).toBe('smoke test unprobeable: failed to parse response payload');
+    expect(fields.functionArn).toBe(functionArn);
+    expect(typeof fields.error).toBe('string');
   });
 
   it.each([

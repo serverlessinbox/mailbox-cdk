@@ -14,8 +14,8 @@ import {
   TagResourceCommand,
   UpdateFunctionCodeCommand,
 } from '@aws-sdk/client-lambda';
-import { LoggerBuffer }        from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }          from 'aws-sdk-client-mock';
+import { LoggerBuffer, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                           from 'aws-sdk-client-mock';
 
 import {
   EU_WEST_1,
@@ -25,7 +25,7 @@ import {
   noSleep,
   testConfig,
   type BuildArtifactKeyArguments,
-  type RegistryMocks,
+  registryMocks,
 } from '../../__tests__/updater-helpers';
 import { ReleaseArtifacts }    from '../../release-artifacts';
 import { FunctionSmokeTester } from '../function-smoke-tester';
@@ -33,15 +33,11 @@ import { LambdaCodeRollback }  from '../lambda-code-rollback';
 import { LambdaCodeUpdater }   from '../lambda-code-updater';
 import { LambdaFunctionCode }  from '../lambda-function-code';
 
-jest.mock('@serverlessinbox/artifact-registry', () => ({
-  deriveTrack:        jest.fn(),
-  buildArtifactKey:   jest.fn(),
-  readReleasePointer: jest.fn(),
-}));
+jest.mock('@serverlessinbox/artifact-registry', () =>
+  (jest.requireActual('../../__tests__/updater-helpers') as typeof import('../../__tests__/updater-helpers')).artifactRegistryModuleMock(),
+);
 
-const { readReleasePointer, deriveTrack, buildArtifactKey } = jest.requireMock(
-  '@serverlessinbox/artifact-registry',
-) as RegistryMocks;
+const { readReleasePointer, deriveTrack, buildArtifactKey } = registryMocks();
 
 describe('LambdaCodeUpdater', () => {
   const lambdaMock = mockClient(LambdaClient);
@@ -101,7 +97,7 @@ describe('LambdaCodeUpdater', () => {
     });
     const tags = lambdaMock.commandCalls(TagResourceCommand);
     expect(tags).toHaveLength(1);
-    expect(tags[0].args[0].input.Tags).toEqual({ 'serverless-inbox:artifact-version': '1.2.4' });
+    expect(tags[0].args[0].input.Tags).toEqual({ [ServerlessInboxTagKeys.artifactVersion]: '1.2.4' });
   });
 
   it('works through the Lambda client of the region it is given', async () => {

@@ -5,7 +5,8 @@
  * with the deployment set only when the deployment region is the edge region), a failed one gets none and its
  * problem; and that each trigger it builds is handed the cycle, the deployment-region Lambda client, the names and
  * the configuration problem of that runtime, so a failed configuration reaches the trigger and not a client that
- * does not exist. The update cycle is faked because it reads and writes AWS.
+ * does not exist. The update cycle is faked because it reads and writes AWS. The answers the triggers give are pinned
+ * by their own suites.
  */
 
 import { InvokeCommand }      from '@aws-sdk/client-lambda';
@@ -21,6 +22,7 @@ import {
   deployEndTriggerEvent,
   failedRuntime,
   fakeLambdaContext,
+  GOOD_ENVIRONMENT,
   httpApiEvent,
   readyRuntime,
 } from './updater-helpers';
@@ -30,27 +32,14 @@ jest.mock('https', () => ({
   request: jest.fn(),
 }));
 
-const GOOD_ENVIRONMENT = {
-  SERVICE_NAME:             'artifact-updater',
-  AWS_REGION:               'eu-west-1',
-  AWS_LAMBDA_FUNCTION_NAME: 'artifact-updater-function',
-  PROJECT:                  'serverlessinbox',
-  DIST_TAG:                 'latest',
-  GRANULARITY:              'major',
-  ARTIFACT_BUCKET_BASE:     'mailbox-artifacts',
-  ROOT_STACK_TAG_VALUE:     'my-stack',
-  ROOT_STACK_ID:            'guid-1',
-};
-
 describe('UpdaterComposition', () => {
   const originalEnv = process.env;
-  let responseJson: () => string;
 
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    responseJson = captureCloudFormationResponse();
+    captureCloudFormationResponse();
   });
 
   afterEach(() => {
@@ -121,31 +110,12 @@ describe('UpdaterComposition', () => {
   });
 
   describe('for a configuration that failed to load', () => {
-    it('builds a scheduled trigger that throws the configuration error and builds no cycle', async () => {
+    it('hands the configuration problem to the triggers it builds, so a scheduled run throws it and runs no cycle', async () => {
       const composition = new UpdaterComposition(failedRuntime());
 
       await expect(composition.scheduledTrigger().handle()).rejects.toThrow(BAD_CONFIG_ERROR);
 
       expect(UpdateCycle).not.toHaveBeenCalled();
-    });
-
-    it('builds an HTTP trigger that answers 500 naming the problem', async () => {
-      const composition = new UpdaterComposition(failedRuntime());
-
-      const response = await composition.httpTrigger(httpApiEvent('POST', '/artifact-updates/trigger')).handle();
-
-      expect(response.statusCode).toBe(500);
-      expect(JSON.parse(response.body)).toEqual({ error: `Configuration error: ${BAD_CONFIG_ERROR}` });
-    });
-
-    it('builds a CloudFormation trigger that answers FAILED naming the problem', async () => {
-      const composition = new UpdaterComposition(failedRuntime());
-
-      await composition.cfnTrigger(deployEndTriggerEvent('Create'), fakeLambdaContext()).handle();
-
-      const response: unknown = JSON.parse(responseJson());
-      expect(response).toHaveProperty('Status', 'FAILED');
-      expect(response).toHaveProperty('Reason', expect.stringContaining(BAD_CONFIG_ERROR));
     });
   });
 });
