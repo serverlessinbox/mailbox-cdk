@@ -10,6 +10,7 @@ const lintTsconfigs = [
   'packages/mailbox-bundler/tsconfig.json',
   'packages/mailbox-cdk-shared/tsconfig.eslint.json',
   'packages/mailbox-cognito/tsconfig.eslint.json',
+  'packages/eslint-plugin-mailbox/tsconfig.json',
   'tsconfig.scripts.json',
 ];
 

@@ -26,6 +26,7 @@
     "@serverlessinbox/artifact-registry": "^0.3.0",
     "@serverlessinbox/artifact-registry-cdk": "^0.3.0",
     "@serverlessinbox/artifact-registry-gitversion": "^0.3.4",
+    "@serverlessinbox/eslint-plugin-mailbox": "workspace:*",
     "@types/jest": "^29.0.0",
     "@types/node": "^24.10.1",
     "aws-cdk-lib": "^2.261.0",
