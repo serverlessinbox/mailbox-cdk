@@ -4,6 +4,100 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.4.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.3.1...v0.4.0) (Fri Oct 23 2026)
+
+### build
+
+* **lint** one ESLint 10 toolchain over every TypeScript file, CI gate over clean packages ([3a38af4](https://github.com/serverlessinbox/mailbox-cdk/commit/3a38af43720e93673e5bf28c79fed9d38a4af699))
+
+### style
+
+* **lint** apply eslint auto-fixes for import order, alignment and curly ([2f268fb](https://github.com/serverlessinbox/mailbox-cdk/commit/2f268fb22f77815172cf0b90c7912a0d46d08d24))
+
+* one local rule aligns = and : in strict line groups ([4898ead](https://github.com/serverlessinbox/mailbox-cdk/commit/4898ead1807348fd39d98263aabae96ea359ed39))
+
+### refactor
+
+* **kit** move context and artifact helpers into context/ and artifacts/ (CS1.1) ([4b78188](https://github.com/serverlessinbox/mailbox-cdk/commit/4b781881b93e355d46e552b227cd7e691d01a332))
+
+* **kit** move tagging and grant helpers into tagging/ and grants/ (CS1.2) ([a900541](https://github.com/serverlessinbox/mailbox-cdk/commit/a900541e18a0c3ca85bc20d1ed241daec96b47bc))
+
+* **kit** move the Lambda bases and kit Lambda wrappers into resources/lambdas/ (CS1.3) ([e9c8e51](https://github.com/serverlessinbox/mailbox-cdk/commit/e9c8e51034f34c0b8d6503a5f060e1fda7d6c164))
+
+* **kit** move table, queue, bucket and workflow bases into resources/ (CS1.4) ([3bdaef8](https://github.com/serverlessinbox/mailbox-cdk/commit/3bdaef8a3027db5d9085432c386016d15cfe2565))
+
+* **kit** deployer-infra moves to the kit root; its barrel goes (CS1.5) ([509eeee](https://github.com/serverlessinbox/mailbox-cdk/commit/509eeee1f3324cf9cef406dc9b3d0e55cbd2110f))
+
+* **kit** shared runtime custom-resource, config and error units move into runtime/handler-kit/ (CS2.1) ([8b079db](https://github.com/serverlessinbox/mailbox-cdk/commit/8b079db7bfee5ebe12a4e739ce936f8a6dadfe59))
+
+* **kit** the rest of the shared runtime moves into runtime/handler-kit/, stack-helpers into runtime/stack-helpers/ (CS2.2) ([da3a8a3](https://github.com/serverlessinbox/mailbox-cdk/commit/da3a8a3c54a581c6da741e47adb92e74fd5c7594))
+
+* **kit** the bucket-auto-empty, content-deployer and stack-deployer runtimes move into runtime/ (CS2.3–2.5) ([fcd6860](https://github.com/serverlessinbox/mailbox-cdk/commit/fcd6860c32568941062c43e662ed6ae0837c2464))
+
+* **kit** the stack-deployer runtime groups its answers and stack operations into sub-folders ([6237aa2](https://github.com/serverlessinbox/mailbox-cdk/commit/6237aa25517ee4732571a40a0b2e8ed2b24bffab))
+
+* **mailbox** VendorLink carries the vendor account ids and the stack identity tag key together (CS11.3) ([375f648](https://github.com/serverlessinbox/mailbox-cdk/commit/375f64864dd463bd385884daa44f6e3559c7c26c))
+
+* **kit** PollingCfnDeployerWorkflow reads as its steps in order (CR1.3) ([5f92cb7](https://github.com/serverlessinbox/mailbox-cdk/commit/5f92cb7add64f3be9b68d0a504479e348dbd5c8e))
+
+* **kit** context, artifacts and top-level files conform to the skills (CQ-shared-1) ([da2be39](https://github.com/serverlessinbox/mailbox-cdk/commit/da2be397b4757482a0dcbfedd5174a954c5fd0ca))
+
+* **kit** test-support and naming files conform to the skills (CQ-shared-2) ([1b8855b](https://github.com/serverlessinbox/mailbox-cdk/commit/1b8855b87468a5bea005b685e50baa836ae6e6ec))
+
+* **kit** drop the ignored version option from the tag helpers ([e945320](https://github.com/serverlessinbox/mailbox-cdk/commit/e945320fa845f8e8ab0de00ddea71264ef212919))
+
+* **kit** the handler-kit core conforms to the skills (CQ-shared-5) ([4abcfb0](https://github.com/serverlessinbox/mailbox-cdk/commit/4abcfb023211fb9f9badc52bd490666cd0d72bc1))
+
+* **kit** grants, tables, queues, buckets and the stack-deployed event conform to the skills (CQ-shared-3) ([39d8683](https://github.com/serverlessinbox/mailbox-cdk/commit/39d8683e0eb4adb1592ef8a89b89c40665d634ea))
+
+* **kit** handler-kit config, custom-resource and the stack-helpers runtime conform to the skills (CQ-shared-6) ([ef391c8](https://github.com/serverlessinbox/mailbox-cdk/commit/ef391c851211e312c99ad3ea243dac61eea18da2))
+
+* **kit** the stack-deployer answers and stack files conform to the skills (CQ-shared-8) ([ef49ede](https://github.com/serverlessinbox/mailbox-cdk/commit/ef49ede0b9a274430cd7b2c4de8d9e232112eae6))
+
+* **kit** Lambda bases, deployer infra and tagging conform to the skills (CQ-shared-4) ([5074993](https://github.com/serverlessinbox/mailbox-cdk/commit/5074993302c26c0542e94fda9a9f14c9bd0d5a8c))
+
+* **kit** the bucket-auto-empty and content-deployer runtimes conform to the skills (CQ-shared-7) ([e5a3045](https://github.com/serverlessinbox/mailbox-cdk/commit/e5a30452e6b1c21996d9b17018e94096d5584e86))
+
+* **kit** construct-side leftovers conform to the skills ([2405394](https://github.com/serverlessinbox/mailbox-cdk/commit/24053941cc9f4fade936d228e4c2ef397e76ec9b))
+
+* **kit** construct-side leftovers conform to the skills ([2ab5591](https://github.com/serverlessinbox/mailbox-cdk/commit/2ab5591236cc6f9c1586cee8510de13afd8db1c4))
+
+* **kit** ArtifactLambda is abstract and documents its runtime and handler ([33ec168](https://github.com/serverlessinbox/mailbox-cdk/commit/33ec168b25e32f32e1761cb022aade1e1a793d89))
+
+* **kit** the custom-resource request contract is closed and typed ([f1239ca](https://github.com/serverlessinbox/mailbox-cdk/commit/f1239ca4932407300f78f3cf4030ce068050383b))
+
+* **cognito** grants take narrow interfaces and the worker gets its stack identity as props (CQ-cognito-C) ([acc16a6](https://github.com/serverlessinbox/mailbox-cdk/commit/acc16a6a86931263b62d0d483fba4d28063baccf))
+
+* **kit** constructs take objects instead of ARN strings and resources grant themselves ([7b92ea9](https://github.com/serverlessinbox/mailbox-cdk/commit/7b92ea9b46a04f12cdd3ea84d101d210a51ae742))
+
+* **mailbox** the first ten Lambda wrappers and the email section conform to the skills (K-07) ([fd884e7](https://github.com/serverlessinbox/mailbox-cdk/commit/fd884e796f94e9ff7a488e95e6e48dae338e020d))
+
+* **kit** the resource group is a defined resource class ([a16f44a](https://github.com/serverlessinbox/mailbox-cdk/commit/a16f44a9cf474050331afdd5dae24a96bbede1a1))
+
+### feat
+
+* **mailbox** components describe themselves; the central description map is gone (CS11.1, CS11.2) ([f8262af](https://github.com/serverlessinbox/mailbox-cdk/commit/f8262af97605e00246b7067eece552b39a06ef9a))
+
+* **kit** version tags only where they are read; other tags unchanged ([928e180](https://github.com/serverlessinbox/mailbox-cdk/commit/928e180138be84a8724cfdbf2887d4a373a5616c))
+
+* **mailbox** the auth-key refresh, license refresh and stack-deployed rules are event classes under their Lambdas (CR3.2) ([389536b](https://github.com/serverlessinbox/mailbox-cdk/commit/389536bd7a3c07616cce673510a88b38519673de))
+
+* **mailbox** the data and cognito data stacks drop their unused productVersion parameter ([73bb807](https://github.com/serverlessinbox/mailbox-cdk/commit/73bb807baa74694d972aa2cd0c8c8a0f73c68061))
+
+### fix
+
+* test rows, addon spacing and one source per OAuth scope list side ([be8c583](https://github.com/serverlessinbox/mailbox-cdk/commit/be8c5831aae8f90f2092ba1a8bdd02dd1b6d2336))
+
+* **kit** the polling workflow's construct ids are kebab-case ([d1790b1](https://github.com/serverlessinbox/mailbox-cdk/commit/d1790b17eda91c3638b231aa7a48f65b5e579f90))
+
+* **kit** the stack-helpers GetHostedZone grant names only the zone it reads ([13aab27](https://github.com/serverlessinbox/mailbox-cdk/commit/13aab27c3fc34edc2d989354f51795566a6e8c01))
+
+* **kit** BaseTable drops its grant overrides and the enumeration Deny ([7200bb8](https://github.com/serverlessinbox/mailbox-cdk/commit/7200bb88176c504ce273b13778c0830cf307a609))
+
+### chore
+
+* **lint** enforce id-length and member-ordering; rename short locals and reorder members ([14a46f0](https://github.com/serverlessinbox/mailbox-cdk/commit/14a46f08010125ce9a0fe2eac062262216680951))
+
 ## [0.3.1](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.3.0...v0.3.1) (Tue Oct 20 2026)
 
 ### fix
