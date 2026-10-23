@@ -4,6 +4,9 @@ import { AttributeType, Table }                      from 'aws-cdk-lib/aws-dynam
 import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { App, BootstraplessSynthesizer, Stack }      from 'aws-cdk-lib';
 
+import type { AdminApiAddonContext }                 from '../../core/apis/addons';
+import type { IIdentityProvisioner }                 from '../../resources/lambdas/identity-provisioner-lambda';
+import { AuditEventsQueue }                          from '../../resources/queues/audit-events-queue';
 import { DataTable }                                 from '../../resources/tables/data-tables';
 
 /** The account and region a test stack is synthesized in. */
@@ -50,4 +53,23 @@ export function newDataTable(stack: Stack, id: string): DataTable {
 /** A Lambda function with inline code, for a test that needs a function and nothing about its code. */
 export function newInlineFunction(stack: Stack, id: string): LambdaFunction {
   return new LambdaFunction(stack, id, { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });
+}
+
+/**
+ * The shared resources an admin API addon is created from. Every resource is real except the identity
+ * provisioner, which is a typed fake: its functions are `jest.fn`, so a test can check what was granted.
+ */
+export function newAdminApiAddonContext(stack: Stack): AdminApiAddonContext {
+  const identityProvisioner: IIdentityProvisioner = {
+    functionArn:  'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
+    functionName: 'identity-provisioner',
+    grantInvoke:  jest.fn(),
+  };
+  return {
+    artifactResolver: newArtifactResolver(stack),
+    auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+    auditLogTable:    newDataTable(stack, 'audit-log-table'),
+    configTable:      newDataTable(stack, 'config-table'),
+    identityProvisioner,
+  };
 }

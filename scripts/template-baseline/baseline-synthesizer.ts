@@ -13,7 +13,7 @@ import { SendStackFailuresMode }         from '../../packages/mailbox/src/platfo
 import { SupportAddonProvider }          from '../../packages/mailbox/src/platform/support/support-addon-provider';
 import { SupportMode }                   from '../../packages/mailbox/src/platform/support/support-addon';
 import { AutoUpdater }                   from '../../packages/mailbox/src/platform/update/auto-updater';
-import { StackUpdateAddonProvider }      from '../../packages/mailbox/src/platform/update/stack-update-addon';
+import { StackUpdateAddonProvider }      from '../../packages/mailbox/src/platform/update/stack-update-addon-provider';
 
 import type { FrozenProcessValues }      from './frozen-process-values';
 import type { StackTemplate }            from './stack-template';

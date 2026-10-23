@@ -63,8 +63,8 @@ export type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider, IJma
 export type { IAuditEventsQueue } from './resources/queues/audit-events-queue';
 export type { IIdentityProvisioner } from './resources/lambdas/identity-provisioner-lambda';
 export type { IDataTable } from './resources/tables/data-tables';
-export { StackUpdateAddonProvider } from './platform/update/stack-update-addon';
-export type { StackUpdateAddonProviderProps } from './platform/update/stack-update-addon';
+export { StackUpdateAddonProvider } from './platform/update/stack-update-addon-provider';
+export type { StackUpdateAddonProviderProps } from './platform/update/stack-update-addon-provider';
 export { SupportMode } from './platform/support/support-addon';
 export { SupportAddonProvider } from './platform/support/support-addon-provider';
 export type { SupportAddonProviderProps } from './platform/support/support-addon-provider';
