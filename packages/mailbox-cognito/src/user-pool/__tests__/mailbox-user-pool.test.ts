@@ -345,4 +345,34 @@ describe('MailboxUserPool.grantAdminAccess', () => {
       },
     });
   });
+
+  it('grants exactly the Cognito actions the users Lambda calls', () => {
+    const { pool, stack } = createUserPool();
+    const usersLambda     = new lambda.Function(stack, 'users-lambda', {
+      runtime: lambda.Runtime.NODEJS_LATEST,
+      handler: 'index.handler',
+      code:    lambda.Code.fromInline('exports.handler = async () => {};'),
+    });
+
+    pool.grantAdminAccess(usersLambda);
+
+    Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: Match.arrayEquals([
+              'cognito-idp:ListUsers',
+              'cognito-idp:AdminCreateUser',
+              'cognito-idp:AdminDeleteUser',
+              'cognito-idp:AdminSetUserPassword',
+              'cognito-idp:AdminGetUser',
+              'cognito-idp:AdminDisableUser',
+              'cognito-idp:AdminEnableUser',
+              'cognito-idp:AdminAddUserToGroup',
+            ]),
+          }),
+        ]),
+      },
+    });
+  });
 });
