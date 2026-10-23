@@ -3,26 +3,24 @@ import { Template }                                             from 'aws-cdk-li
 import { App, BootstraplessSynthesizer, Stack }                 from 'aws-cdk-lib';
 
 import { ARTIFACT_VERSIONS_CONTEXT_KEY, ARTIFACTS_CONTEXT_KEY } from '../../packages/mailbox-cdk-shared/src/context/context-keys';
-import { MailboxCognitoDataStack }                              from '../../packages/mailbox-cognito/src/data-stack/mailbox-cognito-data-stack';
 import { DynamicClientRegistrationMode }                        from '../../packages/mailbox-cognito/src/user-pool/dynamic-client-registration-mode';
 import { MailboxUserPool }                                      from '../../packages/mailbox-cognito/src/user-pool/mailbox-user-pool';
-import { MailboxDataStack }                                     from '../../packages/mailbox/src/core/data/mailbox-data-stack';
 import { HostedZoneLookup }                                     from '../../packages/mailbox/src/core/domains/hosted-zone-lookup';
-import { MailboxEdgeStack }                                     from '../../packages/mailbox/src/core/edge/mailbox-edge-stack';
 import { Mailbox }                                              from '../../packages/mailbox/src/mailbox';
 import { SendStackFailuresMode }                                from '../../packages/mailbox/src/platform/ops/stack-failure-detection';
 import { SupportAddonProvider }                                 from '../../packages/mailbox/src/platform/support/support-addon-provider';
 import { SupportMode }                                          from '../../packages/mailbox/src/platform/support/support-addon';
 import { AutoUpdater }                                          from '../../packages/mailbox/src/platform/update/auto-updater';
 import { StackUpdateAddonProvider }                             from '../../packages/mailbox/src/platform/update/stack-update-addon-provider';
+import { StandaloneStackFactory }                               from '../stacks/standalone-stack-factory';
 import { parseJsonObject }                                      from '../utils/json-value';
 
 import type { FrozenProcessValues }                             from './frozen-process-values';
 import type { StackTemplate }                                   from './stack-template';
 
-const BASELINE_ACCOUNT = '123456789012';
-const BASELINE_REGION  = 'us-west-2';
-const EDGE_REGION      = 'us-east-1';
+const BASELINE_ACCOUNT     = '123456789012';
+const BASELINE_REGION      = 'us-west-2';
+const BASELINE_ENVIRONMENT = { account: BASELINE_ACCOUNT, region: BASELINE_REGION };
 
 /** The packages of the `serverlessinbox:artifacts` context value, keyed by package name. */
 interface ArtifactPackagesContext {
@@ -47,6 +45,8 @@ type BaselineAppContext = {
  * them, with the clock and random numbers frozen.
  */
 export class BaselineSynthesizer {
+  private readonly stackFactory = new StandaloneStackFactory('Baseline', BASELINE_ENVIRONMENT, BASELINE_ENVIRONMENT);
+
   constructor(private readonly frozenValues: FrozenProcessValues) {}
 
   synthesize(): StackTemplate[] {
@@ -112,24 +112,15 @@ export class BaselineSynthesizer {
   }
 
   private createEdgeStack(): Stack {
-    return new MailboxEdgeStack(new App(), 'BaselineEdge', {
-      env:         { account: BASELINE_ACCOUNT, region: EDGE_REGION },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
+    return this.stackFactory.createEdgeStack(new App());
   }
 
   private createDataStack(): Stack {
-    return new MailboxDataStack(new App(), 'BaselineData', {
-      env:         { account: BASELINE_ACCOUNT, region: BASELINE_REGION },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
+    return this.stackFactory.createDataStack(new App());
   }
 
   private createCognitoDataStack(): Stack {
-    return new MailboxCognitoDataStack(new App(), 'BaselineCognitoData', {
-      env:         { account: BASELINE_ACCOUNT, region: BASELINE_REGION },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
+    return this.stackFactory.createCognitoDataStack(new App());
   }
 
   private createStack(app: App, id: string, region: string): Stack {

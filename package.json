@@ -15,6 +15,7 @@
     "resolve-artifacts": "artifact-registry resolve-artifacts --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1 --component mailbox-go:package:mailbox-go:regional --component mailbox-admin-ui:package:mailbox-admin-ui:regional --component mailbox-webmail-ui:package:mailbox-webmail-ui:regional",
     "bake-artifact-versions": "ts-node --project tsconfig.scripts.json scripts/bake-artifact-versions/bake-artifact-versions.ts",
     "template-baseline": "ts-node --project tsconfig.scripts.json scripts/template-baseline/template-baseline.ts",
+    "build-stack": "ts-node --project tsconfig.scripts.json scripts/build-stack/build-stack.ts",
     "fetch-registry-record": "artifact-registry registry-record fetch --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1 --output packages/mailbox/registry-record.json && artifact-registry registry-record fetch --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1 --output packages/mailbox-cognito/registry-record.json",
     "test:scripts": "tsc -p tsconfig.scripts.json --noEmit && jest --config jest.config.js",
     "test:lint": "yarn workspace @serverlessinbox/eslint-plugin-mailbox test",
