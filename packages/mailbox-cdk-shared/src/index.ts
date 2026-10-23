@@ -110,8 +110,8 @@ export { makePhysicalName, slugifyLabel } from './naming/resource-names';
 export type { PhysicalNameOptions } from './naming/resource-names';
 
 // Resource group
-export { addServerlessInboxResourceGroup } from './tagging/resource-group';
-export type { ServerlessInboxResourceGroupProps } from './tagging/resource-group';
+export { ServerlessInboxResourceGroup } from './resources/groups/serverless-inbox-resource-group';
+export type { ServerlessInboxResourceGroupProps } from './resources/groups/serverless-inbox-resource-group';
 
 // Component description
 export { ComponentDescription } from './tagging/component-description';

@@ -2,9 +2,9 @@ import { CfnGroup }               from 'aws-cdk-lib/aws-resourcegroups';
 import { Aws, Fn }                from 'aws-cdk-lib';
 import { Construct }              from 'constructs';
 
-import { ServerlessInboxTagKeys } from '../runtime/handler-kit/tag-keys';
+import { ServerlessInboxTagKeys } from '../../runtime/handler-kit/tag-keys';
 
-/** Options for `addServerlessInboxResourceGroup`. */
+/** Options for `ServerlessInboxResourceGroup`. */
 export interface ServerlessInboxResourceGroupProps {
   /**
    * Value the group's tag-filter matches on `serverless-inbox:root-stack`. All resources tagged
@@ -27,30 +27,28 @@ export interface ServerlessInboxResourceGroupProps {
  *
  * Uses a `TAG_FILTERS_1_0` query over `AWS::AllSupported`.
  */
-export function addServerlessInboxResourceGroup(
-  scope: Construct,
-  id: string,
-  props: ServerlessInboxResourceGroupProps = {},
-): CfnGroup {
-  const rootStackValue = props.rootStackValue ?? Aws.STACK_NAME;
-  const groupName      = props.groupName ?? Fn.join('', [Aws.STACK_NAME, '-serverless-inbox']);
+export class ServerlessInboxResourceGroup extends CfnGroup {
+  constructor(scope: Construct, id: string, props: ServerlessInboxResourceGroupProps = {}) {
+    const rootStackValue = props.rootStackValue ?? Aws.STACK_NAME;
+    const groupName      = props.groupName ?? Fn.join('', [Aws.STACK_NAME, '-serverless-inbox']);
 
-  return new CfnGroup(scope, id, {
-    name: groupName,
-    // AWS::ResourceGroups::Group description charset is strict: [\sa-zA-Z0-9_.-]* only.
-    // No parentheses, no em/en dash, no ':' or '/'. Keep this literal within that set.
-    description:   'ServerlessInbox - all resources for this deployment matched by the root-stack tag.',
-    resourceQuery: {
-      type:  'TAG_FILTERS_1_0',
-      query: {
-        resourceTypeFilters: ['AWS::AllSupported'],
-        tagFilters:          [
-          {
-            key:    ServerlessInboxTagKeys.rootStack,
-            values: [rootStackValue],
-          },
-        ],
+    super(scope, id, {
+      name: groupName,
+      // AWS::ResourceGroups::Group description charset is strict: [\sa-zA-Z0-9_.-]* only.
+      // No parentheses, no em/en dash, no ':' or '/'. Keep this literal within that set.
+      description:   'ServerlessInbox - all resources for this deployment matched by the root-stack tag.',
+      resourceQuery: {
+        type:  'TAG_FILTERS_1_0',
+        query: {
+          resourceTypeFilters: ['AWS::AllSupported'],
+          tagFilters:          [
+            {
+              key:    ServerlessInboxTagKeys.rootStack,
+              values: [rootStackValue],
+            },
+          ],
+        },
       },
-    },
-  });
+    });
+  }
 }

@@ -1,5 +1,5 @@
 import {
-  addServerlessInboxResourceGroup,
+  ServerlessInboxResourceGroup,
   applyServerlessInboxBaseTagsWithDeployerType,
   applyServerlessInboxComponentTag,
   applyServerlessInboxEdgeTags,
@@ -138,7 +138,7 @@ export class MailboxEdgeStack extends cdk.Stack {
 
     this.applyTagsAndDescriptions(parameters);
 
-    addServerlessInboxResourceGroup(this, 'resource-group', {
+    new ServerlessInboxResourceGroup(this, 'resource-group', {
       rootStackValue: parameters.rootStack,
     });
 

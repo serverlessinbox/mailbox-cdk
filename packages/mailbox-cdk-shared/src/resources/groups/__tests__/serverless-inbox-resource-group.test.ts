@@ -7,7 +7,7 @@ import { Template }                        from 'aws-cdk-lib/assertions';
 import { App, Stack }                      from 'aws-cdk-lib';
 import * as t                              from 'typanion';
 
-import { addServerlessInboxResourceGroup } from '../resource-group';
+import { ServerlessInboxResourceGroup }    from '../serverless-inbox-resource-group';
 
 const isGroupResource = t.isPartial({
   Properties: t.isPartial({ Description: t.isString() }),
@@ -23,10 +23,10 @@ function groupResourceIn(stack: Stack): GroupProperties {
   return group.Properties;
 }
 
-describe('addServerlessInboxResourceGroup', () => {
+describe('ServerlessInboxResourceGroup', () => {
   it('matches the stack\'s own root-stack tag and is named after the stack by default', () => {
     const stack = new Stack(new App(), 'TestStack');
-    addServerlessInboxResourceGroup(stack, 'resource-group');
+    new ServerlessInboxResourceGroup(stack, 'resource-group');
 
     expect(groupResourceIn(stack)).toMatchObject({
       Name:          { 'Fn::Join': ['', [{ Ref: 'AWS::StackName' }, '-serverless-inbox']] },
@@ -42,7 +42,7 @@ describe('addServerlessInboxResourceGroup', () => {
 
   it('uses the given root-stack value and group name', () => {
     const stack = new Stack(new App(), 'TestStack');
-    addServerlessInboxResourceGroup(stack, 'resource-group', { rootStackValue: 'root', groupName: 'custom-group' });
+    new ServerlessInboxResourceGroup(stack, 'resource-group', { rootStackValue: 'root', groupName: 'custom-group' });
 
     expect(groupResourceIn(stack)).toMatchObject({
       Name:          'custom-group',
@@ -52,7 +52,7 @@ describe('addServerlessInboxResourceGroup', () => {
 
   it('keeps the description within the characters AWS accepts', () => {
     const stack = new Stack(new App(), 'TestStack');
-    addServerlessInboxResourceGroup(stack, 'resource-group');
+    new ServerlessInboxResourceGroup(stack, 'resource-group');
 
     expect(groupResourceIn(stack).Description).toMatch(/^[\sa-zA-Z0-9_.-]*$/);
   });

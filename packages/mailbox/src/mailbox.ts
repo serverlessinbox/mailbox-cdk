@@ -1,4 +1,4 @@
-import { addServerlessInboxResourceGroup, setStackNameBase, StackHelpers }                                     from '@serverlessinbox/mailbox-cdk-shared';
+import { ServerlessInboxResourceGroup, setStackNameBase, StackHelpers }                                        from '@serverlessinbox/mailbox-cdk-shared';
 import * as cdk                                                                                                from 'aws-cdk-lib';
 import { Construct }                                                                                           from 'constructs';
 
@@ -165,7 +165,7 @@ export class Mailbox extends Construct {
 
     // Per-region AWS Resource Group collecting all resources tagged with this deployment's
     // root-stack (this is the main stack, so root-stack = AWS::StackName).
-    addServerlessInboxResourceGroup(this, 'resource-group');
+    new ServerlessInboxResourceGroup(this, 'resource-group');
   }
 
   private resolveAddressing(props: MailboxProps, enabledUis: MailboxEnabledUis): MailboxAddressing {
