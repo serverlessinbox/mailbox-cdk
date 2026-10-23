@@ -12,7 +12,7 @@ A serverless, self-hosted JMAP email server for AWS, costing ~$1/month for perso
 - A Route53 hosted zone for your domain (the zone may be in a different AWS account from where you deploy)
 - ~10 minutes for stack completion
 
-For the full deployment guide including post-deploy steps, see [Deploy via CloudFormation](https://serverlessinbox.com/docs/guides/deploy-cloudformation/).
+For the full deployment guide including post-deploy steps, see [Deploy via CloudFormation](https://docs.serverlessinbox.com/tutorials/install-mailbox-standard/).
 
 ## Prerequisites
 
