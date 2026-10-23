@@ -6,7 +6,7 @@
  * stack; a narrowed one breaks the update flow where only a deploy shows it.
  */
 
-import { actionsOf }                            from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { actionsOf, resourcesOf }               from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Template }                             from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 
@@ -17,6 +17,19 @@ import { StackUpdateApiLambda }                 from '../stack-update-api-lambda
 
 import { arrangeWrapperStack, onlyLambdaOf }    from './lambda-wrapper-helpers';
 import type { SynthesizedLambda }               from './lambda-wrapper-helpers';
+
+/** Actions that let the handler execute, roll back or drive a state machine. None may be granted. */
+const FORBIDDEN_ACTIONS = [
+  'cloudformation:ExecuteChangeSet',
+  'cloudformation:ContinueUpdateRollback',
+  'states:StartExecution',
+  'states:ListExecutions',
+  'states:DescribeExecution',
+  'states:*',
+];
+
+/** Service-wide wildcards: an action of any of these services must name the action it grants. */
+const FORBIDDEN_SERVICE_WILDCARD = /^(iam|lambda|dynamodb|sqs|ses|cognito-idp|cloudfront|apigateway|logs|events|acm|route53|states|resource-groups|sns):\*/;
 
 function synthesize(): SynthesizedLambda {
   const { stack, artifactResolver } = arrangeWrapperStack();
@@ -90,5 +103,24 @@ describe('StackUpdateApiLambda', () => {
       'ssm:GetParameterHistory',
     ]);
     expect(JSON.stringify(parameterReads[0].Resource)).toContain(':ssm:us-west-2:123456789012:parameter/');
+  });
+
+  it('grants none of the execution, rollback or state machine actions', () => {
+    const granted = statements.flatMap((statement) => actionsOf(statement));
+
+    expect(FORBIDDEN_ACTIONS.filter((action) => granted.includes(action))).toEqual([]);
+  });
+
+  it('grants no service-wide wildcard action', () => {
+    const granted = statements.flatMap((statement) => actionsOf(statement));
+
+    expect(granted.filter((action) => FORBIDDEN_SERVICE_WILDCARD.test(action))).toEqual([]);
+  });
+
+  it('never scopes an iam, lambda or dynamodb action to every resource', () => {
+    const starred = statements.filter((statement) =>
+      resourcesOf(statement).includes('*') && actionsOf(statement).some((action) => /^(iam|lambda|dynamodb):/.test(action)));
+
+    expect(starred).toEqual([]);
   });
 });

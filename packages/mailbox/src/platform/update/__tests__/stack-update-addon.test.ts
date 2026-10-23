@@ -6,25 +6,32 @@
  * the region it was synthesized in.
  */
 
-import { Match, Template }                      from 'aws-cdk-lib/assertions';
-import * as dynamodb                            from 'aws-cdk-lib/aws-dynamodb';
+import { getAttLogicalId }                                              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Match, Template }                                              from 'aws-cdk-lib/assertions';
+import { HttpLambdaAuthorizer, HttpLambdaResponseType }                 from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpApi }                                                      from 'aws-cdk-lib/aws-apigatewayv2';
+import * as dynamodb                                                    from 'aws-cdk-lib/aws-dynamodb';
+import type { Stack }                                                   from 'aws-cdk-lib';
+import * as t                                                           from 'typanion';
 
-import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
-import { DataTable }                            from '../../../resources/tables/data-tables';
-import { newArtifactResolver, newTestStack }    from '../../__tests__/platform-helpers';
-import { StackUpdateAddon }                     from '../stack-update-addon';
+import { isTemplateValue, resourcesOfType }                             from '../../../__tests__/template-resources';
+import { AuditEventsQueue }                                             from '../../../resources/queues/audit-events-queue';
+import { DataTable }                                                    from '../../../resources/tables/data-tables';
+import { newArtifactResolver, newInlineFunction, newTestStack }         from '../../__tests__/platform-helpers';
+import { StackUpdateAddon }                                             from '../stack-update-addon';
 
-const REGION = { Ref: 'AWS::Region' };
+const REGION   = { Ref: 'AWS::Region' };
+const STACK_ID = { Ref: 'AWS::StackId' };
+
+const isIntegrationProperties = t.isPartial({ IntegrationUri: isTemplateValue });
 
 interface SynthesizedAddon {
   readonly addon:    StackUpdateAddon;
   readonly template: Template;
 }
 
-function synthesize(distTag?: string): SynthesizedAddon {
-  const stack = newTestStack('TestStack');
-
-  const addon = new StackUpdateAddon(stack, 'stack-update-addon', {
+function newAddon(stack: Stack, distTag?: string): StackUpdateAddon {
+  return new StackUpdateAddon(stack, 'stack-update-addon', {
     configTable:      new DataTable(dynamodb.Table.fromTableArn(stack, 'config-table', 'arn:aws:dynamodb:us-west-2:123456789012:table/config')),
     auditEventsQueue: new AuditEventsQueue(stack, 'audit-queue'),
     artifactResolver: newArtifactResolver(stack),
@@ -32,6 +39,11 @@ function synthesize(distTag?: string): SynthesizedAddon {
     templateVersion:  '1.0.0',
     distTag,
   });
+}
+
+function synthesize(distTag?: string): SynthesizedAddon {
+  const stack = newTestStack('TestStack');
+  const addon = newAddon(stack, distTag);
   return { addon, template: Template.fromStack(stack) };
 }
 
@@ -82,5 +94,44 @@ describe('StackUpdateAddon', () => {
 
     template.hasResourceProperties('AWS::SSM::Parameter', { Value: '1.0.0' });
     lambdaEnvironment(template, { TEMPLATE_VERSION_PARAM_NAME: { Ref: parameterId } });
+  });
+
+  it('passes its own stack id to the handler as the root stack it prepares change sets for', () => {
+    lambdaEnvironment(synthesize().template, { ROOT_STACK_ARN: STACK_ID });
+  });
+});
+
+describe('StackUpdateAddon routes', () => {
+  let template: Template;
+
+  beforeAll(() => {
+    const stack      = newTestStack('TestStack');
+    const authorizer = new HttpLambdaAuthorizer('authorizer', newInlineFunction(stack, 'authorizer'), {
+      responseTypes: [HttpLambdaResponseType.SIMPLE],
+    });
+
+    newAddon(stack).addRoutes(new HttpApi(stack, 'api'), authorizer);
+
+    template = Template.fromStack(stack);
+  });
+
+  it('serves POST /stack-update/{proxy+} behind the authorizer and nothing else', () => {
+    template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
+      RouteKey:          'POST /stack-update/{proxy+}',
+      AuthorizationType: 'CUSTOM',
+      AuthorizerId:      Match.anyValue(),
+    });
+    expect(Object.keys(template.findResources('AWS::ApiGatewayV2::Route'))).toHaveLength(1);
+  });
+
+  it('routes that path to the stack-update Lambda', () => {
+    const [lambdaId]         = Object.keys(template.findResources('AWS::Lambda::Function', {
+      Properties: { Environment: { Variables: { ROOT_STACK_ARN: Match.anyValue() } } },
+    }));
+    const integrationTargets = resourcesOfType(template, 'AWS::ApiGatewayV2::Integration', isIntegrationProperties).map((integration) =>
+      getAttLogicalId(integration.properties.IntegrationUri),
+    );
+
+    expect(integrationTargets).toEqual([lambdaId]);
   });
 });
