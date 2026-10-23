@@ -18,6 +18,9 @@ export interface StackFailureDetectionInfraProps {
 
 const DETECTOR_POLICY_NAME = 'stack-failure-detector-policy';
 
+/** The fixed head of the detector role's physical name; the removal's grants match every name it heads. */
+export const DETECTOR_ROLE_NAME_PREFIX = 'mailbox-diag-role-';
+
 /**
  * The detector Lambda, its execution role and inline policy. The detector's trigger is the retained
  * stack-failed rule the Lambda creates for itself. Every resource is retained on update, on delete and
@@ -27,8 +30,8 @@ const DETECTOR_POLICY_NAME = 'stack-failure-detector-policy';
  * `mailbox-diag-fn-<position hash>-<guid prefix>`. The position hash is that of the named role or
  * function itself, so a move or a new construct id changes that name; the guid prefix differs per install.
  * `iam:DeleteRole`/`iam:DeleteRolePolicy` don't support the `aws:ResourceTag` condition key at all
- * (verified against the IAM service reference), so the grants that delete this role are scoped to the
- * role's own ARN, taken from `role`.
+ * (verified against the IAM service reference), so the grants that delete this role are scoped by the
+ * role name pattern built from `DETECTOR_ROLE_NAME_PREFIX` and the guid prefix, in the sweeper's removal.
  * `detectorFunctionName` stays pinned because `StackFailureDetectorLambda`'s `functionName` prop is
  * required.
  */
@@ -52,7 +55,7 @@ export class StackFailureDetectionInfra extends Construct {
     const detectorFunctionHash = PositionHash.ofChild(this, 'detector-v2');
 
     const detectorFunctionName = Fn.join('', ['mailbox-diag-fn-', detectorFunctionHash, '-', guidPrefix]);
-    const detectorRoleName     = Fn.join('', ['mailbox-diag-role-', detectorRoleHash, '-', guidPrefix]);
+    const detectorRoleName     = Fn.join('', [DETECTOR_ROLE_NAME_PREFIX, detectorRoleHash, '-', guidPrefix]);
 
     const detectorRole = new iam.Role(this, 'detector-role-v2', {
       roleName:  detectorRoleName,

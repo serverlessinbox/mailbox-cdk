@@ -10,6 +10,7 @@ import type {
   StackFailureDetectorRemovalTarget,
   StackFailureDetectorWorkerInput,
 } from '../../../runtime/resource-sweeper/removal';
+import { DETECTOR_ROLE_NAME_PREFIX }                                  from '../stack-failure-detection-infra';
 import type { StackFailureDetectorSweepTargets }                      from '../stack-failure-detection';
 
 import { buildWorkerRetryLoop, targetAt, withTargetPresenceGuard }    from './removal';
@@ -32,8 +33,9 @@ export interface StackFailureDetectorRemovalProps extends StackFailureDetectorSw
  *
  * The grace period is a Wait step this removal contributes to the state machine.
  *
- * `role` is an `iam.IRole` reference, so its IAM grants are scoped to that role's own ARN
- * (iam:DeleteRole/DeleteRolePolicy don't support `aws:ResourceTag` at all).
+ * The role's IAM grants are scoped by name pattern to every detector role of this install, not to the
+ * current role's ARN: iam:DeleteRole/DeleteRolePolicy don't support `aws:ResourceTag` at all, and an update
+ * that moves the detector gives its role a new name while the old role still awaits its sweep.
  */
 export class StackFailureDetectorRemoval extends Construct implements IResourceRemoval<'detector'> {
   private static readonly defaultGracePeriod = Duration.minutes(15);
@@ -130,19 +132,28 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
     );
   }
 
-  /** Scoped to the role's own ARN: `iam:DeleteRole` and `iam:DeleteRolePolicy` take no `aws:ResourceTag` condition. */
+  /** Scoped by name pattern: `iam:DeleteRole` and `iam:DeleteRolePolicy` take no `aws:ResourceTag` condition. */
   private grantDetectorRoleInspection(): iam.PolicyStatement {
     return new iam.PolicyStatement({
       actions:   ['iam:ListRoleTags'],
-      resources: [this.targets.role.roleArn],
+      resources: [this.detectorRoleArnPattern()],
     });
   }
 
   private grantDetectorRoleDeletion(): iam.PolicyStatement {
     return new iam.PolicyStatement({
       actions:   ['iam:DeleteRolePolicy', 'iam:DeleteRole'],
-      resources: [this.targets.role.roleArn],
+      resources: [this.detectorRoleArnPattern()],
     });
+  }
+
+  /**
+   * Every detector role this install has had: the role name is the role prefix, a position hash that changes
+   * when the detector moves, then the install's guid prefix. A pattern admits a renamed role of this install
+   * and no role of another install or another kind.
+   */
+  private detectorRoleArnPattern(): string {
+    return `arn:${Aws.PARTITION}:iam::${Aws.ACCOUNT_ID}:role/${DETECTOR_ROLE_NAME_PREFIX}*-${StackIdentity.guidPrefix}`;
   }
 
   private rootStackConditions(): readonly RootStackConditions[] {
