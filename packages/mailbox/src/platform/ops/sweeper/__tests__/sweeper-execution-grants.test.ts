@@ -6,9 +6,10 @@
  * resources; a wildcard here would let a compromised execution delete other stacks' roles or functions.
  */
 
+import { newTestStack }                    from '../../../__tests__/platform-helpers';
 import { SweeperExecutionGrants }          from '../sweeper-execution-grants';
 
-import { newTestStack, resolveStatements } from './sweeper-helpers';
+import { resolveStatements }               from './sweeper-helpers';
 
 describe('SweeperExecutionGrants', () => {
   const grants = new SweeperExecutionGrants({

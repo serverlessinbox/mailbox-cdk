@@ -8,8 +8,9 @@
 
 import { Template }                             from 'aws-cdk-lib/assertions';
 import * as iam                                 from 'aws-cdk-lib/aws-iam';
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
+import type { Stack }                           from 'aws-cdk-lib';
 
+import { newTestStack }                         from '../../__tests__/platform-helpers';
 import { SupportRolesInfra }                    from '../support-roles-infra';
 
 const DIAG_TAG_KEY        = 'serverless-inbox:support:diag';
@@ -42,10 +43,7 @@ interface SynthesizedInfra {
 }
 
 function build(vendorAccountIds: string[]): { stack: Stack; infra: SupportRolesInfra } {
-  const stack = new Stack(new App(), 'support-roles-stack', {
-    env:         { account: '111122223333', region: 'us-east-1' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
+  const stack = newTestStack('support-roles-stack', { account: '111122223333', region: 'us-east-1' });
   return { stack, infra: new SupportRolesInfra(stack, 'roles-infra', { vendorAccountIds }) };
 }
 

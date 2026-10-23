@@ -7,37 +7,22 @@
  * owns it; if either rule is missing or points at another stack, licenses silently go stale.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { VENDOR_ACCOUNT_ID }                    from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                             from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
-import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+import { VENDOR_ACCOUNT_ID }                               from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                        from 'aws-cdk-lib/assertions';
+import type { Stack }                                      from 'aws-cdk-lib';
 
-import { DataTable }                            from '../../../resources/tables/data-tables';
-import { LicenseRefresh }                       from '../license-refresh';
+import { newArtifactResolver, newDataTable, newTestStack } from '../../__tests__/platform-helpers';
+import { LicenseRefresh }                                  from '../license-refresh';
 
 describe('LicenseRefresh', () => {
-  let stack: cdk.Stack;
+  let stack: Stack;
   let template: Template;
 
   beforeEach(() => {
-    stack = new cdk.Stack(new App(), 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
+    stack = newTestStack('TestStack');
     new LicenseRefresh(stack, 'license-refresh', {
-      configTable:      new DataTable(new Table(stack, 'config-table', {
-        partitionKey: { name: 'pk', type: AttributeType.STRING },
-      })),
-      artifactResolver: new PinnedArtifactResolver({
-        packages:         {
-          'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-        },
-        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-        deploymentRegion: stack.region,
-      }),
+      configTable:      newDataTable(stack, 'config-table'),
+      artifactResolver: newArtifactResolver(stack),
       coreDomain:       'example.com',
       vendorAccountIds: [VENDOR_ACCOUNT_ID],
     });

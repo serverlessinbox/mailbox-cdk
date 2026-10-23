@@ -1,24 +1,22 @@
-import { ArtifactZone, PinnedArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
-import type { IArtifactResolver }                       from '@serverlessinbox/artifact-registry-cdk';
-import type { Template }                                from 'aws-cdk-lib/assertions';
-import { HttpLambdaAuthorizer, HttpLambdaResponseType } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpApi }                                      from 'aws-cdk-lib/aws-apigatewayv2';
-import { Table, AttributeType }                         from 'aws-cdk-lib/aws-dynamodb';
-import * as lambda                                      from 'aws-cdk-lib/aws-lambda';
-import * as cdk                                         from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
+import type { IArtifactResolver }                          from '@serverlessinbox/artifact-registry-cdk';
+import type { Template }                                   from 'aws-cdk-lib/assertions';
+import { HttpLambdaAuthorizer, HttpLambdaResponseType }    from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpApi }                                         from 'aws-cdk-lib/aws-apigatewayv2';
+import * as lambda                                         from 'aws-cdk-lib/aws-lambda';
+import type { Stack }                                      from 'aws-cdk-lib';
 
-import type { AdminApiAddonContext }                    from '../../../core/apis/addons';
-import type { IIdentityProvisioner }                    from '../../../resources/lambdas/identity-provisioner-lambda';
-import { AuditEventsQueue }                             from '../../../resources/queues/audit-events-queue';
-import { DataTable }                                    from '../../../resources/tables/data-tables';
+import type { AdminApiAddonContext }                       from '../../../core/apis/addons';
+import type { IIdentityProvisioner }                       from '../../../resources/lambdas/identity-provisioner-lambda';
+import { AuditEventsQueue }                                from '../../../resources/queues/audit-events-queue';
+import type { DataTable }                                  from '../../../resources/tables/data-tables';
+import { newArtifactResolver, newDataTable, newTestStack } from '../../__tests__/platform-helpers';
 
 /** A resource of a synthesized template, as `Template.findResources` returns it. */
 export type SynthesizedResource = ReturnType<Template['findResources']>[string];
 
 /** The shared inputs a support addon is built from, on a stack with an explicit environment. */
 export interface SupportTestStack {
-  readonly stack:            cdk.Stack;
+  readonly stack:            Stack;
   readonly configTable:      DataTable;
   readonly auditEventsQueue: AuditEventsQueue;
   readonly artifactResolver: IArtifactResolver;
@@ -29,31 +27,13 @@ export interface SupportTestStack {
  * is built from. `context` is the CDK app context, used to override the vendor account IDs.
  */
 export function createSupportTestStack(context?: Record<string, unknown>): SupportTestStack {
-  const stack = new cdk.Stack(new App({ context }), 'test-stack', {
-    env:         { account: '111122223333', region: 'us-east-1' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
+  const stack = newTestStack('test-stack', { account: '111122223333', region: 'us-east-1' }, context);
   return {
     stack,
-    configTable:      createDataTable(stack, 'config-table'),
+    configTable:      newDataTable(stack, 'config-table'),
     auditEventsQueue: new AuditEventsQueue(stack, 'audit-queue'),
-    artifactResolver: createArtifactResolver(stack, '1.0.0'),
+    artifactResolver: newArtifactResolver(stack, '1.0.0'),
   };
-}
-
-export function createDataTable(stack: cdk.Stack, id: string): DataTable {
-  return new DataTable(new Table(stack, id, {
-    partitionKey: { name: 'pk', type: AttributeType.STRING },
-    sortKey:      { name: 'sk', type: AttributeType.STRING },
-  }));
-}
-
-export function createArtifactResolver(stack: cdk.Stack, goVersion: string): IArtifactResolver {
-  return new PinnedArtifactResolver({
-    packages:         { 'mailbox-go': { version: goVersion, zone: ArtifactZone.REGIONAL } },
-    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-    deploymentRegion: stack.region,
-  });
 }
 
 /** The identity provisioner is required by the addon context but never invoked by the support addon. */
@@ -67,14 +47,14 @@ export function createAddonContext(inputs: SupportTestStack): AdminApiAddonConte
   return {
     configTable:         inputs.configTable,
     auditEventsQueue:    inputs.auditEventsQueue,
-    auditLogTable:       createDataTable(inputs.stack, 'audit-log-table'),
+    auditLogTable:       newDataTable(inputs.stack, 'audit-log-table'),
     identityProvisioner: unusedIdentityProvisioner,
     artifactResolver:    inputs.artifactResolver,
   };
 }
 
 /** An HTTP API and a Lambda authorizer to mount the addon's routes on. */
-export function createApiWithAuthorizer(stack: cdk.Stack): { api: HttpApi; authorizer: HttpLambdaAuthorizer } {
+export function createApiWithAuthorizer(stack: Stack): { api: HttpApi; authorizer: HttpLambdaAuthorizer } {
   const authorizerFunction = new lambda.Function(stack, 'authorizer-function', {
     runtime: lambda.Runtime.NODEJS_20_X,
     handler: 'index.handler',
@@ -93,12 +73,14 @@ export interface SynthesizedFunction {
   readonly logicalId:     string;
   readonly environment:   Record<string, unknown>;
   readonly roleLogicalId: string;
+  readonly code:          string | undefined;
 }
 
 /** The parts of a synthesized `AWS::Lambda::Function` that `findFunction` reads. */
 interface SynthesizedFunctionResource {
   readonly Properties: {
     readonly Role:         { readonly 'Fn::GetAtt': [string, string] };
+    readonly Code:         { readonly S3Key?: string };
     readonly Environment?: { readonly Variables: Record<string, unknown> };
   };
 }
@@ -115,5 +97,6 @@ export function findFunction(template: Template, serviceName: string): Synthesiz
     logicalId,
     environment:   fn.Properties.Environment?.Variables ?? {},
     roleLogicalId: fn.Properties.Role['Fn::GetAtt'][0],
+    code:          fn.Properties.Code.S3Key,
   };
 }

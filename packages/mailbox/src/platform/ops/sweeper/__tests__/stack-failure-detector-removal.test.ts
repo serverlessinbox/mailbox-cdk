@@ -7,15 +7,15 @@
  * the detector time to report a failed stack before the sweeper tears it down.
  */
 
-import { Duration }    from 'aws-cdk-lib';
+import { Duration }     from 'aws-cdk-lib';
 
-import { stateBodyOf } from '../../../../__tests__/state-machine-helpers';
+import { stateBodyOf }  from '../../../../__tests__/state-machine-helpers';
+import { newTestStack } from '../../../__tests__/platform-helpers';
 
 import {
   guardEntryOf,
   nameOfStateWhere,
   newDetectorRemoval,
-  newTestStack,
   OWNED_BY_STACK_ID,
   OWNED_BY_STACK_NAME_WITHOUT_ID,
   renderRemovalChain,

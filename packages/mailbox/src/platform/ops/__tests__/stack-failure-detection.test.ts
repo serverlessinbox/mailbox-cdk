@@ -7,8 +7,6 @@
  * single inline policy) is pinned by the infra suite.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
 import {
   actionsOf,
   allPolicyStatements,
@@ -18,11 +16,11 @@ import {
 } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import type { PolicyStatementJson }                     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Template }                                     from 'aws-cdk-lib/assertions';
-import * as cdk                                         from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
+import type { Stack }                                   from 'aws-cdk-lib';
 import * as t                                           from 'typanion';
 
 import { resourcesOfType }                              from '../../../__tests__/template-resources';
+import { newArtifactResolver, newTestStack }            from '../../__tests__/platform-helpers';
 import { StackFailureDetection, SendStackFailuresMode } from '../stack-failure-detection';
 
 const isRoleProperties     = t.isPartial({});
@@ -32,30 +30,14 @@ const isFunctionProperties = t.isPartial({
   Environment: t.isPartial({ Variables: t.isPartial({ INFRA_LOG_GROUP_NAME: t.isPartial({ Ref: t.isString() }) }) }),
 });
 
-function createTestArtifactResolver(stack: cdk.Stack): IArtifactResolver {
-  const packages: Record<string, ArtifactPin> = {
-    'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    'mailbox-go':  { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-  };
-  return new PinnedArtifactResolver({
-    packages,
-    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-    deploymentRegion: stack.region,
-  });
-}
-
-function buildStack(id: string): cdk.Stack {
-  const app = new App();
-  return new cdk.Stack(app, id, {
-    env:         { account: '111122223333', region: 'us-east-1' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
+function buildStack(id: string): Stack {
+  return newTestStack(id, { account: '111122223333', region: 'us-east-1' });
 }
 
 describe('StackFailureDetection', () => {
   it('disabled: synthesizes zero detector resources and exposes no sweep targets', () => {
     const stack            = buildStack('test-stack-diag-disabled');
-    const artifactResolver = createTestArtifactResolver(stack);
+    const artifactResolver = newArtifactResolver(stack);
 
     const detection = new StackFailureDetection(stack, 'stack-failure-detection', {
       mode: SendStackFailuresMode.DISABLED,
@@ -77,7 +59,7 @@ describe('StackFailureDetection', () => {
 
     beforeEach(() => {
       const stack            = buildStack('test-stack-diag-enabled');
-      const artifactResolver = createTestArtifactResolver(stack);
+      const artifactResolver = newArtifactResolver(stack);
 
       detection = new StackFailureDetection(stack, 'stack-failure-detection', {
         mode: SendStackFailuresMode.ENABLED,

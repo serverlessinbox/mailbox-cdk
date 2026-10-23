@@ -9,11 +9,11 @@
  */
 
 import { Template }                                                              from 'aws-cdk-lib/assertions';
-import { Code, Function as LambdaFunction, Runtime }                             from 'aws-cdk-lib/aws-lambda';
-import { App, BootstraplessSynthesizer, CfnCondition, CfnResource, Fn, Stack }   from 'aws-cdk-lib';
+import { CfnCondition, CfnResource, Fn, Stack }                                  from 'aws-cdk-lib';
 import * as t                                                                    from 'typanion';
 
 import { resourcesOfType }                                                       from '../../../__tests__/template-resources';
+import { newInlineFunction, newTestStack }                                       from '../../__tests__/platform-helpers';
 import { TrackedUpdateTriggers }                                                 from '../tracked-update-triggers';
 
 const isDeployEndProperties = t.isPartial({ Nonce: t.isString() });
@@ -25,11 +25,8 @@ interface TriggersFixture {
 }
 
 function build(): TriggersFixture {
-  const stack      = new Stack(new App(), 'TestStack', {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
-  const updater    = new LambdaFunction(stack, 'updater', { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });
+  const stack      = newTestStack('TestStack');
+  const updater    = newInlineFunction(stack, 'updater');
   const isTracking = new CfnCondition(stack, 'is-tracking', { expression: Fn.conditionEquals('a', 'a') });
   const triggers   = new TrackedUpdateTriggers(stack, 'triggers', { updater, isTracking });
 
@@ -67,13 +64,6 @@ describe('TrackedUpdateTriggers', () => {
 
     expect(resources).not.toHaveLength(0);
     resources.forEach((resource) => expect(resource.Condition).toBe(stack.resolve(isTracking.logicalId)));
-  });
-
-  it('leaves the updater function outside the gate', () => {
-    const functions = Object.values(synthesize().findResources('AWS::Lambda::Function'));
-
-    expect(functions).toHaveLength(1);
-    expect(functions[0].Condition).toBeUndefined();
   });
 
   it('makes the deploy-end trigger wait for a dependency it is told to wait for', () => {

@@ -18,9 +18,10 @@ import * as t                                                                 fr
 import { isTemplateValue, resourcesOfType }                                   from '../../../../__tests__/template-resources';
 import type { TemplateResource }                                              from '../../../../__tests__/template-resources';
 import { SweeperPolicyNames }                                                 from '../../../../resources/workflows/sweeper-workflow';
+import { newArtifactResolver, newTestStack }                                  from '../../../__tests__/platform-helpers';
 import { SweeperInfra }                                                       from '../sweeper-infra';
 
-import { newArtifactResolver, newRemovals, newTestStack, resolveStatements }  from './sweeper-helpers';
+import { newRemovals, resolveStatements }                                     from './sweeper-helpers';
 
 const RETAINED = { deletionPolicy: 'RetainExceptOnCreate', updateReplacePolicy: 'Retain' };
 

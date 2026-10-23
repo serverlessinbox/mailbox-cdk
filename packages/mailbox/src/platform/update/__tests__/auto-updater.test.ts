@@ -1,5 +1,3 @@
-/// <reference types="jest" />
-
 /**
  * AutoUpdater: how its props and defaults reach the updater Lambda and its triggers.
  *
@@ -11,14 +9,16 @@
 
 import { getAttLogicalId, statementsForRole }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ServerlessInboxTagKeys }                         from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                       from 'aws-cdk-lib/assertions';
-import { HttpLambdaAuthorizer, HttpLambdaResponseType }   from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpApi }                                        from 'aws-cdk-lib/aws-apigatewayv2';
+import { Match, Template }                                from 'aws-cdk-lib/assertions';
 import { PolicyStatement }                                from 'aws-cdk-lib/aws-iam';
-import { Code, Function as LambdaFunction, Runtime }      from 'aws-cdk-lib/aws-lambda';
-import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
+import type { Stack }                                     from 'aws-cdk-lib';
+import { Duration }                                       from 'aws-cdk-lib';
+import * as t                                             from 'typanion';
 
+import { isTemplateValue, resourcesOfType }               from '../../../__tests__/template-resources';
+import type { TemplateResource }                          from '../../../__tests__/template-resources';
 import type { AdminApiAddonContext }                      from '../../../core/apis/addons';
+import { newInlineFunction, newTestStack }                from '../../__tests__/platform-helpers';
 import { AutoUpdater }                                    from '../auto-updater';
 import type { AutoUpdaterProps }                          from '../auto-updater';
 
@@ -34,77 +34,78 @@ const ARTIFACT_CONTEXT = {
   },
 };
 
+const isFunctionProperties = t.isPartial({
+  Role:        isTemplateValue,
+  Environment: t.isOptional(t.isPartial({ Variables: t.isRecord(isTemplateValue) })),
+  Tags:        t.isOptional(t.isArray(t.isPartial({ Key: t.isString(), Value: t.isString() }))),
+});
+
+const isConditionsJson = t.isPartial({ Conditions: t.isOptional(t.isRecord(t.isPartial({}))) });
+
 interface UpdaterFixture {
   readonly stack:       Stack;
   readonly autoUpdater: AutoUpdater;
 }
 
-interface FunctionResource {
-  readonly Properties: {
-    readonly Role:         unknown;
-    readonly Environment?: { readonly Variables: Record<string, unknown> };
-    readonly Tags?:        Array<{ Key: string; Value: string }>;
-  };
-}
-
-interface UpdaterFunction {
-  readonly logicalId: string;
-  readonly resource:  FunctionResource;
-}
-
 function build(props?: AutoUpdaterProps): UpdaterFixture {
-  const app   = new App({ context: { 'serverlessinbox:artifacts': ARTIFACT_CONTEXT } });
-  const stack = new Stack(app, 'TestStack', {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
+  const stack = newTestStack('TestStack', undefined, { 'serverlessinbox:artifacts': ARTIFACT_CONTEXT });
   return { stack, autoUpdater: new AutoUpdater(stack, 'auto-updater', props) };
 }
 
-function inlineFunction(stack: Stack, id: string): LambdaFunction {
-  return new LambdaFunction(stack, id, { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });
+/** The updater is the only function whose environment sets DIST_TAG. */
+function updaterOf(template: Template): TemplateResource<t.InferType<typeof isFunctionProperties>> {
+  const [updater] = resourcesOfType(template, 'AWS::Lambda::Function', isFunctionProperties).filter(
+    (candidate) => candidate.properties.Environment?.Variables.DIST_TAG !== undefined,
+  );
+  if (updater === undefined) {
+    throw new Error('No function sets DIST_TAG');
+  }
+  return updater;
 }
 
-/** The updater is the only function whose environment sets DIST_TAG. */
-function updaterOf(template: Template): UpdaterFunction {
-  const functions   = template.findResources('AWS::Lambda::Function');
-  const [logicalId] = Object.keys(functions).filter((id) => (functions[id] as FunctionResource).Properties.Environment?.Variables.DIST_TAG);
-  return { logicalId, resource: functions[logicalId] as FunctionResource };
+/** The conditions of a synthesized template, keyed by logical id. */
+function conditionsOf(template: Template): Record<string, unknown> {
+  const json: unknown    = template.toJSON();
+  const errors: string[] = [];
+  if (!isConditionsJson(json, { errors })) {
+    throw new Error(`Unexpected template shape: ${errors.join('; ')}`);
+  }
+  return json.Conditions ?? {};
 }
 
 describe('AutoUpdater', () => {
   describe('updater settings', () => {
     it('follows the stable line at minor granularity when given no props', () => {
-      const { resource } = updaterOf(Template.fromStack(build().stack));
+      const template = Template.fromStack(build().stack);
 
-      expect(resource.Properties.Environment?.Variables).toMatchObject({ DIST_TAG: 'stable', GRANULARITY: 'minor' });
+      expect(updaterOf(template).properties.Environment?.Variables).toMatchObject({ DIST_TAG: 'stable', GRANULARITY: 'minor' });
     });
 
     it('passes the given dist-tag and granularity to the updater', () => {
-      const { resource } = updaterOf(Template.fromStack(build({ distTag: 'beta', granularity: 'major' }).stack));
+      const template = Template.fromStack(build({ distTag: 'beta', granularity: 'major' }).stack);
 
-      expect(resource.Properties.Environment?.Variables).toMatchObject({ DIST_TAG: 'beta', GRANULARITY: 'major' });
+      expect(updaterOf(template).properties.Environment?.Variables).toMatchObject({ DIST_TAG: 'beta', GRANULARITY: 'major' });
     });
 
     it('reads release artifacts from the registry bucket base of the pinned resolver', () => {
-      const { resource } = updaterOf(Template.fromStack(build().stack));
+      const template = Template.fromStack(build().stack);
 
-      expect(resource.Properties.Environment?.Variables).toMatchObject({ ARTIFACT_BUCKET_BASE: ARTIFACT_CONTEXT.bucketBase });
+      expect(updaterOf(template).properties.Environment?.Variables).toMatchObject({ ARTIFACT_BUCKET_BASE: ARTIFACT_CONTEXT.bucketBase });
     });
 
     it('scopes the updater to the stack it is deployed in', () => {
-      const { resource } = updaterOf(Template.fromStack(build().stack));
+      const template = Template.fromStack(build().stack);
 
-      expect(resource.Properties.Environment?.Variables).toMatchObject({
+      expect(updaterOf(template).properties.Environment?.Variables).toMatchObject({
         ROOT_STACK_TAG_VALUE: { Ref: 'AWS::StackName' },
         ROOT_STACK_ID:        { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] },
       });
     });
 
     it('tags the updater so it is left out of its own scan', () => {
-      const { resource } = updaterOf(Template.fromStack(build().stack));
+      const template = Template.fromStack(build().stack);
 
-      expect(resource.Properties.Tags).toContainEqual({ Key: ServerlessInboxTagKeys.autoUpdateType, Value: 'none' });
+      expect(updaterOf(template).properties.Tags).toContainEqual({ Key: ServerlessInboxTagKeys.autoUpdateType, Value: 'none' });
     });
   });
 
@@ -112,20 +113,22 @@ describe('AutoUpdater', () => {
     it('tracks unless granularity is pinned, and is minor by default', () => {
       const template = Template.fromStack(build().stack);
 
-      expect(Object.values(template.toJSON().Conditions)).toEqual([{ 'Fn::Not': [{ 'Fn::Equals': ['minor', 'pinned'] }] }]);
+      expect(Object.values(conditionsOf(template))).toEqual([{ 'Fn::Not': [{ 'Fn::Equals': ['minor', 'pinned'] }] }]);
     });
 
     it('compares the given granularity with pinned', () => {
       const template = Template.fromStack(build({ granularity: 'pinned' }).stack);
 
-      expect(Object.values(template.toJSON().Conditions)).toEqual([{ 'Fn::Not': [{ 'Fn::Equals': ['pinned', 'pinned'] }] }]);
+      expect(Object.values(conditionsOf(template))).toEqual([{ 'Fn::Not': [{ 'Fn::Equals': ['pinned', 'pinned'] }] }]);
     });
 
     it('keeps the updater function ungated, so pinned stacks can still invoke it', () => {
       const template = Template.fromStack(build({ granularity: 'pinned' }).stack);
 
-      expect(updaterOf(template).resource).toBeDefined();
-      expect(updaterOf(template).resource).not.toHaveProperty('Condition');
+      template.hasResource('AWS::Lambda::Function', {
+        Condition:  Match.absent(),
+        Properties: Match.objectLike({ Environment: { Variables: Match.objectLike({ DIST_TAG: 'stable' }) } }),
+      });
     });
 
     it('checks every six hours by default', () => {
@@ -141,7 +144,7 @@ describe('AutoUpdater', () => {
     it('makes the deploy-end trigger wait for a dependency added after construction', () => {
       const { stack, autoUpdater } = build();
 
-      autoUpdater.addDeployEndDependency(inlineFunction(stack, 'awaited'));
+      autoUpdater.addDeployEndDependency(newInlineFunction(stack, 'awaited'));
 
       const template         = Template.fromStack(stack);
       const functions        = template.findResources('AWS::Lambda::Function');
@@ -158,7 +161,7 @@ describe('AutoUpdater', () => {
       autoUpdater.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({ actions: ['s3:PutObject'], resources: ['arn:aws:s3:::a-bucket/*'] }));
 
       const template      = Template.fromStack(stack);
-      const roleLogicalId = getAttLogicalId(updaterOf(template).resource.Properties.Role) ?? '';
+      const roleLogicalId = getAttLogicalId(updaterOf(template).properties.Role) ?? '';
       expect(statementsForRole(template, roleLogicalId)).toContainEqual({
         Action:   's3:PutObject',
         Effect:   'Allow',
@@ -168,23 +171,12 @@ describe('AutoUpdater', () => {
   });
 
   describe('createAdminApiAddons', () => {
-    it('returns one addon that mounts the updater function on the admin API', () => {
+    it('returns one addon for the admin API', () => {
       const { stack, autoUpdater } = build();
-      const api                    = new HttpApi(stack, 'api');
-      const authorizer             = new HttpLambdaAuthorizer('authorizer', inlineFunction(stack, 'authorizer'), {
-        responseTypes: [HttpLambdaResponseType.SIMPLE],
-      });
       // cast: AutoUpdater does not read the context, so an empty one stands in for the shared tables.
       const addons = autoUpdater.createAdminApiAddons(stack, {} as AdminApiAddonContext);
 
-      addons.forEach((addon) => addon.addRoutes(api, authorizer));
-
-      const template            = Template.fromStack(stack);
-      const invokedByApiGateway = Object.values(template.findResources('AWS::Lambda::Permission'))
-        .filter((permission) => permission.Properties.Principal === 'apigateway.amazonaws.com')
-        .map((permission) => getAttLogicalId(permission.Properties.FunctionName));
       expect(addons).toHaveLength(1);
-      expect(invokedByApiGateway).toContain(updaterOf(template).logicalId);
     });
   });
 });

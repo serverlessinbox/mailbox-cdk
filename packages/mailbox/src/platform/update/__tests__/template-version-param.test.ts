@@ -5,17 +5,13 @@
  */
 
 import { Template }                      from 'aws-cdk-lib/assertions';
-import * as cdk                          from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
+import { newTestStack }                  from '../../__tests__/platform-helpers';
 import { TemplateVersionParam }          from '../template-version-param';
 
 describe('TemplateVersionParam', () => {
   it('stores the template version as the value of a standard-tier string parameter', () => {
-    const stack = new cdk.Stack(new App(), 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
+    const stack = newTestStack('TestStack');
 
     new TemplateVersionParam(stack, 'template-version', { templateVersion: 'v0.0.53' });
 

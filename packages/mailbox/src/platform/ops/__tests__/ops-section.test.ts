@@ -6,37 +6,25 @@
  * fixed ids (their paths are part of every resource's logical ID, so a rename replaces deployed
  * resources), including the removal that exists only when a regional certificate was created.
  */
-import { ArtifactZone, PinnedArtifactResolver }        from '@serverlessinbox/artifact-registry-cdk';
-import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }   from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                             from 'aws-cdk-lib/assertions';
-import * as acm                                        from 'aws-cdk-lib/aws-certificatemanager';
-import { Table, AttributeType }                        from 'aws-cdk-lib/aws-dynamodb';
-import { CfnResource, TagManager }                     from 'aws-cdk-lib';
-import type { Stack }                                  from 'aws-cdk-lib';
+import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }       from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                                 from 'aws-cdk-lib/assertions';
+import * as acm                                            from 'aws-cdk-lib/aws-certificatemanager';
+import { CfnResource, TagManager }                         from 'aws-cdk-lib';
+import type { Stack }                                      from 'aws-cdk-lib';
 
-import { newDeployerTestStack, TEST_ARTIFACT_VERSION } from '../../../__tests__/deployer-test-helpers';
-import { DataTable }                                   from '../../../resources/tables/data-tables';
-import { OpsSection }                                  from '../ops-section';
-import type { OpsSectionProps }                        from '../ops-section';
+import { newArtifactResolver, newDataTable, newTestStack } from '../../__tests__/platform-helpers';
+import { OpsSection }                                      from '../ops-section';
+import type { OpsSectionProps }                            from '../ops-section';
 
 const VERSION_ARN = 'arn:aws:lambda:us-east-1:111122223333:function:jmap-blob-download:3';
 
 function newSection(stack: Stack, overrides: Partial<OpsSectionProps> = {}): OpsSection {
-  const artifactResolver = new PinnedArtifactResolver({
-    packages:         {
-      'mailbox-go':         { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
-      'mailbox-cdk':        { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
-      'mailbox-cdk-shared': { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL },
-    },
-    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-    deploymentRegion: stack.region,
-  });
-  const section          = new OpsSection(stack, 'ops', {
-    artifactResolver,
+  const section = new OpsSection(stack, 'ops', {
+    artifactResolver: newArtifactResolver(stack),
     vendorAccountIds: [VENDOR_ACCOUNT_ID],
     domainName:       'example.com',
     data:             {
-      configTable: new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
+      configTable: newDataTable(stack, 'config-table'),
     },
     edge:             { jmapBlobDownloadVersionArn: VERSION_ARN },
     ...overrides,
@@ -53,7 +41,7 @@ function componentTagsUnder(section: OpsSection): string[] {
 
 describe('OpsSection', () => {
   it('tags every taggable resource under it with the ops component', () => {
-    const { stack } = newDeployerTestStack();
+    const stack = newTestStack('test-stack');
 
     const tags = componentTagsUnder(newSection(stack));
 
@@ -62,7 +50,7 @@ describe('OpsSection', () => {
   });
 
   it('keeps its children at the ids the group node used', () => {
-    const { stack } = newDeployerTestStack();
+    const stack = newTestStack('test-stack');
 
     const section = newSection(stack);
 
@@ -72,7 +60,7 @@ describe('OpsSection', () => {
   });
 
   it('hands the domain it was given to the license refresh', () => {
-    const { stack } = newDeployerTestStack();
+    const stack = newTestStack('test-stack');
 
     newSection(stack, { domainName: 'mail.example.org' });
 
@@ -82,15 +70,14 @@ describe('OpsSection', () => {
   });
 
   it('registers the certificate removal only when a regional certificate was created', () => {
-    const { stack }            = newDeployerTestStack();
-    const withCert             = newSection(stack, {
+    const certStack   = newTestStack('test-stack');
+    const withCert    = newSection(certStack, {
       edge: {
         jmapBlobDownloadVersionArn: VERSION_ARN,
-        regionalCertificate:        acm.Certificate.fromCertificateArn(stack, 'regional-cert', 'arn:aws:acm:us-west-2:111122223333:certificate/regional'),
+        regionalCertificate:        acm.Certificate.fromCertificateArn(certStack, 'regional-cert', 'arn:aws:acm:us-west-2:111122223333:certificate/regional'),
       },
     });
-    const { stack: bareStack } = newDeployerTestStack();
-    const withoutCert          = newSection(bareStack);
+    const withoutCert = newSection(newTestStack('test-stack'));
 
     expect(withCert.node.tryFindChild('cert-removal')).toBeDefined();
     expect(withoutCert.node.tryFindChild('cert-removal')).toBeUndefined();

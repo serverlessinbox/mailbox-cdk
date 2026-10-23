@@ -19,7 +19,7 @@ import {
   createSupportTestStack,
   findFunction,
   type SupportTestStack,
-} from './support-test-fixtures';
+} from './support-helpers';
 
 const SUPPORT_API = 'support-api';
 

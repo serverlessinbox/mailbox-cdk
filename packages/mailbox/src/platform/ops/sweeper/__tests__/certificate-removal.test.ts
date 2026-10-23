@@ -7,11 +7,11 @@
  * the worker has to look at a certificate before it can tell whether this stack owns it.
  */
 
-import { stateBodyOf } from '../../../../__tests__/state-machine-helpers';
+import { stateBodyOf }  from '../../../../__tests__/state-machine-helpers';
+import { newTestStack } from '../../../__tests__/platform-helpers';
 
 import {
   newCertificateRemoval,
-  newTestStack,
   OWNED_BY_STACK_ID,
   OWNED_BY_STACK_NAME_WITHOUT_ID,
   nameOfStateWhere,

@@ -7,11 +7,11 @@
  * tag so a function another stack owns is never deleted.
  */
 
-import { stateBodyOf } from '../../../../__tests__/state-machine-helpers';
+import { stateBodyOf }  from '../../../../__tests__/state-machine-helpers';
+import { newTestStack } from '../../../__tests__/platform-helpers';
 
 import {
   newEdgeFunctionRemoval,
-  newTestStack,
   OWNED_BY_STACK_ID,
   OWNED_BY_STACK_NAME_WITHOUT_ID,
   nameOfStateWhere,

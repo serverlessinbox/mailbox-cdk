@@ -7,15 +7,15 @@
 
 import { Template }             from 'aws-cdk-lib/assertions';
 
+import { newArtifactResolver }  from '../../__tests__/platform-helpers';
 import { SupportAddonProvider } from '../support-addon-provider';
 import { SupportMode }          from '../support-addon';
 
 import {
   createAddonContext,
-  createArtifactResolver,
   createSupportTestStack,
   findFunction,
-} from './support-test-fixtures';
+} from './support-helpers';
 
 const SUPPORT_API = 'support-api';
 
@@ -56,13 +56,10 @@ describe('SupportAddonProvider', () => {
 
   it('resolves the Lambda code through the context artifact resolver', () => {
     const inputs  = createSupportTestStack();
-    const context = { ...createAddonContext(inputs), artifactResolver: createArtifactResolver(inputs.stack, '9.9.9') };
+    const context = { ...createAddonContext(inputs), artifactResolver: newArtifactResolver(inputs.stack, '9.9.9') };
 
     new SupportAddonProvider({ mode: SupportMode.ENABLED }).createAdminApiAddons(inputs.stack, context);
 
-    const template   = Template.fromStack(inputs.stack);
-    const supportApi = Object.values(template.findResources('AWS::Lambda::Function'))
-      .find((fn) => fn.Properties.Environment?.Variables?.SERVICE_NAME === SUPPORT_API);
-    expect(supportApi?.Properties.Code.S3Key).toContain('9.9.9');
+    expect(findFunction(Template.fromStack(inputs.stack), SUPPORT_API).code).toContain('9.9.9');
   });
 });

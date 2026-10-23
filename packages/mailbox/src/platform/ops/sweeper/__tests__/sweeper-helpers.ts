@@ -1,5 +1,3 @@
-import { ArtifactZone, PinnedArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver }            from '@serverlessinbox/artifact-registry-cdk';
 import { renderLiteralText }                              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ServerlessInboxTagKeys }                         from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                       from 'aws-cdk-lib/assertions';
@@ -7,7 +5,7 @@ import * as acm                                           from 'aws-cdk-lib/aws-
 import * as iam                                           from 'aws-cdk-lib/aws-iam';
 import * as lambda                                        from 'aws-cdk-lib/aws-lambda';
 import * as sfn                                           from 'aws-cdk-lib/aws-stepfunctions';
-import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
+import { Duration, Stack }                                from 'aws-cdk-lib';
 import { Construct }                                      from 'constructs';
 import * as t                                             from 'typanion';
 
@@ -18,7 +16,7 @@ import { EdgeFunctionRemoval }                            from '../edge-function
 import type { IResourceRemoval }                          from '../removal';
 import { StackFailureDetectorRemoval }                    from '../stack-failure-detector-removal';
 
-/** Shared fixtures of the sweeper feature's tests: a stack, real removals over imported or fresh CDK objects, and a rendered state machine. */
+/** Shared fixtures of the sweeper feature's tests: real removals over imported or fresh CDK objects, and a rendered state machine. */
 
 const isStateMachineProperties = t.isPartial({ DefinitionString: isTemplateValue });
 
@@ -34,24 +32,6 @@ export const OWNED_BY_STACK_NAME_WITHOUT_ID = {
   StringEquals: { [`aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
   Null:         { [rootStackIdKey]: 'true' },
 };
-
-export function newTestStack(id: string): Stack {
-  return new Stack(new App(), id, {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
-}
-
-export function newArtifactResolver(stack: Stack): IArtifactResolver {
-  const packages: Record<string, ArtifactPin> = {
-    'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-  };
-  return new PinnedArtifactResolver({
-    packages,
-    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-    deploymentRegion: stack.region,
-  });
-}
 
 export function newCertificateRemoval(scope: Construct): CertificateRemoval {
   const certificate = acm.Certificate.fromCertificateArn(

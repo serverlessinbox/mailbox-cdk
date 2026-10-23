@@ -12,11 +12,11 @@ import { Duration }                                                       from '
 
 import { stateBodyOf }                                                    from '../../../../__tests__/state-machine-helpers';
 import type { CertWorkerInput }                                           from '../../../../runtime/resource-sweeper/removal';
+import { newTestStack }                                                   from '../../../__tests__/platform-helpers';
 import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard }     from '../removal';
 
 import {
   nameOfStateWhere,
-  newTestStack,
   newWorkerFunction,
   renderDefinition,
   startStateOf,

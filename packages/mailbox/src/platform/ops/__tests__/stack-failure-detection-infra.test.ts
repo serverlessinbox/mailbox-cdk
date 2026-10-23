@@ -19,15 +19,12 @@
  * `DefaultPolicy` cannot be removed that way, so the role could never be deleted.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }            from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver }             from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf, resourcesOf, statementsOfNamedPolicy } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { PositionHash }                                    from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                        from 'aws-cdk-lib/assertions';
-import * as cdk                                            from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                   from 'aws-cdk-lib';
 import { Construct }                                       from 'constructs';
 
+import { newArtifactResolver, newTestStack }               from '../../__tests__/platform-helpers';
 import { StackFailureDetectionInfra }                      from '../stack-failure-detection-infra';
 
 const VENDOR_ACCOUNT_ID    = '444455556666';
@@ -58,33 +55,17 @@ interface SynthesizedResource {
 
 type NamedProperty = 'RoleName' | 'FunctionName';
 
-function createTestArtifactResolver(stack: cdk.Stack): IArtifactResolver {
-  const packages: Record<string, ArtifactPin> = {
-    'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    'mailbox-go':  { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-  };
-  return new PinnedArtifactResolver({
-    packages,
-    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-    deploymentRegion: stack.region,
-  });
-}
-
 interface SynthesizedDetection {
   readonly template: Template;
   readonly infra:    StackFailureDetectionInfra;
 }
 
 function synthesizeDetection(parentId: string): SynthesizedDetection {
-  const app   = new App();
-  const stack = new cdk.Stack(app, 'test-stack-diag-name-length', {
-    env:         { account: '111122223333', region: 'us-east-1' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
+  const stack = newTestStack('test-stack-diag-name-length', { account: '111122223333', region: 'us-east-1' });
 
   const parent = new Construct(stack, parentId);
   const infra  = new StackFailureDetectionInfra(parent, 'infra', {
-    artifactResolver: createTestArtifactResolver(stack),
+    artifactResolver: newArtifactResolver(stack),
     vendorAccountIds: [VENDOR_ACCOUNT_ID],
   });
 

@@ -12,10 +12,24 @@ import { Template }                                                    from 'aws
 import * as iam                                                        from 'aws-cdk-lib/aws-iam';
 import * as lambda                                                     from 'aws-cdk-lib/aws-lambda';
 import { Duration }                                                    from 'aws-cdk-lib';
+import * as t                                                          from 'typanion';
 
+import { isTemplateValue, resourcesOfType }                            from '../../../../__tests__/template-resources';
+import { newTestStack }                                                from '../../../__tests__/platform-helpers';
 import { DeferredRemoval }                                             from '../deferred-removal';
 
-import { newCertificateRemoval, newEdgeFunctionRemoval, newTestStack } from './sweeper-helpers';
+import { newCertificateRemoval, newEdgeFunctionRemoval }               from './sweeper-helpers';
+
+const isDeferredRemovalProperties = t.isRecord(isTemplateValue);
+
+/** The keys the custom resource carries for itself. Every other key is a removal's entry. */
+const CUSTOM_RESOURCE_KEYS = new Set(['ServiceToken', 'ServiceTimeout']);
+
+/** The removal entries of the deferred-removal resource in a template: its properties without the custom resource's own keys. */
+function removalEntriesOf(template: Template): Record<string, unknown> {
+  const [resource] = resourcesOfType(template, 'Custom::DeferredRemoval', isDeferredRemovalProperties);
+  return Object.fromEntries(Object.entries(resource.properties).filter(([key]) => !CUSTOM_RESOURCE_KEYS.has(key)));
+}
 
 describe('DeferredRemoval', () => {
   function synthesize(withCertificate: boolean): Template {
@@ -56,19 +70,16 @@ describe('DeferredRemoval', () => {
     expect(resource.DependsOn).toContain(policyLogicalId);
   });
 
-  it('carries one entry per registered removal under its id, and no key for a removal that is not registered', () => {
-    const template = synthesize(false);
-
-    const [resource] = Object.values(template.findResources('Custom::DeferredRemoval'));
-    expect(resource.Properties['edge-fn']).toEqual({ edgeFnArn: 'arn:aws:lambda:us-east-1:123456789012:function:edge-fn' });
-    expect(resource.Properties.cert).toBeUndefined();
+  it('carries exactly one entry per registered removal, under the removal id', () => {
+    expect(removalEntriesOf(synthesize(false))).toEqual({
+      'edge-fn': { edgeFnArn: 'arn:aws:lambda:us-east-1:123456789012:function:edge-fn' },
+    });
   });
 
-  it('carries the entry each removal reports for its own id', () => {
-    const template = synthesize(true);
-
-    const [resource] = Object.values(template.findResources('Custom::DeferredRemoval'));
-    expect(resource.Properties.cert).toEqual({ certArn: 'arn:aws:acm:us-west-2:123456789012:certificate/test-cert' });
-    expect(resource.Properties['edge-fn']).toEqual({ edgeFnArn: 'arn:aws:lambda:us-east-1:123456789012:function:edge-fn' });
+  it('carries the entry each registered removal reports for its own id', () => {
+    expect(removalEntriesOf(synthesize(true))).toEqual({
+      cert:      { certArn: 'arn:aws:acm:us-west-2:123456789012:certificate/test-cert' },
+      'edge-fn': { edgeFnArn: 'arn:aws:lambda:us-east-1:123456789012:function:edge-fn' },
+    });
   });
 });

@@ -11,33 +11,32 @@ import { getAttLogicalId }                              from '@serverlessinbox/m
 import { Template }                                     from 'aws-cdk-lib/assertions';
 import { HttpLambdaAuthorizer, HttpLambdaResponseType } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpApi }                                      from 'aws-cdk-lib/aws-apigatewayv2';
-import { Code, Function as LambdaFunction, Runtime }    from 'aws-cdk-lib/aws-lambda';
-import { App, BootstraplessSynthesizer, Stack }         from 'aws-cdk-lib';
+import * as t                                           from 'typanion';
 
+import { isTemplateValue, resourcesOfType }             from '../../../__tests__/template-resources';
+import { newInlineFunction, newTestStack }              from '../../__tests__/platform-helpers';
 import { ArtifactUpdaterAddon }                         from '../artifact-updater-addon';
 
-function inlineFunction(stack: Stack, id: string): LambdaFunction {
-  return new LambdaFunction(stack, id, { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });
-}
+const isRouteProperties       = t.isPartial({ RouteKey: t.isString(), AuthorizationType: t.isOptional(t.isString()) });
+const isIntegrationProperties = t.isPartial({ IntegrationUri: isTemplateValue });
+
+type RouteProperties = t.InferType<typeof isRouteProperties>;
 
 describe('ArtifactUpdaterAddon', () => {
   let template: Template;
-  let routes: Array<Record<string, unknown>>;
+  let routes: RouteProperties[];
 
   beforeAll(() => {
-    const stack      = new Stack(new App(), 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-    const updater    = inlineFunction(stack, 'updater');
-    const authorizer = new HttpLambdaAuthorizer('authorizer', inlineFunction(stack, 'authorizer'), {
+    const stack      = newTestStack('TestStack');
+    const updater    = newInlineFunction(stack, 'updater');
+    const authorizer = new HttpLambdaAuthorizer('authorizer', newInlineFunction(stack, 'authorizer'), {
       responseTypes: [HttpLambdaResponseType.SIMPLE],
     });
 
     new ArtifactUpdaterAddon(updater).addRoutes(new HttpApi(stack, 'api'), authorizer);
 
     template = Template.fromStack(stack);
-    routes   = Object.values(template.findResources('AWS::ApiGatewayV2::Route')).map((route) => route.Properties);
+    routes   = resourcesOfType(template, 'AWS::ApiGatewayV2::Route', isRouteProperties).map((route) => route.properties);
   });
 
   it.each(['POST', 'GET'])('routes %s requests under /artifact-updates through the authorizer', (method) => {
@@ -48,8 +47,8 @@ describe('ArtifactUpdaterAddon', () => {
 
   it('routes to the function it was given', () => {
     const [updaterLogicalId] = Object.keys(template.findResources('AWS::Lambda::Function')).filter((id) => id.startsWith('updater'));
-    const integrationTargets = Object.values(template.findResources('AWS::ApiGatewayV2::Integration')).map((integration) =>
-      getAttLogicalId(integration.Properties.IntegrationUri),
+    const integrationTargets = resourcesOfType(template, 'AWS::ApiGatewayV2::Integration', isIntegrationProperties).map((integration) =>
+      getAttLogicalId(integration.properties.IntegrationUri),
     );
 
     expect(integrationTargets).toEqual([updaterLogicalId]);

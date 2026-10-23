@@ -6,14 +6,12 @@
  * the region it was synthesized in.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin }                     from '@serverlessinbox/artifact-registry-cdk';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import * as dynamodb                            from 'aws-cdk-lib/aws-dynamodb';
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
 import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
 import { DataTable }                            from '../../../resources/tables/data-tables';
+import { newArtifactResolver, newTestStack }    from '../../__tests__/platform-helpers';
 import { StackUpdateAddon }                     from '../stack-update-addon';
 
 const REGION = { Ref: 'AWS::Region' };
@@ -24,22 +22,12 @@ interface SynthesizedAddon {
 }
 
 function synthesize(distTag?: string): SynthesizedAddon {
-  const stack = new Stack(new App(), 'TestStack', {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
+  const stack = newTestStack('TestStack');
 
-  const packages: Record<string, ArtifactPin> = {
-    'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-  };
-  const addon                                 = new StackUpdateAddon(stack, 'stack-update-addon', {
+  const addon = new StackUpdateAddon(stack, 'stack-update-addon', {
     configTable:      new DataTable(dynamodb.Table.fromTableArn(stack, 'config-table', 'arn:aws:dynamodb:us-west-2:123456789012:table/config')),
     auditEventsQueue: new AuditEventsQueue(stack, 'audit-queue'),
-    artifactResolver: new PinnedArtifactResolver({
-      packages,
-      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
-    }),
+    artifactResolver: newArtifactResolver(stack),
     templateName:     'mailbox-standard',
     templateVersion:  '1.0.0',
     distTag,
