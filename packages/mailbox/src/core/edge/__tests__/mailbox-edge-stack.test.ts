@@ -1,55 +1,20 @@
 /**
  * MailboxEdgeStack template synthesis tests.
  *
- * Pins the synthesized template of the edge stack: the root-stack tag contract on its taggable
- * resources, the parameter schema, the Lambda@Edge function's identity and log group, and the IAM
- * grants of the deployer worker that the stack hands its work to. A regression that tagged an edge
- * resource with `AWS::StackName`, or granted unscoped role authorship or write actions on `*`, fails
- * the matching case below.
+ * Pins what the edge stack itself decides in its synthesized template: the root-stack tag contract on
+ * its taggable resources, the parameter schema it exposes, and the Lambda@Edge function's identity,
+ * version and log group. The deployer worker that the stack hands its work to is tested in its own file.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin }                             from '@serverlessinbox/artifact-registry-cdk';
-import { actionsOf, resourcesOf, statementsOfDocument } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { ArtifactObject, DeployedStack }                from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                     from 'aws-cdk-lib/assertions';
-import { Role }                                         from 'aws-cdk-lib/aws-iam';
-import * as cdk                                         from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
-
-import { MailboxEdgeStack }                             from '../core/edge/mailbox-edge-stack';
-import { MailboxEdgeDeployerWorkerLambda }              from '../resources/lambdas/mailbox-edge-deployer-worker-lambda';
+import { Template }                      from 'aws-cdk-lib/assertions';
+import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
 import {
   CloudFormationResource,
-  KNOWN_WILDCARDS,
   isResourceOfType,
   readTags,
-} from './iam-test-helpers';
-
-/** IAM and CloudWatch Logs actions that change state. Granted on `*` only when allowlisted. */
-const WRITE_ACTIONS = new Set([
-  'iam:CreateRole',
-  'iam:DeleteRole',
-  'iam:PutRolePolicy',
-  'iam:DeleteRolePolicy',
-  'iam:AttachRolePolicy',
-  'iam:DetachRolePolicy',
-  'iam:TagRole',
-  'iam:UntagRole',
-  'iam:PassRole',
-  'logs:CreateLogGroup',
-  'logs:DeleteLogGroup',
-  'logs:CreateLogStream',
-  'logs:DeleteLogStream',
-  'logs:PutRetentionPolicy',
-  'logs:PutLogEvents',
-]);
-
-/** Role authorship the worker must never hold: the execution role is created by the root stack. */
-const ROLE_AUTHORSHIP_ACTIONS = new Set([
-  'iam:CreateRole', 'iam:PutRolePolicy', 'iam:AttachRolePolicy',
-]);
+} from '../../../__tests__/iam-test-helpers';
+import { MailboxEdgeStack }              from '../mailbox-edge-stack';
 
 function synthEdgeStack(): Template {
   const app   = new App();
@@ -161,59 +126,6 @@ describe('MailboxEdgeStack template synthesis', () => {
       expect(jmapBlobDownloadFn).toBeDefined();
       const loggingConfig = jmapBlobDownloadFn?.Properties?.LoggingConfig as { LogGroup?: unknown } | undefined;
       expect(loggingConfig?.LogGroup).toEqual({ Ref: 'logGroupName' });
-    });
-  });
-
-  describe('deployer worker IAM', () => {
-    it('grants only iam:PassRole on the concrete role ARN, with no role authorship and no unscoped write', () => {
-      const app       = new App();
-      const testStack = new cdk.Stack(app, 'TestEdgeDeployerStack', {
-        env:         { account: '123456789012', region: 'us-east-1' },
-        synthesizer: new BootstraplessSynthesizer(),
-      });
-
-      const packages: Record<string, ArtifactPin> = {
-        'mailbox-cdk-shared': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-      };
-      const artifactResolver                      = new PinnedArtifactResolver({
-        packages,
-        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-        deploymentRegion: testStack.region,
-      });
-
-      new MailboxEdgeDeployerWorkerLambda(testStack, 'worker', {
-        artifactResolver,
-        edgeStackNamePattern: 'test-root-edge*',
-        edgeStack:            new DeployedStack('arn:aws:cloudformation:us-east-1:123456789012:stack/test-root-edge*/*'),
-        rootStack:            'test-root',
-        rootStackId:          'test-guid',
-        template:             new ArtifactObject(artifactResolver, 'mailbox-cdk-shared', 'template.json'),
-        artifactObjects:      [new ArtifactObject(artifactResolver, 'mailbox-cdk-shared', 'lambdas/jmap-blob-download.zip')],
-        hostedZoneId:         'Z123456',
-        jmapBlobDownloadRole: Role.fromRoleArn(testStack, 'jmap-blob-download-role', 'arn:aws:iam::123456789012:role/test-role'),
-      });
-
-      const resources            = resourcesOfTemplate(Template.fromStack(testStack));
-      const violations: string[] = [];
-
-      for (const [logicalId, resource] of Object.entries(resources)) {
-        if (!isResourceOfType(resource, 'AWS::IAM::Policy')) {continue;}
-
-        for (const statement of statementsOfDocument(resource.Properties?.PolicyDocument)) {
-          const resourceList = resourcesOf(statement);
-
-          for (const action of actionsOf(statement)) {
-            if (ROLE_AUTHORSHIP_ACTIONS.has(action)) {
-              violations.push(`${logicalId}: ${action} must not be granted (role is created in root stack)`);
-            }
-            if (WRITE_ACTIONS.has(action) && resourceList.includes('*') && !statement.Condition && !KNOWN_WILDCARDS[action]) {
-              violations.push(`${logicalId}: ${action} on Resource "*" without Condition`);
-            }
-          }
-        }
-      }
-
-      expect(violations).toEqual([]);
     });
   });
 });

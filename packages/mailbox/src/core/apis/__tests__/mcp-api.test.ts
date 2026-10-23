@@ -57,6 +57,12 @@ describe('McpApi', () => {
     template.resourceCountIs('AWS::ApiGatewayV2::ApiMapping', 1);
   });
 
+  it('creates the HTTP Lambda authorizer that its routes reference', () => {
+    Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Authorizer', {
+      AuthorizerType: 'REQUEST',
+    });
+  });
+
   it.each(['GET', 'POST', 'DELETE', 'PUT'])('routes %s through the authorizer', (method) => {
     Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Route', {
       RouteKey:          `${method} /{proxy+}`,

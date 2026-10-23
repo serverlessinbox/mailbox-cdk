@@ -77,6 +77,12 @@ describe('MailboxEdgeDeployerWorkerLambda', () => {
     });
   });
 
+  it('holds no role authorship: the execution role is created by the root stack', () => {
+    for (const action of ['iam:CreateRole', 'iam:PutRolePolicy', 'iam:AttachRolePolicy']) {
+      expect(statementsForAction(template, action)).toEqual([]);
+    }
+  });
+
   it('manages the edge stack it is given', () => {
     const { worker, edgeStack } = buildWorker();
 

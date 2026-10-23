@@ -96,6 +96,22 @@ describe('BlobStore', () => {
     });
   });
 
+  describe('public access', () => {
+    it('blocks every form of public access on the bucket', () => {
+      const stack = createStack();
+      new BlobStore(stack, { developmentMode: false, removalPolicy: RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE });
+
+      Template.fromStack(stack).hasResourceProperties('AWS::S3::Bucket', {
+        PublicAccessBlockConfiguration: {
+          BlockPublicAcls:       true,
+          BlockPublicPolicy:     true,
+          IgnorePublicAcls:      true,
+          RestrictPublicBuckets: true,
+        },
+      });
+    });
+  });
+
   describe('bucket policy', () => {
     const stack = createStack();
     new BlobStore(stack, { developmentMode: true, removalPolicy: RemovalPolicy.DESTROY });

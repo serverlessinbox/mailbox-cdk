@@ -1,3 +1,4 @@
+import { PositionHash, StackIdentity }   from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }               from 'aws-cdk-lib/assertions';
 import * as iam                          from 'aws-cdk-lib/aws-iam';
 import * as cdk                          from 'aws-cdk-lib';
@@ -23,6 +24,25 @@ function createStack(): cdk.Stack {
 }
 
 describe('AuthKeyStoreTable', () => {
+  it('takes its physical name from the stack name, the position hash and the install id', () => {
+    // StackNamedTable falls back to Aws.STACK_NAME, so the table name must not reference the data-stack nameBase.
+    const stack = createStack();
+    const sut   = new AuthKeyStoreTable(stack, 'auth-key-store');
+
+    const logicalId = stack.getLogicalId(defaultCfnResource(sut));
+    const resources = Template.fromStack(stack).toJSON().Resources as Record<string, { Properties?: { TableName?: unknown } }>;
+
+    expect(resources[logicalId].Properties?.TableName).toEqual({
+      'Fn::Join': ['', [
+        { Ref: 'AWS::AccountId' },
+        '-',
+        { Ref: 'AWS::StackName' },
+        `-auth-key-store-${PositionHash.of(sut)}-`,
+        stack.resolve(StackIdentity.guidPrefix),
+      ]],
+    });
+  });
+
   it('defines a pk/sk on-demand table that is deleted together with the stack', () => {
     const stack = createStack();
     new AuthKeyStoreTable(stack, 'auth-key-store-table');

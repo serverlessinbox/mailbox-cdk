@@ -143,6 +143,14 @@ describe('AdminApi', () => {
       });
     });
 
+    it('creates the HTTP Lambda authorizer that its routes reference', () => {
+      new AdminApi(stack, 'admin-api', propsWith());
+
+      Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Authorizer', {
+        AuthorizerType: 'REQUEST',
+      });
+    });
+
     it('mounts each addon with the API and the same authorizer', () => {
       const first: IAdminApiAddon  = { addRoutes: jest.fn() };
       const second: IAdminApiAddon = { addRoutes: jest.fn() };

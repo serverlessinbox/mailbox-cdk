@@ -210,6 +210,12 @@ describe('AdminApiLambda IAM scoping', () => {
     });
   });
 
+  it('sets SYSTEM_SENDER_ADDRESS to the system sender address prop', () => {
+    Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ SYSTEM_SENDER_ADDRESS: 'noreply@example.com' }) },
+    });
+  });
+
   it('sets SES_RULE_SET_NAME and grants ses:DescribeActiveReceiptRuleSet on a wildcard resource', () => {
     const template = Template.fromStack(stack);
     template.hasResourceProperties('AWS::Lambda::Function', {

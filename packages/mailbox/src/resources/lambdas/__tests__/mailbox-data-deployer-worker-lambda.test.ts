@@ -7,12 +7,12 @@
  * fails the data stack deployment.
  */
 
-import { sharedWorkerServiceName, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { IArtifactObject, IDeployedStack }         from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                     from 'aws-cdk-lib/assertions';
+import { resourcesOf, sharedWorkerServiceName, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { IArtifactObject, IDeployedStack }                      from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                                  from 'aws-cdk-lib/assertions';
 
-import { newDeployerTestStack }                         from '../../../__tests__/deployer-test-helpers';
-import { MailboxDataDeployerWorkerLambda }              from '../mailbox-data-deployer-worker-lambda';
+import { newDeployerTestStack }                                      from '../../../__tests__/deployer-test-helpers';
+import { MailboxDataDeployerWorkerLambda }                           from '../mailbox-data-deployer-worker-lambda';
 
 const ACCOUNT_REF   = { Ref: 'AWS::AccountId' };
 const REGION_REF    = { Ref: 'AWS::Region' };
@@ -83,6 +83,17 @@ describe('MailboxDataDeployerWorkerLambda', () => {
     expect(statements[0].Resource).toEqual({
       'Fn::Join': ['', ['arn:', PARTITION_REF, ':s3:::', ACCOUNT_REF, '-test-stack-data-*']],
     });
+  });
+
+  it('scopes every DynamoDB and S3 table and bucket write to the name pattern, never a bare "*"', () => {
+    for (const action of ['dynamodb:CreateTable', 'dynamodb:DeleteTable', 'dynamodb:UpdateTable', 's3:CreateBucket', 's3:DeleteBucket', 's3:PutBucketPolicy']) {
+      const statements = statementsForAction(template, action);
+
+      expect(statements.length).toBeGreaterThan(0);
+      for (const statement of statements) {
+        expect(resourcesOf(statement)).not.toContain('*');
+      }
+    }
   });
 
   it('creates KMS grants only for AWS resources, on the DynamoDB and S3 managed keys and account keys', () => {

@@ -1,3 +1,4 @@
+import { PositionHash, StackIdentity }   from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }               from 'aws-cdk-lib/assertions';
 import * as iam                          from 'aws-cdk-lib/aws-iam';
 import * as cdk                          from 'aws-cdk-lib';
@@ -23,6 +24,24 @@ function createStack(): cdk.Stack {
 }
 
 describe('WebSocketTable', () => {
+  it('takes its physical name from the stack name, the table id, the position hash and the install id', () => {
+    const stack = createStack();
+    const sut   = new WebSocketTable(stack, 'websocket');
+
+    const logicalId = stack.getLogicalId(defaultCfnResource(sut));
+    const resources = Template.fromStack(stack).toJSON().Resources as Record<string, { Properties?: { TableName?: unknown } }>;
+
+    expect(resources[logicalId].Properties?.TableName).toEqual({
+      'Fn::Join': ['', [
+        { Ref: 'AWS::AccountId' },
+        '-',
+        { Ref: 'AWS::StackName' },
+        `-websocket-${PositionHash.of(sut)}-`,
+        stack.resolve(StackIdentity.guidPrefix),
+      ]],
+    });
+  });
+
   it('defines the pk/sk table with TTL, on-demand billing, a gsi1 index and no point-in-time recovery', () => {
     const stack = createStack();
     new WebSocketTable(stack, 'websocket-table');
