@@ -72,13 +72,13 @@ describe('PollingCfnDeployerWorkflow', () => {
     it('waits 20 seconds between checks by default', () => {
       const { template } = synthWorkflow();
 
-      expect(stateMachineDefinition(template).States.WaitBeforeCheck.Seconds).toBe(20);
+      expect(stateMachineDefinition(template).States['wait-before-check'].Seconds).toBe(20);
     });
 
     it('honors a custom check interval', () => {
       const { template } = synthWorkflow({ checkInterval: Duration.seconds(7) });
 
-      expect(stateMachineDefinition(template).States.WaitBeforeCheck.Seconds).toBe(7);
+      expect(stateMachineDefinition(template).States['wait-before-check'].Seconds).toBe(7);
     });
   });
 
@@ -86,8 +86,8 @@ describe('PollingCfnDeployerWorkflow', () => {
     it('starts by seeding the attempt and retry counters beside the forwarded request', () => {
       const definition = stateMachineDefinition(synthWorkflow().template);
 
-      expect(definition.StartAt).toBe('Init');
-      expect(definition.States.Init.Parameters).toEqual({
+      expect(definition.StartAt).toBe('init');
+      expect(definition.States.init.Parameters).toEqual({
         'cfn.$':          '$.cfn',
         'op.$':           '$.op',
         attempt:          0,
@@ -99,7 +99,7 @@ describe('PollingCfnDeployerWorkflow', () => {
     it('starts the operation with the request and the attempt only', () => {
       const definition = stateMachineDefinition(synthWorkflow().template);
 
-      const start = definition.States.StartStackOperation;
+      const start = definition.States['start-stack-operation'];
       expect(start.ResultPath).toBe('$.start');
       expect(start.Parameters).toEqual({
         mode:        'start',
@@ -112,7 +112,7 @@ describe('PollingCfnDeployerWorkflow', () => {
     it('checks the operation with the request, the attempt and both retry counters', () => {
       const definition = stateMachineDefinition(synthWorkflow().template);
 
-      const check = definition.States.CheckStackOperation;
+      const check = definition.States['check-stack-operation'];
       expect(check.ResultPath).toBe('$.check');
       expect(check.Parameters).toEqual({
         mode:                 'check',
@@ -127,7 +127,7 @@ describe('PollingCfnDeployerWorkflow', () => {
     it('carries the retry counters the check returned into the next iteration and counts the attempt', () => {
       const definition = stateMachineDefinition(synthWorkflow().template);
 
-      expect(definition.States.IncrementAttempt.Parameters).toEqual({
+      expect(definition.States['increment-attempt'].Parameters).toEqual({
         'cfn.$':              '$.cfn',
         'op.$':               '$.op',
         'start.$':            '$.start',
@@ -141,24 +141,24 @@ describe('PollingCfnDeployerWorkflow', () => {
     it('ends when the start already finished the operation and otherwise waits before the first check', () => {
       const definition = stateMachineDefinition(synthWorkflow().template);
 
-      expect(definition.States.StartStackOperation.Next).toBe('StartedOk?');
-      expect(definition.States['StartedOk?'].Choices).toEqual([
-        { Variable: '$.start.done', BooleanEquals: true, Next: 'Done' },
+      expect(definition.States['start-stack-operation'].Next).toBe('started-ok');
+      expect(definition.States['started-ok'].Choices).toEqual([
+        { Variable: '$.start.done', BooleanEquals: true, Next: 'done' },
       ]);
-      expect(definition.States['StartedOk?'].Default).toBe('WaitBeforeCheck');
+      expect(definition.States['started-ok'].Default).toBe('wait-before-check');
     });
 
-    it('reads the retry counters only after IsDone? found the check still polling, because a done result may carry none', () => {
+    it('reads the retry counters only after is-done found the check still polling, because a done result may carry none', () => {
       const definition = stateMachineDefinition(synthWorkflow().template);
 
-      expect(definition.States.WaitBeforeCheck.Next).toBe('CheckStackOperation');
-      expect(definition.States.CheckStackOperation.Next).toBe('IsDone?');
-      expect(definition.States['IsDone?'].Choices).toEqual([
-        { Variable: '$.check.done', BooleanEquals: true, Next: 'Done' },
+      expect(definition.States['wait-before-check'].Next).toBe('check-stack-operation');
+      expect(definition.States['check-stack-operation'].Next).toBe('is-done');
+      expect(definition.States['is-done'].Choices).toEqual([
+        { Variable: '$.check.done', BooleanEquals: true, Next: 'done' },
       ]);
-      expect(definition.States['IsDone?'].Default).toBe('IncrementAttempt');
-      expect(definition.States.IncrementAttempt.Next).toBe('WaitBeforeCheck');
-      expect(definition.States.Done.Type).toBe('Succeed');
+      expect(definition.States['is-done'].Default).toBe('increment-attempt');
+      expect(definition.States['increment-attempt'].Next).toBe('wait-before-check');
+      expect(definition.States.done.Type).toBe('Succeed');
     });
   });
 

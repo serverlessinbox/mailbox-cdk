@@ -101,7 +101,7 @@ export class PollingCfnDeployerWorkflow extends sfn.StateMachine implements IPol
   }
 
   private static init(states: Construct): sfn.Pass {
-    return new sfn.Pass(states, 'Init', {
+    return new sfn.Pass(states, 'init', {
       parameters: {
         ...PollingCfnDeployerWorkflow.forward(CFN_FIELD),
         ...PollingCfnDeployerWorkflow.forward(OP_FIELD),
@@ -113,31 +113,31 @@ export class PollingCfnDeployerWorkflow extends sfn.StateMachine implements IPol
   }
 
   private static startStackOperation(states: Construct, handler: IFunction): tasks.LambdaInvoke {
-    return PollingCfnDeployerWorkflow.workerInvocation(states, 'StartStackOperation', START_RESULT, PollingCfnDeployerWorkflow.startPayload(), handler);
+    return PollingCfnDeployerWorkflow.workerInvocation(states, 'start-stack-operation', START_RESULT, PollingCfnDeployerWorkflow.startPayload(), handler);
   }
 
   private static startedOk(states: Construct): sfn.Choice {
-    return new sfn.Choice(states, 'StartedOk?');
+    return new sfn.Choice(states, 'started-ok');
   }
 
   private static waitBeforeCheck(states: Construct, checkInterval: Duration): sfn.Wait {
-    return new sfn.Wait(states, 'WaitBeforeCheck', { time: sfn.WaitTime.duration(checkInterval) });
+    return new sfn.Wait(states, 'wait-before-check',{ time: sfn.WaitTime.duration(checkInterval) });
   }
 
   private static checkStackOperation(states: Construct, handler: IFunction): tasks.LambdaInvoke {
-    return PollingCfnDeployerWorkflow.workerInvocation(states, 'CheckStackOperation', CHECK_RESULT, PollingCfnDeployerWorkflow.checkPayload(), handler);
+    return PollingCfnDeployerWorkflow.workerInvocation(states, 'check-stack-operation', CHECK_RESULT, PollingCfnDeployerWorkflow.checkPayload(), handler);
   }
 
   private static checkedDone(states: Construct): sfn.Choice {
-    return new sfn.Choice(states, 'IsDone?');
+    return new sfn.Choice(states, 'is-done');
   }
 
   private static done(states: Construct): sfn.Succeed {
-    return new sfn.Succeed(states, 'Done');
+    return new sfn.Succeed(states, 'done');
   }
 
   private static incrementAttempt(states: Construct): sfn.Pass {
-    return new sfn.Pass(states, 'IncrementAttempt', {
+    return new sfn.Pass(states, 'increment-attempt', {
       parameters: {
         ...PollingCfnDeployerWorkflow.forward(CFN_FIELD),
         ...PollingCfnDeployerWorkflow.forward(OP_FIELD),
