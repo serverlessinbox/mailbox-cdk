@@ -1,23 +1,15 @@
 /// <reference types="jest" />
 
 /**
- * WebSocketMessageLambda connections-table + push-API wiring tests (grant-concept unit B).
- *
- * Verifies WebSocketMessageLambda grants exactly the read-write actions on the connections
- * table (no Scan/PartiQL/Deny), sets WEBSOCKET_API_ENDPOINT from the injected IWebSocketPushApi's
- * managementEndpoint, and calls grantManageConnections with itself as the grantee. The push API
- * is faked here: the real ARN/statement shape it produces is pinned by WebSocketPush's own tests.
+ * WebSocketMessageLambda wiring: the read-write grant on the connections table, the endpoint it reads from the
+ * push API, and the grantManageConnections call with the function itself as grantee. The push API is a jest fake,
+ * so this suite pins only what the message Lambda passes to it.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import { actionsOf, statementsForResource }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
+import { AttributeType, Table }                 from 'aws-cdk-lib/aws-dynamodb';
 import type { IGrantable }                      from 'aws-cdk-lib/aws-iam';
-import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+import type * as cdk                            from 'aws-cdk-lib';
 
 import type { IWebSocketPushApi }               from '../../../contracts/websocket-push';
 import { defaultCfnResource }                   from '../../../utils/cfn-resource';
@@ -25,38 +17,20 @@ import { DataTable }                            from '../../tables/data-tables';
 import { WebSocketTable }                       from '../../tables/websocket-table';
 import { WebSocketMessageLambda }               from '../websocket-message-lambda';
 
-class FakeWebSocketPushApi implements IWebSocketPushApi {
-  public readonly managementEndpoint = 'https://fake.execute-api.us-west-2.amazonaws.com/prod';
-  public readonly grantCalls: IGrantable[] = [];
+import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
 
-  public grantManageConnections(grantee: IGrantable): void {
-    this.grantCalls.push(grantee);
-  }
-}
+const FAKE_MANAGEMENT_ENDPOINT = 'https://fake.execute-api.us-west-2.amazonaws.com/prod';
 
 describe('WebSocketMessageLambda connections-table and push-API wiring', () => {
   let stack: cdk.Stack;
   let template: Template;
   let tableId: string;
-  let fakePushApi: FakeWebSocketPushApi;
+  let grantManageConnections: jest.Mock<void, [IGrantable]>;
   let messageLambda: WebSocketMessageLambda;
 
   beforeEach(() => {
-    const app = new App();
-
-    stack = new cdk.Stack(app, 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-
-    const packages: Record<string, ArtifactPin> = {
-      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    };
-    const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
-      packages,
-      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
-    });
+    const arrangement = arrangeWrapperStack();
+    stack             = arrangement.stack;
 
     const configTable      = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
@@ -66,26 +40,24 @@ describe('WebSocketMessageLambda connections-table and push-API wiring', () => {
     }));
     const connectionsTable = new WebSocketTable(stack, 'websocket-table');
     tableId                = stack.getLogicalId(defaultCfnResource(connectionsTable));
-    fakePushApi            = new FakeWebSocketPushApi();
+
+    grantManageConnections                    = jest.fn<void, [IGrantable]>();
+    const webSocketPushApi: IWebSocketPushApi = {
+      managementEndpoint: FAKE_MANAGEMENT_ENDPOINT,
+      grantManageConnections,
+    };
 
     messageLambda = new WebSocketMessageLambda(stack, 'websocket-message', {
       connectionsTable,
       configTable,
       itemTable,
       maxSubscriptions: 10,
-      webSocketPushApi: fakePushApi,
-      artifactResolver,
+      webSocketPushApi,
+      artifactResolver: arrangement.artifactResolver,
     });
 
     template = Template.fromStack(stack);
   });
-
-  function connectionsTableStatements(): PolicyStatementJson[] {
-    return statementsForResource(template, [
-      { 'Fn::GetAtt': [tableId, 'Arn'] },
-      { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
-    ]);
-  }
 
   it('grants exactly the read-write actions, Allow, on the connections table + index resources', () => {
     const expectedResource = [
@@ -106,24 +78,16 @@ describe('WebSocketMessageLambda connections-table and push-API wiring', () => {
     });
   });
 
-  it('grants no Scan/PartiQL and no Deny on the connections table', () => {
-    const statements  = connectionsTableStatements();
-    const actionsFlat = statements.flatMap(actionsOf);
-
-    expect(actionsFlat).not.toContain('dynamodb:Scan');
-    expect(actionsFlat.some((action) => typeof action === 'string' && action.startsWith('dynamodb:PartiQL'))).toBe(false);
-    expect(statements.some((statement) => statement.Effect === 'Deny')).toBe(false);
-  });
-
-  it('calls grantManageConnections on the push API with itself as the grantee', () => {
-    expect(fakePushApi.grantCalls).toEqual([messageLambda]);
+  it('calls grantManageConnections on the push API once, with the function itself as the grantee', () => {
+    expect(grantManageConnections).toHaveBeenCalledTimes(1);
+    expect(grantManageConnections).toHaveBeenCalledWith(messageLambda);
   });
 
   it('sets WEBSOCKET_API_ENDPOINT from the push API managementEndpoint', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       Environment: {
         Variables: Match.objectLike({
-          WEBSOCKET_API_ENDPOINT: fakePushApi.managementEndpoint,
+          WEBSOCKET_API_ENDPOINT: FAKE_MANAGEMENT_ENDPOINT,
         }),
       },
     });

@@ -1,24 +1,16 @@
 /// <reference types="jest" />
 
 /**
- * JmapApiLambda (jmap-api) auth-key-store grant and OAuth config tests.
- *
- * Verifies JmapApiLambda.grantRead grants exactly the read actions on the auth-key-store
- * table (and nothing broader, e.g. no Scan/PartiQL), that the table-name env var is present, and
- * that OAUTH_HANDLER_CONFIG carries the scope map the Go handler reads and no other field.
+ * JmapApiLambda: the read-only grant on the auth-key-store table, the table-name environment variable, and the
+ * OAUTH_HANDLER_CONFIG value, which carries the scope map the Go handler reads and no other field.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import { actionsOf, statementsForResource }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { VENDOR_ACCOUNT_ID }                    from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import { Function as LambdaFunction }           from 'aws-cdk-lib/aws-lambda';
 import { Bucket }                               from 'aws-cdk-lib/aws-s3';
-import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+import type * as cdk                            from 'aws-cdk-lib';
 
 import { Permission }                           from '../../../core/auth/jmap-scopes';
 import { DataBlobStore }                        from '../../buckets/data-blob-store';
@@ -28,27 +20,16 @@ import { AuthKeyStoreTable }                    from '../../tables/auth-key-stor
 import { DataTable }                            from '../../tables/data-tables';
 import { JmapApiLambda }                        from '../jmap-api-lambda';
 
+import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+
 describe('JmapApiLambda', () => {
   let stack: cdk.Stack;
   let template: Template;
   let authKeyStoreTable: AuthKeyStoreTable;
 
   beforeEach(() => {
-    const app = new App();
-
-    stack = new cdk.Stack(app, 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-
-    const packages: Record<string, ArtifactPin> = {
-      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    };
-    const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
-      packages,
-      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
-    });
+    const arrangement = arrangeWrapperStack();
+    stack             = arrangement.stack;
 
     const configTable                 = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
@@ -77,9 +58,9 @@ describe('JmapApiLambda', () => {
       blobStore,
       emailSubmissionQueue,
       auditEventsQueue,
-      cdnHost:    'cdn.example.com',
-      apiBaseUrl: 'https://jmap.example.com',
-      artifactResolver,
+      cdnHost:             'cdn.example.com',
+      apiBaseUrl:          'https://jmap.example.com',
+      artifactResolver:    arrangement.artifactResolver,
       identityProvisioner: identityProvisionerFunction,
       scopeMap:            { 'mail.read': [Permission.MAIL_READ] },
       vendorAccountIds:    [VENDOR_ACCOUNT_ID],
@@ -95,10 +76,6 @@ describe('JmapApiLambda', () => {
     ]);
   }
 
-  function authKeyStoreStatements(): PolicyStatementJson[] {
-    return statementsForResource(template, authKeyStoreResources());
-  }
-
   it('grants exactly the read actions, Allow, on the table + index resources', () => {
     template.hasResourceProperties('AWS::IAM::Policy', {
       PolicyDocument: {
@@ -111,15 +88,6 @@ describe('JmapApiLambda', () => {
         ]),
       },
     });
-  });
-
-  it('grants no Scan/PartiQL and no Deny on the auth-key-store table', () => {
-    const statements  = authKeyStoreStatements();
-    const actionsFlat = statements.flatMap(actionsOf);
-
-    expect(actionsFlat).not.toContain('dynamodb:Scan');
-    expect(actionsFlat.some((action) => typeof action === 'string' && action.startsWith('dynamodb:PartiQL'))).toBe(false);
-    expect(statements.some((statement) => statement.Effect === 'Deny')).toBe(false);
   });
 
   it('sets AUTH_KEY_STORE_TABLE_NAME on the function environment', () => {

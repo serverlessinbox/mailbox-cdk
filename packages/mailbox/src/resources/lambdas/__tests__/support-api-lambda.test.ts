@@ -7,19 +7,17 @@
  * runtime, where nothing in the template reports it.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin }                               from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf }                                      from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Template }                                       from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                           from 'aws-cdk-lib/aws-dynamodb';
-import { App, BootstraplessSynthesizer, Stack }           from 'aws-cdk-lib';
+import type { Stack }                                     from 'aws-cdk-lib';
 
 import { SupportRolesInfra }                              from '../../../platform/support/support-roles-infra';
 import { AuditEventsQueue }                               from '../../queues/audit-events-queue';
 import { DataTable }                                      from '../../tables/data-tables';
 import { SupportApiLambda }                               from '../support-api-lambda';
 
-import { onlyLambdaOf }                                   from './lambda-wrapper-helpers';
+import { arrangeWrapperStack, onlyLambdaOf }              from './lambda-wrapper-helpers';
 import type { SynthesizedLambda }                         from './lambda-wrapper-helpers';
 
 const VENDOR_ACCOUNT = '999988887777';
@@ -35,19 +33,7 @@ function templateValue(stack: Stack, value: string): unknown {
 }
 
 function synthesize(): SynthesizedSupportApi {
-  const stack = new Stack(new App(), 'TestStack', {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
-
-  const packages: Record<string, ArtifactPin> = {
-    'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-  };
-  const artifactResolver                      = new PinnedArtifactResolver({
-    packages,
-    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-    deploymentRegion: stack.region,
-  });
+  const { stack, artifactResolver } = arrangeWrapperStack();
 
   const roles = new SupportRolesInfra(stack, 'roles', { vendorAccountIds: [VENDOR_ACCOUNT] });
   new SupportApiLambda(stack, 'support-api', {

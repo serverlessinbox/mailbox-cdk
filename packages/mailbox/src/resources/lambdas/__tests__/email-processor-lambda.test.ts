@@ -1,20 +1,15 @@
 /// <reference types="jest" />
 
 /**
- * EmailProcessorLambda event-source wiring tests.
- *
- * Verifies the Lambda's own SQS event source mapping and consume grant against the
- * email-processing queue it owns the wiring for (grant-concept Phase 2A).
+ * EmailProcessorLambda: its SQS event source mapping on the email-processing queue, the SQS consume statement its
+ * role is granted on that queue, and the websocket push wiring it takes through enableWebSocketPush.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
 import { statementsForAction }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket }                               from 'aws-cdk-lib/aws-s3';
-import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+import type * as cdk                            from 'aws-cdk-lib';
 
 import type { IWebSocketBroadcastPublisher }    from '../../../contracts/websocket-push';
 import { DataBlobStore }                        from '../../buckets/data-blob-store';
@@ -22,27 +17,16 @@ import { EmailProcessingQueue }                 from '../../queues/email-process
 import { DataTable }                            from '../../tables/data-tables';
 import { EmailProcessorLambda }                 from '../email-processor-lambda';
 
+import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+
 describe('EmailProcessorLambda event-source wiring', () => {
   let stack: cdk.Stack;
   let emailProcessingQueue: EmailProcessingQueue;
   let processor: EmailProcessorLambda;
 
   beforeEach(() => {
-    const app = new App();
-
-    stack = new cdk.Stack(app, 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-
-    const packages: Record<string, ArtifactPin> = {
-      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    };
-    const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
-      packages,
-      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
-    });
+    const arrangement = arrangeWrapperStack();
+    stack             = arrangement.stack;
 
     const configTable    = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
@@ -62,7 +46,7 @@ describe('EmailProcessorLambda event-source wiring', () => {
       changelogTable,
       blobStore,
       emailProcessingQueue,
-      artifactResolver,
+      artifactResolver: arrangement.artifactResolver,
     });
   });
 

@@ -6,15 +6,19 @@
  * or the grants the sweeper attaches to that role never reach the function.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin }                               from '@serverlessinbox/artifact-registry-cdk';
-import { Template }                                       from 'aws-cdk-lib/assertions';
-import * as iam                                           from 'aws-cdk-lib/aws-iam';
-import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
-import * as t                                             from 'typanion';
+import type { ArtifactPin }                     from '@serverlessinbox/artifact-registry-cdk';
+import { ArtifactZone }                         from '@serverlessinbox/artifact-registry-cdk';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import * as iam                                 from 'aws-cdk-lib/aws-iam';
+import { Duration }                             from 'aws-cdk-lib';
+import * as t                                   from 'typanion';
 
-import { isTemplateValue, resourcesOfType }               from '../../../__tests__/template-resources';
-import { ResourceSweeperWorkerLambda }                    from '../resource-sweeper-worker-lambda';
+import { isTemplateValue, resourcesOfType }     from '../../../__tests__/template-resources';
+import { ResourceSweeperWorkerLambda }          from '../resource-sweeper-worker-lambda';
+
+import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+
+const WORKER_PACKAGES: Record<string, ArtifactPin> = { 'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL } };
 
 const isFunctionProperties = t.isPartial({
   Handler:    t.isString(),
@@ -25,17 +29,8 @@ const isFunctionProperties = t.isPartial({
 
 describe('ResourceSweeperWorkerLambda', () => {
   it('runs the worker handler for at most three minutes with 256 MB, on the role it was given', () => {
-    const stack                                 = new Stack(new App(), 'WorkerFunctionStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-    const packages: Record<string, ArtifactPin> = { 'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL } };
-    const artifactResolver                      = new PinnedArtifactResolver({
-      packages,
-      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
-    });
-    const role                                  = new iam.Role(stack, 'worker-role', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
+    const { stack, artifactResolver } = arrangeWrapperStack(WORKER_PACKAGES);
+    const role                        = new iam.Role(stack, 'worker-role', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
     new ResourceSweeperWorkerLambda(stack, 'worker', { artifactResolver, role });
 
     const [workerFunction] = resourcesOfType(Template.fromStack(stack), 'AWS::Lambda::Function', isFunctionProperties);

@@ -1,51 +1,31 @@
 /// <reference types="jest" />
 
 /**
- * EmailSenderLambda IAM Scoping Tests
- *
- * Verifies:
- * - ses:SendRawEmail is scoped to specific SES resource ARNs (email identities and configuration set),
- *   rather than granted on an unconditioned wildcard resource.
- * - The Lambda's own SQS event source mapping and consume grant against the email-submissions
- *   queue it owns the wiring for (grant-concept Phase 2A).
+ * EmailSenderLambda IAM scoping and queue wiring: ses:SendRawEmail is scoped to the identity and configuration-set
+ * ARNs with no condition, and the Lambda's SQS event source mapping and consume grant on the submissions queue.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
 import { resourcesOf, statementsForAction }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket }                               from 'aws-cdk-lib/aws-s3';
-import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+import type * as cdk                            from 'aws-cdk-lib';
 
 import { DataBlobStore }                        from '../../buckets/data-blob-store';
 import { EmailSendingQueue }                    from '../../queues/email-sending-queue';
 import { DataTable }                            from '../../tables/data-tables';
 import { EmailSenderLambda }                    from '../email-sender-lambda';
 
+import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+
 describe('EmailSenderLambda IAM scoping', () => {
-  let app: App;
   let stack: cdk.Stack;
-  let artifactResolver: IArtifactResolver;
+  let template: Template;
   let submissionQueue: EmailSendingQueue;
 
   beforeEach(() => {
-    app = new App();
-
-    stack = new cdk.Stack(app, 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-
-    const packages: Record<string, ArtifactPin> = {
-      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    };
-    artifactResolver                            = new PinnedArtifactResolver({
-      packages,
-      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
-    });
+    const arrangement = arrangeWrapperStack();
+    stack             = arrangement.stack;
 
     const configTable    = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
@@ -66,55 +46,35 @@ describe('EmailSenderLambda IAM scoping', () => {
       blobStore,
       sesConfigSetName: 'test-config-set',
       submissionQueue,
-      artifactResolver,
+      artifactResolver: arrangement.artifactResolver,
     });
+
+    template = Template.fromStack(stack);
   });
 
   it('scopes ses:SendRawEmail to identity and configuration-set ARNs without condition', () => {
-    const template = Template.fromStack(stack);
-
-    // Find the statement that grants ses:SendRawEmail
     const sendRawEmailStatements = statementsForAction(template, 'ses:SendRawEmail');
-    for (const statement of sendRawEmailStatements) {
-      // Verify there is no Condition block
-      expect(statement.Condition).toBeUndefined();
+    expect(sendRawEmailStatements).toHaveLength(1);
+    const [statement] = sendRawEmailStatements;
 
-      // Verify the resources are an array with two elements
-      expect(Array.isArray(statement.Resource)).toBe(true);
-      expect(statement.Resource).toHaveLength(2);
+    expect(statement.Condition).toBeUndefined();
+    expect(Array.isArray(statement.Resource)).toBe(true);
+    expect(statement.Resource).toHaveLength(2);
 
-      // Verify both resources are properly formed with account/region tokens
-      const [identityArn, configSetArn] = resourcesOf(statement);
+    const [identityArn, configSetArn] = resourcesOf(statement);
 
-      // Check identity ARN contains the partition and region tokens
-      expect(JSON.stringify(identityArn)).toContain('AWS::Partition');
-      expect(JSON.stringify(identityArn)).toContain('AWS::Region');
-      expect(JSON.stringify(identityArn)).toContain('AWS::AccountId');
-      expect(JSON.stringify(identityArn)).toContain('identity/*');
+    expect(JSON.stringify(identityArn)).toContain('AWS::Partition');
+    expect(JSON.stringify(identityArn)).toContain('AWS::Region');
+    expect(JSON.stringify(identityArn)).toContain('AWS::AccountId');
+    expect(JSON.stringify(identityArn)).toContain('identity/*');
 
-      // Check config-set ARN contains the partition, region, and config-set name
-      expect(JSON.stringify(configSetArn)).toContain('AWS::Partition');
-      expect(JSON.stringify(configSetArn)).toContain('AWS::Region');
-      expect(JSON.stringify(configSetArn)).toContain('AWS::AccountId');
-      expect(JSON.stringify(configSetArn)).toContain('test-config-set');
-    }
-
-    expect(sendRawEmailStatements.length).toBeGreaterThan(0);
-  });
-
-  it('does not grant ses:SendRawEmail on wildcard resources', () => {
-    const template = Template.fromStack(stack);
-    for (const statement of statementsForAction(template, 'ses:SendRawEmail')) {
-      // Ensure resources are not a bare wildcard
-      expect(statement.Resource).not.toEqual('*');
-      // Resources should be an array of specific ARNs
-      expect(Array.isArray(statement.Resource)).toBe(true);
-      expect(resourcesOf(statement).length).toBeGreaterThan(0);
-    }
+    expect(JSON.stringify(configSetArn)).toContain('AWS::Partition');
+    expect(JSON.stringify(configSetArn)).toContain('AWS::Region');
+    expect(JSON.stringify(configSetArn)).toContain('AWS::AccountId');
+    expect(JSON.stringify(configSetArn)).toContain('test-config-set');
   });
 
   it('instantiates exactly one queue event, sourced from the email-submissions queue', () => {
-    const template          = Template.fromStack(stack);
     const queueArn: unknown = stack.resolve(submissionQueue.queueArn);
     template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
 
@@ -124,7 +84,6 @@ describe('EmailSenderLambda IAM scoping', () => {
   });
 
   it('grants the role exactly the SQS consume statement on the email-submissions queue', () => {
-    const template          = Template.fromStack(stack);
     const consumeStatements = statementsForAction(template, 'sqs:ReceiveMessage');
 
     expect(consumeStatements).toHaveLength(1);

@@ -1,33 +1,32 @@
 /// <reference types="jest" />
 
-import { ArtifactZone, PinnedArtifactResolver }      from '@serverlessinbox/artifact-registry-cdk';
+/**
+ * LicenseRefresherLambda: its invocation by the daily schedule at the given time and by the stack-deployed event.
+ */
+
 import { VENDOR_ACCOUNT_ID }                         from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                           from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                      from 'aws-cdk-lib/aws-dynamodb';
-import * as cdk                                      from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
+import type * as cdk                                 from 'aws-cdk-lib';
 
 import { DataTable }                                 from '../../tables/data-tables';
 import { LicenseRefresherLambda }                    from '../license-refresher-lambda';
 
+import { arrangeWrapperStack }                       from './lambda-wrapper-helpers';
+
 describe('LicenseRefresherLambda', () => {
+  let stack: cdk.Stack;
   let template: Template;
 
   beforeEach(() => {
-    const stack = new cdk.Stack(new App(), 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
+    const arrangement = arrangeWrapperStack();
+    stack             = arrangement.stack;
 
     new LicenseRefresherLambda(stack, 'license-refresher', {
       configTable:      new DataTable(new Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: AttributeType.STRING },
       })),
-      artifactResolver: new PinnedArtifactResolver({
-        packages:         { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-        deploymentRegion: stack.region,
-      }),
+      artifactResolver: arrangement.artifactResolver,
       coreDomain:       'example.com',
       vendorAccountIds: [VENDOR_ACCOUNT_ID],
       scheduleHour:     '5',

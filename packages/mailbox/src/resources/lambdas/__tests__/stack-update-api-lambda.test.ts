@@ -6,35 +6,20 @@
  * stack; a narrowed one breaks the update flow where only a deploy shows it.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin }                     from '@serverlessinbox/artifact-registry-cdk';
 import { actionsOf }                            from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Template }                             from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
 import { TemplateVersionParam }                 from '../../../platform/update/template-version-param';
 import { AuditEventsQueue }                     from '../../queues/audit-events-queue';
 import { DataTable }                            from '../../tables/data-tables';
 import { StackUpdateApiLambda }                 from '../stack-update-api-lambda';
 
-import { onlyLambdaOf }                         from './lambda-wrapper-helpers';
+import { arrangeWrapperStack, onlyLambdaOf }    from './lambda-wrapper-helpers';
 import type { SynthesizedLambda }               from './lambda-wrapper-helpers';
 
 function synthesize(): SynthesizedLambda {
-  const stack = new Stack(new App(), 'TestStack', {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
-
-  const packages: Record<string, ArtifactPin> = {
-    'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-  };
-  const artifactResolver                      = new PinnedArtifactResolver({
-    packages,
-    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-    deploymentRegion: stack.region,
-  });
+  const { stack, artifactResolver } = arrangeWrapperStack();
 
   new StackUpdateApiLambda(stack, 'stack-update-api', {
     rootStackArn: 'arn:aws:cloudformation:us-west-2:123456789012:stack/root/id',

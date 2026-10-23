@@ -8,18 +8,22 @@
  * this ordering can run before those rows exist.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }              from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }                            from '@serverlessinbox/artifact-registry-cdk';
 import { Match, Template }                                   from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                              from 'aws-cdk-lib/aws-dynamodb';
-import { App, BootstraplessSynthesizer, CfnResource, Stack } from 'aws-cdk-lib';
+import { CfnResource }                                       from 'aws-cdk-lib';
+import type { Stack }                                        from 'aws-cdk-lib';
 
 import { AUTH_POLICY_JMAP_API, OAUTH_CLIENT_WEBMAIL_UI }     from '../../../contracts/auth-names';
 import { AuditEventsQueue }                                  from '../../queues/audit-events-queue';
 import { DataTable }                                         from '../../tables/data-tables';
 import { IdpTokenExchangeLambda }                            from '../idp-token-exchange-lambda';
 
+import { arrangeWrapperStack }                               from './lambda-wrapper-helpers';
+
 describe('IdpTokenExchangeLambda', () => {
   let stack: Stack;
+  let artifactResolver: IArtifactResolver;
 
   function newLambda(dependsOn?: CfnResource[]): IdpTokenExchangeLambda {
     return new IdpTokenExchangeLambda(stack, 'idp-token-exchange', {
@@ -27,22 +31,17 @@ describe('IdpTokenExchangeLambda', () => {
       auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
       authPolicyName:   AUTH_POLICY_JMAP_API,
       oauthClientName:  OAUTH_CLIENT_WEBMAIL_UI,
-      artifactResolver: new PinnedArtifactResolver({
-        packages:         { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-        deploymentRegion: stack.region,
-      }),
-      serviceName:      'idp-token-exchange-webmail-ui',
-      pipeline:         'jmap',
+      artifactResolver,
+      serviceName: 'idp-token-exchange-webmail-ui',
+      pipeline:    'jmap',
       dependsOn,
     });
   }
 
   beforeEach(() => {
-    stack = new Stack(new App(), 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
+    const arrangement = arrangeWrapperStack();
+    stack             = arrangement.stack;
+    artifactResolver  = arrangement.artifactResolver;
   });
 
   it('depends on the resources it is told to wait for', () => {

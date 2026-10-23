@@ -11,39 +11,32 @@
  * setting makes the starter answer every invocation with a configuration failure.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin }                     from '@serverlessinbox/artifact-registry-cdk';
-import { actionsOf, allPolicyStatements }       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { env }                                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { Template }                             from 'aws-cdk-lib/assertions';
-import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+import { ArtifactZone }                                            from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin }                                        from '@serverlessinbox/artifact-registry-cdk';
+import { actionsOf, allPolicyStatements }                          from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { env }                                                     from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { Template }                                                from 'aws-cdk-lib/assertions';
 
-import { loadStarter }                          from '../../../runtime/resource-sweeper/config';
-import { ResourceSweeperStarterLambda }         from '../resource-sweeper-starter-lambda';
+import { loadStarter }                                             from '../../../runtime/resource-sweeper/config';
+import { ResourceSweeperStarterLambda }                            from '../resource-sweeper-starter-lambda';
 
-const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:sweeper';
+import { arrangeWrapperStack, onlyLambdaOf, processEnvironmentOf } from './lambda-wrapper-helpers';
+
+const STATE_MACHINE_ARN                             = 'arn:aws:states:us-west-2:123456789012:stateMachine:sweeper';
+const STARTER_PACKAGES: Record<string, ArtifactPin> = {
+  'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
+};
 
 describe('ResourceSweeperStarterLambda', () => {
   let template: Template;
 
   beforeEach(() => {
-    const stack                                 = new cdk.Stack(new App(), 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-    const packages: Record<string, ArtifactPin> = {
-      'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    };
-    new ResourceSweeperStarterLambda(stack, 'starter', {
-      artifactResolver: new PinnedArtifactResolver({
-        packages,
-        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-        deploymentRegion: stack.region,
-      }),
+    const arrangement = arrangeWrapperStack(STARTER_PACKAGES);
+    new ResourceSweeperStarterLambda(arrangement.stack, 'starter', {
+      artifactResolver: arrangement.artifactResolver,
       stateMachineArn:  STATE_MACHINE_ARN,
     });
-    template = Template.fromStack(stack);
+    template = Template.fromStack(arrangement.stack);
   });
 
   it('grants cloudformation:DescribeStacks on the stack id and no other CloudFormation action', () => {
@@ -57,10 +50,10 @@ describe('ResourceSweeperStarterLambda', () => {
   });
 
   it('provides an environment its runtime configuration loads, with the state machine ARN it was given', () => {
-    const [starter]               = Object.values(template.findResources('AWS::Lambda::Function'));
+    const { environment }         = onlyLambdaOf(template);
     const originalEnv             = process.env;
     const injectedByLambdaRuntime = { AWS_REGION: 'us-west-2', AWS_LAMBDA_FUNCTION_NAME: 'sweeper-starter-function' };
-    process.env                   = { ...originalEnv, ...stringValues(starter.Properties.Environment.Variables), ...injectedByLambdaRuntime };
+    process.env                   = { ...originalEnv, ...processEnvironmentOf(environment), ...injectedByLambdaRuntime };
 
     try {
       const { config, error } = env.tryLoad(loadStarter);
@@ -72,14 +65,3 @@ describe('ResourceSweeperStarterLambda', () => {
     }
   });
 });
-
-function stringValues(variables: Record<string, unknown>): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(variables).map(([name, value]) => {
-      if (typeof value !== 'string') {
-        throw new Error(`Environment variable ${name} is not a plain string in the template: ${JSON.stringify(value)}`);
-      }
-      return [name, value];
-    }),
-  );
-}

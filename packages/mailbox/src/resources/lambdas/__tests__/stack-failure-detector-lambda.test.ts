@@ -1,32 +1,32 @@
 /// <reference types="jest" />
 
 /**
- * StackFailureDetectorLambda tests.
- *
- * Pin what the wrapper adds to the Go function: the pinned name, the supplied role, the log group
- * environment variable, timeout and memory; a regression runs the detector under a different role,
- * hands it the wrong log group, or lets CDK attach a policy to its role.
+ * StackFailureDetectorLambda: the wrapper's pinned function name, the supplied role, the log group environment variable,
+ * timeout and memory, the stack-failed rule that targets the function, and the policies attached to the supplied role.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { Template }                             from 'aws-cdk-lib/assertions';
 import * as iam                                 from 'aws-cdk-lib/aws-iam';
-import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+import type * as cdk                            from 'aws-cdk-lib';
+import * as t                                   from 'typanion';
 
+import { resourcesOfType }                      from '../../../__tests__/template-resources';
+import { defaultCfnResource }                   from '../../../utils/cfn-resource';
 import { StackFailureDetectorLambda }           from '../stack-failure-detector-lambda';
 
+import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+
+const isPolicyProperties = t.isPartial({
+  Roles: t.isOptional(t.isArray(t.isPartial({ Ref: t.isString() }))),
+});
+
+const isRoleProperties = t.isPartial({
+  Policies: t.isOptional(t.isArray(t.isPartial({ PolicyName: t.isString() }))),
+});
+
 function createDetector(): { stack: cdk.Stack; role: iam.Role; detector: StackFailureDetectorLambda } {
-  const stack            = new cdk.Stack(new App(), 'TestStack', {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
-  const artifactResolver = new PinnedArtifactResolver({
-    packages:         { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
-    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-    deploymentRegion: stack.region,
-  });
-  const role             = new iam.Role(stack, 'DetectorRole', {
+  const { stack, artifactResolver } = arrangeWrapperStack();
+  const role                        = new iam.Role(stack, 'DetectorRole', {
     assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
   });
 
@@ -42,11 +42,12 @@ function createDetector(): { stack: cdk.Stack; role: iam.Role; detector: StackFa
 
 describe('StackFailureDetectorLambda', () => {
   it('runs under the given role with the given name, 2 minute timeout and 256 MB', () => {
-    const { stack, role } = createDetector();
+    const { stack, role }  = createDetector();
+    const roleArn: unknown = stack.resolve(role.roleArn);
 
     Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'pinned-detector-name',
-      Role:         stack.resolve(role.roleArn),
+      Role:         roleArn,
       Timeout:      120,
       MemorySize:   256,
     });
@@ -61,20 +62,31 @@ describe('StackFailureDetectorLambda', () => {
   });
 
   it('creates the stack-failed rule under itself, targeting itself, and exposes it', () => {
-    const { stack, detector } = createDetector();
-    const template            = Template.fromStack(stack);
-    const [ruleId]            = Object.keys(template.findResources('AWS::Events::Rule'));
+    const { stack, detector }  = createDetector();
+    const template             = Template.fromStack(stack);
+    const [ruleId]             = Object.keys(template.findResources('AWS::Events::Rule'));
+    const functionArn: unknown = stack.resolve(detector.functionArn);
+    const ruleArn: unknown     = stack.resolve(detector.stackFailedEvent.ruleArn);
 
-    expect(ruleId).toMatch(/^detectorstackfailed/);
+    expect(Object.keys(template.findResources('AWS::Events::Rule'))).toHaveLength(1);
     template.hasResourceProperties('AWS::Events::Rule', {
-      Targets: [{ Id: detector.stackFailedEvent.ruleTargetId, Arn: stack.resolve(detector.functionArn) }],
+      Targets: [{ Id: detector.stackFailedEvent.ruleTargetId, Arn: functionArn }],
     });
-    expect(stack.resolve(detector.stackFailedEvent.ruleArn)).toEqual({ 'Fn::GetAtt': [ruleId, 'Arn'] });
+    expect(ruleArn).toEqual({ 'Fn::GetAtt': [ruleId, 'Arn'] });
   });
 
-  it('leaves the given role without any CDK-attached policy', () => {
-    const { stack } = createDetector();
+  it('attaches exactly the policies the class intends to the given role, which is none, attached or inline', () => {
+    const { stack, role } = createDetector();
+    const template        = Template.fromStack(stack);
+    const roleLogicalId   = stack.getLogicalId(defaultCfnResource(role));
 
-    Template.fromStack(stack).resourceCountIs('AWS::IAM::Policy', 0);
+    const attachedPolicies = resourcesOfType(template, 'AWS::IAM::Policy', isPolicyProperties)
+      .filter(({ properties }) => (properties.Roles ?? []).some((roleRef) => roleRef.Ref === roleLogicalId));
+    const inlinePolicies   = resourcesOfType(template, 'AWS::IAM::Role', isRoleProperties)
+      .filter(({ logicalId }) => logicalId === roleLogicalId)
+      .flatMap(({ properties }) => properties.Policies ?? []);
+
+    expect(attachedPolicies.map((policy) => policy.logicalId)).toEqual([]);
+    expect(inlinePolicies).toEqual([]);
   });
 });

@@ -5,36 +5,20 @@
  * a resolver without that pin must fail to synthesize rather than reference a missing artifact.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { ArtifactZone }                         from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin }                     from '@serverlessinbox/artifact-registry-cdk';
 import { allPolicyStatements }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Template }                             from 'aws-cdk-lib/assertions';
-import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import { DataOverrideResolverLambda }           from '../data-override-resolver-lambda';
 
-function createStack(): cdk.Stack {
-  return new cdk.Stack(new App(), 'TestStack', {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
-}
-
-function resolverWithPins(stack: cdk.Stack, packages: Record<string, ArtifactPin>): PinnedArtifactResolver {
-  return new PinnedArtifactResolver({
-    packages,
-    location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-    deploymentRegion: stack.region,
-  });
-}
+import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
 
 describe('DataOverrideResolverLambda', () => {
   it('grants dynamodb:DescribeTable, and no other action, on every DynamoDB table', () => {
-    const stack = createStack();
-    new DataOverrideResolverLambda(stack, 'resolver', {
-      artifactResolver: resolverWithPins(stack, { 'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL } }),
-    });
+    const packages: Record<string, ArtifactPin> = { 'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL } };
+    const { stack, artifactResolver }           = arrangeWrapperStack(packages);
+    new DataOverrideResolverLambda(stack, 'resolver', { artifactResolver });
 
     const statements = allPolicyStatements(Template.fromStack(stack));
 
@@ -53,12 +37,10 @@ describe('DataOverrideResolverLambda', () => {
   });
 
   it('fails to synthesize naming the package the resolver holds no pin for', () => {
-    const stack = createStack();
+    const { stack, artifactResolver } = arrangeWrapperStack();
 
     expect(() => {
-      new DataOverrideResolverLambda(stack, 'resolver', {
-        artifactResolver: resolverWithPins(stack, { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } }),
-      });
+      new DataOverrideResolverLambda(stack, 'resolver', { artifactResolver });
     }).toThrow("No resolved data for package 'mailbox-cdk'");
   });
 });

@@ -1,23 +1,20 @@
 /// <reference types="jest" />
 
 /**
- * AuditWriterLambda event-source wiring tests.
- *
- * Verifies the Lambda's own SQS event source mapping and consume grant against the audit-events
- * queue it owns the wiring for (grant-concept Phase 2A).
+ * AuditWriterLambda event-source wiring: its SQS event source mapping on the audit-events queue, and the SQS consume
+ * statement its role is granted on that queue.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
 import { statementsForAction }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
-import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+import type * as cdk                            from 'aws-cdk-lib';
 
 import { AuditEventsQueue }                     from '../../queues/audit-events-queue';
 import { DataTable }                            from '../../tables/data-tables';
 import { AuditWriterLambda }                    from '../audit-writer-lambda';
+
+import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
 
 describe('AuditWriterLambda event-source wiring', () => {
   let stack: cdk.Stack;
@@ -25,21 +22,8 @@ describe('AuditWriterLambda event-source wiring', () => {
   let auditEventsQueue: AuditEventsQueue;
 
   beforeEach(() => {
-    const app = new App();
-
-    stack = new cdk.Stack(app, 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-
-    const packages: Record<string, ArtifactPin> = {
-      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    };
-    const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
-      packages,
-      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
-    });
+    const arrangement = arrangeWrapperStack();
+    stack             = arrangement.stack;
 
     const auditLogTable = new DataTable(new Table(stack, 'audit-log-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
@@ -49,7 +33,7 @@ describe('AuditWriterLambda event-source wiring', () => {
     new AuditWriterLambda(stack, 'audit-writer', {
       auditLogTable,
       auditEventsQueue,
-      artifactResolver,
+      artifactResolver: arrangement.artifactResolver,
     });
 
     template = Template.fromStack(stack);

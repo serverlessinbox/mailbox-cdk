@@ -13,15 +13,12 @@
  * rename in the wrapper must fail here.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }                     from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver }                      from '@serverlessinbox/artifact-registry-cdk';
 import { ServerlessInboxTagKeys, StackIdentity, VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                                          from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                                     from 'aws-cdk-lib/aws-dynamodb';
 import { Function as LambdaFunction }                               from 'aws-cdk-lib/aws-lambda';
 import { Bucket }                                                   from 'aws-cdk-lib/aws-s3';
-import * as cdk                                                     from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                            from 'aws-cdk-lib';
+import type * as cdk                                                from 'aws-cdk-lib';
 
 import type { IWebSocketBroadcastPublisher }                        from '../../../contracts/websocket-push';
 import { DataBlobStore }                                            from '../../buckets/data-blob-store';
@@ -30,32 +27,19 @@ import { EmailSendingQueue }                                        from '../../
 import { DataTable }                                                from '../../tables/data-tables';
 import { AdminApiLambda }                                           from '../admin-api-lambda';
 
+import { arrangeWrapperStack }                                      from './lambda-wrapper-helpers';
+
 function rootStackIdOf(stack: cdk.Stack): unknown {
   return stack.resolve(StackIdentity.guid);
 }
 
 describe('AdminApiLambda IAM scoping', () => {
-  let app: App;
   let stack: cdk.Stack;
-  let artifactResolver: IArtifactResolver;
   let lambda: AdminApiLambda;
 
   beforeEach(() => {
-    app = new App();
-
-    stack = new cdk.Stack(app, 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-
-    const packages: Record<string, ArtifactPin> = {
-      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    };
-    artifactResolver                            = new PinnedArtifactResolver({
-      packages,
-      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
-    });
+    const arrangement = arrangeWrapperStack();
+    stack             = arrangement.stack;
 
     const configTable                 = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
@@ -90,7 +74,7 @@ describe('AdminApiLambda IAM scoping', () => {
       blobStore,
       emailSubmissionQueue,
       auditEventsQueue,
-      artifactResolver,
+      artifactResolver:    arrangement.artifactResolver,
       identityProvisioner: identityProvisionerFunction,
       sesRuleSetName:      'test-rule-set',
       sesConfigSetName:    'test-config-set',

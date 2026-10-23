@@ -9,21 +9,21 @@
  * grants is pinned to the scope it is meant to have.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }                                      from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin, IArtifactResolver }                                       from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }                                                    from '@serverlessinbox/artifact-registry-cdk';
 import { statementsForAction }                                                       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { VENDOR_ACCOUNT_ID, ServerlessInboxTagKeys, StackIdentity }                  from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                                                           from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                                                      from 'aws-cdk-lib/aws-dynamodb';
 import { ReceiptRuleSet }                                                            from 'aws-cdk-lib/aws-ses';
 import * as cdk                                                                      from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                                             from 'aws-cdk-lib';
 
 import type { IDnsZone }                                                             from '../../../core/edge/dns-zone';
 import { AuthKeyStoreTable }                                                         from '../../tables/auth-key-store-table';
 import { DataTable }                                                                 from '../../tables/data-tables';
 import { BootstrapLambda }                                                           from '../bootstrap-lambda';
 import type { BootstrapLambdaProps }                                                 from '../bootstrap-lambda';
+
+import { arrangeWrapperStack }                                                       from './lambda-wrapper-helpers';
 
 describe('BootstrapLambda', () => {
   let stack: cdk.Stack;
@@ -33,19 +33,9 @@ describe('BootstrapLambda', () => {
   let sesRuleSet: ReceiptRuleSet;
 
   beforeEach(() => {
-    stack = new cdk.Stack(new App(), 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-
-    const packages: Record<string, ArtifactPin> = {
-      'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-    };
-    artifactResolver                            = new PinnedArtifactResolver({
-      packages,
-      location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-      deploymentRegion: stack.region,
-    });
+    const arrangement = arrangeWrapperStack();
+    stack             = arrangement.stack;
+    artifactResolver  = arrangement.artifactResolver;
 
     configTable       = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },

@@ -10,19 +10,21 @@
  * with a configuration failure.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }                             from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin }                                                 from '@serverlessinbox/artifact-registry-cdk';
+import { ArtifactZone }                                                     from '@serverlessinbox/artifact-registry-cdk';
 import { getAttLogicalId, statementsForRole }                               from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import type { PolicyStatementJson }                                         from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { env }                                                              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { ServerlessInboxTagKeys }                                           from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                                         from 'aws-cdk-lib/assertions';
-import { App, BootstraplessSynthesizer, CfnCondition, Duration, Fn, Stack } from 'aws-cdk-lib';
+import { CfnCondition, Duration, Fn }                                       from 'aws-cdk-lib';
 import * as t                                                               from 'typanion';
 
 import { isTemplateValue, resourcesOfType }                                 from '../../../__tests__/template-resources';
 import { load }                                                             from '../../../runtime/artifact-updater/config';
 import { ArtifactUpdaterLambda }                                            from '../artifact-updater-lambda';
+
+import { arrangeWrapperStack, ownedByRootStack, processEnvironmentOf }      from './lambda-wrapper-helpers';
 
 const isUpdaterFunctionProperties = t.isPartial({
   Timeout:     t.isNumber(),
@@ -31,15 +33,13 @@ const isUpdaterFunctionProperties = t.isPartial({
   Environment: t.isObject({ Variables: t.isDict(isTemplateValue) }),
 });
 
-const ROOT_STACK               = 'my-root-stack';
-const BUCKET_BASE              = 'test-artifacts';
-const ROOT_STACK_ID            = 'guid-1';
-const PROJECT                  = 'acme-project';
-const ROOT_STACK_TAG_KEY       = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStack}`;
-const ROOT_STACK_ID_TAG_KEY    = `aws:ResourceTag/${ServerlessInboxTagKeys.rootStackId}`;
-const OWNED_BY_ID              = { StringEquals: { [ROOT_STACK_ID_TAG_KEY]: ROOT_STACK_ID } };
-const OWNED_BY_NAME_WITHOUT_ID = { StringEquals: { [ROOT_STACK_TAG_KEY]: ROOT_STACK }, Null: { [ROOT_STACK_ID_TAG_KEY]: 'true' } };
-const ARTIFACT_VERSION_ONLY    = { 'ForAllValues:StringEquals': { 'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion] } };
+const ROOT_STACK                                    = 'my-root-stack';
+const BUCKET_BASE                                   = 'test-artifacts';
+const ROOT_STACK_ID                                 = 'guid-1';
+const PROJECT                                       = 'acme-project';
+const OWNED_BY_RESOURCE                             = ownedByRootStack('ResourceTag', ROOT_STACK, ROOT_STACK_ID);
+const ARTIFACT_VERSION_ONLY                         = { 'ForAllValues:StringEquals': { 'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion] } };
+const UPDATER_PACKAGES: Record<string, ArtifactPin> = { 'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL } };
 
 /** An account-scoped ARN as the template renders it: partition and account are references, never literals. */
 function accountArn(service: string, suffix: string): unknown {
@@ -64,18 +64,10 @@ describe('ArtifactUpdaterLambda', () => {
   let trackingConditionId: string;
 
   beforeAll(() => {
-    const stack                                 = new Stack(new App(), 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-    const packages: Record<string, ArtifactPin> = { 'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL } };
-    const isTracking                            = new CfnCondition(stack, 'is-tracking', { expression: Fn.conditionEquals('a', 'a') });
+    const { stack, artifactResolver } = arrangeWrapperStack(UPDATER_PACKAGES, BUCKET_BASE, PROJECT);
+    const isTracking                  = new CfnCondition(stack, 'is-tracking', { expression: Fn.conditionEquals('a', 'a') });
     new ArtifactUpdaterLambda(stack, 'artifact-updater', {
-      artifactResolver:   new PinnedArtifactResolver({
-        packages,
-        location:         { bucketBase: BUCKET_BASE, project: PROJECT },
-        deploymentRegion: stack.region,
-      }),
+      artifactResolver,
       distTag:            'stable',
       granularity:        'minor',
       rootStackTagValue:  ROOT_STACK,
@@ -85,7 +77,7 @@ describe('ArtifactUpdaterLambda', () => {
       isTracking,
     });
 
-    template                =Template.fromStack(stack);
+    template                = Template.fromStack(stack);
     trackingConditionId     = String(stack.resolve(isTracking.logicalId));
     const [updaterResource] = resourcesOfType(template, 'AWS::Lambda::Function', isUpdaterFunctionProperties);
     updaterLogicalId        = updaterResource.logicalId;
@@ -114,7 +106,7 @@ describe('ArtifactUpdaterLambda', () => {
     it('provides an environment its runtime configuration loads without error', () => {
       const originalEnv             = process.env;
       const injectedByLambdaRuntime = { AWS_REGION: 'us-west-2', AWS_LAMBDA_FUNCTION_NAME: 'artifact-updater-function' };
-      process.env                   = { ...originalEnv, ...stringValues(updater.Properties.Environment.Variables), ...injectedByLambdaRuntime };
+      process.env                   = { ...originalEnv, ...processEnvironmentOf(updater.Properties.Environment.Variables), ...injectedByLambdaRuntime };
 
       try {
         expect(env.tryLoad(load).error).toBeUndefined();
@@ -163,8 +155,8 @@ describe('ArtifactUpdaterLambda', () => {
       extraCondition = {},
     ): Array<[string, PolicyStatementJson]> {
       return [
-        [`${name} by id`, { ...statement, Condition: { ...OWNED_BY_ID, ...extraCondition } }],
-        [`${name} by name when the resource has no id tag`, { ...statement, Condition: { ...OWNED_BY_NAME_WITHOUT_ID, ...extraCondition } }],
+        [`${name} by id`, { ...statement, Condition: { ...OWNED_BY_RESOURCE.byId, ...extraCondition } }],
+        [`${name} by name when the resource has no id tag`, { ...statement, Condition: { ...OWNED_BY_RESOURCE.byName, ...extraCondition } }],
       ];
     }
 
@@ -218,14 +210,3 @@ describe('ArtifactUpdaterLambda', () => {
     });
   });
 });
-
-function stringValues(variables: Record<string, unknown>): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(variables).map(([name, value]) => {
-      if (typeof value !== 'string') {
-        throw new Error(`Environment variable ${name} is not a plain string in the template: ${JSON.stringify(value)}`);
-      }
-      return [name, value];
-    }),
-  );
-}

@@ -19,44 +19,41 @@ import {
 import { MailboxEdgeDeployerWorkerLambda }           from '../mailbox-edge-deployer-worker-lambda';
 import type { MailboxEdgeDeployerWorkerLambdaProps } from '../mailbox-edge-deployer-worker-lambda';
 
+import { ownedByRootStack }                          from './lambda-wrapper-helpers';
+
 const EDGE_REGION                 = 'us-east-1';
 const JMAP_BLOB_DOWNLOAD_ROLE_ARN = 'arn:aws:iam::111122223333:role/test-role';
-const ROOT_STACK_TAG              = 'serverless-inbox:root-stack';
-const ROOT_STACK_ID_TAG           = 'serverless-inbox:root-stack-id';
+const ROOT_STACK                  = 'test-stack';
+const ROOT_STACK_ID               = 'test-guid';
 
-/** The two statements that admit an owned resource: tagged with the id, or without an id tag and tagged with the name. */
-function ownedByResourceTag(): unknown[] {
-  return [
-    { StringEquals: { [`aws:ResourceTag/${ROOT_STACK_ID_TAG}`]: 'test-guid' } },
-    { StringEquals: { [`aws:ResourceTag/${ROOT_STACK_TAG}`]: 'test-stack' }, Null: { [`aws:ResourceTag/${ROOT_STACK_ID_TAG}`]: 'true' } },
-  ];
+const ownedByResource = ownedByRootStack('ResourceTag', ROOT_STACK, ROOT_STACK_ID);
+const ownedByRequest  = ownedByRootStack('RequestTag', ROOT_STACK, ROOT_STACK_ID);
+
+interface EdgeWorkerBuild {
+  readonly worker:       MailboxEdgeDeployerWorkerLambda;
+  readonly template:     Template;
+  readonly edgeStack:    IDeployedStack;
+  readonly edgeTemplate: IArtifactObject;
+  readonly edgeArtifact: IArtifactObject;
 }
 
-function ownedByRequestTag(): unknown[] {
-  return [
-    { StringEquals: { [`aws:RequestTag/${ROOT_STACK_ID_TAG}`]: 'test-guid' } },
-    { StringEquals: { [`aws:RequestTag/${ROOT_STACK_TAG}`]: 'test-stack' }, Null: { [`aws:RequestTag/${ROOT_STACK_ID_TAG}`]: 'true' } },
-  ];
-}
-
-const edgeStack: IDeployedStack     = { grantLifecycle: jest.fn(), grantTemplateRead: jest.fn(), grantDescribe: jest.fn() };
-const edgeTemplate: IArtifactObject = { grantRead: jest.fn() };
-const edgeArtifact: IArtifactObject = { grantRead: jest.fn() };
-
-function buildWorker(props: Partial<MailboxEdgeDeployerWorkerLambdaProps> = {}): { readonly worker: MailboxEdgeDeployerWorkerLambda; readonly template: Template } {
-  const { stack, artifactResolver } = newDeployerTestStack();
-  const worker                      = new MailboxEdgeDeployerWorkerLambda(stack, 'worker', {
+function buildWorker(props: Partial<MailboxEdgeDeployerWorkerLambdaProps> = {}): EdgeWorkerBuild {
+  const { stack, artifactResolver }   = newDeployerTestStack();
+  const edgeStack:    IDeployedStack  = { grantLifecycle: jest.fn(), grantTemplateRead: jest.fn(), grantDescribe: jest.fn() };
+  const edgeTemplate: IArtifactObject = { grantRead: jest.fn() };
+  const edgeArtifact: IArtifactObject = { grantRead: jest.fn() };
+  const worker                        = new MailboxEdgeDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
     edgeStackNamePattern: 'test-stack-edge*',
     edgeStack,
-    rootStack:            'test-stack',
-    rootStackId:          'test-guid',
+    rootStack:            ROOT_STACK,
+    rootStackId:          ROOT_STACK_ID,
     template:             edgeTemplate,
     artifactObjects:      [edgeArtifact],
     jmapBlobDownloadRole: Role.fromRoleArn(stack, 'jmap-blob-download-role', JMAP_BLOB_DOWNLOAD_ROLE_ARN),
     ...props,
   });
-  return { worker, template: Template.fromStack(stack) };
+  return { worker, template: Template.fromStack(stack), edgeStack, edgeTemplate, edgeArtifact };
 }
 
 function synthWorker(props: Partial<MailboxEdgeDeployerWorkerLambdaProps> = {}): Template {
@@ -81,13 +78,13 @@ describe('MailboxEdgeDeployerWorkerLambda', () => {
   });
 
   it('manages the edge stack it is given', () => {
-    const { worker } = buildWorker();
+    const { worker, edgeStack } = buildWorker();
 
     expect(edgeStack.grantLifecycle).toHaveBeenCalledWith(worker);
   });
 
   it('reads the edge template and every Lambda artifact it is given', () => {
-    const { worker } = buildWorker();
+    const { worker, edgeTemplate, edgeArtifact } = buildWorker();
 
     expect(edgeTemplate.grantRead).toHaveBeenCalledWith(worker);
     expect(edgeArtifact.grantRead).toHaveBeenCalledWith(worker);
@@ -118,14 +115,16 @@ describe('MailboxEdgeDeployerWorkerLambda', () => {
     it('adds tags on create when the request carries a root-stack tag, and on update when the certificate already has one', () => {
       const statements = statementsForAction(template, 'acm:AddTagsToCertificate');
 
-      expect(statements.map((statement) => statement.Condition)).toEqual([...ownedByRequestTag(), ...ownedByResourceTag()]);
+      expect(statements.map((statement) => statement.Condition)).toEqual([
+        ownedByRequest.byId, ownedByRequest.byName, ownedByResource.byId, ownedByResource.byName,
+      ]);
     });
 
     it('removes tags from and deletes only certificates the root stack owns, by id or by name when untagged with an id', () => {
       for (const action of ['acm:RemoveTagsFromCertificate', 'acm:DeleteCertificate']) {
         const statements = statementsForAction(template, action);
 
-        expect(statements.map((statement) => statement.Condition)).toEqual(ownedByResourceTag());
+        expect(statements.map((statement) => statement.Condition)).toEqual([ownedByResource.byId, ownedByResource.byName]);
       }
     });
   });
@@ -147,7 +146,7 @@ describe('MailboxEdgeDeployerWorkerLambda', () => {
 
       expect(statements).toHaveLength(4);
       expect(statements.slice(2).map((statement) => statement.Resource)).toEqual(['*', '*']);
-      expect(statements.slice(2).map((statement) => statement.Condition)).toEqual(ownedByResourceTag());
+      expect(statements.slice(2).map((statement) => statement.Condition)).toEqual([ownedByResource.byId, ownedByResource.byName]);
     });
   });
 

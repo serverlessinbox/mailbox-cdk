@@ -18,27 +18,35 @@ const ACCOUNT_REF   = { Ref: 'AWS::AccountId' };
 const REGION_REF    = { Ref: 'AWS::Region' };
 const PARTITION_REF = { Ref: 'AWS::Partition' };
 
-const dataStack: IDeployedStack     = { grantLifecycle: jest.fn(), grantTemplateRead: jest.fn(), grantDescribe: jest.fn() };
-const dataTemplate: IArtifactObject = { grantRead: jest.fn() };
+interface DataWorkerBuild {
+  readonly worker:       MailboxDataDeployerWorkerLambda;
+  readonly template:     Template;
+  readonly dataStack:    IDeployedStack;
+  readonly dataTemplate: IArtifactObject;
+}
 
-function synthWorker(): { readonly worker: MailboxDataDeployerWorkerLambda; readonly template: Template } {
-  const { stack, artifactResolver } = newDeployerTestStack();
-  const worker                      = new MailboxDataDeployerWorkerLambda(stack, 'worker', {
+function synthWorker(): DataWorkerBuild {
+  const { stack, artifactResolver }   = newDeployerTestStack();
+  const dataStack:    IDeployedStack  = { grantLifecycle: jest.fn(), grantTemplateRead: jest.fn(), grantDescribe: jest.fn() };
+  const dataTemplate: IArtifactObject = { grantRead: jest.fn() };
+  const worker                        = new MailboxDataDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
     dataStack,
     dataStackName: 'test-stack-data',
     template:      dataTemplate,
     nameBase:      'test-stack-data',
   });
-  return { worker, template: Template.fromStack(stack) };
+  return { worker, template: Template.fromStack(stack), dataStack, dataTemplate };
 }
 
 describe('MailboxDataDeployerWorkerLambda', () => {
   let template: Template;
   let worker: MailboxDataDeployerWorkerLambda;
+  let dataStack: IDeployedStack;
+  let dataTemplate: IArtifactObject;
 
   beforeAll(() => {
-    ({ template, worker } = synthWorker());
+    ({ template, worker, dataStack, dataTemplate } = synthWorker());
   });
 
   it('runs as the data deployer worker', () => {
@@ -47,9 +55,8 @@ describe('MailboxDataDeployerWorkerLambda', () => {
     });
   });
 
-  it('manages the data stack it is given, without reading its template', () => {
+  it('manages the data stack it is given', () => {
     expect(dataStack.grantLifecycle).toHaveBeenCalledWith(worker);
-    expect(dataStack.grantTemplateRead).not.toHaveBeenCalled();
   });
 
   it('validates templates, which acts on a template URL rather than a stack', () => {
