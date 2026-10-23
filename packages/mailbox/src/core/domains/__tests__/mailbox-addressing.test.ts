@@ -74,15 +74,23 @@ describe('MailboxAddressing', () => {
     expect(addressing.urls.webmailUi).toBeDefined();
   });
 
-  it('omits the url of a disabled UI and keeps the API urls', () => {
-    const adminOnly   = MailboxAddressing.resolve(newStack(), { domainName: DOMAIN_NAME }, { adminUi: true, webmailUi: false });
-    const webmailOnly = MailboxAddressing.resolve(newStack(), { domainName: DOMAIN_NAME }, { adminUi: false, webmailUi: true });
-    const addressing  = MailboxAddressing.resolve(newStack(), { domainName: DOMAIN_NAME }, { adminUi: false, webmailUi: false });
+  it('omits the webmail url when only the admin UI is enabled', () => {
+    const adminOnly = MailboxAddressing.resolve(newStack(), { domainName: DOMAIN_NAME }, { adminUi: true, webmailUi: false });
 
     expect(adminOnly.urls.adminUi).toBeDefined();
     expect(adminOnly.urls.webmailUi).toBeUndefined();
+  });
+
+  it('omits the admin url when only the webmail UI is enabled', () => {
+    const webmailOnly = MailboxAddressing.resolve(newStack(), { domainName: DOMAIN_NAME }, { adminUi: false, webmailUi: true });
+
     expect(webmailOnly.urls.adminUi).toBeUndefined();
     expect(webmailOnly.urls.webmailUi).toBeDefined();
+  });
+
+  it('omits both UI urls and keeps the API urls when no UI is enabled', () => {
+    const addressing = MailboxAddressing.resolve(newStack(), { domainName: DOMAIN_NAME }, { adminUi: false, webmailUi: false });
+
     expect(addressing.urls.adminUi).toBeUndefined();
     expect(addressing.urls.webmailUi).toBeUndefined();
     expect(addressing.urls.jmapApi).toBeDefined();

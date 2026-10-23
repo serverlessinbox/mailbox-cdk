@@ -14,37 +14,31 @@ import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID } from '@serverlessinbox/mail
 import { Match, Template }                           from 'aws-cdk-lib/assertions';
 import { HttpLambdaAuthorizer }                      from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpApi }                                   from 'aws-cdk-lib/aws-apigatewayv2';
-import * as acm                                      from 'aws-cdk-lib/aws-certificatemanager';
-import { Table, AttributeType }                      from 'aws-cdk-lib/aws-dynamodb';
 import { Function as LambdaFunction }                from 'aws-cdk-lib/aws-lambda';
 import { Bucket }                                    from 'aws-cdk-lib/aws-s3';
 import * as cdk                                      from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
 
 import type { IWebSocketBroadcastPublisher }         from '../../../contracts/websocket-push';
 import { DataBlobStore }                             from '../../../resources/buckets/data-blob-store';
 import { AuditEventsQueue }                          from '../../../resources/queues/audit-events-queue';
 import { EmailSendingQueue }                         from '../../../resources/queues/email-sending-queue';
 import { AuthKeyStoreTable }                         from '../../../resources/tables/auth-key-store-table';
-import { DataTable }                                 from '../../../resources/tables/data-tables';
 import type { IAdminApiAddon }                       from '../addons';
 import { AdminApi }                                  from '../admin-api';
 import type { AdminApiProps }                        from '../admin-api';
 
+import { certificate, dataTable, newApiStack }       from './apis-helpers';
+
 describe('AdminApi', () => {
   let stack: cdk.Stack;
 
-  function dataTable(id: string): DataTable {
-    return new DataTable(new Table(stack, id, { partitionKey: { name: 'pk', type: AttributeType.STRING } }));
-  }
-
   function propsWith(overrides: Partial<AdminApiProps> = {}): AdminApiProps {
     return {
-      configTable:          dataTable('config-table'),
-      itemTable:            dataTable('item-table'),
-      auditLogTable:        dataTable('audit-log-table'),
-      changelogTable:       dataTable('changelog-table'),
-      mailFeedbackTable:    dataTable('mail-feedback-table'),
+      configTable:          dataTable(stack, 'config-table'),
+      itemTable:            dataTable(stack, 'item-table'),
+      auditLogTable:        dataTable(stack, 'audit-log-table'),
+      changelogTable:       dataTable(stack, 'changelog-table'),
+      mailFeedbackTable:    dataTable(stack, 'mail-feedback-table'),
       authKeyStoreTable:    new AuthKeyStoreTable(stack, 'auth-key-store-table'),
       blobStore:            new DataBlobStore(new Bucket(stack, 'blob-store')),
       emailSubmissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
@@ -70,18 +64,8 @@ describe('AdminApi', () => {
     };
   }
 
-  function certificate(): acm.Certificate {
-    return new acm.Certificate(stack, 'certificate', {
-      domainName: 'api.example.com',
-      validation: acm.CertificateValidation.fromDns(),
-    });
-  }
-
   beforeEach(() => {
-    stack = new cdk.Stack(new App(), 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
+    stack = newApiStack();
   });
 
   describe('without a custom domain', () => {
@@ -101,7 +85,7 @@ describe('AdminApi', () => {
 
   describe('with a custom domain', () => {
     it('serves on the domain, maps the API onto it and publishes its regional target', () => {
-      const customDomain = { domainName: 'api.example.com', certificate: certificate() };
+      const customDomain = { domainName: 'api.example.com', certificate: certificate(stack, 'api.example.com') };
 
       const sut = new AdminApi(stack, 'admin-api', propsWith({ customDomain }));
 
@@ -115,7 +99,7 @@ describe('AdminApi', () => {
     });
 
     it('hands out the logical id pin of its domain name', () => {
-      const sut = new AdminApi(stack, 'admin-api', propsWith({ customDomain: { domainName: 'api.example.com', certificate: certificate() } }));
+      const sut = new AdminApi(stack, 'admin-api', propsWith({ customDomain: { domainName: 'api.example.com', certificate: certificate(stack, 'api.example.com') } }));
 
       sut.domainLogicalIdPin?.overrideLogicalId('PinnedDomainName');
 

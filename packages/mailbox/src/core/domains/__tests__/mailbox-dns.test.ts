@@ -71,10 +71,9 @@ describe('MailboxDns', () => {
     it('creates no SRV record without a JMAP target', () => {
       new MailboxDns(stack, 'dns', propsWith({ hostedZone, cnameTargets: { admin: 'admin.cloudfront.net' } }));
 
-      const types = Object.values(Template.fromStack(stack).findResources('AWS::Route53::RecordSet'))
-        .map((record) => record.Properties.Type);
-
-      expect(types).toEqual(['CNAME']);
+      const template = Template.fromStack(stack);
+      template.resourceCountIs('AWS::Route53::RecordSet', 1);
+      template.resourcePropertiesCountIs('AWS::Route53::RecordSet', { Type: 'CNAME' }, 1);
     });
 
     it('uses the given TTL', () => {

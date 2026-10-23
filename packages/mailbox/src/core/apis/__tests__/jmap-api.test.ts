@@ -14,30 +14,24 @@ import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-
 import { VENDOR_ACCOUNT_ID }                    from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { HttpApi }                              from 'aws-cdk-lib/aws-apigatewayv2';
-import * as acm                                 from 'aws-cdk-lib/aws-certificatemanager';
-import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import { Function as LambdaFunction }           from 'aws-cdk-lib/aws-lambda';
 import { Bucket }                               from 'aws-cdk-lib/aws-s3';
 import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import type { IWebSocketBroadcastPublisher }    from '../../../contracts/websocket-push';
 import { DataBlobStore }                        from '../../../resources/buckets/data-blob-store';
 import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
 import { EmailSendingQueue }                    from '../../../resources/queues/email-sending-queue';
 import { AuthKeyStoreTable }                    from '../../../resources/tables/auth-key-store-table';
-import { DataTable }                            from '../../../resources/tables/data-tables';
 import type { IMailboxAuthProvider }            from '../../auth/types';
 import type { IJmapApiAddon }                   from '../addons';
 import { JmapApi }                              from '../jmap-api';
 import type { JmapApiProps }                    from '../jmap-api';
 
+import { certificate, dataTable, newApiStack }  from './apis-helpers';
+
 describe('JmapApi', () => {
   let stack: cdk.Stack;
-
-  function dataTable(id: string): DataTable {
-    return new DataTable(new Table(stack, id, { partitionKey: { name: 'pk', type: AttributeType.STRING } }));
-  }
 
   function propsWith(overrides: Partial<JmapApiProps> = {}): JmapApiProps {
     const authProvider: IMailboxAuthProvider = {
@@ -53,9 +47,9 @@ describe('JmapApi', () => {
       createAdminApiAddons:    () => [],
     };
     return {
-      configTable:          dataTable('config-table'),
-      itemTable:            dataTable('item-table'),
-      changelogTable:       dataTable('changelog-table'),
+      configTable:          dataTable(stack, 'config-table'),
+      itemTable:            dataTable(stack, 'item-table'),
+      changelogTable:       dataTable(stack, 'changelog-table'),
       authKeyStoreTable:    new AuthKeyStoreTable(stack, 'auth-key-store-table'),
       blobStore:            new DataBlobStore(new Bucket(stack, 'blob-store')),
       emailSubmissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
@@ -81,18 +75,8 @@ describe('JmapApi', () => {
     };
   }
 
-  function certificate(): acm.Certificate {
-    return new acm.Certificate(stack, 'certificate', {
-      domainName: 'jmap.example.com',
-      validation: acm.CertificateValidation.fromDns(),
-    });
-  }
-
   beforeEach(() => {
-    stack = new cdk.Stack(new App(), 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
+    stack = newApiStack();
   });
 
   describe('without a custom domain', () => {
@@ -111,7 +95,7 @@ describe('JmapApi', () => {
 
   describe('with a custom domain', () => {
     it('serves on the domain, maps the API onto it and publishes its regional target', () => {
-      const customDomain = { domainName: 'jmap.example.com', certificate: certificate() };
+      const customDomain = { domainName: 'jmap.example.com', certificate: certificate(stack, 'jmap.example.com') };
 
       const sut = new JmapApi(stack, 'jmap-api', propsWith({ customDomain }));
 
@@ -125,7 +109,7 @@ describe('JmapApi', () => {
     });
 
     it('hands out the logical id pin of its domain name', () => {
-      const sut = new JmapApi(stack, 'jmap-api', propsWith({ customDomain: { domainName: 'jmap.example.com', certificate: certificate() } }));
+      const sut = new JmapApi(stack, 'jmap-api', propsWith({ customDomain: { domainName: 'jmap.example.com', certificate: certificate(stack, 'jmap.example.com') } }));
 
       sut.domainLogicalIdPin?.overrideLogicalId('PinnedDomainName');
 

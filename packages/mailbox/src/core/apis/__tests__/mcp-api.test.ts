@@ -11,27 +11,20 @@
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { HttpApi }                              from 'aws-cdk-lib/aws-apigatewayv2';
-import * as acm                                 from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda                              from 'aws-cdk-lib/aws-lambda';
 import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import { Permission }                           from '../../auth/jmap-scopes';
 import { McpApi }                               from '../mcp-api';
+
+import { certificate, newApiStack }             from './apis-helpers';
 
 describe('McpApi', () => {
   let stack: cdk.Stack;
   let sut: McpApi;
 
   beforeEach(() => {
-    stack                  = new cdk.Stack(new App(), 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-    const certificate      = new acm.Certificate(stack, 'certificate', {
-      domainName: 'mcp.example.com',
-      validation: acm.CertificateValidation.fromDns(),
-    });
+    stack                  = newApiStack();
     const jmapApiGateway   = new HttpApi(stack, 'jmap-http-api');
     const authorizerLambda = new lambda.Function(stack, 'authorizer', {
       runtime: lambda.Runtime.NODEJS_18_X,
@@ -42,7 +35,7 @@ describe('McpApi', () => {
     sut = new McpApi(stack, 'mcp-api', {
       jmapApiGateway,
       authorizerLambda,
-      certificate,
+      certificate:      certificate(stack, 'mcp.example.com'),
       domainName:       'example.com',
       scopeMap:         { 'mail.read': [Permission.MAIL_READ] },
       artifactResolver: new PinnedArtifactResolver({

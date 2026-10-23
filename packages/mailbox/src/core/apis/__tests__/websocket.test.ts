@@ -14,16 +14,15 @@
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
 import { Capture, Match, Template }             from 'aws-cdk-lib/assertions';
-import * as acm                                 from 'aws-cdk-lib/aws-certificatemanager';
-import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import * as iam                                 from 'aws-cdk-lib/aws-iam';
 import * as lambda                              from 'aws-cdk-lib/aws-lambda';
 import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { DataTable }                            from '../../../resources/tables/data-tables';
+import { defaultCfnResource }                   from '../../../utils/cfn-resource';
 import { WebSocketPush }                        from '../websocket';
 import type { WebSocketPushProps }              from '../websocket';
+
+import { certificate, dataTable, newApiStack }  from './apis-helpers';
 
 function buildWebSocketPush(stack: cdk.Stack, overrides: Partial<WebSocketPushProps> = {}): WebSocketPush {
   const packages: Record<string, ArtifactPin> = {
@@ -35,15 +34,9 @@ function buildWebSocketPush(stack: cdk.Stack, overrides: Partial<WebSocketPushPr
     deploymentRegion: stack.region,
   });
 
-  const configTable      = new DataTable(new Table(stack, 'config-table', {
-    partitionKey: { name: 'pk', type: AttributeType.STRING },
-  }));
-  const itemTable        = new DataTable(new Table(stack, 'item-table', {
-    partitionKey: { name: 'pk', type: AttributeType.STRING },
-  }));
-  const changelogTable   = new DataTable(new Table(stack, 'changelog-table', {
-    partitionKey: { name: 'pk', type: AttributeType.STRING },
-  }));
+  const configTable      = dataTable(stack, 'config-table');
+  const itemTable        = dataTable(stack, 'item-table');
+  const changelogTable   = dataTable(stack, 'changelog-table');
   const authorizerLambda = new lambda.Function(stack, 'authorizer', {
     runtime: lambda.Runtime.NODEJS_18_X,
     handler: 'index.handler',
@@ -60,23 +53,9 @@ function buildWebSocketPush(stack: cdk.Stack, overrides: Partial<WebSocketPushPr
   });
 }
 
-function newStack(): cdk.Stack {
-  return new cdk.Stack(new App(), 'TestStack', {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
-}
-
-function newCertificate(stack: cdk.Stack): acm.Certificate {
-  return new acm.Certificate(stack, 'certificate', {
-    domainName: 'ws.example.com',
-    validation: acm.CertificateValidation.fromDns(),
-  });
-}
-
 describe('WebSocketPush.grantManageConnections', () => {
   it('grants exactly one Allow statement for execute-api:ManageConnections scoped to <apiId>/*', () => {
-    const stack = newStack();
+    const stack = newApiStack();
 
     const sut  = buildWebSocketPush(stack);
     const role = new iam.Role(stack, 'TestRole', {
@@ -89,7 +68,7 @@ describe('WebSocketPush.grantManageConnections', () => {
     const apiId    = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
 
     template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }]),
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(defaultCfnResource(role)) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
@@ -110,7 +89,7 @@ describe('WebSocketPush.grantManageConnections', () => {
 
 describe('WebSocketPush without a custom domain', () => {
   it('uses the stage URL and publishes no domain target', () => {
-    const stack = newStack();
+    const stack = newApiStack();
 
     const sut = buildWebSocketPush(stack);
 
@@ -127,9 +106,9 @@ describe('WebSocketPush without a custom domain', () => {
 
 describe('WebSocketPush with a custom domain', () => {
   it('serves on the domain, maps the stage onto it and publishes its regional target', () => {
-    const stack = newStack();
+    const stack = newApiStack();
 
-    const sut = buildWebSocketPush(stack, { customDomain: { domainName: 'ws.example.com', certificate: newCertificate(stack) } });
+    const sut = buildWebSocketPush(stack, { customDomain: { domainName: 'ws.example.com', certificate: certificate(stack, 'ws.example.com') } });
 
     const template = Template.fromStack(stack);
     expect(sut.webSocketUrl).toBe('wss://ws.example.com');
@@ -139,9 +118,9 @@ describe('WebSocketPush with a custom domain', () => {
   });
 
   it('hands out the logical id pin of its domain name', () => {
-    const stack = newStack();
+    const stack = newApiStack();
 
-    const sut = buildWebSocketPush(stack, { customDomain: { domainName: 'ws.example.com', certificate: newCertificate(stack) } });
+    const sut = buildWebSocketPush(stack, { customDomain: { domainName: 'ws.example.com', certificate: certificate(stack, 'ws.example.com') } });
 
     sut.domainLogicalIdPin?.overrideLogicalId('PinnedDomainName');
 
@@ -152,7 +131,7 @@ describe('WebSocketPush with a custom domain', () => {
 
 describe('WebSocketPush routes', () => {
   it('puts only $connect behind the kebab-case named authorizer, reading the Sec-WebSocket-Protocol header', () => {
-    const stack = newStack();
+    const stack = newApiStack();
 
     buildWebSocketPush(stack);
 
@@ -173,7 +152,7 @@ describe('WebSocketPush routes', () => {
 
 describe('WebSocketPush maxSubscriptions', () => {
   it('limits subscriptions to 10 by default', () => {
-    const stack = newStack();
+    const stack = newApiStack();
 
     buildWebSocketPush(stack);
 
@@ -183,7 +162,7 @@ describe('WebSocketPush maxSubscriptions', () => {
   });
 
   it('passes a given limit to the message handler', () => {
-    const stack = newStack();
+    const stack = newApiStack();
 
     buildWebSocketPush(stack, { maxSubscriptions: 3 });
 
@@ -195,7 +174,7 @@ describe('WebSocketPush maxSubscriptions', () => {
 
 describe('WebSocketPush.broadcaster', () => {
   it('names the broadcast function and grants invoke on it', () => {
-    const stack = newStack();
+    const stack = newApiStack();
     const sut   = buildWebSocketPush(stack);
     const role  = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
 
@@ -203,7 +182,7 @@ describe('WebSocketPush.broadcaster', () => {
 
     const broadcastFunctionId = new Capture();
     Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
-      Roles:          [{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }],
+      Roles:          [{ Ref: stack.getLogicalId(defaultCfnResource(role)) }],
       PolicyDocument: {
         Statement: [Match.objectLike({ Action: 'lambda:InvokeFunction', Resource: Match.arrayWith([{ 'Fn::GetAtt': [broadcastFunctionId, 'Arn'] }]) })],
       },
@@ -214,7 +193,7 @@ describe('WebSocketPush.broadcaster', () => {
 
 describe('WebSocketPush.managementEndpoint', () => {
   it('builds the ApiGatewayManagementApi endpoint URL for the given stage', () => {
-    const stack = newStack();
+    const stack = newApiStack();
 
     const sut      = buildWebSocketPush(stack);
     const template = Template.fromStack(stack);

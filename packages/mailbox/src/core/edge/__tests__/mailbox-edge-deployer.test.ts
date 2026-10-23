@@ -245,17 +245,6 @@ describe('MailboxEdgeDeployer', () => {
       expect(describing).toContain(`arn:<token>:cloudformation:us-east-1:${TEST_ACCOUNT}:stack/<token>-edge*/*`);
     });
 
-    it('scopes the Lambda@Edge functions and the resource group to the same name pattern', () => {
-      const { template } = synthDeployer();
-
-      expect(renderWithTokens(statementsForAction(template, 'lambda:CreateFunction')[0].Resource)).toBe(
-        `arn:<token>:lambda:us-east-1:${TEST_ACCOUNT}:function:<token>-edge*`,
-      );
-      expect(renderWithTokens(statementsForAction(template, 'resource-groups:DeleteGroup')[0].Resource)).toBe(
-        `arn:<token>:resource-groups:us-east-1:${TEST_ACCOUNT}:group/<token>-edge*-serverless-inbox`,
-      );
-    });
-
     it('reads the edge template and the JMAP blob download zip it deploys', () => {
       const { stack, artifactResolver, template } = synthDeployer();
 

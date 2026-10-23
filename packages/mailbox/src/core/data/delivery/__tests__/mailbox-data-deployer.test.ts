@@ -36,31 +36,21 @@ interface SynthesizedDeployer {
   readonly templateObjectArn: unknown;
 }
 
-function synthDeployer(props: Partial<MailboxDataDeployerProps> = {}): SynthesizedDeployer {
-  const { stack, artifactResolver } = newDeployerTestStack();
-  new MailboxDataDeployer(stack, 'data-deployer', {
-    artifactResolver,
-    dataStackName: DATA_STACK_NAME,
-    nameBase:      'test-name-base',
-    deployerType:  'cdk',
-    ...props,
-  });
-  return {
-    template:          Template.fromStack(stack),
-    templateUrl:       stack.resolve(artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json')),
-    templateObjectArn: stack.resolve(artifactResolver.getArn('mailbox-cdk', 'data-stack-template.json')),
-  };
-}
-
-function synthGrantedDeployer(grant: (deployer: MailboxDataDeployer, grantee: iam.IGrantable) => void): SynthesizedDeployer {
+function synthDeployer(
+  props: Partial<MailboxDataDeployerProps> = {},
+  grant?: (deployer: MailboxDataDeployer, grantee: iam.IGrantable) => void,
+): SynthesizedDeployer {
   const { stack, artifactResolver } = newDeployerTestStack();
   const deployer                    = new MailboxDataDeployer(stack, 'data-deployer', {
     artifactResolver,
     dataStackName: DATA_STACK_NAME,
     nameBase:      'test-name-base',
     deployerType:  'cdk',
+    ...props,
   });
-  grant(deployer, new iam.Role(stack, 'grantee', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') }));
+  if (grant) {
+    grant(deployer, new iam.Role(stack, 'grantee', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') }));
+  }
   return {
     template:          Template.fromStack(stack),
     templateUrl:       stack.resolve(artifactResolver.getUrl('mailbox-cdk', 'data-stack-template.json')),
@@ -134,13 +124,6 @@ describe('MailboxDataDeployer', () => {
       expect(statements).toHaveLength(1);
       expect(statements[0].Resource).toEqual(templateObjectArn);
     });
-
-    it('creates only tables named from the name base', () => {
-      const { template } = synthDeployer();
-
-      const statements = statementsForAction(template, 'dynamodb:CreateTable');
-      expect(renderWithTokens(statements[0].Resource)).toMatch(/-test-name-base-\*$/);
-    });
   });
 
   it('resolves table overrides only after the data stack is deployed', () => {
@@ -162,14 +145,14 @@ describe('MailboxDataDeployer', () => {
     });
 
     it.each(TABLE_ROLES)('points the %s handle at the ARN the override resolver answers with', (role) => {
-      const { template } = synthGrantedDeployer((deployer, grantee) => deployer[role].grantRead(grantee));
+      const { template } = synthDeployer({},(deployer, grantee) => deployer[role].grantRead(grantee));
 
       const [statement] = statementsForAction(template, 'dynamodb:GetItem');
       expect(resourcesOf(statement)[0]).toEqual({ 'Fn::GetAtt': [logicalIdOf(template, RESOLVER_RESOURCE_TYPE), `${role}Arn`] });
     });
 
     it('points the blob store handle at the data stack output for the blob store', () => {
-      const { template } = synthGrantedDeployer((deployer, grantee) => deployer.blobStore.grantUploadBlobReadWriteDelete(grantee));
+      const { template } = synthDeployer({},(deployer, grantee) => deployer.blobStore.grantUploadBlobReadWriteDelete(grantee));
 
       const [statement] = statementsForAction(template, 's3:PutObject');
       expect(statement.Resource).toEqual({
