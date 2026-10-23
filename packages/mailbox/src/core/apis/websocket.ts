@@ -65,7 +65,7 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
     super(scope, id);
     ComponentDescription.describe(this, 'WebSocket push service delivering real-time JMAP state changes to connected clients.');
 
-    this.webSocketTable = new WebSocketTable(this, 'connections-table');
+    this.webSocketTable = new WebSocketTable(this, 'websocket');
 
     this.api = new WebSocketApi(this, 'websocket-api', {
       apiName:     `Mailbox ${Aws.STACK_NAME} WebSocket Push`,

@@ -16,6 +16,7 @@ import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
+import { defaultCfnResource }                   from '../../../utils/cfn-resource';
 import { DataTable }                            from '../../tables/data-tables';
 import { WebSocketTable }                       from '../../tables/websocket-table';
 import { WebSocketDisconnectLambda }            from '../websocket-disconnect-lambda';
@@ -23,6 +24,7 @@ import { WebSocketDisconnectLambda }            from '../websocket-disconnect-la
 describe('WebSocketDisconnectLambda connections-table grant', () => {
   let stack: cdk.Stack;
   let template: Template;
+  let tableId: string;
 
   beforeEach(() => {
     const app = new App();
@@ -45,6 +47,7 @@ describe('WebSocketDisconnectLambda connections-table grant', () => {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
     const connectionsTable = new WebSocketTable(stack, 'websocket-table');
+    tableId                = stack.getLogicalId(defaultCfnResource(connectionsTable));
 
     new WebSocketDisconnectLambda(stack, 'websocket-disconnect', {
       connectionsTable,
@@ -56,7 +59,6 @@ describe('WebSocketDisconnectLambda connections-table grant', () => {
   });
 
   function connectionsTableStatements(): PolicyStatementJson[] {
-    const tableId = 'websockettablewebsocketEF927F93';
     return statementsForResource(template, [
       { 'Fn::GetAtt': [tableId, 'Arn'] },
       { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
@@ -64,7 +66,6 @@ describe('WebSocketDisconnectLambda connections-table grant', () => {
   }
 
   it('grants exactly the read-write actions, Allow, on the connections table + index resources', () => {
-    const tableId          = 'websockettablewebsocketEF927F93';
     const expectedResource = [
       { 'Fn::GetAtt': [tableId, 'Arn'] },
       { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },

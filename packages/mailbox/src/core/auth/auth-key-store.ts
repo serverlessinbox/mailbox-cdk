@@ -22,7 +22,7 @@ export class AuthKeyStore extends Construct {
     super(scope, id);
     ComponentDescription.describe(this, 'Stores OIDC signing keys (JWKS) in DynamoDB for the Lambda@Edge authorizer to validate JWTs at the CDN edge.');
 
-    const authKeyStoreTable = new AuthKeyStoreTable(this, 'table');
+    const authKeyStoreTable = new AuthKeyStoreTable(this, 'auth-key-store');
 
     new AuthKeyStoreUpdaterLambda(this, 'handler', {
       authKeyStoreTable,

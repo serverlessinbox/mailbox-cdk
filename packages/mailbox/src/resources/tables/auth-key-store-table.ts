@@ -1,8 +1,8 @@
-import { StackNamedTable }                    from '@serverlessinbox/mailbox-cdk-shared';
-import { AttributeType, BillingMode, ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Grant, IGrantable }                  from 'aws-cdk-lib/aws-iam';
-import { RemovalPolicy }                      from 'aws-cdk-lib';
-import { Construct }                          from 'constructs';
+import { StackNamedTable }              from '@serverlessinbox/mailbox-cdk-shared';
+import { AttributeType, BillingMode }   from 'aws-cdk-lib/aws-dynamodb';
+import { Grant, IGrantable }            from 'aws-cdk-lib/aws-iam';
+import { RemovalPolicy }                from 'aws-cdk-lib';
+import { Construct }                    from 'constructs';
 
 /**
  * Read or read-write access to the auth-key-store table without exposing the underlying DynamoDB
@@ -32,15 +32,9 @@ export interface IAuthKeyStoreTable {
  *
  * Not responsible for populating or refreshing its own contents.
  */
-export class AuthKeyStoreTable extends Construct implements IAuthKeyStoreTable {
-  public readonly tableName: string;
-  public readonly tableArn: string;
-  private readonly table: ITable;
-
+export class AuthKeyStoreTable extends StackNamedTable implements IAuthKeyStoreTable {
   constructor(scope: Construct, id: string) {
-    super(scope, id);
-
-    this.table     = new StackNamedTable(this, 'auth-key-store', {
+    super(scope, id, {
       uniquePerPosition: true,
       removalPolicy:     RemovalPolicy.DESTROY,
       partitionKey:      {
@@ -53,8 +47,6 @@ export class AuthKeyStoreTable extends Construct implements IAuthKeyStoreTable {
       },
       billingMode:       BillingMode.PAY_PER_REQUEST,
     });
-    this.tableName = this.table.tableName;
-    this.tableArn  = this.table.tableArn;
   }
 
   public grantRead(grantee: IGrantable): void {
@@ -81,6 +73,6 @@ export class AuthKeyStoreTable extends Construct implements IAuthKeyStoreTable {
   }
 
   private tableAndIndexArns(): string[] {
-    return [this.table.tableArn, `${this.table.tableArn}/index/*`];
+    return [this.tableArn, `${this.tableArn}/index/*`];
   }
 }

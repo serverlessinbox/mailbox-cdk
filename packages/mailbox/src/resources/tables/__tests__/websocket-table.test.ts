@@ -3,6 +3,7 @@ import * as iam                          from 'aws-cdk-lib/aws-iam';
 import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
+import { defaultCfnResource }            from '../../../utils/cfn-resource';
 import { WebSocketTable }                from '../websocket-table';
 
 /**
@@ -58,7 +59,7 @@ describe('WebSocketTable', () => {
     const stack = createStack();
     const sut   = new WebSocketTable(stack, 'websocket-table');
 
-    expect(stack.resolve(sut.tableName)).toEqual({ Ref: 'websockettablewebsocketEF927F93' });
+    expect(stack.resolve(sut.tableName)).toEqual({ Ref: stack.getLogicalId(defaultCfnResource(sut)) });
   });
 
   it('grantWrite grants exactly one Allow statement with the write actions', () => {
@@ -70,7 +71,7 @@ describe('WebSocketTable', () => {
 
     sut.grantWrite(role);
 
-    const tableId  = 'websockettablewebsocketEF927F93';
+    const tableId  = stack.getLogicalId(defaultCfnResource(sut));
     const template = Template.fromStack(stack);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
@@ -99,7 +100,7 @@ describe('WebSocketTable', () => {
 
     sut.grantReadWrite(role);
 
-    const tableId  = 'websockettablewebsocketEF927F93';
+    const tableId  = stack.getLogicalId(defaultCfnResource(sut));
     const template = Template.fromStack(stack);
 
     template.hasResourceProperties('AWS::IAM::Policy', {

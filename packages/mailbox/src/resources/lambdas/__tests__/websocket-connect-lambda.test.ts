@@ -16,6 +16,7 @@ import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
+import { defaultCfnResource }                   from '../../../utils/cfn-resource';
 import { DataTable }                            from '../../tables/data-tables';
 import { WebSocketTable }                       from '../../tables/websocket-table';
 import { WebSocketConnectLambda }               from '../websocket-connect-lambda';
@@ -24,6 +25,7 @@ describe('WebSocketConnectLambda connections-table grant', () => {
   let stack: cdk.Stack;
   let template: Template;
   let connectionsTable: WebSocketTable;
+  let tableId: string;
 
   beforeEach(() => {
     const app = new App();
@@ -46,6 +48,7 @@ describe('WebSocketConnectLambda connections-table grant', () => {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
     connectionsTable  = new WebSocketTable(stack, 'websocket-table');
+    tableId           = stack.getLogicalId(defaultCfnResource(connectionsTable));
 
     new WebSocketConnectLambda(stack, 'websocket-connect', {
       connectionsTable,
@@ -57,7 +60,6 @@ describe('WebSocketConnectLambda connections-table grant', () => {
   });
 
   function connectionsTableStatements(): PolicyStatementJson[] {
-    const tableId = 'websockettablewebsocketEF927F93';
     return statementsForResource(template, [
       { 'Fn::GetAtt': [tableId, 'Arn'] },
       { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
@@ -65,7 +67,6 @@ describe('WebSocketConnectLambda connections-table grant', () => {
   }
 
   it('grants exactly the read-write actions, Allow, on the connections table + index resources', () => {
-    const tableId          = 'websockettablewebsocketEF927F93';
     const expectedResource = [
       { 'Fn::GetAtt': [tableId, 'Arn'] },
       { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },

@@ -20,6 +20,7 @@ import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import type { IWebSocketPushApi }               from '../../../contracts/websocket-push';
+import { defaultCfnResource }                   from '../../../utils/cfn-resource';
 import { DataTable }                            from '../../tables/data-tables';
 import { WebSocketTable }                       from '../../tables/websocket-table';
 import { WebSocketBroadcastLambda }             from '../websocket-broadcast-lambda';
@@ -36,6 +37,7 @@ class FakeWebSocketPushApi implements IWebSocketPushApi {
 describe('WebSocketBroadcastLambda connections-table and push-API wiring', () => {
   let stack: cdk.Stack;
   let template: Template;
+  let tableId: string;
   let fakePushApi: FakeWebSocketPushApi;
   let broadcastLambda: WebSocketBroadcastLambda;
 
@@ -60,6 +62,7 @@ describe('WebSocketBroadcastLambda connections-table and push-API wiring', () =>
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
     const connectionsTable = new WebSocketTable(stack, 'websocket-table');
+    tableId                = stack.getLogicalId(defaultCfnResource(connectionsTable));
     fakePushApi            = new FakeWebSocketPushApi();
 
     broadcastLambda = new WebSocketBroadcastLambda(stack, 'websocket-broadcast', {
@@ -73,7 +76,6 @@ describe('WebSocketBroadcastLambda connections-table and push-API wiring', () =>
   });
 
   function connectionsTableStatements(): PolicyStatementJson[] {
-    const tableId = 'websockettablewebsocketEF927F93';
     return statementsForResource(template, [
       { 'Fn::GetAtt': [tableId, 'Arn'] },
       { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
@@ -81,7 +83,6 @@ describe('WebSocketBroadcastLambda connections-table and push-API wiring', () =>
   }
 
   it('grants exactly the read-write actions, Allow, on the connections table + index resources', () => {
-    const tableId          = 'websockettablewebsocketEF927F93';
     const expectedResource = [
       { 'Fn::GetAtt': [tableId, 'Arn'] },
       { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },

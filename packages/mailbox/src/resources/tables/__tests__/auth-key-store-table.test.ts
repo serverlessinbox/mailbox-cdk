@@ -3,6 +3,7 @@ import * as iam                          from 'aws-cdk-lib/aws-iam';
 import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
+import { defaultCfnResource }            from '../../../utils/cfn-resource';
 import { AuthKeyStoreTable }             from '../auth-key-store-table';
 
 /**
@@ -42,7 +43,7 @@ describe('AuthKeyStoreTable', () => {
     const stack = createStack();
     const sut   = new AuthKeyStoreTable(stack, 'auth-key-store-table');
 
-    expect(stack.resolve(sut.tableName)).toEqual({ Ref: 'authkeystoretableauthkeystore0093FE65' });
+    expect(stack.resolve(sut.tableName)).toEqual({ Ref: stack.getLogicalId(defaultCfnResource(sut)) });
   });
 
   it('tableArn resolves to the table resource\'s Arn attribute', () => {
@@ -50,7 +51,7 @@ describe('AuthKeyStoreTable', () => {
     const sut   = new AuthKeyStoreTable(stack, 'auth-key-store-table');
 
     expect(stack.resolve(sut.tableArn)).toEqual({
-      'Fn::GetAtt': ['authkeystoretableauthkeystore0093FE65', 'Arn'],
+      'Fn::GetAtt': [stack.getLogicalId(defaultCfnResource(sut)), 'Arn'],
     });
   });
 
@@ -63,7 +64,7 @@ describe('AuthKeyStoreTable', () => {
 
     sut.grantRead(role);
 
-    const tableId  = 'authkeystoretableauthkeystore0093FE65';
+    const tableId  = stack.getLogicalId(defaultCfnResource(sut));
     const template = Template.fromStack(stack);
 
     template.hasResourceProperties('AWS::IAM::Policy', {
@@ -92,7 +93,7 @@ describe('AuthKeyStoreTable', () => {
 
     sut.grantReadWrite(role);
 
-    const tableId  = 'authkeystoretableauthkeystore0093FE65';
+    const tableId  = stack.getLogicalId(defaultCfnResource(sut));
     const template = Template.fromStack(stack);
 
     template.hasResourceProperties('AWS::IAM::Policy', {

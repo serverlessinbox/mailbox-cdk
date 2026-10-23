@@ -1,8 +1,8 @@
-import { StackNamedTable }                    from '@serverlessinbox/mailbox-cdk-shared';
-import { AttributeType, BillingMode, ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Grant, IGrantable }                  from 'aws-cdk-lib/aws-iam';
-import { RemovalPolicy }                      from 'aws-cdk-lib';
-import { Construct }                          from 'constructs';
+import { StackNamedTable }              from '@serverlessinbox/mailbox-cdk-shared';
+import { AttributeType, BillingMode }   from 'aws-cdk-lib/aws-dynamodb';
+import { Grant, IGrantable }            from 'aws-cdk-lib/aws-iam';
+import { RemovalPolicy }                from 'aws-cdk-lib';
+import { Construct }                    from 'constructs';
 
 /**
  * Write or read-write access to the WebSocket connections table without exposing the underlying
@@ -32,15 +32,10 @@ export interface IWebSocketTable {
  *
  * Not responsible for the WebSocket API, its Lambdas, or broadcast logic.
  */
-export class WebSocketTable extends Construct implements IWebSocketTable {
-  public readonly tableName: string;
-  private readonly table: ITable;
-
+export class WebSocketTable extends StackNamedTable implements IWebSocketTable {
   constructor(scope: Construct, id: string) {
-    super(scope, id);
-
     // Single-table design: uses shared base repository key names so lambdas can use DynamoBaseRepository.
-    const table = new StackNamedTable(this, 'websocket', {
+    super(scope, id, {
       uniquePerPosition:                true,
       partitionKey:                     { name: 'pk', type: AttributeType.STRING },
       sortKey:                          { name: 'sk', type: AttributeType.STRING },
@@ -52,14 +47,11 @@ export class WebSocketTable extends Construct implements IWebSocketTable {
 
     // GSI1 for broadcasting by account (subscription items only).
     // Matches shared base repository naming: indexName=gsi1, keys gsi1pk/gsi1sk.
-    table.addGlobalSecondaryIndex({
+    this.addGlobalSecondaryIndex({
       indexName:    'gsi1',
       partitionKey: { name: 'gsi1pk', type: AttributeType.STRING },
       sortKey:      { name: 'gsi1sk', type: AttributeType.STRING },
     });
-
-    this.table     = table;
-    this.tableName = this.table.tableName;
   }
 
   public grantWrite(grantee: IGrantable): void {
@@ -86,6 +78,6 @@ export class WebSocketTable extends Construct implements IWebSocketTable {
   }
 
   private tableAndIndexArns(): string[] {
-    return [this.table.tableArn, `${this.table.tableArn}/index/*`];
+    return [this.tableArn, `${this.tableArn}/index/*`];
   }
 }

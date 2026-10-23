@@ -19,6 +19,7 @@ import { MailboxDataStack }                                           from '../c
 import { MailboxDataDeployerWorkerLambda }                            from '../resources/lambdas/mailbox-data-deployer-worker-lambda';
 import { AuthKeyStoreTable }                                          from '../resources/tables/auth-key-store-table';
 import { WebSocketTable }                                             from '../resources/tables/websocket-table';
+import { defaultCfnResource }                                         from '../utils/cfn-resource';
 
 import {
   CloudFormationResource,
@@ -42,23 +43,22 @@ describe('Mailbox Resource Naming', () => {
       const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource>;
 
-      const logicalId = 'authkeystoreB751EF55';
+      const logicalId = stack.getLogicalId(defaultCfnResource(authKeyStore));
 
       expect(resources[logicalId].Properties?.TableName).toEqual({
         'Fn::Join': ['', [
           { Ref: 'AWS::AccountId' },
           '-',
           { Ref: 'AWS::StackName' },
-          `-auth-key-store-${PositionHash.ofChild(authKeyStore, 'auth-key-store')}-`,
+          `-auth-key-store-${PositionHash.of(authKeyStore)}-`,
           stack.resolve(StackIdentity.guidPrefix),
         ]],
       });
     });
 
     it('should synthesize the websocket table name referencing AWS::StackName', () => {
-      // WebSocketTable's child table id is 'websocket' (see cdk-construct-pattern's "Moving
-      // an explicitly named non-persistent resource"), so the CDK-generated logical ID is
-      // derived from the construct path rather than a pinned override.
+      // WebSocketTable is created with id 'websocket', which is also the name segment of its
+      // physical table name. Its logical ID is derived from the construct path, not pinned.
       const app   = new App();
       const stack = new cdk.Stack(app, 'TestMainStack', {
         env:         { account: '123456789012', region: 'us-west-2' },
@@ -70,14 +70,14 @@ describe('Mailbox Resource Naming', () => {
       const template  = Template.fromStack(stack);
       const resources = template.toJSON().Resources as Record<string, CloudFormationResource>;
 
-      const logicalId = 'websocketA7355EF4';
+      const logicalId = stack.getLogicalId(defaultCfnResource(websocketTable));
 
       expect(resources[logicalId].Properties?.TableName).toEqual({
         'Fn::Join': ['', [
           { Ref: 'AWS::AccountId' },
           '-',
           { Ref: 'AWS::StackName' },
-          `-websocket-${PositionHash.ofChild(websocketTable, 'websocket')}-`,
+          `-websocket-${PositionHash.of(websocketTable)}-`,
           stack.resolve(StackIdentity.guidPrefix),
         ]],
       });
