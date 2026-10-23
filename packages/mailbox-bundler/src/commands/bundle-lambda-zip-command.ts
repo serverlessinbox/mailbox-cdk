@@ -1,7 +1,7 @@
-import { Command, Option } from 'clipanion';
-import { resolve }         from 'path';
+import { Command, Option }  from 'clipanion';
+import { resolve }          from 'path';
 
-import { bundleLambdaZip } from '../lambda-zip/bundle-lambda-zip';
+import { LambdaZipBundler } from '../lambda-zip/lambda-zip-bundler';
 
 /**
  * CLI entry point of `mailbox-bundler lambda-zip`: turns the flags into a bundle request and runs it.
@@ -33,7 +33,7 @@ export class BundleLambdaZipCommand extends Command {
   });
 
   async execute(): Promise<void> {
-    await bundleLambdaZip({
+    await LambdaZipBundler.bundle({
       entryPath: resolve(this.entry),
       outZip:    resolve(this.out),
       target:    this.target,
