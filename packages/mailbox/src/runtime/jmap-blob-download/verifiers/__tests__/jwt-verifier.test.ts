@@ -77,7 +77,7 @@ describe('JwtVerifier', () => {
 
   function issuerPublishes(keys: unknown[], issuer: string = ISSUER): void {
     dynamodb
-      .on(GetItemCommand, { TableName: AUTH_KEY_STORE_TABLE, Key: { pk: { S: 'jwks' }, sk: { S: issuer } } })
+      .on(GetItemCommand, { TableName: AUTH_KEY_STORE_TABLE, Key: { 'pk': { S: 'jwks' }, 'sk': { S: issuer } } })
       .resolves({ Item: { jwks: { S: JSON.stringify({ keys }) } } });
   }
 
@@ -296,7 +296,7 @@ describe('JwtVerifier', () => {
       expect(dynamodb.commandCalls(GetItemCommand)).toHaveLength(1);
       expect(dynamodb.commandCalls(GetItemCommand)[0].args[0].input).toEqual({
         TableName: AUTH_KEY_STORE_TABLE,
-        Key:       { pk: { S: 'jwks' }, sk: { S: ISSUER } },
+        Key:       { 'pk': { S: 'jwks' }, 'sk': { S: ISSUER } },
       });
     });
 

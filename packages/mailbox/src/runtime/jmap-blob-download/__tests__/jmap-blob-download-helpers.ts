@@ -74,7 +74,7 @@ export function downloadQuery(parameters: Record<string, string | undefined>): s
 
 /** A CloudFront origin-request event carrying `request`, as CloudFront delivers it. */
 export function cloudFrontEventOf(request: unknown): unknown {
-  return { Records: [{ cf: { config: { eventType: 'origin-request' }, request } }] };
+  return { Records: [{ 'cf': { config: { eventType: 'origin-request' }, request } }] };
 }
 
 /** An origin request as CloudFront sends it, read through the same validation the handler applies. */

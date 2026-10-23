@@ -3,6 +3,6 @@ import { loadBaseConfig, type BaseConfig, type env } from '@serverlessinbox/mail
 /** The environment the data override resolver Lambda reads: the shared base only. */
 export type Config = BaseConfig;
 
-export function load(l: env.Loader): Config {
-  return loadBaseConfig(l);
+export function load(loader: env.Loader): Config {
+  return loadBaseConfig(loader);
 }

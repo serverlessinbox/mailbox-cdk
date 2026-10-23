@@ -65,7 +65,7 @@ describe('HmacVerifier', () => {
 
       expect(dynamodb.commandCalls(GetItemCommand)[0].args[0].input).toEqual({
         TableName: AUTH_KEY_STORE_TABLE,
-        Key:       { pk: { S: 'hmac' }, sk: { S: 'blob-url-signing' } },
+        Key:       { 'pk': { S: 'hmac' }, 'sk': { S: 'blob-url-signing' } },
       });
     });
 

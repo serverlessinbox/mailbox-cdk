@@ -20,16 +20,16 @@ export interface Config extends BaseConfig {
 /** The settings that locate a release artifact, which every update path needs. */
 export type UpdaterTargetConfig = Pick<Config, 'project' | 'distTag' | 'granularity' | 'artifactBucketBase'>;
 
-export function load(l: env.Loader): Config {
+export function load(loader: env.Loader): Config {
   return {
-    ...loadBaseConfig(l),
-    region:             toRegion(l.mandatory('AWS_REGION')),
-    functionName:       l.mandatory('AWS_LAMBDA_FUNCTION_NAME'),
-    project:            l.mandatory('PROJECT'),
-    distTag:            l.mandatory('DIST_TAG'),
-    granularity:        env.mandatoryAs(l, 'GRANULARITY', env.enumOf(...GRANULARITIES), 'major'),
-    artifactBucketBase: l.mandatory('ARTIFACT_BUCKET_BASE'),
-    rootStackTagValue:  l.mandatory('ROOT_STACK_TAG_VALUE'),
-    rootStackId:        l.mandatory('ROOT_STACK_ID'),
+    ...loadBaseConfig(loader),
+    region:             toRegion(loader.mandatory('AWS_REGION')),
+    functionName:       loader.mandatory('AWS_LAMBDA_FUNCTION_NAME'),
+    project:            loader.mandatory('PROJECT'),
+    distTag:            loader.mandatory('DIST_TAG'),
+    granularity:        env.mandatoryAs(loader, 'GRANULARITY', env.enumOf(...GRANULARITIES), 'major'),
+    artifactBucketBase: loader.mandatory('ARTIFACT_BUCKET_BASE'),
+    rootStackTagValue:  loader.mandatory('ROOT_STACK_TAG_VALUE'),
+    rootStackId:        loader.mandatory('ROOT_STACK_ID'),
   };
 }

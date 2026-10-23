@@ -1,5 +1,5 @@
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import * as fs                           from 'node:fs';
+import * as fileSystem                   from 'node:fs';
 import * as path                         from 'node:path';
 
 import { MailboxEdgeStack }              from '../src/core/edge/mailbox-edge-stack';
@@ -26,11 +26,12 @@ async function main() {
 
   const assembly = app.synth();
   const artifact = assembly.getStackArtifact(stack.artifactId);
-  const template = artifact.template;
+
+  const template: unknown = artifact.template;
 
   // Ensure output directory exists
-  if (!fs.existsSync(outDir)) {
-    fs.mkdirSync(outDir, { recursive: true });
+  if (!fileSystem.existsSync(outDir)) {
+    fileSystem.mkdirSync(outDir, { recursive: true });
   }
 
   const templatePath = path.join(outDir, 'edge-stack-template.json');
@@ -50,7 +51,7 @@ async function main() {
   console.log(`    - hostedZoneName (optional, required if hostedZoneId is set)`);
 }
 
-main().catch((err) => {
+main().catch((err: unknown) => {
   // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);

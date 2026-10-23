@@ -1,7 +1,7 @@
-import { spawnSync } from 'node:child_process';
-import * as fs       from 'node:fs';
-import * as os       from 'node:os';
-import * as path     from 'node:path';
+import { spawnSync }   from 'node:child_process';
+import * as fileSystem from 'node:fs';
+import { tmpdir }      from 'node:os';
+import * as path       from 'node:path';
 
 export function run(cmd: string, args: string[], opts?: { cwd?: string }) {
   const res = spawnSync(cmd, args, {
@@ -26,12 +26,12 @@ export function ensureAwsCliAvailable() {
 }
 
 export function mkTempDir(prefix: string): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  const dir = fileSystem.mkdtempSync(path.join(tmpdir(), prefix));
   return dir;
 }
 
 export function writeJson(filePath: string, value: unknown) {
-  fs.writeFileSync(filePath, JSON.stringify(value, null, 2) + '\n', 'utf8');
+  fileSystem.writeFileSync(filePath, JSON.stringify(value, null, 2) + '\n', 'utf8');
 }
 
 export function parseArgs(argv: string[]): Record<string, string | boolean> {
@@ -54,14 +54,14 @@ export function parseArgs(argv: string[]): Record<string, string | boolean> {
 }
 
 export function requireString(args: Record<string, string | boolean>, key: string): string {
-  const v = args[key];
-  if (typeof v !== 'string' || v.trim() === '') {
+  const value = args[key];
+  if (typeof value !== 'string' || value.trim() === '') {
     throw new Error(`Missing required flag --${key}`);
   }
-  return v;
+  return value;
 }
 
 export function optionalString(args: Record<string, string | boolean>, key: string): string | undefined {
-  const v = args[key];
-  return typeof v === 'string' && v.trim() !== '' ? v : undefined;
+  const value = args[key];
+  return typeof value === 'string' && value.trim() !== '' ? value : undefined;
 }

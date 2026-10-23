@@ -10,16 +10,16 @@ export interface StarterConfig extends WorkerConfig {
   readonly sweeperStateMachineArn: string;
 }
 
-export function loadStarter(l: env.Loader): StarterConfig {
+export function loadStarter(loader: env.Loader): StarterConfig {
   return {
-    ...loadWorker(l),
-    sweeperStateMachineArn: l.mandatory('MAILBOX_SWEEPER_STATE_MACHINE_ARN'),
+    ...loadWorker(loader),
+    sweeperStateMachineArn: loader.mandatory('MAILBOX_SWEEPER_STATE_MACHINE_ARN'),
   };
 }
 
-export function loadWorker(l: env.Loader): WorkerConfig {
+export function loadWorker(loader: env.Loader): WorkerConfig {
   return {
-    ...loadBaseConfig(l),
-    region: toRegion(l.mandatory('AWS_REGION')),
+    ...loadBaseConfig(loader),
+    region: toRegion(loader.mandatory('AWS_REGION')),
   };
 }

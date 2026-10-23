@@ -39,7 +39,7 @@ export class DeferredRemoval extends Construct {
       this.addEntry(properties, removal);
     }
 
-    const cr = new cdk.CustomResource(this, 'resource', {
+    const customResource = new cdk.CustomResource(this, 'resource', {
       serviceToken:   props.sweeperStarter.functionArn,
       serviceTimeout: DeferredRemoval.serviceTimeout,
       resourceType:   'Custom::DeferredRemoval',
@@ -48,7 +48,7 @@ export class DeferredRemoval extends Construct {
 
     // Depends on everything in the starter's construct, not only the function the service token resolves to,
     // so CloudFormation deletes this resource before the starter's role and policy.
-    cr.node.addDependency(props.sweeperStarter);
+    customResource.node.addDependency(props.sweeperStarter);
   }
 
   private addEntry<TId extends RemovalId>(properties: RemovalProperties, removal: IResourceRemoval<TId>): void {

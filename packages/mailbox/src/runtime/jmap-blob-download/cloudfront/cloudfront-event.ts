@@ -21,7 +21,7 @@ const isCloudFrontRequest = t.isPartial({
 
 const isCloudFrontEvent = t.isPartial({
   Records: t.cascade(
-    t.isArray(t.isPartial({ cf: t.isPartial({ request: isCloudFrontRequest }) })),
+    t.isArray(t.isPartial({ 'cf': t.isPartial({ request: isCloudFrontRequest }) })),
     [t.hasMinLength(1)],
   ),
 });

@@ -246,7 +246,7 @@ describe('EdgeLambdaUpdater', () => {
     await newUpdater().advanceIfStale(target);
 
     const updated = cloudFrontMock.commandCalls(UpdateDistributionCommand)[0].args[0].input.DistributionConfig;
-    expect(updated?.DefaultCacheBehavior?.LambdaFunctionAssociations?.Items?.map((a) => a.LambdaFunctionARN)).toEqual([
+    expect(updated?.DefaultCacheBehavior?.LambdaFunctionAssociations?.Items?.map((association) => association.LambdaFunctionARN)).toEqual([
       NEW_VERSION_ARN,
       `${OTHER_ARN}:7`,
     ]);

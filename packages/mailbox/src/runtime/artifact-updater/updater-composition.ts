@@ -50,25 +50,6 @@ export class UpdaterComposition implements TriggerBuilder {
     return { config, cloudFormation, clients: UpdaterComposition.buildUpdaterClients(config.region), error: undefined };
   }
 
-  private static buildUpdaterClients(deploymentRegion: Region): UpdaterClients {
-    const deployment = UpdaterComposition.buildRegionClients(deploymentRegion);
-    return {
-      // Artifact and pointer buckets are per-region, so reads follow S3 region redirects.
-      registryS3: new S3Client({ region: deploymentRegion, followRegionRedirects: true }),
-      deployment,
-      edge:       deploymentRegion === EDGE_REGION ? deployment : UpdaterComposition.buildRegionClients(EDGE_REGION),
-      cloudFront: new CloudFrontClient({ region: EDGE_REGION }),
-    };
-  }
-
-  private static buildRegionClients(region: Region): RegionClients {
-    return {
-      region,
-      lambda:  new LambdaClient({ region }),
-      tagging: new ResourceGroupsTaggingAPIClient({ region }),
-    };
-  }
-
   public cfnTrigger(event: CloudFormationCustomResourceEvent, context: Context): CfnTrigger {
     return new CfnTrigger(
       event,
@@ -92,6 +73,25 @@ export class UpdaterComposition implements TriggerBuilder {
 
   public scheduledTrigger(): ScheduledTrigger {
     return new ScheduledTrigger(() => this.updateCycle());
+  }
+
+  private static buildUpdaterClients(deploymentRegion: Region): UpdaterClients {
+    const deployment = UpdaterComposition.buildRegionClients(deploymentRegion);
+    return {
+      // Artifact and pointer buckets are per-region, so reads follow S3 region redirects.
+      registryS3: new S3Client({ region: deploymentRegion, followRegionRedirects: true }),
+      deployment,
+      edge:       deploymentRegion === EDGE_REGION ? deployment : UpdaterComposition.buildRegionClients(EDGE_REGION),
+      cloudFront: new CloudFrontClient({ region: EDGE_REGION }),
+    };
+  }
+
+  private static buildRegionClients(region: Region): RegionClients {
+    return {
+      region,
+      lambda:  new LambdaClient({ region }),
+      tagging: new ResourceGroupsTaggingAPIClient({ region }),
+    };
   }
 
   private updateCycle(): UpdateCycle {

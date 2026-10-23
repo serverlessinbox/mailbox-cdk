@@ -41,7 +41,7 @@ describe('readOriginRequest', () => {
     ['an event without records', {}],
     ['an event with no record', { Records: [] }],
     ['a record without cf', { Records: [{}] }],
-    ['a record without a request', { Records: [{ cf: {} }] }],
+    ['a record without a request', { Records: [{ 'cf': {} }] }],
     ['a request without a method', cloudFrontEventOf({ headers: {} })],
     ['a request without headers', cloudFrontEventOf({ method: 'GET' })],
     ['a header that is not a list', cloudFrontEventOf({ method: 'GET', headers: { authorization: 'Bearer token' } })],

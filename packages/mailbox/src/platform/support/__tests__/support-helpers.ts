@@ -88,15 +88,15 @@ interface SynthesizedFunctionResource {
 export function findFunction(template: Template, serviceName: string): SynthesizedFunction {
   // cast: CDK's findResources returns untyped template JSON; this is the one framework boundary.
   const functions = Object.entries(template.findResources('AWS::Lambda::Function')) as Array<[string, SynthesizedFunctionResource]>;
-  const matches   = functions.filter(([, fn]) => fn.Properties.Environment?.Variables.SERVICE_NAME === serviceName);
+  const matches   = functions.filter(([, functionResource]) => functionResource.Properties.Environment?.Variables.SERVICE_NAME === serviceName);
   if (matches.length !== 1) {
     throw new Error(`expected one Lambda with SERVICE_NAME ${serviceName}, found ${matches.length}`);
   }
-  const [[logicalId, fn]] = matches;
+  const [[logicalId, functionResource]] = matches;
   return {
     logicalId,
-    environment:   fn.Properties.Environment?.Variables ?? {},
-    roleLogicalId: fn.Properties.Role['Fn::GetAtt'][0],
-    code:          fn.Properties.Code.S3Key,
+    environment:   functionResource.Properties.Environment?.Variables ?? {},
+    roleLogicalId: functionResource.Properties.Role['Fn::GetAtt'][0],
+    code:          functionResource.Properties.Code.S3Key,
   };
 }

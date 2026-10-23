@@ -23,11 +23,11 @@ const isJwk = t.isPartial({
   kty: t.isString(),
   use: t.isOptional(t.isString()),
   alg: t.isOptional(t.isString()),
-  n:   t.isOptional(t.isString()),
-  e:   t.isOptional(t.isString()),
+  'n': t.isOptional(t.isString()),
+  'e': t.isOptional(t.isString()),
   crv: t.isOptional(t.isString()),
-  x:   t.isOptional(t.isString()),
-  y:   t.isOptional(t.isString()),
+  'x': t.isOptional(t.isString()),
+  'y': t.isOptional(t.isString()),
 });
 
 const isJwks = t.isPartial({
@@ -125,8 +125,8 @@ export class JwtVerifier {
       new GetItemCommand({
         TableName: authKeyStoreTable,
         Key:       {
-          pk: { S: 'jwks' },
-          sk: { S: issuer },
+          'pk': { S: 'jwks' },
+          'sk': { S: issuer },
         },
       }),
     );

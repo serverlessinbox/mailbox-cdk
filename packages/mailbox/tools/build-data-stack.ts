@@ -1,5 +1,5 @@
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import * as fs                           from 'node:fs';
+import * as fileSystem                   from 'node:fs';
 import * as path                         from 'node:path';
 
 import { MailboxDataStack }              from '../src/core/data/mailbox-data-stack';
@@ -21,10 +21,11 @@ async function main() {
 
   const assembly = app.synth();
   const artifact = assembly.getStackArtifact(stack.artifactId);
-  const template = artifact.template;
 
-  if (!fs.existsSync(outDir)) {
-    fs.mkdirSync(outDir, { recursive: true });
+  const template: unknown = artifact.template;
+
+  if (!fileSystem.existsSync(outDir)) {
+    fileSystem.mkdirSync(outDir, { recursive: true });
   }
 
   const templatePath = path.join(outDir, 'data-stack-template.json');
@@ -34,7 +35,7 @@ async function main() {
   console.log(`✓ Built data stack template: ${templatePath}`);
 }
 
-main().catch((err) => {
+main().catch((err: unknown) => {
   // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);

@@ -191,7 +191,7 @@ describe('StackFailureDetectionInfra — retention on every operation', () => {
     const roles    = resourcesOfType(template, 'AWS::IAM::Role');
     const fns      = resourcesOfType(template, 'AWS::Lambda::Function');
     const policies = resourcesOfType(template, 'AWS::IAM::Policy').filter(
-      (p) => p.Properties.PolicyName === DETECTOR_POLICY_NAME,
+      (policy) => policy.Properties.PolicyName === DETECTOR_POLICY_NAME,
     );
 
     expect(policies).toHaveLength(1);
@@ -207,8 +207,8 @@ describe('StackFailureDetectionInfra — retention on every operation', () => {
   });
 
   it('the infra pipeline log group is retained', () => {
-    const groups = resourcesOfType(template, 'AWS::Logs::LogGroup').filter((g) =>
-      JSON.stringify(g.Properties.LogGroupName).includes('infra'),
+    const groups = resourcesOfType(template, 'AWS::Logs::LogGroup').filter((logGroup) =>
+      JSON.stringify(logGroup.Properties.LogGroupName).includes('infra'),
     );
 
     expect(groups).toHaveLength(1);

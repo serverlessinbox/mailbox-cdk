@@ -86,7 +86,7 @@ function actionsOf(role: SynthesizedRole): Set<string> {
 }
 
 function statementGranting(role: SynthesizedRole, action: string): StatementJson {
-  const statement = statementsOf(role).find((s) => [s.Action].flat().includes(action));
+  const statement = statementsOf(role).find((candidate) => [candidate.Action].flat().includes(action));
   if (!statement) {
     throw new Error(`No statement grants ${action}`);
   }
@@ -180,8 +180,8 @@ describe('SupportRolesInfra', () => {
       const { template } = synthesize(['111111111111']);
       const { role }     = roleWithPolicy(template, CONFIG_READ_POLICY);
 
-      const owned = statementsOf(role).filter((s) => [s.Action].flat().includes('lambda:GetFunctionConfiguration'));
-      expect(owned.map((s) => Object.keys(s.Condition as object))).toEqual([['StringEquals'], ['StringEquals', 'Null']]);
+      const owned = statementsOf(role).filter((statement) => [statement.Action].flat().includes('lambda:GetFunctionConfiguration'));
+      expect(owned.map((statement) => Object.keys(statement.Condition as object))).toEqual([['StringEquals'], ['StringEquals', 'Null']]);
       expect(Object.keys((owned[0].Condition as { StringEquals: object }).StringEquals)).toEqual([
         'aws:ResourceTag/serverless-inbox:root-stack-id',
       ]);
@@ -195,7 +195,7 @@ describe('SupportRolesInfra', () => {
 
     it('let only diag read the edge log group, by its exact ARN', () => {
       const { template }    = synthesize(['111111111111']);
-      const edgeLogGroupArn = (role: SynthesizedRole) => JSON.stringify(statementsOf(role).map((s) => s.Resource));
+      const edgeLogGroupArn = (role: SynthesizedRole) => JSON.stringify(statementsOf(role).map((statement) => statement.Resource));
 
       expect(edgeLogGroupArn(roleWithPolicy(template, DIAG_POLICY).role)).toContain(':log-group:/serverlessinbox/');
       expect(edgeLogGroupArn(roleWithPolicy(template, CONFIG_READ_POLICY).role)).not.toContain(':log-group:/serverlessinbox/');
@@ -215,7 +215,7 @@ describe('SupportRolesInfra', () => {
       const { template } = synthesize(['111111111111']);
       const { role }     = roleWithPolicy(template, DIAG_POLICY);
 
-      const edgeLogGroup = statementsOf(role).find((s) => JSON.stringify(s.Resource).includes(':log-group:'));
+      const edgeLogGroup = statementsOf(role).find((statement) => JSON.stringify(statement.Resource).includes(':log-group:'));
       const nestedStacks = statementGranting(role, 'cloudformation:GetTemplate');
       for (const statement of [edgeLogGroup, nestedStacks]) {
         const resource = JSON.stringify(statement?.Resource);

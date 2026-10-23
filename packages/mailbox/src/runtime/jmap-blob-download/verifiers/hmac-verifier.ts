@@ -95,8 +95,8 @@ export class HmacVerifier {
       new GetItemCommand({
         TableName: authKeyStoreTable,
         Key:       {
-          pk: { S: 'hmac' },
-          sk: { S: 'blob-url-signing' },
+          'pk': { S: 'hmac' },
+          'sk': { S: 'blob-url-signing' },
         },
       }),
     );
