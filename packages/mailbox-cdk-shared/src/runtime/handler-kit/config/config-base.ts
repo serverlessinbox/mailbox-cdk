@@ -9,14 +9,14 @@ export interface BaseConfig {
 }
 
 /** Reads LOG_LEVEL, defaulting to `error`; a value that is not a log level is reported, not defaulted. */
-export function loadLogLevel(l: env.Loader): LogLevel {
-  return env.optionalAs(l, 'LOG_LEVEL', 'error', parseLogLevelStrict);
+export function loadLogLevel(loader: env.Loader): LogLevel {
+  return env.optionalAs(loader, 'LOG_LEVEL', 'error', parseLogLevelStrict);
 }
 
 /** Reads the environment every Lambda shares. */
-export function loadBaseConfig(l: env.Loader): BaseConfig {
+export function loadBaseConfig(loader: env.Loader): BaseConfig {
   return {
-    logLevel:    loadLogLevel(l),
-    serviceName: l.mandatory('SERVICE_NAME'),
+    logLevel:    loadLogLevel(loader),
+    serviceName: loader.mandatory('SERVICE_NAME'),
   };
 }

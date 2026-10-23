@@ -1,7 +1,7 @@
-import * as fs from 'node:fs/promises';
+import * as fileSystem from 'node:fs/promises';
 
 export async function writeJson(filePath: string, value: unknown): Promise<void> {
-  await fs.writeFile(filePath, JSON.stringify(value, null, 2) + '\n', 'utf8');
+  await fileSystem.writeFile(filePath, JSON.stringify(value, null, 2) + '\n', 'utf8');
 }
 
 export function parseArgs(argv: string[]): Record<string, string | boolean> {

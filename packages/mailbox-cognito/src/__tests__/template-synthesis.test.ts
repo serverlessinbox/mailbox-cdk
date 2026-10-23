@@ -180,8 +180,8 @@ describe('Cognito Data Stack Template Synthesis', () => {
 
       // Check for key Cognito resource types
       const resourceEntries   = Object.values(resources || {});
-      const hasUserPool       = resourceEntries.some((r) => isResourceOfType(r, 'AWS::Cognito::UserPool'));
-      const hasUserPoolDomain = resourceEntries.some((r) => isResourceOfType(r, 'AWS::Cognito::UserPoolDomain'));
+      const hasUserPool       = resourceEntries.some((resource) => isResourceOfType(resource, 'AWS::Cognito::UserPool'));
+      const hasUserPoolDomain = resourceEntries.some((resource) => isResourceOfType(resource, 'AWS::Cognito::UserPoolDomain'));
 
       expect(hasUserPool).toBe(true);
       expect(hasUserPoolDomain).toBe(true);

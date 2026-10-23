@@ -64,7 +64,7 @@ describe('AdminApiHandler', () => {
     });
 
     it('serves a POST whatever the case of its method', async () => {
-      const handler = buildHandler({ Echo: method(() => Promise.resolve({ ok: 1 })) });
+      const handler = buildHandler({ Echo: method(() => Promise.resolve({ echoed: 1 })) });
 
       const result = await handler.handle({ rawPath: '/idp-users/Echo', requestContext: { http: { method: 'post' } } });
 
@@ -85,20 +85,20 @@ describe('AdminApiHandler', () => {
     });
 
     it('serves the only service of the base path from /{basePath}/{method}', async () => {
-      const handler = buildHandler({ Echo: method(() => Promise.resolve({ ok: 1 })) });
+      const handler = buildHandler({ Echo: method(() => Promise.resolve({ echoed: 1 })) });
 
       const result = await handler.handle(post('/idp-users/Echo'));
 
       expect(result.statusCode).toBe(200);
-      expect(bodyOf(result)).toEqual({ ok: 1 });
+      expect(bodyOf(result)).toEqual({ echoed: 1 });
     });
 
     it('serves the named service from /{basePath}/{service}/{method}', async () => {
-      const handler = buildHandler({ Echo: method(() => Promise.resolve({ ok: 2 })) });
+      const handler = buildHandler({ Echo: method(() => Promise.resolve({ echoed: 2 })) });
 
       const result = await handler.handle(post('/idp-users/idpusers/Echo'));
 
-      expect(bodyOf(result)).toEqual({ ok: 2 });
+      expect(bodyOf(result)).toEqual({ echoed: 2 });
     });
 
     it('answers 404 when the base path has no services', async () => {
@@ -217,12 +217,12 @@ describe('AdminApiHandler', () => {
 
     it('writes a bigint as a string and drops the protobuf $typeName marker at every depth', async () => {
       const handler = buildHandler({
-        Echo: method(() => Promise.resolve({ $typeName: 'a.B', count: BigInt('9007199254740993'), nested: { $typeName: 'a.C', ok: true } })),
+        Echo: method(() => Promise.resolve({ $typeName: 'a.B', count: BigInt('9007199254740993'), nested: { $typeName: 'a.C', echoed: true } })),
       });
 
       const result = await handler.handle(post('/idp-users/Echo'));
 
-      expect(result.body).toBe('{"count":"9007199254740993","nested":{"ok":true}}');
+      expect(result.body).toBe('{"count":"9007199254740993","nested":{"echoed":true}}');
     });
 
     it('answers an empty object when the handler returns nothing', async () => {
@@ -335,7 +335,7 @@ describe('AdminApiHandler', () => {
 
     it('serves a mutation without calling the tenant or actor lookups when there is no audit sink', async () => {
       const getActor = jest.fn<unknown, [TestAuth]>();
-      const handler  = buildHandler({ CreateUser: method(() => Promise.resolve({ ok: 1 })) }, { getActor });
+      const handler  = buildHandler({ CreateUser: method(() => Promise.resolve({ echoed: 1 })) }, { getActor });
 
       const result = await handler.handle(post('/idp-users/CreateUser'));
 

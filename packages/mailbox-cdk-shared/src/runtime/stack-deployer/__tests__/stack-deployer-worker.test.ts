@@ -86,7 +86,7 @@ describe('StackDeployerWorker', () => {
   });
 
   describe('starting a stack operation', () => {
-    const start = (op: OperationInput) => workerForStacks().handle(sfnEvent({ mode: 'start', op, attempt: 0 }), replyTarget());
+    const start = (stackOperation: OperationInput) => workerForStacks().handle(sfnEvent({ mode: 'start', op: stackOperation, attempt: 0 }), replyTarget());
 
     it('creates a stack that does not exist and asks the workflow to poll, without counters', async () => {
       cfn.on(DescribeStacksCommand).resolves({ Stacks: [] });

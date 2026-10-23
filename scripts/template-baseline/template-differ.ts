@@ -21,7 +21,7 @@ export class TemplateDiffer {
 
     const changed: EntryChange[]               = [];
     const knownNonDeterministic: EntryChange[] = [];
-    for (const [entryId, beforeEntry] of [...beforeEntries.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [entryId, beforeEntry] of [...beforeEntries.entries()].sort(([leftId], [rightId]) => leftId.localeCompare(rightId))) {
       const afterEntry = afterEntries.get(entryId);
       if (afterEntry === undefined) {
         continue;
@@ -64,7 +64,7 @@ export class TemplateDiffer {
       });
     }
     if (Array.isArray(before) && Array.isArray(after)) {
-      const indexes = Array.from({ length: Math.max(before.length, after.length) }, (_, index) => index);
+      const indexes = Array.from({ length: Math.max(before.length, after.length) }, (_element, index) => index);
       return indexes.flatMap((index) => {
         const childPath = `${path}[${index}]`;
         return index < before.length && index < after.length ? this.changedPaths(before[index], after[index], childPath) : [childPath];

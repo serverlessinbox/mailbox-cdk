@@ -73,24 +73,24 @@ export function check<T>(load: (l: Loader) => T): () => void {
  * `whenInvalid` is required because TypeScript has no zero value for a generic type. It is never used once a
  * problem is recorded: `mustLoad` throws, `tryLoad` hands the problem to the caller and `check` throws.
  */
-export function mandatoryAs<T>(l: Loader, name: string, parse: (raw: string) => T, whenInvalid: T): T {
-  const raw = l.mandatory(name);
+export function mandatoryAs<T>(loader: Loader, name: string, parse: (raw: string) => T, whenInvalid: T): T {
+  const raw = loader.mandatory(name);
   if (!raw) {
     return whenInvalid;
   }
-  return parseOrReport(l, name, raw, parse, whenInvalid);
+  return parseOrReport(loader, name, raw, parse, whenInvalid);
 }
 
 /**
  * Reads an optional variable and parses it. When it is not set, returns the fallback and records nothing; when
  * it is set but does not parse, records the failure and returns the fallback.
  */
-export function optionalAs<T>(l: Loader, name: string, fallback: T, parse: (raw: string) => T): T {
-  const raw = l.optional(name, '');
+export function optionalAs<T>(loader: Loader, name: string, fallback: T, parse: (raw: string) => T): T {
+  const raw = loader.optional(name, '');
   if (!raw) {
     return fallback;
   }
-  return parseOrReport(l, name, raw, parse, fallback);
+  return parseOrReport(loader, name, raw, parse, fallback);
 }
 
 /** Stock parser: JSON text validated by a typanion validator; throws when the text is not JSON or fails the validator. */
@@ -148,7 +148,7 @@ export function onOff(raw: string): boolean {
 /** Stock parser: one of the allowed values, case-sensitive, typed as the union of the allowed values. */
 export function enumOf<T extends string>(...allowed: T[]): (raw: string) => T {
   return (raw: string): T => {
-    const match = allowed.find((a) => a === raw);
+    const match = allowed.find((allowedValue) => allowedValue === raw);
     if (match === undefined) {
       throw new Error(`expected one of [${allowed.join(', ')}], got "${raw}"`);
     }
@@ -157,11 +157,11 @@ export function enumOf<T extends string>(...allowed: T[]): (raw: string) => T {
 }
 
 /** Parses the raw value; on failure records the parse error against the variable and returns `whenInvalid`. */
-function parseOrReport<T>(l: Loader, name: string, raw: string, parse: (raw: string) => T, whenInvalid: T): T {
+function parseOrReport<T>(loader: Loader, name: string, raw: string, parse: (raw: string) => T, whenInvalid: T): T {
   try {
     return parse(raw);
   } catch (failure) {
-    l.report(name, CaughtError.readableMessage(failure));
+    loader.report(name, CaughtError.readableMessage(failure));
     return whenInvalid;
   }
 }

@@ -37,9 +37,9 @@ describe('env', () => {
       process.env.VAR2 = '';
 
       expect(() =>
-        mustLoad((l) => {
-          l.mandatory('VAR1');
-          l.mandatory('VAR2');
+        mustLoad((loader) => {
+          loader.mandatory('VAR1');
+          loader.mandatory('VAR2');
         }),
       ).toThrow('config validation failed: VAR1 is not set; VAR2 is not set');
     });
@@ -47,14 +47,14 @@ describe('env', () => {
     it('throws when a typed variable does not parse', () => {
       process.env.PORT = 'not-a-number';
 
-      expect(() => mustLoad((l) => mandatoryAs(l, 'PORT', positiveInt, 0))).toThrow(/config validation failed: PORT: expected positive integer/);
+      expect(() => mustLoad((loader) => mandatoryAs(loader, 'PORT', positiveInt, 0))).toThrow(/config validation failed: PORT: expected positive integer/);
     });
 
     it('returns the loaded config when it is valid', () => {
       process.env.USER_NAME = 'alice';
       delete process.env.ROLE;
 
-      const result = mustLoad((l) => ({ user: l.mandatory('USER_NAME'), role: l.optional('ROLE', 'user') }));
+      const result = mustLoad((loader) => ({ user: loader.mandatory('USER_NAME'), role: loader.optional('ROLE', 'user') }));
 
       expect(result).toEqual({ user: 'alice', role: 'user' });
     });
@@ -65,16 +65,16 @@ describe('env', () => {
       delete process.env.A;
       delete process.env.B;
 
-      const { config, error } = tryLoad((l) => ({ a: l.mandatory('A'), b: l.mandatory('B') }));
+      const { config, error } = tryLoad((loader) => ({ first: loader.mandatory('A'), second: loader.mandatory('B') }));
 
-      expect(config).toEqual({ a: '', b: '' });
+      expect(config).toEqual({ first: '', second: '' });
       expect(error).toBe('A is not set; B is not set');
     });
 
     it('returns no error when the config is valid', () => {
       process.env.HOST = 'localhost';
 
-      const { config, error } = tryLoad((l) => ({ host: l.mandatory('HOST') }));
+      const { config, error } = tryLoad((loader) => ({ host: loader.mandatory('HOST') }));
 
       expect(error).toBeUndefined();
       expect(config).toEqual({ host: 'localhost' });
@@ -85,7 +85,7 @@ describe('env', () => {
     it('returns a check that throws when the config is invalid', () => {
       delete process.env.DB_URL;
 
-      const configCheck = check((l) => l.mandatory('DB_URL'));
+      const configCheck = check((loader) => loader.mandatory('DB_URL'));
 
       expect(() => configCheck()).toThrow('config validation failed: DB_URL is not set');
     });
@@ -93,7 +93,7 @@ describe('env', () => {
     it('returns a check that passes when the config is valid', () => {
       process.env.DB_URL = 'postgres://localhost';
 
-      const configCheck = check((l) => l.mandatory('DB_URL'));
+      const configCheck = check((loader) => loader.mandatory('DB_URL'));
 
       expect(() => configCheck()).not.toThrow();
     });
@@ -103,13 +103,13 @@ describe('env', () => {
     it('parses the variable', () => {
       process.env.COUNT = '42';
 
-      expect(tryLoad((l) => mandatoryAs(l, 'COUNT', positiveInt, 0))).toEqual({ config: 42, error: undefined });
+      expect(tryLoad((loader) => mandatoryAs(loader, 'COUNT', positiveInt, 0))).toEqual({ config: 42, error: undefined });
     });
 
     it('records the parse failure against the variable and returns whenInvalid', () => {
       process.env.COUNT = 'abc';
 
-      expect(tryLoad((l) => mandatoryAs(l, 'COUNT', positiveInt, -1))).toEqual({
+      expect(tryLoad((loader) => mandatoryAs(loader, 'COUNT', positiveInt, -1))).toEqual({
         config: -1,
         error:  'COUNT: expected positive integer, got "abc"',
       });
@@ -118,7 +118,7 @@ describe('env', () => {
     it('records one problem and returns whenInvalid when the variable is not set', () => {
       delete process.env.COUNT;
 
-      expect(tryLoad((l) => mandatoryAs(l, 'COUNT', positiveInt, -1))).toEqual({ config: -1, error: 'COUNT is not set' });
+      expect(tryLoad((loader) => mandatoryAs(loader, 'COUNT', positiveInt, -1))).toEqual({ config: -1, error: 'COUNT is not set' });
     });
 
     it('records the message of a parser that throws something that is not an Error', () => {
@@ -127,7 +127,7 @@ describe('env', () => {
         throw 'plain text';
       };
 
-      expect(tryLoad((l) => mandatoryAs(l, 'COUNT', parseThrowingText, -1)).error).toBe('COUNT: plain text');
+      expect(tryLoad((loader) => mandatoryAs(loader, 'COUNT', parseThrowingText, -1)).error).toBe('COUNT: plain text');
     });
   });
 
@@ -135,19 +135,19 @@ describe('env', () => {
     it('returns the fallback and records nothing when the variable is not set', () => {
       delete process.env.COUNT;
 
-      expect(tryLoad((l) => optionalAs(l, 'COUNT', 99, positiveInt))).toEqual({ config: 99, error: undefined });
+      expect(tryLoad((loader) => optionalAs(loader, 'COUNT', 99, positiveInt))).toEqual({ config: 99, error: undefined });
     });
 
     it('parses the variable when it is set', () => {
       process.env.COUNT = '42';
 
-      expect(tryLoad((l) => optionalAs(l, 'COUNT', 0, positiveInt))).toEqual({ config: 42, error: undefined });
+      expect(tryLoad((loader) => optionalAs(loader, 'COUNT', 0, positiveInt))).toEqual({ config: 42, error: undefined });
     });
 
     it('reports a malformed value and returns the fallback', () => {
       process.env.COUNT = 'abc';
 
-      expect(tryLoad((l) => optionalAs(l, 'COUNT', 8080, positiveInt))).toEqual({
+      expect(tryLoad((loader) => optionalAs(loader, 'COUNT', 8080, positiveInt))).toEqual({
         config: 8080,
         error:  'COUNT: expected positive integer, got "abc"',
       });

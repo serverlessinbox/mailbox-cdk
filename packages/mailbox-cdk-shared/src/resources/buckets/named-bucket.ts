@@ -33,6 +33,22 @@ export class StackNamedBucket extends Bucket implements IStaticContentTarget {
     super(scope, constructId, { ...props, bucketName: fullBucketName });
   }
 
+  grantContentWrite(grantee: IGrantable, keyPatterns: string[]): void {
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:PutObject', 's3:DeleteObject'],
+      resourceArns: keyPatterns.map((keyPattern) => this.arnForObjects(keyPattern)),
+    });
+  }
+
+  grantContentListing(grantee: IGrantable): void {
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:ListBucket'],
+      resourceArns: [this.bucketArn],
+    });
+  }
+
   /**
    * The synth-time bucket-name prefix (`${accountId}-${nameBase}-`), where `nameBase` is the S3-safe
    * base registered via `setStackNameBase` for this stack, falling back to `Aws.STACK_NAME` when nothing
@@ -50,22 +66,6 @@ export class StackNamedBucket extends Bucket implements IStaticContentTarget {
         const nameBase   = registered ? Token.asString(registered) : Aws.STACK_NAME;
         return Fn.join('', [Aws.ACCOUNT_ID, '-', nameBase, '-']);
       },
-    });
-  }
-
-  grantContentWrite(grantee: IGrantable, keyPatterns: string[]): void {
-    Grant.addToPrincipal({
-      grantee,
-      actions:      ['s3:PutObject', 's3:DeleteObject'],
-      resourceArns: keyPatterns.map((keyPattern) => this.arnForObjects(keyPattern)),
-    });
-  }
-
-  grantContentListing(grantee: IGrantable): void {
-    Grant.addToPrincipal({
-      grantee,
-      actions:      ['s3:ListBucket'],
-      resourceArns: [this.bucketArn],
     });
   }
 }

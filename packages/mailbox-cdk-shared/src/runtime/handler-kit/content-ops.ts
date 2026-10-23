@@ -52,8 +52,8 @@ export async function deletePrefix(s3: S3Client, bucket: string, prefix: string)
     );
 
     const keys = (list.Contents ?? [])
-      .map((o) => o.Key)
-      .filter((k): k is string => typeof k === 'string');
+      .map((listedObject) => listedObject.Key)
+      .filter((key): key is string => typeof key === 'string');
 
     if (keys.length === 0) {
       break;

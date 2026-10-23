@@ -26,14 +26,14 @@ export interface Config extends BaseConfig {
 }
 
 /** Reads `SERVICE_NAME` as optional where `loadBaseConfig` requires it, so an empty service name is accepted. */
-export function load(l: env.Loader): Config {
+export function load(loader: env.Loader): Config {
   return {
-    logLevel:                        loadLogLevel(l),
-    serviceName:                     l.optional('SERVICE_NAME', ''),
-    userPoolId:                      env.mandatoryAs(l, 'USER_POOL_ID', toUserPoolId, toUserPoolId('')),
-    auditEventsQueueUrl:             env.mandatoryAs(l, 'AUDIT_EVENTS_QUEUE_URL', toQueueUrl, toQueueUrl('')),
-    identityProvisionerFunctionName: env.mandatoryAs(l, 'IDENTITY_PROVISIONER_FUNCTION_NAME', toFunctionName, toFunctionName('')),
-    adminGroups:                     env.optionalAs(l, 'ADMIN_GROUPS', undefined, env.json(isGroupNameArray)),
-    userGroups:                      env.optionalAs(l, 'USER_GROUPS', undefined, env.json(isGroupNameArray)),
+    logLevel:                        loadLogLevel(loader),
+    serviceName:                     loader.optional('SERVICE_NAME', ''),
+    userPoolId:                      env.mandatoryAs(loader, 'USER_POOL_ID', toUserPoolId, toUserPoolId('')),
+    auditEventsQueueUrl:             env.mandatoryAs(loader, 'AUDIT_EVENTS_QUEUE_URL', toQueueUrl, toQueueUrl('')),
+    identityProvisionerFunctionName: env.mandatoryAs(loader, 'IDENTITY_PROVISIONER_FUNCTION_NAME', toFunctionName, toFunctionName('')),
+    adminGroups:                     env.optionalAs(loader, 'ADMIN_GROUPS', undefined, env.json(isGroupNameArray)),
+    userGroups:                      env.optionalAs(loader, 'USER_GROUPS', undefined, env.json(isGroupNameArray)),
   };
 }

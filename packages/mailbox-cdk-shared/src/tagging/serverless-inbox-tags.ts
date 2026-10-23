@@ -114,9 +114,9 @@ export function applyServerlessInboxBaseTagsWithDeployerType(
   const extra = options.extraTags ?? {};
   for (const [key, value] of Object.entries(extra)) {
     if (value === undefined || value === null) {continue;}
-    const v = String(value).trim();
-    if (!v) {continue;}
-    Tags.of(scope).add(key, v);
+    const tagValue = String(value).trim();
+    if (!tagValue) {continue;}
+    Tags.of(scope).add(key, tagValue);
   }
 }
 

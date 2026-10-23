@@ -18,11 +18,11 @@ export interface Config extends BaseConfig {
 }
 
 /** Reads `SERVICE_NAME` as optional where `loadBaseConfig` requires it, so an empty service name is accepted. */
-export function load(l: env.Loader): Config {
+export function load(loader: env.Loader): Config {
   return {
-    logLevel:                        loadLogLevel(l),
-    serviceName:                     l.optional('SERVICE_NAME', ''),
-    userPoolId:                      env.mandatoryAs(l, 'USER_POOL_ID', toUserPoolId, toUserPoolId('')),
-    identityProvisionerFunctionName: env.mandatoryAs(l, 'IDENTITY_PROVISIONER_FUNCTION_NAME', toFunctionName, toFunctionName('')),
+    logLevel:                        loadLogLevel(loader),
+    serviceName:                     loader.optional('SERVICE_NAME', ''),
+    userPoolId:                      env.mandatoryAs(loader, 'USER_POOL_ID', toUserPoolId, toUserPoolId('')),
+    identityProvisionerFunctionName: env.mandatoryAs(loader, 'IDENTITY_PROVISIONER_FUNCTION_NAME', toFunctionName, toFunctionName('')),
   };
 }

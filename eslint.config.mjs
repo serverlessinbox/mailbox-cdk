@@ -88,7 +88,22 @@ export default [
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/ban-ts-comment': 'error',
       '@typescript-eslint/use-unknown-in-catch-callback-variable': 'error',
-      '@typescript-eslint/member-ordering': 'error',
+      '@typescript-eslint/member-ordering': [
+        'error',
+        {
+          default: [
+            'signature',
+            'call-signature',
+            'field',
+            'static-initialization',
+            'constructor',
+            ['public-get', 'public-set', 'public-method'],
+            ['protected-get', 'protected-set', 'protected-method'],
+            ['private-get', 'private-set', 'private-method'],
+            ['#private-get', '#private-set', '#private-method'],
+          ],
+        },
+      ],
       '@typescript-eslint/naming-convention': [
         'error',
         {
@@ -109,6 +124,15 @@ export default [
       curly: ['error', 'all'],
       'custom/align': 'error',
       'custom/plan-labels': 'error',
+      'id-length': [
+        'error',
+        {
+          min: 3,
+          properties: 'always',
+          exceptions: ['i', 'j', 'k', 'id', 'ui', 's3', 't'],
+          exceptionPatterns: ['^[A-Z]'],
+        },
+      ],
       'max-classes-per-file': ['error', 1],
       'max-lines-per-function': ['error', { max: 80, skipBlankLines: true, skipComments: true }],
     },

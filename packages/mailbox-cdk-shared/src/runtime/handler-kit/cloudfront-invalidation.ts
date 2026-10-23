@@ -31,7 +31,7 @@ export async function invalidateCloudFront(
     return { invalidated: false };
   }
 
-  const items = (paths ?? []).map((p) => String(p).trim()).filter(Boolean);
+  const items = (paths ?? []).map((pathEntry) => String(pathEntry).trim()).filter(Boolean);
   if (items.length === 0) {
     return { invalidated: false };
   }

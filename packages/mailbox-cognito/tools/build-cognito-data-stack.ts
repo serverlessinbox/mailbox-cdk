@@ -1,5 +1,5 @@
 import { App, BootstraplessSynthesizer }      from 'aws-cdk-lib';
-import * as fs                                from 'node:fs/promises';
+import * as fileSystem                        from 'node:fs/promises';
 import * as path                              from 'node:path';
 
 import { COGNITO_DATA_STACK_TEMPLATE_OBJECT } from '../src/data-stack/mailbox-cognito-data-stack-contract';
@@ -24,7 +24,7 @@ async function main() {
   const artifact          = assembly.getStackArtifact(stack.artifactId);
   const template: unknown = artifact.template;
 
-  await fs.mkdir(outDir, { recursive: true });
+  await fileSystem.mkdir(outDir, { recursive: true });
 
   const templatePath = path.join(outDir, COGNITO_DATA_STACK_TEMPLATE_OBJECT);
   await writeJson(templatePath, template);

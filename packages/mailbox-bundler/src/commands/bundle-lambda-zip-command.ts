@@ -43,6 +43,6 @@ export class BundleLambdaZipCommand extends Command {
   }
 
   private parseExternals(): string[] {
-    return this.external.split(',').map(s => s.trim()).filter(Boolean);
+    return this.external.split(',').map(entry => entry.trim()).filter(Boolean);
   }
 }

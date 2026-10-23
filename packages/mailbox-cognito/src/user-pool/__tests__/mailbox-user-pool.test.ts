@@ -326,13 +326,13 @@ describe('MailboxUserPool JMAP OAuth discovery', () => {
 describe('MailboxUserPool.grantAdminAccess', () => {
   it('grants the function user administration on the pool itself, never on every resource', () => {
     const { pool, stack } = createUserPool();
-    const fn              = new lambda.Function(stack, 'fn', {
+    const adminLambda     = new lambda.Function(stack, 'fn', {
       runtime: lambda.Runtime.NODEJS_LATEST,
       handler: 'index.handler',
       code:    lambda.Code.fromInline('exports.handler = async () => {};'),
     });
 
-    pool.grantAdminAccess(fn);
+    pool.grantAdminAccess(adminLambda);
 
     Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
       PolicyDocument: {

@@ -41,9 +41,9 @@ export class CloudFormationStacks {
   }
 
   /** The stack of the operation, or undefined when it does not exist. */
-  async describe(op: OperationInput): Promise<Stack | undefined> {
+  async describe(operation: OperationInput): Promise<Stack | undefined> {
     try {
-      const response = await this.clientFor(op).send(new DescribeStacksCommand({ StackName: op.stackName }));
+      const response = await this.clientFor(operation).send(new DescribeStacksCommand({ StackName: operation.stackName }));
       return response.Stacks?.[0];
     } catch (failure) {
       return this.missingStackOrRethrow(failure);
@@ -51,12 +51,12 @@ export class CloudFormationStacks {
   }
 
   /** One line per failed, rolled-back or cancelled event, newest first; empty when the events cannot be read. */
-  async describeRecentFailures(op: OperationInput): Promise<string[]> {
+  async describeRecentFailures(operation: OperationInput): Promise<string[]> {
     try {
-      const response = await this.clientFor(op).send(new DescribeStackEventsCommand({ StackName: op.stackName }));
+      const response = await this.clientFor(operation).send(new DescribeStackEventsCommand({ StackName: operation.stackName }));
       return this.failureLines(response.StackEvents ?? []);
     } catch (failure) {
-      this.logger.warn(`Failed to describe stack events for ${op.stackName}`, { error: CaughtError.readableMessage(failure) });
+      this.logger.warn(`Failed to describe stack events for ${operation.stackName}`, { error: CaughtError.readableMessage(failure) });
       return [];
     }
   }
@@ -73,12 +73,12 @@ export class CloudFormationStacks {
   }
 
   /** The outputs the stack of the operation has now; undefined when the stack does not exist or cannot be read. */
-  async currentOutputs(op: OperationInput): Promise<Record<string, string> | undefined> {
+  async currentOutputs(operation: OperationInput): Promise<Record<string, string> | undefined> {
     try {
-      const stack = await this.describe(op);
+      const stack = await this.describe(operation);
       return stack ? this.outputsOf(stack) : undefined;
     } catch (failure) {
-      this.logger.warn(`Failed to read the outputs of stack ${op.stackName}`, { error: CaughtError.readableMessage(failure) });
+      this.logger.warn(`Failed to read the outputs of stack ${operation.stackName}`, { error: CaughtError.readableMessage(failure) });
       return undefined;
     }
   }
@@ -87,44 +87,44 @@ export class CloudFormationStacks {
    * Creates the stack, or updates it when it exists. A stack whose status refuses every update is deleted and
    * created again. An update that changes nothing is not a failure.
    */
-  async startOrUpdate(op: OperationInput): Promise<void> {
+  async startOrUpdate(operation: OperationInput): Promise<void> {
     // Parameter keys only: the values may be sensitive, such as an admin username.
-    this.logger.debug('CloudFormation parameters', { parameterKeys: this.parameters(op).map((parameter) => parameter.ParameterKey) });
-    this.logger.debug('CloudFormation tags', { tags: this.tags(op) });
+    this.logger.debug('CloudFormation parameters', { parameterKeys: this.parameters(operation).map((parameter) => parameter.ParameterKey) });
+    this.logger.debug('CloudFormation tags', { tags: this.tags(operation) });
     this.logger.debug('Stack operation', {
-      stackName:             op.stackName,
-      templateUrl:           op.templateUrl,
-      terminationProtection: op.terminationProtection,
+      stackName:             operation.stackName,
+      templateUrl:           operation.templateUrl,
+      terminationProtection: operation.terminationProtection,
     });
 
-    const existing = await this.describeOrCreate(op);
+    const existing = await this.describeOrCreate(operation);
     if (!existing) {
       return;
     }
 
     if (StackStatus.requiresRecreate(existing.StackStatus)) {
-      await this.recreateStuck(op, existing);
+      await this.recreateStuck(operation, existing);
       return;
     }
 
-    await this.update(op);
+    await this.update(operation);
   }
 
-  async deleteIfExists(op: OperationInput): Promise<void> {
-    const existing = await this.describe(op);
+  async deleteIfExists(operation: OperationInput): Promise<void> {
+    const existing = await this.describe(operation);
     if (!existing) {
       return;
     }
-    await this.clientFor(op).send(new DeleteStackCommand({ StackName: op.stackName }));
+    await this.clientFor(operation).send(new DeleteStackCommand({ StackName: operation.stackName }));
   }
 
-  async recreate(op: OperationInput): Promise<void> {
-    await this.deleteForRecreate(op);
-    await this.createAfterDelete(op);
+  async recreate(operation: OperationInput): Promise<void> {
+    await this.deleteForRecreate(operation);
+    await this.createAfterDelete(operation);
   }
 
-  private clientFor(op: OperationInput): CloudFormationClient {
-    return this.clientForRegion(op.region ?? this.defaultRegion);
+  private clientFor(operation: OperationInput): CloudFormationClient {
+    return this.clientForRegion(operation.region ?? this.defaultRegion);
   }
 
   private missingStackOrRethrow(failure: unknown): undefined {
@@ -157,43 +157,43 @@ export class CloudFormationStacks {
     return lines;
   }
 
-  private async describeOrCreate(op: OperationInput): Promise<Stack | undefined> {
-    const existing = await this.describe(op);
+  private async describeOrCreate(operation: OperationInput): Promise<Stack | undefined> {
+    const existing = await this.describe(operation);
     if (existing) {
       return existing;
     }
-    return this.createUnlessExists(op);
+    return this.createUnlessExists(operation);
   }
 
-  private async recreateStuck(op: OperationInput, existing: Stack): Promise<void> {
-    this.logger.debug(`Stack ${op.stackName} is in ${existing.StackStatus}; deleting and recreating.`);
-    await this.recreate(op);
+  private async recreateStuck(operation: OperationInput, existing: Stack): Promise<void> {
+    this.logger.debug(`Stack ${operation.stackName} is in ${existing.StackStatus}; deleting and recreating.`);
+    await this.recreate(operation);
   }
 
-  private async deleteForRecreate(op: OperationInput): Promise<void> {
-    this.logger.debug(`Stack ${op.stackName} requires recreation; deleting and recreating.`);
-    await this.deleteIfExists(op);
+  private async deleteForRecreate(operation: OperationInput): Promise<void> {
+    this.logger.debug(`Stack ${operation.stackName} requires recreation; deleting and recreating.`);
+    await this.deleteIfExists(operation);
   }
 
-  private async createAfterDelete(op: OperationInput): Promise<void> {
+  private async createAfterDelete(operation: OperationInput): Promise<void> {
     try {
-      await this.createStack(op);
+      await this.createStack(operation);
     } catch (failure) {
       this.logger.error('Recreate CreateStack failed', { error: this.stringify(failure) });
       throw failure;
     }
   }
 
-  private async createUnlessExists(op: OperationInput): Promise<Stack | undefined> {
+  private async createUnlessExists(operation: OperationInput): Promise<Stack | undefined> {
     try {
-      await this.createStack(op);
+      await this.createStack(operation);
       return undefined;
     } catch (failure) {
-      return this.existingStackOrRethrow(op, failure);
+      return this.existingStackOrRethrow(operation, failure);
     }
   }
 
-  private async existingStackOrRethrow(op: OperationInput, failure: unknown): Promise<Stack> {
+  private async existingStackOrRethrow(operation: OperationInput, failure: unknown): Promise<Stack> {
     const caught = new CaughtError(failure);
     if (!caught.is('AlreadyExistsException') && !caught.messageIncludes('already exists')) {
       this.logger.error('CreateStack failed', { error: this.stringify(failure) });
@@ -201,8 +201,8 @@ export class CloudFormationStacks {
     }
 
     // Race: the stack appeared between the describe and the create.
-    this.logger.debug(`Stack ${op.stackName} AlreadyExistsException on CreateStack; re-describing to resolve.`);
-    const existing = await this.describe(op);
+    this.logger.debug(`Stack ${operation.stackName} AlreadyExistsException on CreateStack; re-describing to resolve.`);
+    const existing = await this.describe(operation);
     if (!existing) {
       this.logger.error('CreateStack AlreadyExistsException but stack not found on re-describe', { error: this.stringify(failure) });
       throw failure;
@@ -210,27 +210,27 @@ export class CloudFormationStacks {
     return existing;
   }
 
-  private async createStack(op: OperationInput): Promise<void> {
-    await this.clientFor(op).send(
+  private async createStack(operation: OperationInput): Promise<void> {
+    await this.clientFor(operation).send(
       new CreateStackCommand({
-        StackName:                   op.stackName,
-        TemplateURL:                 op.templateUrl,
-        Parameters:                  this.parameters(op),
-        Tags:                        this.tags(op),
+        StackName:                   operation.stackName,
+        TemplateURL:                 operation.templateUrl,
+        Parameters:                  this.parameters(operation),
+        Tags:                        this.tags(operation),
         Capabilities:                STACK_CAPABILITIES,
-        EnableTerminationProtection: isSwitchedOn(op.terminationProtection),
+        EnableTerminationProtection: isSwitchedOn(operation.terminationProtection),
       }),
     );
   }
 
-  private async update(op: OperationInput): Promise<void> {
+  private async update(operation: OperationInput): Promise<void> {
     try {
-      await this.clientFor(op).send(
+      await this.clientFor(operation).send(
         new UpdateStackCommand({
-          StackName:    op.stackName,
-          TemplateURL:  op.templateUrl,
-          Parameters:   this.parameters(op),
-          Tags:         this.tags(op),
+          StackName:    operation.stackName,
+          TemplateURL:  operation.templateUrl,
+          Parameters:   this.parameters(operation),
+          Tags:         this.tags(operation),
           Capabilities: STACK_CAPABILITIES,
         }),
       );
@@ -248,12 +248,12 @@ export class CloudFormationStacks {
     throw failure;
   }
 
-  private parameters(op: OperationInput): Parameter[] {
-    return this.nonEmptyEntries(op.parameters).map(([ParameterKey, ParameterValue]) => ({ ParameterKey, ParameterValue }));
+  private parameters(operation: OperationInput): Parameter[] {
+    return this.nonEmptyEntries(operation.parameters).map(([ParameterKey, ParameterValue]) => ({ ParameterKey, ParameterValue }));
   }
 
-  private tags(op: OperationInput): Tag[] {
-    return this.nonEmptyEntries(op.tags).map(([Key, Value]) => ({ Key, Value }));
+  private tags(operation: OperationInput): Tag[] {
+    return this.nonEmptyEntries(operation.tags).map(([Key, Value]) => ({ Key, Value }));
   }
 
   private nonEmptyEntries(values: Record<string, string | undefined> | undefined): Array<[string, string]> {

@@ -78,6 +78,11 @@ export class PollingCfnDeployerWorkflow extends sfn.StateMachine implements IPol
     });
   }
 
+  public grantStartAndDescribeExecutions(grantee: IGrantable): void {
+    this.grantStartExecution(grantee);
+    this.grantExecution(grantee, 'states:DescribeExecution');
+  }
+
   private static definition(states: Construct, props: PollingCfnDeployerWorkflowProps): sfn.IChainable {
     const waitBeforeCheck = PollingCfnDeployerWorkflow.waitBeforeCheck(states, props.checkInterval ?? Duration.seconds(20));
     const done            = PollingCfnDeployerWorkflow.done(states);
@@ -184,10 +189,5 @@ export class PollingCfnDeployerWorkflow extends sfn.StateMachine implements IPol
 
   private static path(...fields: PathField[]): string {
     return `$.${fields.join('.')}`;
-  }
-
-  public grantStartAndDescribeExecutions(grantee: IGrantable): void {
-    this.grantStartExecution(grantee);
-    this.grantExecution(grantee, 'states:DescribeExecution');
   }
 }

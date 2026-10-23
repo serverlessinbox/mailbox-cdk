@@ -4,9 +4,9 @@ import { loadLogLevel, type BaseConfig, type env } from '@serverlessinbox/mailbo
 export type Config = BaseConfig;
 
 /** Reads `SERVICE_NAME` as optional where `loadBaseConfig` requires it, so an empty service name is accepted. */
-export function load(l: env.Loader): Config {
+export function load(loader: env.Loader): Config {
   return {
-    logLevel:    loadLogLevel(l),
-    serviceName: l.optional('SERVICE_NAME', ''),
+    logLevel:    loadLogLevel(loader),
+    serviceName: loader.optional('SERVICE_NAME', ''),
   };
 }

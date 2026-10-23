@@ -52,18 +52,6 @@ export class CaughtError {
     return metadata ? `${name}: ${message} (${metadata})` : `${name}: ${message}`;
   }
 
-  private static nameOf(thrown: unknown): string | undefined {
-    return thrown instanceof Error ? thrown.name : undefined;
-  }
-
-  private static messageOf(thrown: unknown): string | undefined {
-    return thrown instanceof Error ? thrown.message : undefined;
-  }
-
-  private static metadataOf(thrown: unknown): t.InferType<typeof isSdkErrorMetadata>['$metadata'] {
-    return thrown instanceof Error && isSdkErrorMetadata(thrown) ? thrown.$metadata : undefined;
-  }
-
   /** True when the caught value is an `Error` named `errorName`; a value that is not an `Error` is never any name. */
   public is(errorName: string): boolean {
     return this.name === errorName;
@@ -87,5 +75,17 @@ export class CaughtError {
   /** The caught error as one `Name: message` line followed by the HTTP status and request id the SDK reported, when it reported any. */
   public describeWithMetadata(): string {
     return CaughtError.describeWithMetadata(this.thrown);
+  }
+
+  private static nameOf(thrown: unknown): string | undefined {
+    return thrown instanceof Error ? thrown.name : undefined;
+  }
+
+  private static messageOf(thrown: unknown): string | undefined {
+    return thrown instanceof Error ? thrown.message : undefined;
+  }
+
+  private static metadataOf(thrown: unknown): t.InferType<typeof isSdkErrorMetadata>['$metadata'] {
+    return thrown instanceof Error && isSdkErrorMetadata(thrown) ? thrown.$metadata : undefined;
   }
 }

@@ -15,14 +15,14 @@ describe('JsonBodyReader', () => {
   });
 
   it('reads every JSON shape, nested values included', () => {
-    const body = '{"text":"a","count":1.5,"flag":false,"none":null,"list":[1,"b",[true,null],{"deep":{"x":[]}}]}';
+    const body = '{"text":"a","count":1.5,"flag":false,"none":null,"list":[1,"b",[true,null],{"deep":{"items":[]}}]}';
 
     expect(reader.read(body)).toEqual({
       text:  'a',
       count: 1.5,
       flag:  false,
       none:  null,
-      list:  [1, 'b', [true, null], { deep: { x: [] } }],
+      list:  [1, 'b', [true, null], { deep: { items: [] } }],
     });
   });
 

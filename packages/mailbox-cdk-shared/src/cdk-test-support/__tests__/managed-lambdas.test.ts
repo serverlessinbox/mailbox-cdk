@@ -36,14 +36,14 @@ function synthesize(addFunctions: (stack: Stack) => void): Template {
 }
 
 function taggedFunction(stack: Stack, id: string, tags: Record<string, string>, environment: Record<string, string> = {}): void {
-  const fn = new lambda.Function(stack, id, {
+  const taggedLambda = new lambda.Function(stack, id, {
     runtime: lambda.Runtime.NODEJS_24_X,
     handler: 'index.handler',
     code:    lambda.Code.fromInline('exports.handler = async () => {};'),
     environment,
   });
   for (const [key, value] of Object.entries(tags)) {
-    Tags.of(fn).add(key, value);
+    Tags.of(taggedLambda).add(key, value);
   }
 }
 

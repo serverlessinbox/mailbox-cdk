@@ -586,7 +586,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
         refreshToken: 'days',
       },
       preventUserExistenceErrors:      'ENABLED',
-      supportedIdentityProviders:      this.supportedIdentityProviders.map(p => p.name),
+      supportedIdentityProviders:      this.supportedIdentityProviders.map(provider => provider.name),
       allowedOAuthFlows:               isClientCredentials ? ['client_credentials'] : ['code'],
       allowedOAuthFlowsUserPoolClient: true,
       allowedOAuthScopes:              [

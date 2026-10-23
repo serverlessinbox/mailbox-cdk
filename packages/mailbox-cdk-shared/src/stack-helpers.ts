@@ -23,13 +23,13 @@ export interface StackHelpersSeededNumberProps {
  * `Custom::StackHelpers` custom resource.
  */
 export class StackHelpers extends Construct {
-  private readonly fn: StackHelpersLambda;
+  private readonly helperLambda: StackHelpersLambda;
 
   private constructor(scope: Construct, id: string, artifactResolver: IArtifactResolver) {
     super(scope, id);
     applyServerlessInboxComponentTag(this, 'ops');
 
-    this.fn = new StackHelpersLambda(this, 'handler', { artifactResolver });
+    this.helperLambda = new StackHelpersLambda(this, 'handler', { artifactResolver });
   }
 
   /** One instance per stack, placed under the stack's shared group. */
@@ -49,14 +49,14 @@ export class StackHelpers extends Construct {
    * name of the hosted zone without its trailing dot, empty when `hostedZoneId` is empty.
    */
   resolveHostedZoneName(scope: Construct, id: string, hostedZoneId: string): string {
-    const cr = this.attach(scope, id, { HostedZoneId: hostedZoneId });
-    return cr.getAttString('domainName');
+    const customResource = this.attach(scope, id, { HostedZoneId: hostedZoneId });
+    return customResource.getAttString('domainName');
   }
 
   /** Attaches the caller's own custom resource under `scope`; the result is a deploy-time token. */
   resolveS3SafeStackName(scope: Construct, id: string, stackName: string): string {
-    const cr = this.attach(scope, id, { DataStackName: stackName });
-    return cr.getAttString('s3SafeDataStackName');
+    const customResource = this.attach(scope, id, { DataStackName: stackName });
+    return customResource.getAttString('s3SafeDataStackName');
   }
 
   /**
@@ -65,11 +65,11 @@ export class StackHelpers extends Construct {
    * `domainName` leaves nothing usable.
    */
   resolveCognitoDomainPrefix(scope: Construct, id: string, domainName: string): string {
-    const cr = this.attach(scope, id, {
+    const customResource = this.attach(scope, id, {
       DomainName: domainName,
       Fallback:   cdk.Aws.STACK_NAME,
     });
-    return cr.getAttString('cognitoDomainPrefix');
+    return customResource.getAttString('cognitoDomainPrefix');
   }
 
   /**
@@ -77,11 +77,11 @@ export class StackHelpers extends Construct {
    * number differs between installs and stays the same across updates of one stack.
    */
   resolveSeededNumber(scope: Construct, id: string, props: StackHelpersSeededNumberProps): string {
-    const cr = this.attach(scope, id, {
+    const customResource = this.attach(scope, id, {
       Salt:  props.salt,
       Range: props.range.toString(),
     });
-    return cr.getAttString('seededNumber');
+    return customResource.getAttString('seededNumber');
   }
 
   private attach(
@@ -90,7 +90,7 @@ export class StackHelpers extends Construct {
     properties: StackHelpersResourceProperties,
   ): cdk.CustomResource {
     return new cdk.CustomResource(scope, id, {
-      serviceToken:   this.fn.functionArn,
+      serviceToken:   this.helperLambda.functionArn,
       serviceTimeout: cdk.Duration.seconds(90),
       resourceType:   'Custom::StackHelpers',
       properties,

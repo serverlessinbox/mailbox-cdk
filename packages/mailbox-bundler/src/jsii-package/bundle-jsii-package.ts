@@ -15,7 +15,7 @@ const sourcesWithoutDeclarationsGlob = 'src/**/*!(.d).ts';
  * Rejects when esbuild reports errors; a failing declaration emit does not.
  */
 export async function bundleJsiiPackage(absoluteFolder: string, jsiiExcludes: string[]): Promise<void> {
-  const ignorePatterns = jsiiExcludes.map(p => join(absoluteFolder, p));
+  const ignorePatterns = jsiiExcludes.map(excludePath => join(absoluteFolder, excludePath));
   const entryPoints    = await glob(join(absoluteFolder, sourcesWithoutDeclarationsGlob), { ignore: ignorePatterns });
 
   const tsToJs = await context({

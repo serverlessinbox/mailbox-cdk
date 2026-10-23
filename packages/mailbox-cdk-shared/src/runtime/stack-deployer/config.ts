@@ -31,17 +31,17 @@ export interface StarterConfig extends BaseConfig {
   readonly region:          Region;
 }
 
-export function loadWorker(l: env.Loader): WorkerConfig {
+export function loadWorker(loader: env.Loader): WorkerConfig {
   return {
-    ...loadBaseConfig(l),
-    region: env.mandatoryAs(l, 'AWS_REGION', toRegion, UNUSABLE_REGION),
+    ...loadBaseConfig(loader),
+    region: env.mandatoryAs(loader, 'AWS_REGION', toRegion, UNUSABLE_REGION),
   };
 }
 
-export function loadStarter(l: env.Loader): StarterConfig {
+export function loadStarter(loader: env.Loader): StarterConfig {
   return {
-    ...loadBaseConfig(l),
-    stateMachineArn: env.mandatoryAs(l, STATE_MACHINE_ARN_VARIABLE, toStateMachineArn, UNUSABLE_STATE_MACHINE_ARN),
-    region:          env.mandatoryAs(l, 'AWS_REGION', toRegion, UNUSABLE_REGION),
+    ...loadBaseConfig(loader),
+    stateMachineArn: env.mandatoryAs(loader, STATE_MACHINE_ARN_VARIABLE, toStateMachineArn, UNUSABLE_STATE_MACHINE_ARN),
+    region:          env.mandatoryAs(loader, 'AWS_REGION', toRegion, UNUSABLE_REGION),
   };
 }

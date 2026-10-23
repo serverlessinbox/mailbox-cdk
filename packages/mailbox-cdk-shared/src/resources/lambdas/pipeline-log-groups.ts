@@ -76,6 +76,14 @@ export class PipelineLogGroup extends logs.LogGroup implements IPipelineLogGroup
     });
   }
 
+  grantFilterEvents(grantee: iam.IGrantable): iam.Grant {
+    return iam.Grant.addToPrincipal({
+      grantee,
+      actions:      ['logs:FilterLogEvents'],
+      resourceArns: [this.logGroupArn],
+    });
+  }
+
   private static requirePipelineLogGroup(existing: IConstruct, childId: string): PipelineLogGroup {
     if (!(existing instanceof PipelineLogGroup)) {
       throw new Error(
@@ -89,13 +97,5 @@ export class PipelineLogGroup extends logs.LogGroup implements IPipelineLogGroup
 
   private static logGroupNameFor(pipeline: Pipeline): string {
     return Fn.join('', ['/serverlessinbox/', Aws.STACK_NAME, '/', pipeline, '-', StackIdentity.guidPrefix]);
-  }
-
-  grantFilterEvents(grantee: iam.IGrantable): iam.Grant {
-    return iam.Grant.addToPrincipal({
-      grantee,
-      actions:      ['logs:FilterLogEvents'],
-      resourceArns: [this.logGroupArn],
-    });
   }
 }

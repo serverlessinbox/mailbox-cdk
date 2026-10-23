@@ -41,13 +41,13 @@ describe('BaseTable Deny Enumeration', () => {
     });
 
     // Create a Lambda function and grant it read access
-    const fn = new lambda.Function(stack, 'TestLambda', {
+    const testLambda = new lambda.Function(stack, 'TestLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
       code:    lambda.Code.fromInline('exports.handler = async () => {};'),
     });
 
-    table.grantReadData(fn);
+    table.grantReadData(testLambda);
 
     const template     = Template.fromStack(stack);
     const templateJson = template.toJSON();
@@ -122,12 +122,12 @@ describe('BaseTable Deny Enumeration', () => {
           const stmtResources = normalizeResources(stmt.Resource);
 
           // Check for table references (either ARNs or CFN references)
-          const hasTableRef = stmtResources.some((r: unknown) => {
-            if (typeof r === 'string') {
-              return r.includes('arn:aws:dynamodb') || r.includes('TestTable');
+          const hasTableRef = stmtResources.some((resource: unknown) => {
+            if (typeof resource === 'string') {
+              return resource.includes('arn:aws:dynamodb') || resource.includes('TestTable');
             }
-            if (typeof r === 'object' && r !== null) {
-              const ref = r as Record<string, unknown>;
+            if (typeof resource === 'object' && resource !== null) {
+              const ref = resource as Record<string, unknown>;
               return 'Fn::GetAtt' in ref || 'Ref' in ref;
             }
             return false;
@@ -173,14 +173,14 @@ describe('BaseTable Deny Enumeration', () => {
     });
 
     // Create a Lambda function and grant it access to both tables
-    const fn = new lambda.Function(stack, 'TestLambda', {
+    const testLambda = new lambda.Function(stack, 'TestLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
       code:    lambda.Code.fromInline('exports.handler = async () => {};'),
     });
 
-    table1.grantReadData(fn);
-    table2.grantReadData(fn);
+    table1.grantReadData(testLambda);
+    table2.grantReadData(testLambda);
 
     const template     = Template.fromStack(stack);
     const templateJson = template.toJSON();
@@ -242,13 +242,13 @@ describe('BaseTable Deny Enumeration', () => {
       partitionKey: { name: 'pk', type: cdk.aws_dynamodb.AttributeType.STRING },
     });
 
-    const fn = new lambda.Function(stack, 'TestLambda', {
+    const testLambda = new lambda.Function(stack, 'TestLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
       code:    lambda.Code.fromInline('exports.handler = async () => {};'),
     });
 
-    table.grantFullAccess(fn);
+    table.grantFullAccess(testLambda);
 
     const template     = Template.fromStack(stack);
     const templateJson = template.toJSON();
@@ -298,13 +298,13 @@ describe('BaseTable Deny Enumeration', () => {
       partitionKey: { name: 'pk', type: cdk.aws_dynamodb.AttributeType.STRING },
     });
 
-    const fn = new lambda.Function(stack, 'TestLambda', {
+    const testLambda = new lambda.Function(stack, 'TestLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
       code:    lambda.Code.fromInline('exports.handler = async () => {};'),
     });
 
-    table.grantReadData(fn);
+    table.grantReadData(testLambda);
 
     const template     = Template.fromStack(stack);
     const templateJson = template.toJSON();

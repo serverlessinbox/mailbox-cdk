@@ -69,8 +69,8 @@ export class AdminAuthExtractor {
   constructor(options: ExtractAuthOptions = {}) {
     this.adminGroupName        = (options.adminGroupName ?? 'admin').toLowerCase();
     this.requireSub            = options.requireSub ?? true;
-    this.configuredAdminGroups = (options.adminGroups ?? []).map((g) => g.toLowerCase()).filter(Boolean);
-    this.configuredUserGroups  = (options.userGroups ?? []).map((g) => g.toLowerCase()).filter(Boolean);
+    this.configuredAdminGroups = (options.adminGroups ?? []).map((group) => group.toLowerCase()).filter(Boolean);
+    this.configuredUserGroups  = (options.userGroups ?? []).map((group) => group.toLowerCase()).filter(Boolean);
   }
 
   public extract(event: ApiGatewayV2EventLike): AdminAuthContext {
@@ -125,19 +125,19 @@ export class AdminAuthExtractor {
   }
 
   private isAdminOf(groups: string[]): boolean {
-    const normalizedGroups = groups.map((g) => g.toLowerCase());
+    const normalizedGroups = groups.map((group) => group.toLowerCase());
     return this.configuredAdminGroups.length > 0
-      ? this.configuredAdminGroups.some((g) => normalizedGroups.includes(g))
+      ? this.configuredAdminGroups.some((group) => normalizedGroups.includes(group))
       : normalizedGroups.includes(this.adminGroupName);
   }
 
   private rolesOf(isAdmin: boolean, authType: AdminAuthType, groups: string[]): string[] {
-    const normalizedGroups = groups.map((g) => g.toLowerCase());
+    const normalizedGroups = groups.map((group) => group.toLowerCase());
     const roles: string[]  = [];
     if (isAdmin) {roles.push('admin');}
 
     if (this.configuredUserGroups.length > 0) {
-      if (this.configuredUserGroups.some((g) => normalizedGroups.includes(g))) {
+      if (this.configuredUserGroups.some((group) => normalizedGroups.includes(group))) {
         roles.push('user');
       }
     } else if (authType === 'authenticated') {
@@ -170,7 +170,7 @@ export class AdminAuthExtractor {
   private pickStringFromNested(obj: Record<string, unknown>, keys: string[], nestedKeys: string[]): string | undefined {
     const nested = nestedKeys
       .map((k) => obj[k])
-      .find((v) => v && typeof v === 'object' && !Array.isArray(v));
+      .find((candidate) => candidate && typeof candidate === 'object' && !Array.isArray(candidate));
     return this.pickString(this.toRecord(nested), keys);
   }
 
@@ -185,7 +185,7 @@ export class AdminAuthExtractor {
 
     const trimmed = value.trim();
     if (!trimmed) {return [];}
-    if (trimmed.includes(',')) {return trimmed.split(',').map((s) => s.trim()).filter(Boolean);}
+    if (trimmed.includes(',')) {return trimmed.split(',').map((segment) => segment.trim()).filter(Boolean);}
     return [trimmed];
   }
 
@@ -196,7 +196,7 @@ export class AdminAuthExtractor {
 
     return value
       .split(/[\s,]+/)
-      .map((s) => s.trim())
+      .map((segment) => segment.trim())
       .filter(Boolean);
   }
 
