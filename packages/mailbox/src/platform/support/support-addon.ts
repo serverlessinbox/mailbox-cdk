@@ -79,7 +79,7 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
     };
 
     if (!fullyDisabled) {
-      const condition = new cdk.CfnCondition(this, 'IsEnabled', {
+      const condition = new cdk.CfnCondition(this, 'is-enabled', {
         expression: Fn.conditionEquals(props.mode, SupportMode.ENABLED),
       });
 

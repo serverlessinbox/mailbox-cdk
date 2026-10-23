@@ -1,5 +1,5 @@
 import type { IArtifactResolver }                                      from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription, makePhysicalName, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
+import { ComponentDescription, type BaseQueueProps }                   from '@serverlessinbox/mailbox-cdk-shared';
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination }    from 'aws-cdk-lib/aws-ses';
 import { Construct }                                                   from 'constructs';
 
@@ -47,9 +47,7 @@ export class SesEventProcessing extends Construct {
       queueProps: props.queueProps,
     });
 
-    const cfnConfigSet    = new CfnConfigurationSet(this, 'ses-configuration-set', {
-      name: makePhysicalName(this, 'ses-config', { maxLength: 64 }),
-    });
+    const cfnConfigSet    = new CfnConfigurationSet(this, 'ses-configuration-set', {});
     this.sesConfigSetName = cfnConfigSet.ref;
 
     new CfnConfigurationSetEventDestination(this, 'ses-notification-destination', {

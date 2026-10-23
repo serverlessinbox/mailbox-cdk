@@ -14,7 +14,15 @@ import { stateBodyOf }                                                    from '
 import type { CertWorkerInput }                                           from '../../../../runtime/resource-sweeper/removal';
 import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard }     from '../removal';
 
-import { newTestStack, newWorkerFunction, renderDefinition }              from './sweeper-helpers';
+import {
+  nameOfStateWhere,
+  newTestStack,
+  newWorkerFunction,
+  renderDefinition,
+  startStateOf,
+  stateOf,
+  statusTargetOf,
+} from './sweeper-helpers';
 
 describe('removal chain helpers', () => {
   const retryInterval = Duration.minutes(5);
@@ -27,7 +35,7 @@ describe('removal chain helpers', () => {
     function renderLoop(gracePeriod?: Duration): string {
       const stack     = newTestStack('RetryLoopStack');
       const onSuccess = new sfn.Succeed(stack, 'Done');
-      const entry     = buildWorkerRetryLoop(stack, 'Cert', {
+      const entry     = buildWorkerRetryLoop(stack, 'cert', {
         worker:  newWorkerFunction(stack),
         payload: certPayload(),
         retryInterval,
@@ -39,39 +47,44 @@ describe('removal chain helpers', () => {
     }
 
     it('invokes the worker with the payload read from the execution input', () => {
-      const invoke = stateBodyOf(renderLoop(), 'CertInvoke');
+      const definition = renderLoop();
+      const invoke     = nameOfStateWhere(definition, (state) => state.Type === 'Task');
+      const choice     = nameOfStateWhere(definition, (state) => state.Type === 'Choice');
 
-      expect(invoke).toContain('"certArn.$":"$.toSweep.cert.certArn"');
-      expect(invoke).toContain('"removalType":"cert"');
-      expect(invoke).toContain('"Next":"CertStatusChoice"');
+      expect(stateBodyOf(definition, invoke)).toContain('"certArn.$":"$.toSweep.cert.certArn"');
+      expect(stateBodyOf(definition, invoke)).toContain('"removalType":"cert"');
+      expect(stateOf(definition, invoke).Next).toBe(choice);
     });
 
     it('continues on SUCCESS, waits and invokes again on RETRY, and fails on anything else', () => {
       const definition = renderLoop();
-      const choice     = stateBodyOf(definition, 'CertStatusChoice');
+      const invoke     = nameOfStateWhere(definition, (state) => state.Type === 'Task');
+      const choice     = nameOfStateWhere(definition, (state) => state.Type === 'Choice');
+      const failed     = nameOfStateWhere(definition, (state) => state.Type === 'Fail');
+      const retryWait  = statusTargetOf(definition, 'RETRY');
 
-      expect(choice).toMatch(/"StringEquals":"SUCCESS"[^}]*"Next":"Done"/);
-      expect(choice).toMatch(/"StringEquals":"RETRY"[^}]*"Next":"CertWaitRetry"/);
-      expect(choice).toContain('"Default":"CertFailed"');
-      expect(stateBodyOf(definition, 'CertWaitRetry')).toContain('"Seconds":300');
-      expect(stateBodyOf(definition, 'CertWaitRetry')).toContain('"Next":"CertInvoke"');
-      expect(stateBodyOf(definition, 'CertFailed')).toContain('"Cause":"Certificate removal failed"');
+      expect(statusTargetOf(definition, 'SUCCESS')).toBe('Done');
+      expect(stateOf(definition, choice).Default).toBe(failed);
+      expect(stateBodyOf(definition, retryWait)).toContain('"Seconds":300');
+      expect(stateOf(definition, retryWait).Next).toBe(invoke);
+      expect(stateBodyOf(definition, failed)).toContain('"Cause":"Certificate removal failed"');
     });
 
     it('starts at the invoke state when there is no grace period', () => {
       const definition = renderLoop();
+      const invoke     = nameOfStateWhere(definition, (state) => state.Type === 'Task');
 
-      expect(definition).toContain('"StartAt":"CertInvoke"');
-      expect(definition).not.toContain('CertGraceWait');
+      expect(startStateOf(definition)).toBe(invoke);
     });
 
     it('starts with a wait of the grace period, once, before the first invoke', () => {
       const definition = renderLoop(Duration.minutes(15));
+      const invoke     = nameOfStateWhere(definition, (state) => state.Type === 'Task');
+      const grace      = startStateOf(definition);
 
-      expect(definition).toContain('"StartAt":"CertGraceWait"');
-      expect(stateBodyOf(definition, 'CertGraceWait')).toContain('"Seconds":900');
-      expect(stateBodyOf(definition, 'CertGraceWait')).toContain('"Next":"CertInvoke"');
-      expect(stateBodyOf(definition, 'CertWaitRetry')).toContain('"Next":"CertInvoke"');
+      expect(stateBodyOf(definition, grace)).toContain('"Seconds":900');
+      expect(stateOf(definition, grace).Next).toBe(invoke);
+      expect(stateOf(definition, statusTargetOf(definition, 'RETRY')).Next).toBe(invoke);
     });
   });
 

@@ -18,11 +18,19 @@ import { env }                                                              from
 import { ServerlessInboxTagKeys }                                           from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                                         from 'aws-cdk-lib/assertions';
 import { App, BootstraplessSynthesizer, CfnCondition, Duration, Fn, Stack } from 'aws-cdk-lib';
+import * as t                                                               from 'typanion';
 
+import { isTemplateValue, resourcesOfType }                                 from '../../../__tests__/template-resources';
 import { load }                                                             from '../../../runtime/artifact-updater/config';
 import { ArtifactUpdaterLambda }                                            from '../artifact-updater-lambda';
 
-const TRACKING_CONDITION       = 'IsTracking';
+const isUpdaterFunctionProperties = t.isPartial({
+  Timeout:     t.isNumber(),
+  MemorySize:  t.isNumber(),
+  Role:        isTemplateValue,
+  Environment: t.isObject({ Variables: t.isDict(isTemplateValue) }),
+});
+
 const ROOT_STACK               = 'my-root-stack';
 const BUCKET_BASE              = 'test-artifacts';
 const ROOT_STACK_ID            = 'guid-1';
@@ -53,6 +61,7 @@ describe('ArtifactUpdaterLambda', () => {
   let updaterLogicalId: string;
   let roleStatements: PolicyStatementJson[];
   let roleLogicalId: string;
+  let trackingConditionId: string;
 
   beforeAll(() => {
     const stack                                 = new Stack(new App(), 'TestStack', {
@@ -60,6 +69,7 @@ describe('ArtifactUpdaterLambda', () => {
       synthesizer: new BootstraplessSynthesizer(),
     });
     const packages: Record<string, ArtifactPin> = { 'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL } };
+    const isTracking                            = new CfnCondition(stack, 'is-tracking', { expression: Fn.conditionEquals('a', 'a') });
     new ArtifactUpdaterLambda(stack, 'artifact-updater', {
       artifactResolver:   new PinnedArtifactResolver({
         packages,
@@ -72,15 +82,16 @@ describe('ArtifactUpdaterLambda', () => {
       rootStackId:        ROOT_STACK_ID,
       artifactBucketBase: BUCKET_BASE,
       updateInterval:     Duration.hours(3),
-      isTracking:         new CfnCondition(stack, TRACKING_CONDITION, { expression: Fn.conditionEquals('a', 'a') }),
+      isTracking,
     });
 
-    template           =Template.fromStack(stack);
-    const functions    = template.findResources('AWS::Lambda::Function');
-    [updaterLogicalId] = Object.keys(functions);
-    updater            = functions[updaterLogicalId] as FunctionResource;
-    roleLogicalId      = getAttLogicalId(updater.Properties.Role) ?? '';
-    roleStatements     = statementsForRole(template, roleLogicalId);
+    template                =Template.fromStack(stack);
+    trackingConditionId     = String(stack.resolve(isTracking.logicalId));
+    const [updaterResource] = resourcesOfType(template, 'AWS::Lambda::Function', isUpdaterFunctionProperties);
+    updaterLogicalId        = updaterResource.logicalId;
+    updater                 = { Properties: updaterResource.properties };
+    roleLogicalId           = getAttLogicalId(updater.Properties.Role) ?? '';
+    roleStatements          = statementsForRole(template, roleLogicalId);
   });
 
   describe('function', () => {
@@ -126,14 +137,14 @@ describe('ArtifactUpdaterLambda', () => {
       const rules = Object.values(template.findResources('AWS::Events::Rule'));
 
       expect(rules).toHaveLength(1);
-      expect(rules[0].Condition).toBe(TRACKING_CONDITION);
+      expect(rules[0].Condition).toBe(trackingConditionId);
     });
 
     it('gates the permission that lets the rule invoke the function on the tracking condition', () => {
       const permissions = Object.values(template.findResources('AWS::Lambda::Permission', { Properties: { Principal: 'events.amazonaws.com' } }));
 
       expect(permissions).toHaveLength(1);
-      expect(permissions[0].Condition).toBe(TRACKING_CONDITION);
+      expect(permissions[0].Condition).toBe(trackingConditionId);
     });
 
     it('invokes this function at the given interval', () => {

@@ -14,8 +14,11 @@ import {
   newTestStack,
   OWNED_BY_STACK_ID,
   OWNED_BY_STACK_NAME_WITHOUT_ID,
+  nameOfStateWhere,
   renderRemovalChain,
   resolveStatements,
+  startStateOf,
+  stateOf,
 } from './sweeper-helpers';
 
 describe('CertificateRemoval', () => {
@@ -54,12 +57,14 @@ describe('CertificateRemoval', () => {
     const stack = newTestStack('CertificateChainStack');
 
     const definition = renderRemovalChain(stack, newCertificateRemoval(stack));
+    const guard      = startStateOf(definition);
+    const invoke     = nameOfStateWhere(definition, (state) => state.Type === 'Task');
 
-    expect(definition).toContain('"StartAt":"CertHasTarget"');
-    expect(stateBodyOf(definition, 'CertHasTarget')).toContain('"Variable":"$.toSweep.cert"');
-    expect(stateBodyOf(definition, 'CertHasTarget')).toContain('"Default":"Done"');
-    expect(stateBodyOf(definition, 'CertInvoke')).toContain('"certArn.$":"$.toSweep.cert.certArn"');
-    expect(stateBodyOf(definition, 'CertInvoke')).toContain('"rootStackName":"CertificateChainStack"');
-    expect(stateBodyOf(definition, 'CertInvoke')).toContain('"rootStackId":');
+    expect(stateBodyOf(definition, guard)).toContain('"Variable":"$.toSweep.cert"');
+    expect(stateOf(definition, guard).Default).toBe('Done');
+    expect(stateOf(definition, guard).Choices?.[0]?.Next).toBe(invoke);
+    expect(stateBodyOf(definition, invoke)).toContain('"certArn.$":"$.toSweep.cert.certArn"');
+    expect(stateBodyOf(definition, invoke)).toContain('"rootStackName":"CertificateChainStack"');
+    expect(stateBodyOf(definition, invoke)).toContain('"rootStackId":');
   });
 });

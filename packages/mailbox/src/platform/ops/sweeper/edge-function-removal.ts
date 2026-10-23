@@ -47,7 +47,7 @@ export class EdgeFunctionRemoval extends Construct implements IResourceRemoval<'
       rootStackId:   StackIdentity.guid,
     };
 
-    const retryLoop = buildWorkerRetryLoop(this, 'EdgeFn', {
+    const retryLoop = buildWorkerRetryLoop(this, 'edge-fn', {
       worker,
       payload,
       retryInterval,
@@ -55,7 +55,7 @@ export class EdgeFunctionRemoval extends Construct implements IResourceRemoval<'
       failureCause: 'Edge function removal failed',
     });
 
-    return withTargetPresenceGuard(this, 'EdgeFnHasTarget', this.id, retryLoop, onSuccess);
+    return withTargetPresenceGuard(this, 'edge-fn-has-target', this.id, retryLoop, onSuccess);
   }
 
   private grantEdgeFunctionInspection(): iam.PolicyStatement {

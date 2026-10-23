@@ -62,7 +62,7 @@ export class MailboxAddressing {
       return undefined;
     }
 
-    return new cdk.CfnCondition(scope, 'HasSubdomainNamespace', {
+    return new cdk.CfnCondition(scope, 'has-subdomain-namespace', {
       expression: cdk.Fn.conditionNot(cdk.Fn.conditionEquals(subdomainNamespace, '')),
     });
   }

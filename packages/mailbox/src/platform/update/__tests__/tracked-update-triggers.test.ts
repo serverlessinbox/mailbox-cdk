@@ -11,14 +11,17 @@
 import { Template }                                                              from 'aws-cdk-lib/assertions';
 import { Code, Function as LambdaFunction, Runtime }                             from 'aws-cdk-lib/aws-lambda';
 import { App, BootstraplessSynthesizer, CfnCondition, CfnResource, Fn, Stack }   from 'aws-cdk-lib';
+import * as t                                                                    from 'typanion';
 
+import { resourcesOfType }                                                       from '../../../__tests__/template-resources';
 import { TrackedUpdateTriggers }                                                 from '../tracked-update-triggers';
 
-const TRACKING_CONDITION = 'IsTracking';
+const isDeployEndProperties = t.isPartial({ Nonce: t.isString() });
 
 interface TriggersFixture {
-  readonly stack:    Stack;
-  readonly triggers: TrackedUpdateTriggers;
+  readonly stack:      Stack;
+  readonly triggers:   TrackedUpdateTriggers;
+  readonly isTracking: CfnCondition;
 }
 
 function build(): TriggersFixture {
@@ -27,9 +30,10 @@ function build(): TriggersFixture {
     synthesizer: new BootstraplessSynthesizer(),
   });
   const updater    = new LambdaFunction(stack, 'updater', { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });
-  const isTracking = new CfnCondition(stack, TRACKING_CONDITION, { expression: Fn.conditionEquals('a', 'a') });
+  const isTracking = new CfnCondition(stack, 'is-tracking', { expression: Fn.conditionEquals('a', 'a') });
+  const triggers   = new TrackedUpdateTriggers(stack, 'triggers', { updater, isTracking });
 
-  return { stack, triggers: new TrackedUpdateTriggers(stack, 'triggers', { updater, isTracking }) };
+  return { stack, triggers, isTracking };
 }
 
 function synthesize(): Template {
@@ -42,7 +46,7 @@ describe('TrackedUpdateTriggers', () => {
   });
 
   it('changes the deploy-end properties on every synthesis so the trigger fires on every deploy', () => {
-    const nonceOf = (template: Template): unknown => Object.values(template.findResources('Custom::DeployEndTrigger'))[0].Properties.Nonce;
+    const nonceOf = (template: Template): unknown => resourcesOfType(template, 'Custom::DeployEndTrigger', isDeployEndProperties)[0].properties.Nonce;
     jest.useFakeTimers();
     try {
       jest.setSystemTime(1_700_000_000_000);
@@ -58,10 +62,11 @@ describe('TrackedUpdateTriggers', () => {
   });
 
   it('gates the deploy-end trigger on the tracking condition', () => {
-    const resources = Object.values(synthesize().findResources('Custom::DeployEndTrigger'));
+    const { stack, isTracking } = build();
+    const resources             = Object.values(Template.fromStack(stack).findResources('Custom::DeployEndTrigger'));
 
     expect(resources).not.toHaveLength(0);
-    resources.forEach((resource) => expect(resource.Condition).toBe(TRACKING_CONDITION));
+    resources.forEach((resource) => expect(resource.Condition).toBe(stack.resolve(isTracking.logicalId)));
   });
 
   it('leaves the updater function outside the gate', () => {

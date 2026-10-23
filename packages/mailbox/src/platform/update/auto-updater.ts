@@ -97,7 +97,7 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
     const granularity = (props.granularity ?? 'minor') as Granularity;
 
     // False for 'pinned': the tracked triggers are then not created, while the updater Lambda stays.
-    const isTracking = new cdk.CfnCondition(this, 'IsTracking', {
+    const isTracking = new cdk.CfnCondition(this, 'is-tracking', {
       expression: Fn.conditionNot(Fn.conditionEquals(granularity, 'pinned')),
     });
 

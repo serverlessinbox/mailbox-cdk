@@ -79,7 +79,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
       rootStackId:   StackIdentity.guid,
     };
 
-    const retryLoop = buildWorkerRetryLoop(this, 'Detector', {
+    const retryLoop = buildWorkerRetryLoop(this, 'detector', {
       worker,
       payload,
       retryInterval,
@@ -88,7 +88,7 @@ export class StackFailureDetectorRemoval extends Construct implements IResourceR
       gracePeriod:  this.gracePeriod,
     });
 
-    return withTargetPresenceGuard(this, 'DetectorHasTarget', this.id, retryLoop, onSuccess);
+    return withTargetPresenceGuard(this, 'detector-has-target', this.id, retryLoop, onSuccess);
   }
 
   /** Rules are auto-named, so there is no per-rule ARN to scope a read to; it carries no condition. */

@@ -60,7 +60,7 @@ export class StackFailureDetection extends Construct {
       return;
     }
 
-    const condition = new cdk.CfnCondition(this, 'IsEnabled', {
+    const condition = new cdk.CfnCondition(this, 'is-enabled', {
       expression: Fn.conditionEquals(props.mode, SendStackFailuresMode.ENABLED),
     });
 

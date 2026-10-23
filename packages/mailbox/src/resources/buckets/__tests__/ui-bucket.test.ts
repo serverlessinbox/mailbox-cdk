@@ -5,7 +5,7 @@
  * hands to a distribution, and the deploy grant it writes.
  */
 
-import { Capture, Match, Template }          from 'aws-cdk-lib/assertions';
+import { Match, Template }                   from 'aws-cdk-lib/assertions';
 import { Distribution }                      from 'aws-cdk-lib/aws-cloudfront';
 import { Role, ServicePrincipal }            from 'aws-cdk-lib/aws-iam';
 import * as cdk                              from 'aws-cdk-lib';
@@ -84,16 +84,6 @@ describe('UiBucket origins', () => {
         ],
       },
     });
-  });
-
-  it('names the Origin Access Control with the install id', () => {
-    const name = new Capture();
-
-    template.hasResourceProperties('AWS::CloudFront::OriginAccessControl', {
-      OriginAccessControlConfig: Match.objectLike({ Name: name }),
-    });
-
-    expect(JSON.stringify(name.asObject())).toContain('"Ref":"AWS::StackId"');
   });
 
   it('lets only the distribution it is bound to read the bucket objects, through the one bucket-policy statement', () => {

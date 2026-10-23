@@ -1,7 +1,6 @@
 import {
   ComponentDescription,
   ServerlessInboxTagKeys,
-  makePhysicalName,
 } from '@serverlessinbox/mailbox-cdk-shared';
 import * as acm                             from 'aws-cdk-lib/aws-certificatemanager';
 import * as origins                         from 'aws-cdk-lib/aws-cloudfront-origins';
@@ -84,9 +83,7 @@ export class Cdn extends Construct {
    * adds nothing to the bucket's resource policy.
    */
   private createBlobOrigin(props: CdnProps): cloudfront.IOrigin {
-    const originAccessControl = new cloudfront.S3OriginAccessControl(this, 'blob-origin-access-control', {
-      originAccessControlName: makePhysicalName(this, 'blob-origin-access-control', { maxLength: 64 }),
-    });
+    const originAccessControl = new cloudfront.S3OriginAccessControl(this, 'blob-origin-access-control');
 
     return origins.S3BucketOrigin.withOriginAccessControl(props.blobStore, {
       originAccessControl,

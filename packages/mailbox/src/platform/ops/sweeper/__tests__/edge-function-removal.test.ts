@@ -14,8 +14,11 @@ import {
   newTestStack,
   OWNED_BY_STACK_ID,
   OWNED_BY_STACK_NAME_WITHOUT_ID,
+  nameOfStateWhere,
   renderRemovalChain,
   resolveStatements,
+  startStateOf,
+  stateOf,
 } from './sweeper-helpers';
 
 describe('EdgeFunctionRemoval', () => {
@@ -47,12 +50,14 @@ describe('EdgeFunctionRemoval', () => {
     const stack = newTestStack('EdgeFunctionChainStack');
 
     const definition = renderRemovalChain(stack, newEdgeFunctionRemoval(stack));
+    const guard      = startStateOf(definition);
+    const invoke     = nameOfStateWhere(definition, (state) => state.Type === 'Task');
 
-    expect(definition).toContain('"StartAt":"EdgeFnHasTarget"');
-    expect(stateBodyOf(definition, 'EdgeFnHasTarget')).toContain('"Variable":"$.toSweep.edge-fn"');
-    expect(stateBodyOf(definition, 'EdgeFnHasTarget')).toContain('"Default":"Done"');
-    expect(stateBodyOf(definition, 'EdgeFnInvoke')).toContain('"edgeFnArn.$":"$.toSweep.edge-fn.edgeFnArn"');
-    expect(stateBodyOf(definition, 'EdgeFnInvoke')).toContain('"rootStackName":"EdgeFunctionChainStack"');
-    expect(stateBodyOf(definition, 'EdgeFnInvoke')).toContain('"rootStackId":');
+    expect(stateBodyOf(definition, guard)).toContain('"Variable":"$.toSweep.edge-fn"');
+    expect(stateOf(definition, guard).Default).toBe('Done');
+    expect(stateOf(definition, guard).Choices?.[0]?.Next).toBe(invoke);
+    expect(stateBodyOf(definition, invoke)).toContain('"edgeFnArn.$":"$.toSweep.edge-fn.edgeFnArn"');
+    expect(stateBodyOf(definition, invoke)).toContain('"rootStackName":"EdgeFunctionChainStack"');
+    expect(stateBodyOf(definition, invoke)).toContain('"rootStackId":');
   });
 });

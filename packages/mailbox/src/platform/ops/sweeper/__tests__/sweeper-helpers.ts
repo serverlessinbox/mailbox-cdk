@@ -132,3 +132,65 @@ export function renderDefinition(scope: Construct, chain: sfn.IChainable): strin
   const [machine] = resourcesOfType(Template.fromStack(Stack.of(scope)), 'AWS::StepFunctions::StateMachine', isStateMachineProperties);
   return renderLiteralText(machine.properties.DefinitionString);
 }
+
+/** The fields of a rendered state the sweeper tests read. */
+export interface RenderedState {
+  readonly Type:     string;
+  readonly Next?:    string;
+  readonly Default?: string;
+  readonly Choices?: readonly RenderedChoiceRule[];
+}
+
+/** One rule of a rendered Choice state. */
+export interface RenderedChoiceRule {
+  readonly Next:          string;
+  readonly StringEquals?: string;
+}
+
+interface RenderedMachine {
+  readonly StartAt: string;
+  readonly States:  Readonly<Record<string, RenderedState>>;
+}
+
+function machineOf(definition: string): RenderedMachine {
+  return JSON.parse(definition) as RenderedMachine;
+}
+
+/** The name of the state a rendered definition starts at. */
+export function startStateOf(definition: string): string {
+  return machineOf(definition).StartAt;
+}
+
+/** The rendered state with the given name. */
+export function stateOf(definition: string, name: string): RenderedState {
+  return machineOf(definition).States[name];
+}
+
+/** The name of the one rendered state that `matches`. A test reads a state's name from the definition, never writes it. */
+export function nameOfStateWhere(definition: string, matches: (state: RenderedState) => boolean): string {
+  const machine = machineOf(definition);
+  const names   = Object.keys(machine.States).filter((name) => matches(machine.States[name]));
+  if (names.length !== 1) {
+    throw new Error(`Expected exactly one matching state, found ${names.length}`);
+  }
+  return names[0];
+}
+
+/** The state a worker-status Choice moves to when the worker reports `status`. */
+export function statusTargetOf(definition: string, status: string): string {
+  const choice = nameOfStateWhere(definition, (state) => state.Choices?.some((rule) => rule.StringEquals === status) === true);
+  const rule   = stateOf(definition, choice).Choices?.find((candidate) => candidate.StringEquals === status);
+  if (rule === undefined) {
+    throw new Error(`The status Choice has no rule for '${status}'`);
+  }
+  return rule.Next;
+}
+
+/** The state a presence guard enters when its target is present: the first state of the removal's loop. */
+export function guardEntryOf(definition: string): string {
+  const entry = stateOf(definition, startStateOf(definition)).Choices?.[0];
+  if (entry === undefined) {
+    throw new Error('The start state has no entry rule');
+  }
+  return entry.Next;
+}

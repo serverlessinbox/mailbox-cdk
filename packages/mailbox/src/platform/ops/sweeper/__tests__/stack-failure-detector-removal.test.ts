@@ -12,6 +12,8 @@ import { Duration }    from 'aws-cdk-lib';
 import { stateBodyOf } from '../../../../__tests__/state-machine-helpers';
 
 import {
+  guardEntryOf,
+  nameOfStateWhere,
   newDetectorRemoval,
   newTestStack,
   OWNED_BY_STACK_ID,
@@ -19,6 +21,9 @@ import {
   renderRemovalChain,
   resolveStatements,
   resolveValue,
+  startStateOf,
+  stateOf,
+  statusTargetOf,
 } from './sweeper-helpers';
 
 describe('StackFailureDetectorRemoval', () => {
@@ -76,10 +81,12 @@ describe('StackFailureDetectorRemoval', () => {
 
     const definition = renderRemovalChain(stack, newDetectorRemoval(stack).removal);
 
-    expect(stateBodyOf(definition, 'DetectorHasTarget')).toContain('"Next":"DetectorGraceWait"');
-    expect(stateBodyOf(definition, 'DetectorGraceWait')).toContain('"Seconds":900');
-    expect(stateBodyOf(definition, 'DetectorGraceWait')).toContain('"Next":"DetectorInvoke"');
-    expect(stateBodyOf(definition, 'DetectorWaitRetry')).toContain('"Next":"DetectorInvoke"');
+    const grace  = guardEntryOf(definition);
+    const invoke = nameOfStateWhere(definition, (state) => state.Type === 'Task');
+
+    expect(stateBodyOf(definition, grace)).toContain('"Seconds":900');
+    expect(stateOf(definition, grace).Next).toBe(invoke);
+    expect(stateOf(definition, statusTargetOf(definition, 'RETRY')).Next).toBe(invoke);
   });
 
   it('waits the grace period it is given', () => {
@@ -87,7 +94,7 @@ describe('StackFailureDetectorRemoval', () => {
 
     const definition = renderRemovalChain(stack, newDetectorRemoval(stack, Duration.minutes(2)).removal);
 
-    expect(stateBodyOf(definition, 'DetectorGraceWait')).toContain('"Seconds":120');
+    expect(stateBodyOf(definition, guardEntryOf(definition))).toContain('"Seconds":120');
   });
 
   it('skips to the next step when no detector is in the execution input, else sweeps it for the root stack', () => {
@@ -95,12 +102,13 @@ describe('StackFailureDetectorRemoval', () => {
 
     const definition = renderRemovalChain(stack, newDetectorRemoval(stack).removal);
 
-    expect(definition).toContain('"StartAt":"DetectorHasTarget"');
-    expect(stateBodyOf(definition, 'DetectorHasTarget')).toContain('"Variable":"$.toSweep.detector"');
-    expect(stateBodyOf(definition, 'DetectorHasTarget')).toContain('"Default":"Done"');
-    const invoke = stateBodyOf(definition, 'DetectorInvoke');
-    expect(invoke).toContain('"target.$":"$.toSweep.detector"');
-    expect(invoke).toContain('"rootStackName":"DetectorChainStack"');
-    expect(invoke).toContain('"rootStackId":');
+    const guard  = startStateOf(definition);
+    const invoke = nameOfStateWhere(definition, (state) => state.Type === 'Task');
+
+    expect(stateBodyOf(definition, guard)).toContain('"Variable":"$.toSweep.detector"');
+    expect(stateOf(definition, guard).Default).toBe('Done');
+    expect(stateBodyOf(definition, invoke)).toContain('"target.$":"$.toSweep.detector"');
+    expect(stateBodyOf(definition, invoke)).toContain('"rootStackName":"DetectorChainStack"');
+    expect(stateBodyOf(definition, invoke)).toContain('"rootStackId":');
   });
 });

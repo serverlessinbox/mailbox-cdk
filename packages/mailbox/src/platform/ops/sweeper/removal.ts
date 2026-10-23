@@ -110,16 +110,16 @@ export function withTargetPresenceGuard(
 
 /**
  * Invokes the worker, waits `retryInterval` and invokes it again while it reports RETRY, continues to
- * `onSuccess` on SUCCESS and fails on anything else. Its states are named `<idPrefix>Invoke`,
- * `<idPrefix>WaitRetry`, `<idPrefix>StatusChoice` and `<idPrefix>Failed`, plus `<idPrefix>GraceWait`
+ * `onSuccess` on SUCCESS and fails on anything else. Its states are named `<idPrefix>-invoke`,
+ * `<idPrefix>-wait-retry`, `<idPrefix>-status-choice` and `<idPrefix>-failed`, plus `<idPrefix>-grace-wait`
  * when a grace period is given. Returns the loop's entry: the grace wait, else the invoke state.
  */
 export function buildWorkerRetryLoop(scope: Construct, idPrefix: string, props: WorkerRetryLoopProps): sfn.State {
   const graceWait = props.gracePeriod === undefined
     ? undefined
-    : new sfn.Wait(scope, `${idPrefix}GraceWait`, { time: sfn.WaitTime.duration(props.gracePeriod) });
+    : new sfn.Wait(scope, `${idPrefix}-grace-wait`, { time: sfn.WaitTime.duration(props.gracePeriod) });
 
-  const invoke = new tasks.LambdaInvoke(scope, `${idPrefix}Invoke`, {
+  const invoke = new tasks.LambdaInvoke(scope, `${idPrefix}-invoke`, {
     lambdaFunction:           props.worker,
     payloadResponseOnly:      true,
     resultPath:               WORKER_RESULT_PATH,
@@ -127,12 +127,12 @@ export function buildWorkerRetryLoop(scope: Construct, idPrefix: string, props: 
     retryOnServiceExceptions: true,
   });
 
-  const wait = new sfn.Wait(scope, `${idPrefix}WaitRetry`, { time: sfn.WaitTime.duration(props.retryInterval) });
+  const wait = new sfn.Wait(scope, `${idPrefix}-wait-retry`, { time: sfn.WaitTime.duration(props.retryInterval) });
 
-  const choice = new sfn.Choice(scope, `${idPrefix}StatusChoice`)
+  const choice = new sfn.Choice(scope, `${idPrefix}-status-choice`)
     .when(sfn.Condition.stringEquals(WORKER_STATUS_PATH, WORKER_STATUS_SUCCESS), props.onSuccess)
     .when(sfn.Condition.stringEquals(WORKER_STATUS_PATH, WORKER_STATUS_RETRY), wait)
-    .otherwise(new sfn.Fail(scope, `${idPrefix}Failed`, { error: 'WorkerFailed', cause: props.failureCause }));
+    .otherwise(new sfn.Fail(scope, `${idPrefix}-failed`, { error: 'WorkerFailed', cause: props.failureCause }));
 
   graceWait?.next(invoke);
   invoke.next(choice);

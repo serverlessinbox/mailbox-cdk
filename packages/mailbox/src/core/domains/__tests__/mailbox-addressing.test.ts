@@ -59,9 +59,11 @@ describe('MailboxAddressing', () => {
 
     const addressing = MailboxAddressing.resolve(stack, { domainName: DOMAIN_NAME, subdomainNamespace: 'team' }, BOTH_UIS);
 
-    expect(Object.keys(Template.fromStack(stack).findConditions('HasSubdomainNamespace'))).toEqual(['HasSubdomainNamespace']);
+    const conditionId = String(stack.resolve(addressing.subdomainNamespaceCondition?.logicalId));
+
+    expect(Object.keys(Template.fromStack(stack).findConditions(conditionId))).toEqual([conditionId]);
     expect(stack.resolve(addressing.edgePrefix)).toEqual({
-      'Fn::If': ['HasSubdomainNamespace', '.team.', '.'],
+      'Fn::If': [conditionId, '.team.', '.'],
     });
   });
 

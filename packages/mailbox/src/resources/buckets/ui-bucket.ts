@@ -1,4 +1,4 @@
-import { StackNamedBucket, makePhysicalName } from '@serverlessinbox/mailbox-cdk-shared';
+import { StackNamedBucket }                   from '@serverlessinbox/mailbox-cdk-shared';
 import { S3BucketOrigin }                     from 'aws-cdk-lib/aws-cloudfront-origins';
 import {
   IOrigin,
@@ -31,9 +31,7 @@ export class UiBucket extends StackNamedBucket {
       abacStatus:        true,
     });
 
-    this.originAccessControl = new S3OriginAccessControl(this, 'origin-access-control', {
-      originAccessControlName: makePhysicalName(this, 'origin-access-control', { maxLength: 64 }),
-    });
+    this.originAccessControl = new S3OriginAccessControl(this, 'origin-access-control');
   }
 
   /** The origin serving the UI bundle from the `/content` prefix. */

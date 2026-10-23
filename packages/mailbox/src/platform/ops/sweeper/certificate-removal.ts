@@ -47,7 +47,7 @@ export class CertificateRemoval extends Construct implements IResourceRemoval<'c
       rootStackId:   StackIdentity.guid,
     };
 
-    const retryLoop = buildWorkerRetryLoop(this, 'Cert', {
+    const retryLoop = buildWorkerRetryLoop(this, 'cert', {
       worker,
       payload,
       retryInterval,
@@ -55,7 +55,7 @@ export class CertificateRemoval extends Construct implements IResourceRemoval<'c
       failureCause: 'Certificate removal failed',
     });
 
-    return withTargetPresenceGuard(this, 'CertHasTarget', this.id, retryLoop, onSuccess);
+    return withTargetPresenceGuard(this, 'cert-has-target', this.id, retryLoop, onSuccess);
   }
 
   private grantCertificateInspection(): iam.PolicyStatement {
