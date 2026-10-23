@@ -115,7 +115,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
         'ses:DeleteEmailIdentity',
         'ses:PutEmailIdentityDkimSigningAttributes',
       ],
-      resources: [`arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`],
+      resources: [`arn:${Aws.PARTITION}:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`],
     }));
   }
 
@@ -129,7 +129,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     for (const conditions of rootStackRequestTagConditions(rootStack)) {
       this.addToRolePolicy(new PolicyStatement({
         actions:    ['ses:TagResource'],
-        resources:  [`arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`],
+        resources:  [`arn:${Aws.PARTITION}:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`],
         conditions: {
           ...conditions,
           'ForAllValues:StringEquals': {
@@ -146,8 +146,8 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     this.addToRolePolicy(new PolicyStatement({
       actions:   ['ses:SendEmail'],
       resources: [
-        `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`,
-        `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:configuration-set/${sesConfigSetName}`,
+        `arn:${Aws.PARTITION}:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/*`,
+        `arn:${Aws.PARTITION}:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:configuration-set/${sesConfigSetName}`,
       ],
     }));
   }
@@ -167,7 +167,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   private grantDkimAndDmarcRecordWrites(): void {
     this.addToRolePolicy(new PolicyStatement({
       actions:    ['route53:ChangeResourceRecordSets'],
-      resources:  ['arn:aws:route53:::hostedzone/*'],
+      resources:  [`arn:${Aws.PARTITION}:route53:::hostedzone/*`],
       conditions: {
         'ForAllValues:StringLike':   {
           'route53:ChangeResourceRecordSetsNormalizedRecordNames': ['*._domainkey.*', '_dmarc.*'],
@@ -193,7 +193,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   private grantApexRecordWrites(): void {
     this.addToRolePolicy(new PolicyStatement({
       actions:    ['route53:ChangeResourceRecordSets'],
-      resources:  ['arn:aws:route53:::hostedzone/*'],
+      resources:  [`arn:${Aws.PARTITION}:route53:::hostedzone/*`],
       conditions: {
         'ForAllValues:StringEquals': {
           'route53:ChangeResourceRecordSetsRecordTypes': ['MX', 'TXT'],
@@ -210,7 +210,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
   private grantHostedZoneRecordListing(): void {
     this.addToRolePolicy(new PolicyStatement({
       actions:   ['route53:ListResourceRecordSets'],
-      resources: ['arn:aws:route53:::hostedzone/*'],
+      resources: [`arn:${Aws.PARTITION}:route53:::hostedzone/*`],
     }));
   }
 
@@ -251,8 +251,8 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     this.addToRolePolicy(new PolicyStatement({
       actions:   ['execute-api:Invoke'],
       resources: vendorAccountIds.flatMap((accountId) => [
-        `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
-        `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
+        `arn:${Aws.PARTITION}:execute-api:*:${accountId}:*/*/POST/grant-resource`,
+        `arn:${Aws.PARTITION}:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
       ]),
     }));
   }

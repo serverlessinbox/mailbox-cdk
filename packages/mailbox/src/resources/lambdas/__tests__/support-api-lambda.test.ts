@@ -93,6 +93,8 @@ describe('SupportApiLambda', () => {
   it('may call the case sync route of every vendor account', () => {
     const invoke = statements.find((statement) => actionsOf(statement).includes('execute-api:Invoke'));
 
-    expect(invoke?.Resource).toBe(`arn:aws:execute-api:*:${VENDOR_ACCOUNT}:*/*/POST/support-case-sync`);
+    expect(invoke?.Resource).toEqual({
+      'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, `:execute-api:*:${VENDOR_ACCOUNT}:*/*/POST/support-case-sync`]],
+    });
   });
 });

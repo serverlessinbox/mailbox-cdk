@@ -56,7 +56,7 @@ export class MailboxDataDeployerWorkerLambda extends DeployerWorkerLambda {
           'dynamodb:UntagResource',
           'dynamodb:ListTagsOfResource',
         ],
-        resources: [`arn:aws:dynamodb:${Aws.REGION}:${Aws.ACCOUNT_ID}:table/${Aws.ACCOUNT_ID}-${nameBase}-*`],
+        resources: [`arn:${Aws.PARTITION}:dynamodb:${Aws.REGION}:${Aws.ACCOUNT_ID}:table/${Aws.ACCOUNT_ID}-${nameBase}-*`],
       })
     );
   }
@@ -85,7 +85,7 @@ export class MailboxDataDeployerWorkerLambda extends DeployerWorkerLambda {
           's3:PutBucketOwnershipControls',
           's3:GetBucketOwnershipControls',
         ],
-        resources: [`arn:aws:s3:::${Aws.ACCOUNT_ID}-${nameBase}-*`],
+        resources: [`arn:${Aws.PARTITION}:s3:::${Aws.ACCOUNT_ID}-${nameBase}-*`],
       })
     );
   }
@@ -97,9 +97,9 @@ export class MailboxDataDeployerWorkerLambda extends DeployerWorkerLambda {
         actions:    ['kms:DescribeKey', 'kms:CreateGrant'],
         effect:     Effect.ALLOW,
         resources:  [
-          `arn:aws:kms:${Aws.REGION}:${Aws.ACCOUNT_ID}:alias/aws/dynamodb`,
-          `arn:aws:kms:${Aws.REGION}:${Aws.ACCOUNT_ID}:alias/aws/s3`,
-          `arn:aws:kms:${Aws.REGION}:${Aws.ACCOUNT_ID}:key/*`,
+          `arn:${Aws.PARTITION}:kms:${Aws.REGION}:${Aws.ACCOUNT_ID}:alias/aws/dynamodb`,
+          `arn:${Aws.PARTITION}:kms:${Aws.REGION}:${Aws.ACCOUNT_ID}:alias/aws/s3`,
+          `arn:${Aws.PARTITION}:kms:${Aws.REGION}:${Aws.ACCOUNT_ID}:key/*`,
         ],
         conditions: {
           Bool: { 'kms:GrantIsForAWSResource': 'true' },

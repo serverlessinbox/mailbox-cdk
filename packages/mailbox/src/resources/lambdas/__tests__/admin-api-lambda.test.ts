@@ -114,7 +114,7 @@ describe('AdminApiLambda IAM scoping', () => {
             Resource: {
               'Fn::Join': [
                 '',
-                ['arn:aws:ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*'],
+                ['arn:', { Ref: 'AWS::Partition' }, ':ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*'],
               ],
             },
           }),
@@ -127,7 +127,7 @@ describe('AdminApiLambda IAM scoping', () => {
     const template    = Template.fromStack(stack);
     const rootStackId = rootStackIdOf(stack);
     const identityArn = {
-      'Fn::Join': ['', ['arn:aws:ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*']],
+      'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*']],
     };
     const tagKeys     = { 'aws:TagKeys': [ServerlessInboxTagKeys.rootStack, ServerlessInboxTagKeys.rootStackId] };
     const conditions  = [
@@ -169,14 +169,14 @@ describe('AdminApiLambda IAM scoping', () => {
               {
                 'Fn::Join': [
                   '',
-                  ['arn:aws:ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*'],
+                  ['arn:', { Ref: 'AWS::Partition' }, ':ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*'],
                 ],
               },
               {
                 'Fn::Join': [
                   '',
                   [
-                    'arn:aws:ses:',
+                    'arn:', { Ref: 'AWS::Partition' }, ':ses:',
                     { Ref: 'AWS::Region' },
                     ':',
                     { Ref: 'AWS::AccountId' },
@@ -217,8 +217,8 @@ describe('AdminApiLambda IAM scoping', () => {
           Match.objectLike({
             Action:   'execute-api:Invoke',
             Resource: [
-              `arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/grant-resource`,
-              `arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/revoke-resource`,
+              { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, `:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/grant-resource`]] },
+              { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, `:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/revoke-resource`]] },
             ],
           }),
         ]),
@@ -280,7 +280,7 @@ describe('AdminApiLambda IAM scoping', () => {
         Statement: Match.arrayWith([
           Match.objectLike({
             Action:    'route53:ChangeResourceRecordSets',
-            Resource:  'arn:aws:route53:::hostedzone/*',
+            Resource:  { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':route53:::hostedzone/*']] },
             Condition: Match.objectLike({
               'ForAllValues:StringLike': Match.objectLike({
                 'route53:ChangeResourceRecordSetsNormalizedRecordNames': ['*._domainkey.*', '_dmarc.*'],
@@ -358,7 +358,7 @@ describe('AdminApiLambda IAM scoping', () => {
         Statement: Match.arrayWith([
           Match.objectLike({
             Action:    'route53:ChangeResourceRecordSets',
-            Resource:  'arn:aws:route53:::hostedzone/*',
+            Resource:  { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':route53:::hostedzone/*']] },
             Condition: Match.objectLike({
               'ForAllValues:StringEquals': Match.objectLike({
                 'route53:ChangeResourceRecordSetsRecordTypes': ['MX', 'TXT'],
@@ -377,7 +377,7 @@ describe('AdminApiLambda IAM scoping', () => {
         Statement: Match.arrayWith([
           Match.objectLike({
             Action:   'route53:ListResourceRecordSets',
-            Resource: 'arn:aws:route53:::hostedzone/*',
+            Resource: { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':route53:::hostedzone/*']] },
           }),
         ]),
       },

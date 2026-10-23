@@ -129,7 +129,9 @@ describe('Mailbox Resource Naming', () => {
       expect(resources).toEqual([
         {
           'Fn::Join': ['', [
-            'arn:aws:dynamodb:',
+            'arn:',
+            { Ref: 'AWS::Partition' },
+            ':dynamodb:',
             { Ref: 'AWS::Region' },
             ':',
             { Ref: 'AWS::AccountId' },
@@ -146,7 +148,7 @@ describe('Mailbox Resource Naming', () => {
       const resources = resourcesForAction(template, 's3:CreateBucket');
 
       expect(resources).toEqual([
-        { 'Fn::Join': ['', ['arn:aws:s3:::', { Ref: 'AWS::AccountId' }, '-test-data-*']] },
+        { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':s3:::', { Ref: 'AWS::AccountId' }, '-test-data-*']] },
       ]);
     });
   });

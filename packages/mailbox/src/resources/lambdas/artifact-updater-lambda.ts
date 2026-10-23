@@ -27,8 +27,8 @@ export interface ArtifactUpdaterLambdaProps {
  * update needs, each scoped to the root stack by tag wherever the service honours the tag.
  */
 export class ArtifactUpdaterLambda extends TypeScriptLambda {
-  private static readonly anyFunctionArn = `arn:aws:lambda:*:${Aws.ACCOUNT_ID}:function:*`;
-  private static readonly anyDistributionArn = `arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/*`;
+  private static readonly anyFunctionArn = `arn:${Aws.PARTITION}:lambda:*:${Aws.ACCOUNT_ID}:function:*`;
+  private static readonly anyDistributionArn = `arn:${Aws.PARTITION}:cloudfront::${Aws.ACCOUNT_ID}:distribution/*`;
 
   constructor(scope: Construct, id: string, props: ArtifactUpdaterLambdaProps) {
     super(scope, id, {
@@ -96,7 +96,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
       this.addToRolePolicy(
         new PolicyStatement({
           actions:   ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
-          resources: [`arn:aws:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
+          resources: [`arn:${Aws.PARTITION}:lambda:us-east-1:${Aws.ACCOUNT_ID}:function:*`],
           conditions,
         }),
       );
@@ -124,7 +124,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
     this.addToRolePolicy(
       new PolicyStatement({
         actions:   ['s3:GetObject'],
-        resources: [`arn:aws:s3:::${artifactBucketBase}-*/${project}/packages/*/releases/*`],
+        resources: [`arn:${Aws.PARTITION}:s3:::${artifactBucketBase}-*/${project}/packages/*/releases/*`],
       }),
     );
   }

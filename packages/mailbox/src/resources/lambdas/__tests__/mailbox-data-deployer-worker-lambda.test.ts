@@ -14,8 +14,9 @@ import { Template }                                     from 'aws-cdk-lib/assert
 import { newDeployerTestStack }                         from '../../../__tests__/deployer-test-helpers';
 import { MailboxDataDeployerWorkerLambda }              from '../mailbox-data-deployer-worker-lambda';
 
-const ACCOUNT_REF = { Ref: 'AWS::AccountId' };
-const REGION_REF  = { Ref: 'AWS::Region' };
+const ACCOUNT_REF   = { Ref: 'AWS::AccountId' };
+const REGION_REF    = { Ref: 'AWS::Region' };
+const PARTITION_REF = { Ref: 'AWS::Partition' };
 
 const dataStack: IDeployedStack     = { grantLifecycle: jest.fn(), grantTemplateRead: jest.fn(), grantDescribe: jest.fn() };
 const dataTemplate: IArtifactObject = { grantRead: jest.fn() };
@@ -64,7 +65,7 @@ describe('MailboxDataDeployerWorkerLambda', () => {
 
     expect(statements).toHaveLength(1);
     expect(statements[0].Resource).toEqual({
-      'Fn::Join': ['', ['arn:aws:dynamodb:', REGION_REF, ':', ACCOUNT_REF, ':table/', ACCOUNT_REF, '-test-stack-data-*']],
+      'Fn::Join': ['', ['arn:', PARTITION_REF, ':dynamodb:', REGION_REF, ':', ACCOUNT_REF, ':table/', ACCOUNT_REF, '-test-stack-data-*']],
     });
   });
 
@@ -73,13 +74,13 @@ describe('MailboxDataDeployerWorkerLambda', () => {
 
     expect(statements).toHaveLength(1);
     expect(statements[0].Resource).toEqual({
-      'Fn::Join': ['', ['arn:aws:s3:::', ACCOUNT_REF, '-test-stack-data-*']],
+      'Fn::Join': ['', ['arn:', PARTITION_REF, ':s3:::', ACCOUNT_REF, '-test-stack-data-*']],
     });
   });
 
   it('creates KMS grants only for AWS resources, on the DynamoDB and S3 managed keys and account keys', () => {
     const statements = statementsForAction(template, 'kms:CreateGrant');
-    const kmsArn     = (resource: string): unknown => ({ 'Fn::Join': ['', ['arn:aws:kms:', REGION_REF, ':', ACCOUNT_REF, `:${resource}`]] });
+    const kmsArn     = (resource: string): unknown => ({ 'Fn::Join': ['', ['arn:', PARTITION_REF, ':kms:', REGION_REF, ':', ACCOUNT_REF, `:${resource}`]] });
 
     expect(statements).toHaveLength(1);
     expect(statements[0].Condition).toEqual({ Bool: { 'kms:GrantIsForAWSResource': 'true' } });

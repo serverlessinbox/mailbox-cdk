@@ -33,8 +33,9 @@ const OWNED_BY_ID              = { StringEquals: { [ROOT_STACK_ID_TAG_KEY]: ROOT
 const OWNED_BY_NAME_WITHOUT_ID = { StringEquals: { [ROOT_STACK_TAG_KEY]: ROOT_STACK }, Null: { [ROOT_STACK_ID_TAG_KEY]: 'true' } };
 const ARTIFACT_VERSION_ONLY    = { 'ForAllValues:StringEquals': { 'aws:TagKeys': [ServerlessInboxTagKeys.artifactVersion] } };
 
-function accountArn(prefix: string, suffix: string): unknown {
-  return { 'Fn::Join': ['', [prefix, { Ref: 'AWS::AccountId' }, suffix]] };
+/** An account-scoped ARN as the template renders it: partition and account are references, never literals. */
+function accountArn(service: string, suffix: string): unknown {
+  return { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, `:${service}`, { Ref: 'AWS::AccountId' }, suffix]] };
 }
 
 interface FunctionResource {
@@ -161,26 +162,26 @@ describe('ArtifactUpdaterLambda', () => {
       ...ownedStatements('function management in the root stack', {
         Action:   ['lambda:GetFunction', 'lambda:GetFunctionConfiguration', 'lambda:UpdateFunctionCode', 'lambda:InvokeFunction'],
         Effect:   'Allow',
-        Resource: accountArn('arn:aws:lambda:*:', ':function:*'),
+        Resource: accountArn('lambda:*:', ':function:*'),
       }),
       ...ownedStatements(
         'function tagging limited to the artifact-version key',
-        { Action: 'lambda:TagResource', Effect: 'Allow', Resource: accountArn('arn:aws:lambda:*:', ':function:*') },
+        { Action: 'lambda:TagResource', Effect: 'Allow', Resource: accountArn('lambda:*:', ':function:*') },
         ARTIFACT_VERSION_ONLY,
       ),
       ...ownedStatements('edge function publishing in us-east-1', {
         Action:   ['lambda:GetFunctionConfiguration', 'lambda:PublishVersion'],
         Effect:   'Allow',
-        Resource: accountArn('arn:aws:lambda:us-east-1:', ':function:*'),
+        Resource: accountArn('lambda:us-east-1:', ':function:*'),
       }),
       ...ownedStatements('distribution management in the root stack', {
         Action:   ['cloudfront:GetDistributionConfig', 'cloudfront:UpdateDistribution', 'cloudfront:CreateInvalidation'],
         Effect:   'Allow',
-        Resource: accountArn('arn:aws:cloudfront::', ':distribution/*'),
+        Resource: accountArn('cloudfront::', ':distribution/*'),
       }),
       ...ownedStatements(
         'distribution tagging limited to the artifact-version key',
-        { Action: 'cloudfront:TagResource', Effect: 'Allow', Resource: accountArn('arn:aws:cloudfront::', ':distribution/*') },
+        { Action: 'cloudfront:TagResource', Effect: 'Allow', Resource: accountArn('cloudfront::', ':distribution/*') },
         ARTIFACT_VERSION_ONLY,
       ),
       [
@@ -188,7 +189,7 @@ describe('ArtifactUpdaterLambda', () => {
         {
           Action:   's3:GetObject',
           Effect:   'Allow',
-          Resource: `arn:aws:s3:::${BUCKET_BASE}-*/${PROJECT}/packages/*/releases/*`,
+          Resource: { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, `:s3:::${BUCKET_BASE}-*/${PROJECT}/packages/*/releases/*`]] },
         },
       ],
       [

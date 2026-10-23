@@ -95,9 +95,9 @@ export class BootstrapLambda extends GoLambda {
     this.addToRolePolicy(new PolicyStatement({
       actions:   ['execute-api:Invoke'],
       resources: vendorAccountIds.flatMap((accountId) => [
-        `arn:aws:execute-api:*:${accountId}:*/*/POST/bootstrap`,
-        `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
-        `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
+        `arn:${Aws.PARTITION}:execute-api:*:${accountId}:*/*/POST/bootstrap`,
+        `arn:${Aws.PARTITION}:execute-api:*:${accountId}:*/*/POST/grant-resource`,
+        `arn:${Aws.PARTITION}:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
       ]),
     }));
   }
@@ -123,7 +123,7 @@ export class BootstrapLambda extends GoLambda {
         'ses:PutEmailIdentityDkimSigningAttributes',
       ],
       resources: [
-        `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/${domain}`,
+        `arn:${Aws.PARTITION}:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/${domain}`,
       ],
     }));
   }
@@ -139,7 +139,7 @@ export class BootstrapLambda extends GoLambda {
       this.addToRolePolicy(new PolicyStatement({
         actions:    ['ses:TagResource'],
         resources:  [
-          `arn:aws:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/${domain}`,
+          `arn:${Aws.PARTITION}:ses:${Aws.REGION}:${Aws.ACCOUNT_ID}:identity/${domain}`,
         ],
         conditions: {
           ...conditions,

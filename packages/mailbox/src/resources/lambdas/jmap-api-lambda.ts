@@ -1,18 +1,18 @@
-import type { IArtifactResolver }                                         from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                                                       from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement }                                                from 'aws-cdk-lib/aws-iam';
-import { Duration }                                                       from 'aws-cdk-lib';
-import { Construct }                                                      from 'constructs';
+import type { IArtifactResolver }                                              from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                                                            from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }                                                     from 'aws-cdk-lib/aws-iam';
+import { Aws, Duration }                                                       from 'aws-cdk-lib';
+import { Construct }                                                           from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../../contracts/websocket-push';
-import type { ScopeMap }                                                  from '../../core/auth/jmap-scopes';
-import type { IDataBlobStore }                                            from '../buckets/data-blob-store';
-import type { IAuditEventsQueue }                                         from '../queues/audit-events-queue';
-import type { IEmailSendingQueue }                                        from '../queues/email-sending-queue';
-import type { IAuthKeyStoreTable }                                        from '../tables/auth-key-store-table';
-import type { IDataTable }                                                from '../tables/data-tables';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl }      from '../../contracts/websocket-push';
+import type { ScopeMap }                                                       from '../../core/auth/jmap-scopes';
+import type { IDataBlobStore }                                                 from '../buckets/data-blob-store';
+import type { IAuditEventsQueue }                                              from '../queues/audit-events-queue';
+import type { IEmailSendingQueue }                                             from '../queues/email-sending-queue';
+import type { IAuthKeyStoreTable }                                             from '../tables/auth-key-store-table';
+import type { IDataTable }                                                     from '../tables/data-tables';
 
-import type { IIdentityProvisioner }                                      from './identity-provisioner-lambda';
+import type { IIdentityProvisioner }                                           from './identity-provisioner-lambda';
 
 export interface JmapApiLambdaProps {
   configTable:          IDataTable;
@@ -102,8 +102,8 @@ export class JmapApiLambda extends GoLambda implements IWebSocketPushTargetWithU
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions:   ['execute-api:Invoke'],
       resources: vendorAccountIds.flatMap((accountId) => [
-        `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
-        `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
+        `arn:${Aws.PARTITION}:execute-api:*:${accountId}:*/*/POST/grant-resource`,
+        `arn:${Aws.PARTITION}:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
       ]),
     }));
   }

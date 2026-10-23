@@ -1,12 +1,12 @@
-import type { IArtifactResolver }     from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                   from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement, Effect }    from 'aws-cdk-lib/aws-iam';
-import { Duration, Stack }            from 'aws-cdk-lib';
-import { Construct }                  from 'constructs';
+import type { IArtifactResolver }          from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                        from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement, Effect }         from 'aws-cdk-lib/aws-iam';
+import { Aws, Duration, Stack }            from 'aws-cdk-lib';
+import { Construct }                       from 'constructs';
 
-import type { ISupportRoles }         from '../../contracts/support-roles';
-import type { IAuditEventsQueue }     from '../queues/audit-events-queue';
-import type { IDataTable }            from '../tables/data-tables';
+import type { ISupportRoles }              from '../../contracts/support-roles';
+import type { IAuditEventsQueue }          from '../queues/audit-events-queue';
+import type { IDataTable }                 from '../tables/data-tables';
 
 /** Inputs of the support API Lambda. */
 export interface SupportApiLambdaProps {
@@ -58,7 +58,7 @@ export class SupportApiLambda extends GoLambda {
 
   private grantVendorApiInvoke(vendorAccountIds: string[]): void {
     // Route (POST /support-case-sync) and vendor accounts are known at synth time; region and API ID are not (vendor-chosen).
-    const resources = vendorAccountIds.map((accountId) => `arn:aws:execute-api:*:${accountId}:*/*/POST/support-case-sync`);
+    const resources = vendorAccountIds.map((accountId) => `arn:${Aws.PARTITION}:execute-api:*:${accountId}:*/*/POST/support-case-sync`);
 
     this.addToRolePolicy(new PolicyStatement({
       effect:  Effect.ALLOW,

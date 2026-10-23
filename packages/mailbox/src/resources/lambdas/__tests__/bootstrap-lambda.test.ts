@@ -87,8 +87,12 @@ describe('BootstrapLambda', () => {
 
   function identityArn(identity: string): unknown {
     return {
-      'Fn::Join': ['', ['arn:aws:ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, `:identity/${identity}`]],
+      'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, `:identity/${identity}`]],
     };
+  }
+
+  function executeApiArn(path: string): unknown {
+    return { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, `:execute-api:*:${VENDOR_ACCOUNT_ID}:${path}`]] };
   }
 
   function authKeyStoreResources(): unknown {
@@ -179,9 +183,9 @@ describe('BootstrapLambda', () => {
       hasStatement(template, {
         Action:   'execute-api:Invoke',
         Resource: [
-          `arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/bootstrap`,
-          `arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/grant-resource`,
-          `arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}:*/*/POST/revoke-resource`,
+          executeApiArn('*/*/POST/bootstrap'),
+          executeApiArn('*/*/POST/grant-resource'),
+          executeApiArn('*/*/POST/revoke-resource'),
         ],
       });
     });

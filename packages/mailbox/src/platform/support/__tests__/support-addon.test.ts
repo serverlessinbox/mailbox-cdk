@@ -121,6 +121,9 @@ describe('SupportAddon', () => {
       const EXECUTE_API_SUFFIX  = ':*/*/POST/support-case-sync';
       const executeApiStatement = (template: Template) => statementsForRole(template, findFunction(template, SUPPORT_API).roleLogicalId)
         .find((statement) => actionsOf(statement).includes('execute-api:Invoke'));
+      /** The execute-api resource as the template renders it: partition-aware, never a literal `arn:aws`. */
+      const executeApiArn = (accountId: string): unknown =>
+        ({ 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, `:execute-api:*:${accountId}${EXECUTE_API_SUFFIX}`]] });
 
       it('defaults to the product vendor account for hop role trust and the execute-api grant', () => {
         const template = synthesizeEnabled();
@@ -128,7 +131,7 @@ describe('SupportAddon', () => {
         template.hasResourceProperties('AWS::IAM::Role', {
           AssumeRolePolicyDocument: { Statement: [Match.objectLike({ Principal: { AWS: accountRoot(VENDOR_ACCOUNT_ID) } })] },
         });
-        expect(executeApiStatement(template)?.Resource).toBe(`arn:aws:execute-api:*:${VENDOR_ACCOUNT_ID}${EXECUTE_API_SUFFIX}`);
+        expect(executeApiStatement(template)?.Resource).toEqual(executeApiArn(VENDOR_ACCOUNT_ID));
       });
 
       it('uses the accounts from CDK context for hop role trust and the execute-api grant', () => {
@@ -143,8 +146,8 @@ describe('SupportAddon', () => {
           },
         });
         expect(executeApiStatement(template)?.Resource).toEqual([
-          `arn:aws:execute-api:*:111122223333${EXECUTE_API_SUFFIX}`,
-          `arn:aws:execute-api:*:444455556666${EXECUTE_API_SUFFIX}`,
+          executeApiArn('111122223333'),
+          executeApiArn('444455556666'),
         ]);
       });
     });

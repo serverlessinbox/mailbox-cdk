@@ -1,14 +1,14 @@
-import type { IArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription, GoLambda } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IGrantable }                from 'aws-cdk-lib/aws-iam';
-import { PolicyStatement }                from 'aws-cdk-lib/aws-iam';
-import { Duration }                       from 'aws-cdk-lib';
-import { Construct }                      from 'constructs';
+import type { IArtifactResolver }              from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription, GoLambda }      from '@serverlessinbox/mailbox-cdk-shared';
+import type { IGrantable }                     from 'aws-cdk-lib/aws-iam';
+import { PolicyStatement }                     from 'aws-cdk-lib/aws-iam';
+import { Aws, Duration }                       from 'aws-cdk-lib';
+import { Construct }                           from 'constructs';
 
-import type { IDataBlobStore }            from '../buckets/data-blob-store';
-import type { IAuditEventsQueue }         from '../queues/audit-events-queue';
-import type { IEmailSendingQueue }        from '../queues/email-sending-queue';
-import type { IDataTable }                from '../tables/data-tables';
+import type { IDataBlobStore }                 from '../buckets/data-blob-store';
+import type { IAuditEventsQueue }              from '../queues/audit-events-queue';
+import type { IEmailSendingQueue }             from '../queues/email-sending-queue';
+import type { IDataTable }                     from '../tables/data-tables';
 
 /**
  * Narrow, provider-agnostic handle to the `identity-provisioner` Lambda: just enough for an
@@ -89,8 +89,8 @@ export class IdentityProvisionerLambda extends GoLambda implements IIdentityProv
     this.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions:   ['execute-api:Invoke'],
       resources: vendorAccountIds.flatMap((accountId) => [
-        `arn:aws:execute-api:*:${accountId}:*/*/POST/grant-resource`,
-        `arn:aws:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
+        `arn:${Aws.PARTITION}:execute-api:*:${accountId}:*/*/POST/grant-resource`,
+        `arn:${Aws.PARTITION}:execute-api:*:${accountId}:*/*/POST/revoke-resource`,
       ]),
     }));
   }
