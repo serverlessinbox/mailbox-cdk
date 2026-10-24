@@ -19,8 +19,9 @@ import { AuditEventsQueue }                                           from '../.
 import { EmailSendingQueue }                                          from '../../../resources/queues/email-sending-queue';
 import { DataTable }                                                  from '../../../resources/tables/data-tables';
 import type { IOAuthUi }                                              from '../../ui/ui-section';
+import { AuthMethod }                                                 from '../auth-method';
+import type { IMailboxAuthProvider }                                  from '../auth-provider';
 import { AuthSection }                                                from '../auth-section';
-import type { IMailboxAuthProvider }                                  from '../types';
 
 describe('AuthSection', () => {
   let stack: cdk.Stack;
@@ -34,7 +35,7 @@ describe('AuthSection', () => {
       issuer:                  'https://example.com/issuer',
       tokenEndpoint:           'https://example.com/token',
       authorizationEndpoint:   'https://example.com/authorize',
-      authMethod:              'header',
+      authMethod:              AuthMethod.HEADER,
       usePkce:                 false,
       scopeMap:                {},
       policies:                { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },

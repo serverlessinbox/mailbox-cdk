@@ -17,7 +17,8 @@ import * as t                                   from 'typanion';
 
 import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
 import { DataTable }                            from '../../../resources/tables/data-tables';
-import type { IMailboxAuthProvider }            from '../../auth/types';
+import { AuthMethod }                           from '../../auth/auth-method';
+import type { IMailboxAuthProvider }            from '../../auth/auth-provider';
 import { AdminUi }                              from '../admin-ui';
 import type { AdminUiProps }                    from '../admin-ui';
 
@@ -62,7 +63,7 @@ describe('AdminUi', () => {
       issuer:                'https://example.com/issuer',
       tokenEndpoint:         'https://example.com/token',
       authorizationEndpoint: 'https://example.com/authorize',
-      authMethod:            'header',
+      authMethod:            AuthMethod.HEADER,
       usePkce:               false,
       scopeMap:              {},
       policies:              { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },

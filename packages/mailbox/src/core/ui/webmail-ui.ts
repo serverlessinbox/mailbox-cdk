@@ -3,11 +3,11 @@ import { ComponentDescription }                                                 
 import type * as acm                                                                             from 'aws-cdk-lib/aws-certificatemanager';
 import type { Construct, IDependable }                                                           from 'constructs';
 
-import { AUTH_POLICY_JMAP_API, OAUTH_CLIENT_WEBMAIL_UI }                                         from '../../contracts/auth-names';
+import { AuthPolicyName, OAuthClientName }                                                       from '../../contracts/auth-names';
 import type { IAuditEventsQueue }                                                                from '../../resources/queues/audit-events-queue';
 import type { IDataTable }                                                                       from '../../resources/tables/data-tables';
+import type { AuthClientConfig, IMailboxAuthProvider }                                           from '../auth/auth-provider';
 import { Permission }                                                                            from '../auth/jmap-scopes';
-import type { AuthClientConfig, IMailboxAuthProvider }                                           from '../auth/types';
 
 import { MailboxUi }                                                                             from './mailbox-ui';
 
@@ -62,8 +62,8 @@ export class WebmailUi extends MailboxUi {
       certificate:              props.certificate,
       configTable:              props.configTable,
       auditEventsQueue:         props.auditEventsQueue,
-      authPolicyName:           AUTH_POLICY_JMAP_API,
-      oauthClientName:          OAUTH_CLIENT_WEBMAIL_UI,
+      authPolicyName:           AuthPolicyName.JMAP_API,
+      oauthClientName:          OAuthClientName.WEBMAIL_UI,
       tokenExchangeDependsOn:   props.dependsOn,
       uiBundle:                 {
         packageName: 'mailbox-webmail-ui',

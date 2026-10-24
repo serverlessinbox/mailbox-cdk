@@ -14,7 +14,7 @@ import * as dynamodb                                     from 'aws-cdk-lib/aws-d
 import * as cdk                                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
 
-import { AUTH_POLICY_JMAP_API, OAUTH_CLIENT_WEBMAIL_UI } from '../../../contracts/auth-names';
+import { AuthPolicyName, OAuthClientName }               from '../../../contracts/auth-names';
 import { AuditEventsQueue }                              from '../../../resources/queues/audit-events-queue';
 import { DataTable }                                     from '../../../resources/tables/data-tables';
 import { IdpTokenExchangeApi }                           from '../idp-token-exchange-api';
@@ -38,8 +38,8 @@ describe('IdpTokenExchangeApi', () => {
         partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       })),
       auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
-      authPolicyName:   AUTH_POLICY_JMAP_API,
-      oauthClientName:  OAUTH_CLIENT_WEBMAIL_UI,
+      authPolicyName:   AuthPolicyName.JMAP_API,
+      oauthClientName:  OAuthClientName.WEBMAIL_UI,
       dependsOn,
       serviceName: 'idp-token-exchange-test',
       pipeline:    'jmap',

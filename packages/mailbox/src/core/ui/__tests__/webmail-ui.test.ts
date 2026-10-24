@@ -16,8 +16,9 @@ import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
 import { DataTable }                            from '../../../resources/tables/data-tables';
+import { AuthMethod }                           from '../../auth/auth-method';
+import type { IMailboxAuthProvider }            from '../../auth/auth-provider';
 import { Permission }                           from '../../auth/jmap-scopes';
-import type { IMailboxAuthProvider }            from '../../auth/types';
 import { WebmailUi }                            from '../webmail-ui';
 
 interface SynthesizedFunction {
@@ -34,7 +35,7 @@ describe('WebmailUi', () => {
       issuer:                  'https://example.com/issuer',
       tokenEndpoint:           'https://example.com/token',
       authorizationEndpoint:   'https://example.com/authorize',
-      authMethod:              'header',
+      authMethod:              AuthMethod.HEADER,
       usePkce:                 false,
       scopeMap:                {},
       policies:                { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },

@@ -16,9 +16,11 @@ import type { IDataTable }                                                      
 import type { IDnsZone }                                                                     from '../edge/dns-zone';
 import type { IOAuthUi }                                                                     from '../ui/ui-section';
 
+import type { OAuthAuthorizationCodeClientConfig, OAuthClientsConfig }                       from './auth-bootstrap-config';
 import { AuthKeyStore }                                                                      from './auth-key-store';
+import type { IMailboxAuthProvider }                                                         from './auth-provider';
 import { Bootstrap }                                                                         from './bootstrap';
-import type { IMailboxAuthProvider, OAuthAuthorizationCodeClientConfig, OAuthClientsConfig } from './types';
+import { OAuthFlow }                                                                         from './oauth-flow';
 
 /** What {@link AuthSection} uses of the data section. */
 export interface IAuthDataInputs {
@@ -174,7 +176,7 @@ export class AuthSection extends Construct {
 
   private toOAuthClientConfig(ui: IOAuthUi): OAuthAuthorizationCodeClientConfig {
     return {
-      flow:         'authorization_code',
+      flow:         OAuthFlow.AUTHORIZATION_CODE,
       clientId:     ui.oauthClient.clientId,
       clientSecret: ui.oauthClient.clientSecret,
       scopes:       ['openid', 'email', 'profile', ...ui.oauthClient.requestScopeList],

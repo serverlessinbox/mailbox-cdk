@@ -6,8 +6,10 @@ import {
   MailboxAuthPolicies,
   IMailboxAuthProviderBase,
   GenerateClientParams,
-  AUTH_POLICY_ADMIN_API,
-  AUTH_POLICY_JMAP_API,
+  AuthMethod,
+  AuthPolicyName,
+  GenerateAuthorizationCodeClientParams,
+  OAuthFlow,
   Permission,
   ProvisionAdminApiClientParams,
   ProvisionJmapApiClientParams,
@@ -33,9 +35,6 @@ import { DynamicClientRegistrationMode }                                        
 import type { MailboxUserPoolAdminUiConfig }                                                                                                           from './mailbox-user-pool-admin-ui-config';
 import type { MfaMode }                                                                                                                                from './mfa-mode';
 import { UserPoolAudience }                                                                                                                            from './user-pool-audience';
-
-/** The parameters of a client that signs users in through the authorization-code flow. */
-type AuthorizationCodeClientParams = Extract<GenerateClientParams, { flow: 'authorization_code' }>;
 
 /**
  * Maps Cognito groups to the two roles mailbox components distinguish.
@@ -269,7 +268,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
    * How an OAuth client authenticates at the token endpoint: always `form`, which sends the client
    * credentials as form fields of the token request.
    */
-  public readonly authMethod = 'form';
+  public readonly authMethod: AuthMethod = AuthMethod.FORM;
 
   /**
    * Whether the authorization-code flow of this pool's clients uses PKCE: always `true`, so a client
@@ -369,8 +368,8 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   /** Provision the authorization-code OAuth client of an application that calls the Admin API; one per name. */
   public provisionAdminApiClient(config: ProvisionAdminApiClientParams): AuthClientConfig {
     return this.provisionAuthorizationCodeClient(this.adminApiClients, this.policies.adminApi, {
-      flow:         'authorization_code',
-      name:         `${AUTH_POLICY_ADMIN_API}_${config.name}`,
+      flow:         OAuthFlow.AUTHORIZATION_CODE,
+      name:         `${AuthPolicyName.ADMIN_API}_${config.name}`,
       permissions:  [Permission.ADMIN],
       groups:       this.authzConfig.adminGroups,
       callbackUrls: config.callbackUrls,
@@ -381,8 +380,8 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   /** Provision the authorization-code OAuth client of an application that calls the JMAP API; one per name. */
   public provisionJmapApiClient(config: ProvisionJmapApiClientParams): AuthClientConfig {
     return this.provisionAuthorizationCodeClient(this.jmapApiClients, this.policies.jmapApi, {
-      flow:         'authorization_code',
-      name:         `${AUTH_POLICY_JMAP_API}_${config.name}`,
+      flow:         OAuthFlow.AUTHORIZATION_CODE,
+      name:         `${AuthPolicyName.JMAP_API}_${config.name}`,
       permissions:  config.permissions,
       groups:       this.authzConfig.userGroups,
       callbackUrls: config.callbackUrls,
@@ -557,7 +556,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   }
 
   private createOAuthClient(params: GenerateClientParams): AuthClientConfig {
-    const isClientCredentials = params.flow === 'client_credentials';
+    const isClientCredentials = params.flow === OAuthFlow.CLIENT_CREDENTIALS;
     const clientKey           = slugifyLabel(params.name);
     const requestScopeList    = params.permissions.map((permission: Permission) => this.toOAuthScope(permission));
 
@@ -600,7 +599,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
 
   private createHeadlessClient(config: ProvisionHeadlessClientConfig): AuthClientConfig {
     const client = this.createOAuthClient({
-      flow:        'client_credentials',
+      flow:        OAuthFlow.CLIENT_CREDENTIALS,
       name:        config.name,
       permissions: config.permissions,
     });
@@ -611,7 +610,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   private provisionAuthorizationCodeClient(
     clients: Map<string, AuthClientConfig>,
     policy: AuthPolicyConfig,
-    params: AuthorizationCodeClientParams,
+    params: GenerateAuthorizationCodeClientParams,
   ): AuthClientConfig {
     const existing = clients.get(params.name);
     if (existing) {

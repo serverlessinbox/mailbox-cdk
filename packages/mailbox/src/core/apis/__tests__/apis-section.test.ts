@@ -7,27 +7,28 @@
  * replaces deployed resources), and the logical ids it pins on the custom domains, which are unique
  * per account and region and so cannot be replaced next to their old selves.
  */
-import { ArtifactZone, PinnedArtifactResolver }                   from '@serverlessinbox/artifact-registry-cdk';
-import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }              from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                                        from 'aws-cdk-lib/assertions';
-import * as acm                                                   from 'aws-cdk-lib/aws-certificatemanager';
-import { Table, AttributeType }                                   from 'aws-cdk-lib/aws-dynamodb';
-import { Function as LambdaFunction }                             from 'aws-cdk-lib/aws-lambda';
-import { Bucket }                                                 from 'aws-cdk-lib/aws-s3';
-import * as cdk                                                   from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer, CfnResource, TagManager } from 'aws-cdk-lib';
-import type { Construct }                                         from 'constructs';
+import { ArtifactZone, PinnedArtifactResolver }                    from '@serverlessinbox/artifact-registry-cdk';
+import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }               from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                                         from 'aws-cdk-lib/assertions';
+import * as acm                                                    from 'aws-cdk-lib/aws-certificatemanager';
+import { Table, AttributeType }                                    from 'aws-cdk-lib/aws-dynamodb';
+import { Function as LambdaFunction }                              from 'aws-cdk-lib/aws-lambda';
+import { Bucket }                                                  from 'aws-cdk-lib/aws-s3';
+import * as cdk                                                    from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer, CfnResource, TagManager }  from 'aws-cdk-lib';
+import type { Construct }                                          from 'constructs';
 
-import { DataBlobStore }                                          from '../../../resources/buckets/data-blob-store';
-import { AuditEventsQueue }                                       from '../../../resources/queues/audit-events-queue';
-import { EmailSendingQueue }                                      from '../../../resources/queues/email-sending-queue';
-import { AuthKeyStoreTable }                                      from '../../../resources/tables/auth-key-store-table';
-import { DataTable }                                              from '../../../resources/tables/data-tables';
-import type { IMailboxAuthProvider }                              from '../../auth/types';
-import { MailboxDomains }                                         from '../../domains/mailbox-domains';
-import type { IAdminApiAddon }                                    from '../addons';
-import { ApisSection }                                            from '../apis-section';
-import type { ApisEndpointsProps, IApisEdgeInputs }               from '../apis-section';
+import { DataBlobStore }                                           from '../../../resources/buckets/data-blob-store';
+import { AuditEventsQueue }                                        from '../../../resources/queues/audit-events-queue';
+import { EmailSendingQueue }                                       from '../../../resources/queues/email-sending-queue';
+import { AuthKeyStoreTable }                                       from '../../../resources/tables/auth-key-store-table';
+import { DataTable }                                               from '../../../resources/tables/data-tables';
+import { AuthMethod }                                              from '../../auth/auth-method';
+import type { IMailboxAuthProvider }                               from '../../auth/auth-provider';
+import { MailboxDomains }                                          from '../../domains/mailbox-domains';
+import type { IAdminApiAddon }                                     from '../addons';
+import { ApisSection }                                             from '../apis-section';
+import type { ApisEndpointsProps, IApisEdgeInputs }                from '../apis-section';
 
 describe('ApisSection', () => {
   let stack: cdk.Stack;
@@ -43,7 +44,7 @@ describe('ApisSection', () => {
       issuer:                  'https://example.com/issuer',
       tokenEndpoint:           'https://example.com/token',
       authorizationEndpoint:   'https://example.com/authorize',
-      authMethod:              'header',
+      authMethod:              AuthMethod.HEADER,
       usePkce:                 false,
       scopeMap:                {},
       policies:                { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },

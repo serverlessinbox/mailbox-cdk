@@ -20,7 +20,8 @@ import { DependencyGroup }                                        from 'construc
 import type { IUiContentDeployTarget }                            from '../../../contracts/ui-content-updater';
 import { AuditEventsQueue }                                       from '../../../resources/queues/audit-events-queue';
 import { DataTable }                                              from '../../../resources/tables/data-tables';
-import type { IMailboxAuthProvider }                              from '../../auth/types';
+import { AuthMethod }                                             from '../../auth/auth-method';
+import type { IMailboxAuthProvider }                              from '../../auth/auth-provider';
 import { MailboxDomains }                                         from '../../domains/mailbox-domains';
 import { UiSection }                                              from '../ui-section';
 import type { UiSectionProps }                                    from '../ui-section';
@@ -50,7 +51,7 @@ describe('UiSection', () => {
       issuer:                  'https://example.com/issuer',
       tokenEndpoint:           'https://example.com/token',
       authorizationEndpoint:   'https://example.com/authorize',
-      authMethod:              'header',
+      authMethod:              AuthMethod.HEADER,
       usePkce:                 false,
       scopeMap:                {},
       policies:                { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },

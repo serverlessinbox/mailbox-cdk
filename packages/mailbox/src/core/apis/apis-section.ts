@@ -11,7 +11,7 @@ import type { IAuditEventsQueue }                                               
 import type { IEmailSendingQueue }                                                          from '../../resources/queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                                          from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }                                                                  from '../../resources/tables/data-tables';
-import type { IMailboxAuthProvider }                                                        from '../auth/types';
+import type { IMailboxAuthProvider }                                                        from '../auth/auth-provider';
 import type { IMailboxDomainNames }                                                         from '../domains/mailbox-domains';
 
 import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider, IJmapApiAddon } from './addons';

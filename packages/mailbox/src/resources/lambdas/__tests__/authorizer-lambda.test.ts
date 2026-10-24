@@ -9,6 +9,7 @@ import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
 import type * as cdk                            from 'aws-cdk-lib';
 
+import { AuthPolicyName }                       from '../../../contracts/auth-names';
 import { AuthKeyStoreTable }                    from '../../tables/auth-key-store-table';
 import { DataTable }                            from '../../tables/data-tables';
 import { AuthorizerLambda }                     from '../authorizer-lambda';
@@ -33,7 +34,7 @@ describe('AuthorizerLambda auth-key-store grant', () => {
       authKeyStoreTable,
       configTable:      new DataTable(configTable),
       artifactResolver: arrangement.artifactResolver,
-      authPolicyName:   'ADMIN_API',
+      authPolicyName:   AuthPolicyName.ADMIN_API,
       anonymousRoutes:  ['GET /first', 'GET /second'],
       serviceName:      'jmap',
       pipeline:         'jmap',

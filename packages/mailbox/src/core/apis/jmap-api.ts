@@ -15,7 +15,7 @@ import { Duration, Aws, CfnResource }                                        fro
 import { Construct }                                                         from 'constructs';
 import type { IConstruct }                                                   from 'constructs';
 
-import { AUTH_POLICY_JMAP_API }                                              from '../../contracts/auth-names';
+import { AuthPolicyName }                                                    from '../../contracts/auth-names';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl }    from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                               from '../../resources/buckets/data-blob-store';
 import { AuthorizerLambda }                                                  from '../../resources/lambdas/authorizer-lambda';
@@ -25,7 +25,7 @@ import type { IAuditEventsQueue }                                            fro
 import type { IEmailSendingQueue }                                           from '../../resources/queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                           from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }                                                   from '../../resources/tables/data-tables';
-import { IMailboxAuthProvider }                                              from '../auth/types';
+import { IMailboxAuthProvider }                                              from '../auth/auth-provider';
 
 import type { IJmapApiAddon }                                                from './addons';
 import { ApiCustomDomain }                                                   from './api-custom-domain';
@@ -102,7 +102,7 @@ export class JmapApi extends Construct {
       authKeyStoreTable: props.authKeyStoreTable,
       configTable:       props.configTable,
       artifactResolver:  props.artifactResolver,
-      authPolicyName:    AUTH_POLICY_JMAP_API,
+      authPolicyName:    AuthPolicyName.JMAP_API,
       anonymousRoutes:   ['GET /.well-known/jmap'],
       serviceName:       'authorizer-jmap-api',
       pipeline:          'jmap',

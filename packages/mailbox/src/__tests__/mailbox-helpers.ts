@@ -1,5 +1,6 @@
+import { AuthMethod }                from '../core/auth/auth-method';
+import type { IMailboxAuthProvider } from '../core/auth/auth-provider';
 import { Permission }                from '../core/auth/jmap-scopes';
-import type { IMailboxAuthProvider } from '../core/auth/types';
 
 /** Artifact context that resolves every package a Mailbox synthesizes, so tests need no artifact store. */
 export const TEST_ARTIFACT_CONTEXT = {
@@ -29,7 +30,7 @@ export function createMockAuthProvider(options: MockAuthProviderOptions = {}): I
     issuer:                  'https://example.com/issuer',
     tokenEndpoint:           'https://example.com/token',
     authorizationEndpoint:   'https://example.com/authorize',
-    authMethod:              'header',
+    authMethod:              AuthMethod.HEADER,
     usePkce:                 false,
     scopeMap:                options.scopeMap ?? {
       'mail.read':  [Permission.MAIL_READ],

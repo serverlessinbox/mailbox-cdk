@@ -3,10 +3,10 @@ import { ComponentDescription }                                                 
 import * as acm                                                                                 from 'aws-cdk-lib/aws-certificatemanager';
 import { Construct }                                                                            from 'constructs';
 
-import { AUTH_POLICY_ADMIN_API, OAUTH_CLIENT_ADMIN_UI }                                         from '../../contracts/auth-names';
+import { AuthPolicyName, OAuthClientName }                                                      from '../../contracts/auth-names';
 import type { IAuditEventsQueue }                                                               from '../../resources/queues/audit-events-queue';
 import type { IDataTable }                                                                      from '../../resources/tables/data-tables';
-import { AuthClientConfig, IMailboxAuthProvider }                                               from '../auth/types';
+import { AuthClientConfig, IMailboxAuthProvider }                                               from '../auth/auth-provider';
 
 import { MailboxUi }                                                                            from './mailbox-ui';
 import type { MailboxUiConfig }                                                                 from './mailbox-ui';
@@ -82,8 +82,8 @@ export class AdminUi extends MailboxUi {
       certificate:              props.certificate,
       configTable:              props.configTable,
       auditEventsQueue:         props.auditEventsQueue,
-      authPolicyName:           AUTH_POLICY_ADMIN_API,
-      oauthClientName:          OAUTH_CLIENT_ADMIN_UI,
+      authPolicyName:           AuthPolicyName.ADMIN_API,
+      oauthClientName:          OAuthClientName.ADMIN_UI,
       uiBundle:                 {
         packageName: 'mailbox-admin-ui',
         objectPath:  'admin-ui.zip',

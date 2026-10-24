@@ -21,15 +21,17 @@ import { SesReceivingMode }                          from '../../../contracts/se
 import { AuthKeyStoreTable }                         from '../../../resources/tables/auth-key-store-table';
 import { DataTable }                                 from '../../../resources/tables/data-tables';
 import type { IDnsZone }                             from '../../edge/dns-zone';
+import type { OAuthAuthorizationCodeClientConfig }   from '../auth-bootstrap-config';
+import { AuthMethod }                                from '../auth-method';
 import { Bootstrap }                                 from '../bootstrap';
 import type { BootstrapProps }                       from '../bootstrap';
-import type { OAuthAuthorizationCodeClientConfig }   from '../types';
+import { OAuthFlow }                                 from '../oauth-flow';
 
 describe('Bootstrap', () => {
   let stack: cdk.Stack;
 
   function client(clientId: string): OAuthAuthorizationCodeClientConfig {
-    return { flow: 'authorization_code', clientId, scopes: ['openid'], redirectUri: '/' };
+    return { flow: OAuthFlow.AUTHORIZATION_CODE, clientId, scopes: ['openid'], redirectUri: '/' };
   }
 
   function createBootstrap(overrides: Partial<BootstrapProps> = {}): Bootstrap {
@@ -112,7 +114,7 @@ describe('Bootstrap', () => {
       oidcProvider: {
         tokenEndpoint:         'https://example.com/token',
         authorizationEndpoint: 'https://example.com/authorize',
-        authMethod:            'header',
+        authMethod:            AuthMethod.HEADER,
         usePkce:               true,
       },
       authPolicies: { adminApi: { audiences: ['admin-audience'] } },

@@ -17,7 +17,7 @@ import type {
   OAuthClientsConfig,
   OAuthAuthorizationCodeClientConfig,
   OidcProviderConfig,
-} from './types';
+} from './auth-bootstrap-config';
 
 /** Inputs of the bootstrap custom resource and of the Lambda behind it. */
 export interface BootstrapProps {

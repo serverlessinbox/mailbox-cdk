@@ -13,7 +13,7 @@ import type { CorsPreflightOptions }                                  from 'aws-
 import { Duration, Aws }                                              from 'aws-cdk-lib';
 import { Construct }                                                  from 'constructs';
 
-import { AUTH_POLICY_ADMIN_API }                                      from '../../contracts/auth-names';
+import { AuthPolicyName }                                             from '../../contracts/auth-names';
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }    from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                        from '../../resources/buckets/data-blob-store';
 import { AdminApiLambda }                                             from '../../resources/lambdas/admin-api-lambda';
@@ -169,7 +169,7 @@ export class AdminApi extends Construct {
       authKeyStoreTable: props.authKeyStoreTable,
       configTable:       props.configTable,
       artifactResolver:  props.artifactResolver,
-      authPolicyName:    AUTH_POLICY_ADMIN_API,
+      authPolicyName:    AuthPolicyName.ADMIN_API,
       serviceName:       'authorizer-admin-api',
       pipeline:          'admin',
     });

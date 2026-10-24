@@ -19,7 +19,7 @@ import * as iam                                         from 'aws-cdk-lib/aws-ia
 import * as cdk                                         from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
 
-import { AUTH_POLICY_ADMIN_API, OAUTH_CLIENT_ADMIN_UI } from '../../../contracts/auth-names';
+import { AuthPolicyName, OAuthClientName }              from '../../../contracts/auth-names';
 import { AuditEventsQueue }                             from '../../../resources/queues/audit-events-queue';
 import { DataTable }                                    from '../../../resources/tables/data-tables';
 import { MailboxUi }                                    from '../mailbox-ui';
@@ -46,8 +46,8 @@ describe('MailboxUi', () => {
         partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       })),
       auditEventsQueue:         new AuditEventsQueue(stack, 'audit-events-queue'),
-      authPolicyName:           AUTH_POLICY_ADMIN_API,
-      oauthClientName:          OAUTH_CLIENT_ADMIN_UI,
+      authPolicyName:           AuthPolicyName.ADMIN_API,
+      oauthClientName:          OAuthClientName.ADMIN_UI,
       artifactResolver:         new PinnedArtifactResolver({
         packages:         {
           'mailbox-cdk':        { version: '1.0.0', zone: ArtifactZone.REGIONAL },

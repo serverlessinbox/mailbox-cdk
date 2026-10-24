@@ -10,8 +10,8 @@ import type { MailboxCertificateOverrides }  from '../../mailbox-props';
 import type { IAuditEventsQueue }            from '../../resources/queues/audit-events-queue';
 import type { IDataTable }                   from '../../resources/tables/data-tables';
 import type { IAdminApiAddon }               from '../apis/addons';
-import type { AuthClientConfig }             from '../auth/types';
-import type { IMailboxAuthProvider }         from '../auth/types';
+import type { AuthClientConfig }             from '../auth/auth-provider';
+import type { IMailboxAuthProvider }         from '../auth/auth-provider';
 import type { IMailboxDomainNames }          from '../domains/mailbox-domains';
 
 import { AdminUi }                           from './admin-ui';

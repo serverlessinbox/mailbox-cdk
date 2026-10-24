@@ -23,7 +23,8 @@ import { DataBlobStore }                        from '../../../resources/buckets
 import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
 import { EmailSendingQueue }                    from '../../../resources/queues/email-sending-queue';
 import { AuthKeyStoreTable }                    from '../../../resources/tables/auth-key-store-table';
-import type { IMailboxAuthProvider }            from '../../auth/types';
+import { AuthMethod }                           from '../../auth/auth-method';
+import type { IMailboxAuthProvider }            from '../../auth/auth-provider';
 import type { IJmapApiAddon }                   from '../addons';
 import { JmapApi }                              from '../jmap-api';
 import type { JmapApiProps }                    from '../jmap-api';
@@ -38,7 +39,7 @@ describe('JmapApi', () => {
       issuer:                  'https://example.com/issuer',
       tokenEndpoint:           'https://example.com/token',
       authorizationEndpoint:   'https://example.com/authorize',
-      authMethod:              'header',
+      authMethod:              AuthMethod.HEADER,
       usePkce:                 false,
       scopeMap:                {},
       policies:                { adminApi: { audiences: ['admin-api'] }, jmapApi: { audiences: ['jmap-api'] } },

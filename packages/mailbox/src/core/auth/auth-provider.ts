@@ -3,22 +3,9 @@ import { Construct }                                                       from 
 
 import type { IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon } from '../apis/addons';
 
+import { AuthMethod }                                                      from './auth-method';
 import { Permission, ScopeMap }                                            from './jmap-scopes';
-
-/** How the OAuth client authenticates at the token endpoint: `header` or `form`. */
-export type AuthMethod = 'header' | 'form';
-
-/** OIDC provider configuration needed by the token exchange + UI flows. */
-export interface OidcProviderConfig {
-  /** URL of the provider's token endpoint. */
-  readonly tokenEndpoint:         string;
-  /** URL of the provider's authorization endpoint. */
-  readonly authorizationEndpoint: string;
-  /** How the OAuth client authenticates at the token endpoint. */
-  readonly authMethod:            AuthMethod;
-  /** Whether the authorization code flow uses PKCE. */
-  readonly usePkce:               boolean;
-}
+import { OAuthFlow }                                                       from './oauth-flow';
 
 /** Policy configuration for authorizers (audiences + optional group requirement). */
 export interface AuthPolicyConfig {
@@ -29,12 +16,6 @@ export interface AuthPolicyConfig {
 
   /** Require ALL of these OAuth scopes. Empty/undefined means no scope restriction. */
   readonly requireAllScopes?: string[];
-}
-
-/** The auth policy of each API. */
-export interface AuthPoliciesConfig {
-  readonly adminApi?: AuthPolicyConfig;
-  readonly jmapApi?:  AuthPolicyConfig;
 }
 
 /** Concrete, policy-split auth configuration used by mailbox components. */
@@ -49,54 +30,26 @@ export interface OAuthClientCredentials {
   readonly clientSecret?: SecretValue;
 }
 
-/** The OAuth grant a client uses to obtain tokens. */
-export type OAuthFlow = 'authorization_code' | 'client_credentials';
-
-/**
- * OAuth client config to bootstrap into the config table.
- *
- * Note: `requestedAudience` is optional; when omitted, we default to `clientId`.
- * Some providers treat audience and clientId as the same concept, while others don't.
- */
-export interface OAuthAuthorizationCodeClientConfig extends OAuthClientCredentials {
-  readonly flow:               'authorization_code';
-  readonly requestedAudience?: string;
-  readonly scopes:             string[];
-  readonly redirectUri:        string;
+/** Parameters for generating an `authorization_code` OAuth client, which has redirect and logout URLs. */
+export interface GenerateAuthorizationCodeClientParams {
+  readonly flow:         OAuthFlow.AUTHORIZATION_CODE;
+  readonly name:         string;
+  readonly groups?:      string[];
+  readonly permissions:  Permission[];
+  readonly callbackUrls: string[];
+  readonly logoutUrls:   string[];
 }
 
-/** OAuth client config for the `client_credentials` flow, which has no redirect URI. */
-export interface OAuthClientCredentialsClientConfig extends OAuthClientCredentials {
-  readonly flow:               'client_credentials';
-  readonly requestedAudience?: string;
-  readonly scopes:             string[];
-}
-
-/** An OAuth client config of either flow. */
-export type OAuthClientConfig = OAuthAuthorizationCodeClientConfig | OAuthClientCredentialsClientConfig;
-
-/** The OAuth clients to bootstrap: one per UI that is enabled. */
-export interface OAuthClientsConfig {
-  readonly adminUi?:   OAuthAuthorizationCodeClientConfig;
-  readonly webmailUi?: OAuthAuthorizationCodeClientConfig;
+/** Parameters for generating a `client_credentials` OAuth client, which has no redirect or logout URLs. */
+export interface GenerateClientCredentialsClientParams {
+  readonly flow:        OAuthFlow.CLIENT_CREDENTIALS;
+  readonly name:        string;
+  readonly groups?:     string[];
+  readonly permissions: Permission[];
 }
 
 /** Parameters for generating an OAuth client; the flow decides which parameters apply. */
-export type GenerateClientParams =
-  | {
-    flow:         'authorization_code';
-    name:         string;
-    groups?:      string[];
-    permissions:  Permission[];
-    callbackUrls: string[];
-    logoutUrls:   string[];
-  }
-  | {
-    flow:        'client_credentials';
-    name:        string;
-    groups?:     string[];
-    permissions: Permission[];
-  };
+export type GenerateClientParams = GenerateAuthorizationCodeClientParams | GenerateClientCredentialsClientParams;
 
 /**
  * Result of generating/providing an OAuth client for mailbox usage.
@@ -155,18 +108,10 @@ export interface IMailboxAuthProviderBase {
   provisionJmapApiClient(config: ProvisionJmapApiClientParams): AuthClientConfig;
 }
 
-/** A role understood by mailbox components: `admin` or `user`. */
-export type MailboxRole = 'admin' | 'user';
-
 /** Provider-supplied mapping from IdP concepts (typically groups) to mailbox roles. */
 export interface MailboxAuthorizationConfig {
   readonly adminGroups: string[];
   readonly userGroups:  string[];
-}
-
-/** Optional hook for providers to publish an authorization mapping (e.g. which groups grant admin). */
-export interface IMailboxAuthorizationConfigProvider {
-  authorizationConfig(): MailboxAuthorizationConfig;
 }
 
 /**
@@ -184,7 +129,3 @@ export interface IMailboxAuthProvider extends IMailboxAuthProviderBase, IAdminAp
   /** Optional: publish an authorization mapping. */
   authorizationConfig?(): MailboxAuthorizationConfig;
 }
-
-/** Name of the OIDC provider entry in the config table. */
-export const DEFAULT_OIDC_PROVIDER_NAME = 'PRIMARY';
-

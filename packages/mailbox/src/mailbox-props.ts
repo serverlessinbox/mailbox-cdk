@@ -4,7 +4,7 @@ import type * as route53               from 'aws-cdk-lib/aws-route53';
 
 import type { SesReceivingMode }       from './contracts/ses-receiving-mode';
 import type { IAdminApiAddonProvider } from './core/apis/addons';
-import type { IMailboxAuthProvider }   from './core/auth/types';
+import type { IMailboxAuthProvider }   from './core/auth/auth-provider';
 import type { MailboxKmsConfig }       from './core/kms';
 import type { SendStackFailuresMode }  from './platform/ops/stack-failure-detection';
 

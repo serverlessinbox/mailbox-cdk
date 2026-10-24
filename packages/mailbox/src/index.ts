@@ -23,36 +23,29 @@ export type { HostedZoneLookupProps } from './core/domains/hosted-zone-lookup';
 export { SendStackFailuresMode } from './platform/ops/stack-failure-detection';
 
 // Auth — types
-export { DEFAULT_OIDC_PROVIDER_NAME } from './core/auth/types';
-export {
-  AUTH_POLICY_ADMIN_API,
-  AUTH_POLICY_JMAP_API,
-  OAUTH_CLIENT_ADMIN_UI,
-  OAUTH_CLIENT_WEBMAIL_UI,
-} from './contracts/auth-names';
-export type { AuthPolicyName, OAuthClientName } from './contracts/auth-names';
+export { AuthPolicyName, OAuthClientName } from './contracts/auth-names';
+export { AuthMethod } from './core/auth/auth-method';
+export { OAuthFlow } from './core/auth/oauth-flow';
 export type {
-  AuthMethod,
   OidcProviderConfig,
-  AuthPolicyConfig,
   AuthPoliciesConfig,
+  OAuthAuthorizationCodeClientConfig,
+  OAuthClientsConfig,
+} from './core/auth/auth-bootstrap-config';
+export type {
+  AuthPolicyConfig,
   MailboxAuthPolicies,
   OAuthClientCredentials,
-  OAuthFlow,
-  OAuthAuthorizationCodeClientConfig,
-  OAuthClientCredentialsClientConfig,
-  OAuthClientConfig,
-  OAuthClientsConfig,
+  GenerateAuthorizationCodeClientParams,
+  GenerateClientCredentialsClientParams,
   GenerateClientParams,
   AuthClientConfig,
   ProvisionAdminApiClientParams,
   ProvisionJmapApiClientParams,
   IMailboxAuthProviderBase,
-  MailboxRole,
   MailboxAuthorizationConfig,
-  IMailboxAuthorizationConfigProvider,
   IMailboxAuthProvider,
-} from './core/auth/types';
+} from './core/auth/auth-provider';
 
 // Auth — JMAP scopes
 export { Permission, JMAP_SCOPE_DESCRIPTIONS } from './core/auth/jmap-scopes';

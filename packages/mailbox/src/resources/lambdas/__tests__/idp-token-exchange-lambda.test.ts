@@ -16,7 +16,7 @@ import { Table, AttributeType }                              from 'aws-cdk-lib/a
 import { CfnResource }                                       from 'aws-cdk-lib';
 import type { Stack }                                        from 'aws-cdk-lib';
 
-import { AUTH_POLICY_JMAP_API, OAUTH_CLIENT_WEBMAIL_UI }     from '../../../contracts/auth-names';
+import { AuthPolicyName, OAuthClientName }                   from '../../../contracts/auth-names';
 import { AuditEventsQueue }                                  from '../../queues/audit-events-queue';
 import { DataTable }                                         from '../../tables/data-tables';
 import { IdpTokenExchangeLambda }                            from '../idp-token-exchange-lambda';
@@ -31,8 +31,8 @@ describe('IdpTokenExchangeLambda', () => {
     return new IdpTokenExchangeLambda(stack, 'idp-token-exchange', {
       configTable:      new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
       auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
-      authPolicyName:   AUTH_POLICY_JMAP_API,
-      oauthClientName:  OAUTH_CLIENT_WEBMAIL_UI,
+      authPolicyName:   AuthPolicyName.JMAP_API,
+      oauthClientName:  OAuthClientName.WEBMAIL_UI,
       artifactResolver,
       serviceName: 'idp-token-exchange-webmail-ui',
       pipeline:    'jmap',
@@ -61,8 +61,8 @@ describe('IdpTokenExchangeLambda', () => {
 
     const { environment } = onlyLambdaOf(Template.fromStack(stack));
     expect(environment).toMatchObject({
-      AUTH_POLICY_NAME:  AUTH_POLICY_JMAP_API,
-      OAUTH_CLIENT_NAME: OAUTH_CLIENT_WEBMAIL_UI,
+      AUTH_POLICY_NAME:  AuthPolicyName.JMAP_API,
+      OAUTH_CLIENT_NAME: OAuthClientName.WEBMAIL_UI,
     });
     expect(Object.keys(environment)).toEqual(expect.arrayContaining(['CONFIG_TABLE_NAME', 'AUDIT_EVENTS_QUEUE_URL']));
   });
