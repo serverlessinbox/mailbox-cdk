@@ -85,7 +85,7 @@ describe('MailboxCognitoDataDeployer', () => {
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         parameters: {
           cognitoDomainPrefix: 'test-prefix',
-          mfaMode:             'OPTIONAL',
+          mfaMode:             'optional',
           passwordMinLength:   '8',
           rootStack:           ROOT_STACK.name,
           deployerType:        'cdk',
@@ -97,7 +97,7 @@ describe('MailboxCognitoDataDeployer', () => {
       const { template } = synthDeployer({ mfaMode: MfaMode.ON, passwordMinLength: 12 });
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
-        parameters: Match.objectLike({ mfaMode: 'ON', passwordMinLength: '12' }),
+        parameters: Match.objectLike({ mfaMode: 'on', passwordMinLength: '12' }),
       });
     });
 

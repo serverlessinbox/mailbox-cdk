@@ -28,6 +28,16 @@ import {
 /** The CloudFormation parameters of the stack, one per name in the parameter contract. */
 type DeclaredParameters = Readonly<Record<keyof MailboxCognitoDataStackParameters, cdk.CfnParameter>>;
 
+/** Cognito's spelling of an MFA mode, as the user pool's `MfaConfiguration` takes it. */
+type CognitoMfaConfiguration = 'OFF' | 'OPTIONAL' | 'ON';
+
+/** Cognito's spelling of every MFA mode; a mode with no entry is a compile error. */
+const COGNITO_MFA_CONFIGURATION: Readonly<Record<MfaMode, CognitoMfaConfiguration>> = {
+  [MfaMode.OFF]:      'OFF',
+  [MfaMode.OPTIONAL]: 'OPTIONAL',
+  [MfaMode.ON]:       'ON',
+};
+
 /**
  * CDK Stack that creates and owns all retained Serverless Inbox Cognito resources:
  * - UserPool (retained)
@@ -76,7 +86,7 @@ export class MailboxCognitoDataStack extends cdk.Stack {
       }),
       mfaMode:             this.declareParameter('mfaMode', {
         type:          'String',
-        description:   'MFA enforcement: OFF disables MFA, OPTIONAL lets users enroll TOTP, ON requires TOTP for all users.',
+        description:   'MFA enforcement: off disables MFA, optional lets users enroll TOTP, on requires TOTP for all users.',
         default:       DEFAULT_MFA_MODE,
         allowedValues: Object.values(MfaMode),
       }),
@@ -133,10 +143,11 @@ export class MailboxCognitoDataStack extends cdk.Stack {
   // L1 (CfnUserPool) is required here because CF parameter token strings cannot be assigned
   // to L2 enum properties (e.g. cognito.Mfa).
   private createUserPool(parameters: DeclaredParameters): cognito.CfnUserPool {
-    const cfnPool = new cognito.CfnUserPool(this, 'user-pool', {
+    const mfaMapping = this.declareMfaConfigurationMapping();
+    const cfnPool    = new cognito.CfnUserPool(this, 'user-pool', {
       userPoolName:           Fn.sub('${AWS::AccountId}-${AWS::StackName}-users'),
       adminCreateUserConfig:  { allowAdminCreateUserOnly: true },
-      mfaConfiguration:       parameters.mfaMode.valueAsString,
+      mfaConfiguration:       mfaMapping.findInMap(parameters.mfaMode.valueAsString, 'value'),
       enabledMfas:            ['SOFTWARE_TOKEN_MFA'],
       policies:               {
         passwordPolicy: {
@@ -154,6 +165,14 @@ export class MailboxCognitoDataStack extends cdk.Stack {
     });
     cfnPool.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
     return cfnPool;
+  }
+
+  private declareMfaConfigurationMapping(): cdk.CfnMapping {
+    return new cdk.CfnMapping(this, 'mfa-configuration', {
+      mapping: Object.fromEntries(
+        Object.entries(COGNITO_MFA_CONFIGURATION).map(([mode, configuration]) => [mode, { value: configuration }]),
+      ),
+    });
   }
 
   private createUserPoolDomain(cfnPool: cognito.CfnUserPool, parameters: DeclaredParameters, hasCustomDomain: cdk.CfnCondition): void {

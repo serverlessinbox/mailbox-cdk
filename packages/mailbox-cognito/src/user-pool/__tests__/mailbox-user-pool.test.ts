@@ -283,10 +283,10 @@ describe('MailboxUserPool authorization', () => {
 
 describe('MailboxUserPool MFA mode', () => {
   it('hands the deployer the mfaMode string a CloudFormation parameter carries', () => {
-    const { stack } = createUserPool({ mfaMode: 'ON' as MfaMode });
+    const { stack } = createUserPool({ mfaMode: MfaMode.ON });
 
     Template.fromStack(stack).hasResourceProperties('Custom::MailboxCognitoDataDeployer', {
-      parameters: Match.objectLike({ mfaMode: 'ON' }),
+      parameters: Match.objectLike({ mfaMode: 'on' }),
     });
   });
 
