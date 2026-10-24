@@ -5923,7 +5923,6 @@ const RAW_RUNTIME_STATE =
           ["mime-types", "npm:2.1.35"],\
           ["semver", "npm:7.8.5"],\
           ["ts-jest", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:29.4.6"],\
-          ["ts-node", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:10.9.2"],\
           ["typanion", "npm:3.14.0"],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"],\
           ["unzipper", "npm:0.12.3"]\
@@ -5976,7 +5975,6 @@ const RAW_RUNTIME_STATE =
           ["mime-types", "npm:2.1.35"],\
           ["semver", "npm:7.8.5"],\
           ["ts-jest", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:29.4.6"],\
-          ["ts-node", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:10.9.2"],\
           ["typanion", "npm:3.14.0"],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"],\
           ["unzipper", "npm:0.12.3"]\
@@ -6101,7 +6099,6 @@ const RAW_RUNTIME_STATE =
           ["jsii-pacmak", "virtual:e94fb04ddfbfdee71b0195e6f2baf696bf5deb0f51628f77f3bc222132eb01152aec53022f57fcce7ca18f81424f1a0ceead8c91220c7968490da2b31b3f8a37#npm:1.120.0"],\
           ["jsii-rosetta", "npm:5.9.15"],\
           ["ts-jest", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#npm:29.4.6"],\
-          ["ts-node", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:10.9.2"],\
           ["typanion", "npm:3.14.0"],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
         ],\
