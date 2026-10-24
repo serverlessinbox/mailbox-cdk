@@ -1,31 +1,18 @@
-import * as esbuildModule                                    from 'esbuild';
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile }  from 'fs/promises';
-import { existsSync }                                        from 'fs';
-import * as osModule                                         from 'os';
-import { dirname, join }                                     from 'path';
+import * as esbuildModule                          from 'esbuild';
+import { unzipSync }                               from 'fflate';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'fs/promises';
+import { existsSync }                              from 'fs';
+import * as osModule                               from 'os';
+import { dirname, join }                           from 'path';
 
-import { runWithInheritedStdio }                             from '../../utils/run-process';
-import { LambdaZipBundler, LambdaZipSpec }                   from '../lambda-zip-bundler';
+import { LambdaZipBundler, LambdaZipSpec }         from '../lambda-zip-bundler';
 
-jest.mock('../../utils/run-process');
 jest.mock('esbuild', () => {
   const actual = jest.requireActual<typeof esbuildModule>('esbuild');
   return { ...actual, build: jest.fn(actual.build) };
 });
-jest.mock('os', () => {
-  const actual = jest.requireActual<typeof osModule>('os');
-  return { ...actual, tmpdir: jest.fn(actual.tmpdir) };
-});
 
-const realBuild  = jest.requireActual<typeof esbuildModule>('esbuild').build;
 const realTmpdir = jest.requireActual<typeof osModule>('os').tmpdir;
-
-interface ZipRun {
-  readonly command:       string;
-  readonly args:          string[];
-  readonly outZipExisted: boolean;
-  readonly bundledJs:     string;
-}
 
 const handlerSource = `
 import { S3Client } from '@aws-sdk/client-s3';
@@ -39,32 +26,9 @@ const helperSource = `
 export const marker = 'BUNDLED_HELPER_MARKER';
 `;
 
+const centralDirectorySignature = Buffer.from([0x50, 0x4b, 0x01, 0x02]);
+
 let workDir: string;
-let tempRoot: string;
-let zipRuns: ZipRun[];
-
-/** Fakes the `zip` binary: records its arguments and what it saw, then returns the exit code. */
-function zipExitsWith(exitCode: number | null): void {
-  jest.mocked(runWithInheritedStdio).mockImplementation(async (command, args) => {
-    const [, outZip, outJs] = args;
-    zipRuns.push({
-      command,
-      args,
-      outZipExisted: existsSync(outZip),
-      bundledJs:     await readFile(outJs, 'utf-8'),
-    });
-    return exitCode;
-  });
-}
-
-/** Stands in for esbuild by writing a placeholder index.js, so the zip fake has a file to read. */
-async function stubBuild(options: esbuildModule.BuildOptions): Promise<esbuildModule.BuildResult> {
-  if (options.outfile === undefined) {
-    throw new Error('stubBuild needs an outfile');
-  }
-  await writeFile(options.outfile, 'module.exports = {};\n');
-  return { errors: [], warnings: [], outputFiles: undefined, metafile: undefined, mangleCache: undefined };
-}
 
 function bundleSpec(overrides: Partial<LambdaZipSpec> = {}): LambdaZipSpec {
   return {
@@ -77,118 +41,99 @@ function bundleSpec(overrides: Partial<LambdaZipSpec> = {}): LambdaZipSpec {
   };
 }
 
-async function bundleAndCaptureJs(spec: LambdaZipSpec): Promise<string> {
-  await LambdaZipBundler.bundle(spec);
-  const lastRun = zipRuns.at(-1);
-  if (lastRun === undefined) {
-    throw new Error('zip was not called');
-  }
-  return lastRun.bundledJs;
+async function readZip(outZip: string): Promise<Uint8Array> {
+  return new Uint8Array(await readFile(outZip));
 }
 
-async function leftoverTempDirs(): Promise<string[]> {
-  return readdir(tempRoot);
+/** Reads the host OS byte and the external attributes of the single central directory header. */
+function centralHeaderOf(zip: Uint8Array): DataView {
+  const offset = Buffer.from(zip).indexOf(centralDirectorySignature);
+  if (offset < 0) {
+    throw new Error('zip has no central directory header');
+  }
+  return new DataView(zip.buffer, zip.byteOffset + offset, 46);
 }
 
 beforeEach(async () => {
   jest.clearAllMocks();
-  workDir  = await mkdtemp(join(realTmpdir(), 'lambda-zip-test-'));
-  tempRoot = await mkdtemp(join(workDir, 'tmp-'));
-  jest.mocked(osModule.tmpdir).mockReturnValue(tempRoot);
-  jest.mocked(esbuildModule.build).mockImplementation(stubBuild);
-  zipRuns = [];
+  workDir = await mkdtemp(join(realTmpdir(), 'lambda-zip-test-'));
   await writeFile(join(workDir, 'handler.ts'), handlerSource);
   await writeFile(join(workDir, 'helper.ts'), helperSource);
-  zipExitsWith(0);
 });
 
 afterEach(async () => {
-  jest.mocked(osModule.tmpdir).mockImplementation(realTmpdir);
   await rm(workDir, { recursive: true, force: true });
 });
 
 describe('LambdaZipBundler.bundle', () => {
-  it('creates the output folder and zips the single bundled index.js', async () => {
+  it('creates the output folder and writes the zip there', async () => {
     const outZip = join(workDir, 'out', 'nested', 'handler.zip');
 
     await LambdaZipBundler.bundle(bundleSpec({ outZip }));
 
     expect(existsSync(dirname(outZip))).toBe(true);
-    expect(zipRuns).toHaveLength(1);
-    expect(zipRuns[0]?.command).toBe('zip');
-    expect(zipRuns[0]?.args).toEqual(['-j', outZip, expect.stringMatching(/index\.js$/)]);
+    expect(existsSync(outZip)).toBe(true);
   });
 
-  it('removes an existing zip before the zip command runs', async () => {
+  it('replaces an existing zip with the new archive', async () => {
     const outZip = join(workDir, 'out', 'handler.zip');
     await mkdir(dirname(outZip), { recursive: true });
     await writeFile(outZip, 'previous archive');
 
     await LambdaZipBundler.bundle(bundleSpec({ outZip }));
 
-    expect(zipRuns[0]?.outZipExisted).toBe(false);
+    expect(Object.keys(unzipSync(await readZip(outZip)))).toEqual(['index.js']);
   });
 
   it('bundles CommonJS and keeps the external packages as require calls', async () => {
-    jest.mocked(esbuildModule.build).mockImplementationOnce(realBuild);
+    const outZip = join(workDir, 'out', 'handler.zip');
 
-    const bundledJs = await bundleAndCaptureJs(bundleSpec());
+    await LambdaZipBundler.bundle(bundleSpec({ outZip }));
 
+    const bundledJs = Buffer.from(unzipSync(await readZip(outZip))['index.js'] ?? []).toString('utf-8');
     expect(bundledJs).toContain('module.exports');
     expect(bundledJs).toContain('require("@aws-sdk/client-s3")');
     expect(bundledJs).toContain('BUNDLED_HELPER_MARKER');
   });
 
   it.each([true, false])('passes the minify flag to esbuild (minify: %s)', async (minify) => {
-    jest.mocked(runWithInheritedStdio).mockResolvedValue(0);
-
     await LambdaZipBundler.bundle(bundleSpec({ minify }));
 
-    expect(esbuildModule.build).toHaveBeenCalledWith(expect.objectContaining({ minify }));
+    expect(esbuildModule.build).toHaveBeenCalledWith(expect.objectContaining({ minify, write: false }));
   });
 
-  it('rejects with the exit code and the zip path when zip exits non-zero', async () => {
-    zipExitsWith(3);
-    const spec = bundleSpec();
-
-    await expect(LambdaZipBundler.bundle(spec)).rejects.toThrow(`zip exited with code 3 while writing ${spec.outZip}`);
-  });
-
-  it('rejects with the null code when zip is killed by a signal (BND-8, current message)', async () => {
-    zipExitsWith(null);
-    const spec = bundleSpec();
-
-    await expect(LambdaZipBundler.bundle(spec)).rejects.toThrow(`zip exited with code null while writing ${spec.outZip}`);
-  });
-
-  it('rejects without running zip when esbuild fails', async () => {
-    jest.mocked(esbuildModule.build).mockImplementationOnce(realBuild);
+  it('rejects and writes no zip when esbuild fails', async () => {
     const spec = bundleSpec({ entryPath: join(workDir, 'missing.ts') });
 
     await expect(LambdaZipBundler.bundle(spec)).rejects.toThrow();
-    expect(runWithInheritedStdio).not.toHaveBeenCalled();
+    expect(existsSync(spec.outZip)).toBe(false);
   });
 
-  it('removes its temp folder after a successful bundle', async () => {
-    await LambdaZipBundler.bundle(bundleSpec());
+  it('writes a zip whose only entry is index.js, with no directory entries', async () => {
+    const outZip = join(workDir, 'out', 'handler.zip');
 
-    expect(zipRuns[0]?.args[2]).toEqual(expect.stringContaining(tempRoot));
-    expect(await leftoverTempDirs()).toEqual([]);
+    await LambdaZipBundler.bundle(bundleSpec({ outZip }));
+
+    expect(Object.keys(unzipSync(await readZip(outZip)))).toEqual(['index.js']);
   });
 
-  it('removes its temp folder when zip fails', async () => {
-    zipExitsWith(3);
+  it('marks the entry as a Unix file with 0644 permissions in the central directory', async () => {
+    const outZip = join(workDir, 'out', 'handler.zip');
 
-    await LambdaZipBundler.bundle(bundleSpec()).catch(() => undefined);
+    await LambdaZipBundler.bundle(bundleSpec({ outZip }));
 
-    expect(await leftoverTempDirs()).toEqual([]);
+    const header = centralHeaderOf(await readZip(outZip));
+    expect(header.getUint8(5)).toBe(3);
+    expect((header.getUint32(38, true) >>> 16) & 0o777).toBe(0o644);
   });
 
-  it('removes its temp folder when esbuild fails', async () => {
-    jest.mocked(esbuildModule.build).mockImplementationOnce(realBuild);
+  it('produces a byte-identical zip for the same input', async () => {
+    const firstZip  = join(workDir, 'out', 'first.zip');
+    const secondZip = join(workDir, 'out', 'second.zip');
 
-    await LambdaZipBundler.bundle(bundleSpec({ entryPath: join(workDir, 'missing.ts') })).catch(() => undefined);
+    await LambdaZipBundler.bundle(bundleSpec({ outZip: firstZip }));
+    await LambdaZipBundler.bundle(bundleSpec({ outZip: secondZip }));
 
-    expect(await leftoverTempDirs()).toEqual([]);
+    expect(await readZip(secondZip)).toEqual(await readZip(firstZip));
   });
 });

@@ -1,9 +1,7 @@
-import { build }                 from 'esbuild';
-import { mkdir, mkdtemp, rm }    from 'fs/promises';
-import { tmpdir }                from 'os';
-import { dirname, join }         from 'path';
-
-import { runWithInheritedStdio } from '../utils/run-process';
+import { build }             from 'esbuild';
+import { zipSync }           from 'fflate';
+import { mkdir, writeFile }  from 'fs/promises';
+import { dirname }           from 'path';
 
 /** Everything needed to bundle one Lambda entry file into a zip holding a single `index.js`. */
 export interface LambdaZipSpec {
@@ -14,30 +12,27 @@ export interface LambdaZipSpec {
   readonly externals: string[];
 }
 
+const entryName              = 'index.js';
+const unixHostOs             = 3;
+const regularFilePermissions = 0o644;
+const fixedModifiedTime      = new Date('2020-01-01T00:00:00Z');
+
 /** Turns one Lambda entry file into a zip holding a single CommonJS `index.js`. */
 export class LambdaZipBundler {
   /**
-   * Bundles the entry file into one CommonJS `index.js` and zips it, without directory entries,
-   * into `outZip`, creating its folder and replacing an existing zip. Zipping uses the system
-   * `zip` binary, which must be on the PATH. Rejects when esbuild fails or `zip` exits non-zero.
+   * Bundles the entry file into one CommonJS `index.js` and writes it, as the only entry of a zip
+   * without directory entries, to `outZip`. Creates the folder of `outZip` and replaces an existing
+   * zip. The same input always yields a byte-identical zip. Rejects when esbuild fails.
    */
   public static async bundle(spec: LambdaZipSpec): Promise<void> {
-    await mkdir(dirname(spec.outZip), { recursive: true });
-
-    const tmpDir = await mkdtemp(join(tmpdir(), 'mailbox-bundler-lambda-'));
-    try {
-      const outJs = join(tmpDir, 'index.js');
-      await LambdaZipBundler.bundleEntry(spec, outJs);
-      await LambdaZipBundler.zipEntry(spec.outZip, outJs);
-    } finally {
-      await rm(tmpDir, { recursive: true, force: true });
-    }
+    const bundled = await LambdaZipBundler.bundleEntry(spec);
+    await LambdaZipBundler.writeZip(spec.outZip, bundled);
   }
 
-  private static async bundleEntry(spec: LambdaZipSpec, outJs: string): Promise<void> {
-    await build({
+  private static async bundleEntry(spec: LambdaZipSpec): Promise<Uint8Array> {
+    const result       = await build({
       entryPoints: [spec.entryPath],
-      outfile:     outJs,
+      outfile:     entryName,
       platform:    'node',
       target:      spec.target,
       format:      'cjs',
@@ -45,14 +40,20 @@ export class LambdaZipBundler {
       sourcemap:   false,
       minify:      spec.minify,
       external:    spec.externals,
+      write:       false,
     });
+    const [outputFile] = result.outputFiles ?? [];
+    if (outputFile === undefined) {
+      throw new Error(`esbuild produced no output for ${spec.entryPath}`);
+    }
+    return outputFile.contents;
   }
 
-  private static async zipEntry(outZip: string, outJs: string): Promise<void> {
-    await rm(outZip, { force: true });
-    const exitCode = await runWithInheritedStdio('zip', ['-j', outZip, outJs]);
-    if (exitCode !== 0) {
-      throw new Error(`zip exited with code ${exitCode} while writing ${outZip}`);
-    }
+  private static async writeZip(outZip: string, bundled: Uint8Array): Promise<void> {
+    await mkdir(dirname(outZip), { recursive: true });
+    const zipBytes = zipSync({
+      [entryName]: [bundled, { 'os': unixHostOs, attrs: regularFilePermissions << 16, mtime: fixedModifiedTime }],
+    });
+    await writeFile(outZip, zipBytes);
   }
 }

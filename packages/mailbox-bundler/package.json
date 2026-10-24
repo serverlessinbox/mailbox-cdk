@@ -11,6 +11,7 @@
   "preferUnplugged": true,
   "dependencies": {
     "clipanion": "^4.0.0-rc.2",
+    "fflate": "^0.8.3",
     "glob": "^10.3.10",
     "typanion": "^3.14.0"
   },

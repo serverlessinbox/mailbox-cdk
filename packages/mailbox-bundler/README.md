@@ -8,7 +8,6 @@ folder. It runs as the `mailbox-bundler` command, which each package calls from 
 ## Requirements
 
 - esbuild, a peer dependency, installed alongside this package.
-- `lambda-zip` needs the `zip` binary on the PATH.
 - `package` needs `yarn` on the PATH and a `tsconfig.build.json` in the package folder.
 
 ## Commands
