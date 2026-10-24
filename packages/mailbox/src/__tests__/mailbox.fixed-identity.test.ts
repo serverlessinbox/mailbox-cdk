@@ -15,6 +15,7 @@ import { Template }                                      from 'aws-cdk-lib/asser
 import * as cdk                                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
 
+import { SesReceivingMode }                              from '../contracts/ses-receiving-mode';
 import { HostedZoneLookup }                              from '../core/domains/hosted-zone-lookup';
 import { Mailbox }                                       from '../mailbox';
 
@@ -80,7 +81,7 @@ function uniquelyNamedLogicalIds(): string[] {
     authProvider:    createMockAuthProvider(),
     hostedZone:      new HostedZoneLookup(stack, 'hosted-zone-lookup', { hostedZoneId: 'Z1234567890ABC' }).hostedZone,
     enableMcp:       true,
-    enableReceiving: 'on',
+    enableReceiving: SesReceivingMode.ON,
   });
 
   const stacks = [stack, ...stack.node.findAll().filter((node): node is cdk.NestedStack => node instanceof cdk.NestedStack)];

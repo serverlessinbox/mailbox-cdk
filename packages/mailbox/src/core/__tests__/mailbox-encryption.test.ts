@@ -14,6 +14,8 @@ import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
 import type { MailboxKmsConfig }                from '../kms';
 import { MailboxEncryption }                    from '../mailbox-encryption';
+import { MailboxKmsMode }                       from '../mailbox-kms-mode';
+import { MailboxKmsResource }                   from '../mailbox-kms-resource';
 
 function newKeys(): { shared: kms.IKey; blobStore: kms.IKey; dynamoTables: kms.IKey; queues: kms.IKey } {
   const stack = new Stack(new App(), 'test-stack', { synthesizer: new BootstraplessSynthesizer() });
@@ -25,7 +27,7 @@ describe('MailboxEncryption', () => {
   describe('AWS-managed encryption', () => {
     it.each([
       ['no KMS settings', undefined],
-      ['mode aws-managed', { mode: 'aws-managed' }],
+      ['mode aws-managed', { mode: MailboxKmsMode.AWS_MANAGED }],
     ] as const)('passes no key on for %s', (_description, config) => {
       const plan = MailboxEncryption.plan(config);
 
@@ -35,21 +37,21 @@ describe('MailboxEncryption', () => {
     });
 
     it('takes the excluded tables out of KMS and leaves the queues on the default', () => {
-      const plan = MailboxEncryption.plan({ excluded: ['dynamodb'] });
+      const plan = MailboxEncryption.plan({ excluded: [MailboxKmsResource.DYNAMODB] });
 
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.DEFAULT });
       expect(plan.queues).toBeUndefined();
     });
 
     it('takes the excluded queues out of KMS and leaves the tables on AWS-managed encryption', () => {
-      const plan = MailboxEncryption.plan({ excluded: ['sqs'] });
+      const plan = MailboxEncryption.plan({ excluded: [MailboxKmsResource.SQS] });
 
       expect(plan.queues).toEqual({ encryption: QueueEncryption.UNENCRYPTED });
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.AWS_MANAGED });
     });
 
     it('excludes every excludable resource in mode none and keeps the blob store keyless', () => {
-      const plan = MailboxEncryption.plan({ mode: 'none' });
+      const plan = MailboxEncryption.plan({ mode: MailboxKmsMode.NONE });
 
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.DEFAULT });
       expect(plan.queues).toEqual({ encryption: QueueEncryption.UNENCRYPTED });
@@ -61,7 +63,7 @@ describe('MailboxEncryption', () => {
     it('encrypts every resource with the shared key', () => {
       const { shared } = newKeys();
 
-      const plan = MailboxEncryption.plan({ mode: 'customer-managed', key: shared });
+      const plan = MailboxEncryption.plan({ mode: MailboxKmsMode.CUSTOMER_MANAGED, key: shared });
 
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.CUSTOMER_MANAGED, encryptionKey: shared });
       expect(plan.queues).toEqual({ encryption: QueueEncryption.KMS, encryptionMasterKey: shared });
@@ -71,7 +73,7 @@ describe('MailboxEncryption', () => {
     it('prefers the key of a resource type over the shared key', () => {
       const { shared, blobStore, dynamoTables, queues } = newKeys();
 
-      const plan = MailboxEncryption.plan({ mode: 'customer-managed', key: shared, perResource: { blobStore, dynamoTables, queues } });
+      const plan = MailboxEncryption.plan({ mode: MailboxKmsMode.CUSTOMER_MANAGED, key: shared, perResource: { blobStore, dynamoTables, queues } });
 
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.CUSTOMER_MANAGED, encryptionKey: dynamoTables });
       expect(plan.queues).toEqual({ encryption: QueueEncryption.KMS, encryptionMasterKey: queues });
@@ -81,7 +83,7 @@ describe('MailboxEncryption', () => {
     it('falls back to the shared key for each resource type that perResource leaves out', () => {
       const { shared, blobStore } = newKeys();
 
-      const plan = MailboxEncryption.plan({ mode: 'customer-managed', key: shared, perResource: { blobStore } });
+      const plan = MailboxEncryption.plan({ mode: MailboxKmsMode.CUSTOMER_MANAGED, key: shared, perResource: { blobStore } });
 
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.CUSTOMER_MANAGED, encryptionKey: shared });
       expect(plan.queues).toEqual({ encryption: QueueEncryption.KMS, encryptionMasterKey: shared });
@@ -91,7 +93,11 @@ describe('MailboxEncryption', () => {
     it('needs only the blob store key when the tables and the queues are excluded', () => {
       const { blobStore } = newKeys();
 
-      const plan = MailboxEncryption.plan({ mode: 'customer-managed', excluded: ['dynamodb', 'sqs'], perResource: { blobStore } });
+      const plan = MailboxEncryption.plan({
+        mode:        MailboxKmsMode.CUSTOMER_MANAGED,
+        excluded:    [MailboxKmsResource.DYNAMODB, MailboxKmsResource.SQS],
+        perResource: { blobStore },
+      });
 
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.DEFAULT });
       expect(plan.queues).toEqual({ encryption: QueueEncryption.UNENCRYPTED });
@@ -104,7 +110,7 @@ describe('MailboxEncryption', () => {
       ['blob store', { blobStore: undefined }, "MailboxProps.kms.mode is 'customer-managed' but no S3 KMS key was provided for the blob store"],
     ] as const)('fails the synth when the %s has no key', (_description, missing, message) => {
       const { blobStore, dynamoTables, queues } = newKeys();
-      const config: MailboxKmsConfig            = { mode: 'customer-managed', perResource: { blobStore, dynamoTables, queues, ...missing } };
+      const config: MailboxKmsConfig            = { mode: MailboxKmsMode.CUSTOMER_MANAGED, perResource: { blobStore, dynamoTables, queues, ...missing } };
 
       expect(() => MailboxEncryption.plan(config)).toThrow(message);
     });

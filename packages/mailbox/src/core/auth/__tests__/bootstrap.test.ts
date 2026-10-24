@@ -17,6 +17,7 @@ import { ReceiptRuleSet }                            from 'aws-cdk-lib/aws-ses';
 import * as cdk                                      from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
 
+import { SesReceivingMode }                          from '../../../contracts/ses-receiving-mode';
 import { AuthKeyStoreTable }                         from '../../../resources/tables/auth-key-store-table';
 import { DataTable }                                 from '../../../resources/tables/data-tables';
 import type { IDnsZone }                             from '../../edge/dns-zone';
@@ -149,7 +150,7 @@ describe('Bootstrap', () => {
   });
 
   it('passes the SES receiving mode it is given to the Lambda environment', () => {
-    createBootstrap({ sesReceivingMode: 'forced' });
+    createBootstrap({ sesReceivingMode: SesReceivingMode.FORCED });
 
     Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
       Environment: { Variables: { SES_RECEIVING_MODE: 'forced' } },

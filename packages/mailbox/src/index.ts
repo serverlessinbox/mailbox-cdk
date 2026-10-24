@@ -13,7 +13,7 @@ export type {
   MailboxUrls,
   MailboxCertificates,
 } from './mailbox-outputs';
-export type { SesReceivingMode } from './contracts/ses-receiving-mode';
+export { SesReceivingMode } from './contracts/ses-receiving-mode';
 
 // Hosted zone — looked up once by the app, passed to the constructs that need it
 export { HostedZoneLookup } from './core/domains/hosted-zone-lookup';
@@ -60,6 +60,7 @@ export type { ScopeMap } from './core/auth/jmap-scopes';
 
 // Admin API addons
 export type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider, IJmapApiAddon, JmapApiAddonContext } from './core/apis/addons';
+export type { AdminUiConfigFragment } from './core/apis/addons';
 export type { IAuditEventsQueue } from './resources/queues/audit-events-queue';
 export type { IIdentityProvisioner } from './resources/lambdas/identity-provisioner-lambda';
 export type { IDataTable } from './resources/tables/data-tables';
@@ -85,9 +86,9 @@ export { MailboxResourceDescriptions } from './utils/resource-descriptions';
 export type { MailboxResourceDescriptionsOptions } from './utils/resource-descriptions';
 
 // Utils — KMS
+export { MailboxKmsMode } from './core/mailbox-kms-mode';
+export { MailboxKmsResource } from './core/mailbox-kms-resource';
 export type {
-  MailboxKmsMode,
-  MailboxKmsResource,
   MailboxKmsPerResourceConfig,
   MailboxKmsConfig,
 } from './core/kms';

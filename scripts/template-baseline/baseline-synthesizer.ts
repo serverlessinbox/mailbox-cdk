@@ -5,6 +5,7 @@ import { App, BootstraplessSynthesizer, Stack }                 from 'aws-cdk-li
 import { ARTIFACT_VERSIONS_CONTEXT_KEY, ARTIFACTS_CONTEXT_KEY } from '../../packages/mailbox-cdk-shared/src/context/context-keys';
 import { DynamicClientRegistrationMode }                        from '../../packages/mailbox-cognito/src/user-pool/dynamic-client-registration-mode';
 import { MailboxUserPool }                                      from '../../packages/mailbox-cognito/src/user-pool/mailbox-user-pool';
+import { SesReceivingMode }                                     from '../../packages/mailbox/src/contracts/ses-receiving-mode';
 import { HostedZoneLookup }                                     from '../../packages/mailbox/src/core/domains/hosted-zone-lookup';
 import { Mailbox }                                              from '../../packages/mailbox/src/mailbox';
 import { SendStackFailuresMode }                                from '../../packages/mailbox/src/platform/ops/stack-failure-detection';
@@ -99,7 +100,7 @@ export class BaselineSynthesizer {
       authProvider,
       hostedZone,
       enableMcp:              true,
-      enableReceiving:        'on',
+      enableReceiving:        SesReceivingMode.ON,
       sendStackFailures:      SendStackFailuresMode.ENABLED,
       artifactResolver:       autoUpdater,
       adminApiAddonProviders: [

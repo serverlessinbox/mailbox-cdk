@@ -11,6 +11,7 @@
 import { ServerlessInboxTagKeys }                      from '@serverlessinbox/mailbox-cdk-shared';
 import { TableEncryption }                             from 'aws-cdk-lib/aws-dynamodb';
 
+import { MailboxKmsMode }                              from '../core/mailbox-kms-mode';
 import { loadMailboxArtifactVersions }                 from '../mailbox-artifact-versions';
 import { MailboxContext }                              from '../mailbox-context';
 
@@ -45,7 +46,7 @@ describe('MailboxContext', () => {
   it('resolves the encryption plan from the KMS settings it is given', () => {
     const { stack, artifactResolver } = newDeployerTestStack();
 
-    const context = MailboxContext.resolve(stack, { artifactResolver, kms: { mode: 'none' } });
+    const context = MailboxContext.resolve(stack, { artifactResolver, kms: { mode: MailboxKmsMode.NONE } });
 
     expect(context.encryptionPlan.dynamoTables).toEqual({ encryption: TableEncryption.DEFAULT });
   });

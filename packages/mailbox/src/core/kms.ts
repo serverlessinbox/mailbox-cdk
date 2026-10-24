@@ -1,21 +1,7 @@
-import type * as kms from 'aws-cdk-lib/aws-kms';
+import type * as kms               from 'aws-cdk-lib/aws-kms';
 
-/**
- * Who owns the keys that encrypt the Mailbox's data at rest.
- *
- * - `'aws-managed'`: AWS-managed encryption. DynamoDB tables use the AWS-managed key, queues use the
- *   SQS-managed key and the blob store uses S3-managed encryption. No key is created or needed.
- * - `'customer-managed'`: keys you supply through {@link MailboxKmsConfig.key} and
- *   {@link MailboxKmsConfig.perResource}. The synth fails when a resource that is not excluded has
- *   no key.
- */
-export type MailboxKmsMode = 'aws-managed' | 'customer-managed';
-
-/**
- * A resource type that can be taken out of KMS encryption through {@link MailboxKmsConfig.excluded}.
- * The blob store cannot be excluded: it is always encrypted.
- */
-export type MailboxKmsResource = 'dynamodb' | 'sqs';
+import type { MailboxKmsMode }     from './mailbox-kms-mode';
+import type { MailboxKmsResource } from './mailbox-kms-resource';
 
 /**
  * The key of each resource type, for when the types do not share {@link MailboxKmsConfig.key}. A
@@ -36,18 +22,19 @@ export interface MailboxKmsPerResourceConfig {
  */
 export interface MailboxKmsConfig {
   /**
-   * Which keys encrypt the resources. `'none'` is `'aws-managed'` with every excludable resource
-   * excluded: DynamoDB tables use the default AWS-owned encryption, queues are unencrypted and the
-   * blob store keeps S3-managed encryption.
+   * Which keys encrypt the resources. `MailboxKmsMode.NONE` is `MailboxKmsMode.AWS_MANAGED` with every
+   * excludable resource excluded: DynamoDB tables use the default AWS-owned encryption, queues are
+   * unencrypted and the blob store keeps S3-managed encryption.
    *
-   * @default 'aws-managed'
+   * @default MailboxKmsMode.AWS_MANAGED
    */
-  readonly mode?: MailboxKmsMode | 'none';
+  readonly mode?: MailboxKmsMode;
 
   /**
    * Resources to take out of KMS encryption. A DynamoDB table then uses the default AWS-owned
-   * encryption and a queue is unencrypted. For example, `{ mode: 'aws-managed', excluded: ['dynamodb'] }`
-   * keeps DynamoDB on default encryption while the queues stay KMS-encrypted.
+   * encryption and a queue is unencrypted. For example, `{ mode: MailboxKmsMode.AWS_MANAGED,
+   * excluded: [MailboxKmsResource.DYNAMODB] }` keeps DynamoDB on default encryption while the queues
+   * stay KMS-encrypted.
    *
    * @default - no resource is excluded
    */
@@ -55,7 +42,7 @@ export interface MailboxKmsConfig {
 
   /**
    * One regional key for every resource type that has no key in `perResource`. Used only when
-   * `mode` is `'customer-managed'`.
+   * `mode` is `MailboxKmsMode.CUSTOMER_MANAGED`.
    *
    * @default - each resource type needs its key in `perResource`
    */
@@ -63,7 +50,7 @@ export interface MailboxKmsConfig {
 
   /**
    * Keys per resource type, taking precedence over `key`. Used only when `mode` is
-   * `'customer-managed'`.
+   * `MailboxKmsMode.CUSTOMER_MANAGED`.
    *
    * @default - every resource type uses `key`
    */

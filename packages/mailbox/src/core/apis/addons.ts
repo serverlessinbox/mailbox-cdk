@@ -8,6 +8,12 @@ import type { IAuditEventsQueue }    from '../../resources/queues/audit-events-q
 import type { IDataTable }           from '../../resources/tables/data-tables';
 
 /**
+ * The Admin UI configuration one addon contributes. Its top-level keys are merged into the Admin
+ * UI's runtime `config/config.json` next to those of the other addons.
+ */
+export type AdminUiConfigFragment = Record<string, unknown>;
+
+/**
  * A capability that extends the Admin API with extra routes and, optionally, Admin UI
  * configuration. Implement it, and return it from an {@link IAdminApiAddonProvider}, to add your
  * own endpoints to the Admin API.
@@ -23,7 +29,7 @@ export interface IAdminApiAddon {
    *
    * @default - the addon contributes no UI configuration
    */
-  uiConfig?: Record<string, unknown>;
+  readonly uiConfig?: AdminUiConfigFragment;
 
   /**
    * Mounts the addon's routes on the Admin API.

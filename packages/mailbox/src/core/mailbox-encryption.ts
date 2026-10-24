@@ -5,7 +5,9 @@ import { QueueEncryption }                                           from 'aws-c
 import type { BlobStoreEncryptionProps }                             from '../resources/buckets/blob-store';
 import type { DynamoTableEncryptionProps }                           from '../resources/tables/data-table-props';
 
-import type { MailboxKmsConfig, MailboxKmsMode, MailboxKmsResource } from './kms';
+import type { MailboxKmsConfig }                                     from './kms';
+import { MailboxKmsMode }                                            from './mailbox-kms-mode';
+import { MailboxKmsResource }                                        from './mailbox-kms-resource';
 
 /** How each kind of data resource is encrypted, as the resources take it: tables, blob store and queue defaults. */
 export interface MailboxEncryptionPlan {
@@ -35,11 +37,11 @@ export class MailboxEncryption {
   }
 
   private static dynamoTablesPlan(config?: MailboxKmsConfig): DynamoTableEncryptionProps {
-    if (MailboxEncryption.isExcluded('dynamodb', config)) {
+    if (MailboxEncryption.isExcluded(MailboxKmsResource.DYNAMODB, config)) {
       return { encryption: TableEncryption.DEFAULT };
     }
 
-    if (MailboxEncryption.modeOf(config) === 'aws-managed') {
+    if (MailboxEncryption.modeOf(config) === MailboxKmsMode.AWS_MANAGED) {
       return { encryption: TableEncryption.AWS_MANAGED };
     }
 
@@ -51,11 +53,11 @@ export class MailboxEncryption {
   }
 
   private static queuesPlan(config?: MailboxKmsConfig): Partial<BaseQueueProps> | undefined {
-    if (MailboxEncryption.isExcluded('sqs', config)) {
+    if (MailboxEncryption.isExcluded(MailboxKmsResource.SQS, config)) {
       return { encryption: QueueEncryption.UNENCRYPTED };
     }
 
-    if (MailboxEncryption.modeOf(config) === 'aws-managed') {
+    if (MailboxEncryption.modeOf(config) === MailboxKmsMode.AWS_MANAGED) {
       return undefined;
     }
 
@@ -67,7 +69,7 @@ export class MailboxEncryption {
   }
 
   private static blobStorePlan(config?: MailboxKmsConfig): BlobStoreEncryptionProps {
-    if (MailboxEncryption.modeOf(config) === 'aws-managed') {
+    if (MailboxEncryption.modeOf(config) === MailboxKmsMode.AWS_MANAGED) {
       return { encryptionKey: undefined };
     }
 
@@ -78,13 +80,13 @@ export class MailboxEncryption {
     return { encryptionKey: key };
   }
 
-  /** The mode in force; `'none'` is `'aws-managed'` with every resource excluded. */
+  /** The mode in force; `NONE` is `AWS_MANAGED` with every resource excluded. */
   private static modeOf(config?: MailboxKmsConfig): MailboxKmsMode {
-    const mode = config?.mode ?? 'aws-managed';
-    return mode === 'none' ? 'aws-managed' : mode;
+    const mode = config?.mode ?? MailboxKmsMode.AWS_MANAGED;
+    return mode === MailboxKmsMode.NONE ? MailboxKmsMode.AWS_MANAGED : mode;
   }
 
   private static isExcluded(resource: MailboxKmsResource, config?: MailboxKmsConfig): boolean {
-    return config?.mode === 'none' || (config?.excluded ?? []).includes(resource);
+    return config?.mode === MailboxKmsMode.NONE || (config?.excluded ?? []).includes(resource);
   }
 }

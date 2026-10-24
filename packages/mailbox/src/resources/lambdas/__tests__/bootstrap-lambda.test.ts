@@ -17,6 +17,7 @@ import { Table, AttributeType }                                                 
 import { ReceiptRuleSet }                                                            from 'aws-cdk-lib/aws-ses';
 import * as cdk                                                                      from 'aws-cdk-lib';
 
+import { SesReceivingMode }                                                          from '../../../contracts/ses-receiving-mode';
 import type { IDnsZone }                                                             from '../../../core/edge/dns-zone';
 import { AuthKeyStoreTable }                                                         from '../../tables/auth-key-store-table';
 import { DataTable }                                                                 from '../../tables/data-tables';
@@ -127,10 +128,14 @@ describe('BootstrapLambda', () => {
       });
     });
 
-    it('sets SES_RECEIVING_MODE to the configured receiving mode', () => {
-      const template = synthBootstrap({ sesReceivingMode: 'forced' });
+    it.each([
+      [SesReceivingMode.OFF, 'off'],
+      [SesReceivingMode.ON, 'on'],
+      [SesReceivingMode.FORCED, 'forced'],
+    ])('sets SES_RECEIVING_MODE to %s when the configured receiving mode is %s', (mode, wireValue) => {
+      const template = synthBootstrap({ sesReceivingMode: mode });
 
-      hasEnvironment(template, { SES_RECEIVING_MODE: 'forced' });
+      hasEnvironment(template, { SES_RECEIVING_MODE: wireValue });
     });
 
     it('sets SES_SEND_ENABLED to on when sending is enabled', () => {
