@@ -4,16 +4,8 @@
   "description": "Internal esbuild bundler for jsii CDK construct packages",
   "license": "Apache-2.0",
   "private": true,
-  "publishConfig": {
-    "bin": {
-      "mailbox-bundler": "./bin/index.js"
-    }
-  },
   "bin": "./bin/index-typescript.js",
   "scripts": {
-    "build": "tsc --project tsconfig.json",
-    "prepack": "yarn build",
-    "postpack": "rm -rf lib",
     "test": "tsc -p tsconfig.test.json && jest"
   },
   "preferUnplugged": true,
