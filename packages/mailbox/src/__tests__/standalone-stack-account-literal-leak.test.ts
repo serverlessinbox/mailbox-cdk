@@ -8,7 +8,7 @@
  * package also passes an explicit `env` — so this is the one place a literal leak is observable at
  * all: the synthesized template of a stack built exactly the way the standalone builders build it.
  *
- * `tools/build-data-stack.ts` / `tools/build-edge-stack.ts` synthesize MailboxDataStack /
+ * The `build-stack data` / `build-stack edge` commands synthesize MailboxDataStack /
  * MailboxEdgeStack with an explicit `env` (falling back to CDK_DEFAULT_ACCOUNT, or the literal
  * '000000000000' when that's unset) and publish the resulting template as a public artifact. This
  * test mirrors that construction — same stack classes, same `env` shape, same
@@ -130,7 +130,7 @@ function isPostponedNamedResource(value: string): boolean {
 }
 
 describe('Standalone sub-stack account-literal leak (regression gate)', () => {
-  it('MailboxDataStack, synthesized like tools/build-data-stack.ts, leaks no real account literal', () => {
+  it('MailboxDataStack, synthesized like the build-stack data command, leaks no real account literal', () => {
     const app   = new App();
     const stack = new MailboxDataStack(app, 'MailboxData', {
       env:         {
@@ -150,7 +150,7 @@ describe('Standalone sub-stack account-literal leak (regression gate)', () => {
     assertNoAccountLiterals(violations, 'MailboxDataStack');
   });
 
-  it('MailboxEdgeStack, synthesized like tools/build-edge-stack.ts, leaks no real account literal', () => {
+  it('MailboxEdgeStack, synthesized like the build-stack edge command, leaks no real account literal', () => {
     const app   = new App();
     const stack = new MailboxEdgeStack(app, 'MailboxEdge', {
       env:         {

@@ -4,7 +4,7 @@ tasks:
   build:cognito-data-stack:
     desc: Synthesize CloudFormation template for cognito data stack
     cmds:
-      - yarn node --require ts-node/register tools/build-cognito-data-stack.ts
+      - yarn workspace mailbox-cdk build-stack cognito-data --out-dir {{.TASKFILE_DIR}}/dist
     generates:
       - dist/cognito-data-stack-template.json
 
@@ -70,7 +70,7 @@ tasks:
       - task: bundle:jmap-oauth-dcr
 
   publish:dev:
-    desc: Publish cognito regional ts-lambdas and data stack template to dev channel
+    desc: Bundle and publish the cognito lambdas (idp-users-api, bootstrap-user, jmap-oauth-dcr) and the cognito data stack template to the dev channel
     env:
       AWS_PROFILE: serverlessinbox-dev
     cmds:

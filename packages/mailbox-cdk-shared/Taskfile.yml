@@ -46,7 +46,7 @@ tasks:
       - task: bundle:stack-helpers
 
   publish:dev:
-    desc: Publish mailbox-cdk-shared regional ts-lambdas to dev channel
+    desc: Bundle and publish the shared runtime lambdas (content-deployer, bucket-auto-empty, stack-deployer, stack-helpers) to the dev channel
     env:
       AWS_PROFILE: serverlessinbox-dev
     cmds:

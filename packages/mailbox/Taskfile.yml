@@ -1,21 +1,17 @@
 version: '3'
 
-vars:
-  BUCKET_BASE: mailbox-artifacts
-  CDK_DEFAULT_ACCOUNT: '000000000000'
-
 tasks:
   build:edge-stack:
     desc: Synthesize CloudFormation template for edge stack
     cmds:
-      - yarn node --require ts-node/register tools/build-edge-stack.ts
+      - yarn workspace mailbox-cdk build-stack edge --out-dir {{.TASKFILE_DIR}}/dist
     generates:
       - dist/edge-stack-template.json
 
   build:data-stack:
     desc: Synthesize CloudFormation template for data stack
     cmds:
-      - yarn node --require ts-node/register tools/build-data-stack.ts
+      - yarn workspace mailbox-cdk build-stack data --out-dir {{.TASKFILE_DIR}}/dist
     generates:
       - dist/data-stack-template.json
 
@@ -93,7 +89,7 @@ tasks:
       - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object edge-stack-template.json
 
   publish:regional:dev:
-    desc: Publish regional ts-lambdas to dev channel
+    desc: Bundle and publish the regional runtime lambdas in src/runtime/ (resource-sweeper, artifact-updater, data-override-resolver) to the dev channel
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/runtime/resource-sweeper/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/resource-sweeper.zip
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/runtime/artifact-updater/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/artifact-updater.zip
