@@ -267,6 +267,9 @@ export class CloudFormationStacks {
   }
 
   private stringify(value: unknown): string {
+    if (value instanceof Error) {
+      return CaughtError.describeWithMetadata(value);
+    }
     try {
       return JSON.stringify(value);
     } catch {

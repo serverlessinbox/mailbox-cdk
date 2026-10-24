@@ -63,27 +63,29 @@ export class JwtVerifier {
   /**
    * The identity of a token whose signature verifies against the key its issuer published under the token's
    * `kid`, signed with an algorithm in `allowedAlgorithms` (RS256 when the list is absent or empty), within
-   * `exp` and `nbf` plus a clock tolerance, with a `sub`. A token that fails any of these, or whose
-   * verification fails for any other reason, such as an unknown issuer or key, has no identity.
+   * `exp` and `nbf` plus a clock tolerance, with a `sub`. A token that fails any of these, an unknown issuer or
+   * key, or a key set that is missing or malformed has no identity. A failure to read the auth key store is not
+   * a verification result and propagates to the caller.
    */
   public async verifySignatureOnly(
     token: string,
     authKeyStoreTable: TableName,
     allowedAlgorithms: readonly SupportedAlgorithm[] | undefined,
   ): Promise<VerifiedJwt | null> {
-    try {
-      const unverifiedClaims = this.claimsOf(decodeJwt(token));
-      const issuer           = this.normalizeIssuer(unverifiedClaims?.iss ?? '');
-      const header           = decodeProtectedHeader(token);
-      const algorithms       = this.algorithmsOf(allowedAlgorithms);
-      if (!issuer || !header.kid || !header.alg || !algorithms.some((algorithm) => algorithm === header.alg)) {
-        return null;
-      }
+    const issuer = this.unverifiedIssuerOf(token, allowedAlgorithms);
+    if (issuer === null) {
+      return null;
+    }
 
-      const keySet      = await this.keySetOf(issuer, authKeyStoreTable);
+    const keySet = await this.keySetOf(issuer, authKeyStoreTable);
+    if (keySet === null) {
+      return null;
+    }
+
+    try {
       const { payload } = await jwtVerify(token, keySet, {
         clockTolerance: CLOCK_TOLERANCE_SECONDS,
-        algorithms:     [...algorithms],
+        algorithms:     [...this.algorithmsOf(allowedAlgorithms)],
       });
 
       const claims = this.claimsOf(payload);
@@ -92,6 +94,21 @@ export class JwtVerifier {
       }
 
       return { sub: claims.sub, issuer, audience: this.audienceOf(claims) };
+    } catch {
+      return null;
+    }
+  }
+
+  /** The normalized issuer of a token that decodes, names a `kid` and an allowed `alg`; otherwise null. */
+  private unverifiedIssuerOf(token: string, allowedAlgorithms: readonly SupportedAlgorithm[] | undefined): Issuer | null {
+    try {
+      const issuer     = this.normalizeIssuer(this.claimsOf(decodeJwt(token))?.iss ?? '');
+      const header     = decodeProtectedHeader(token);
+      const algorithms = this.algorithmsOf(allowedAlgorithms);
+      if (!issuer || !header.kid || !header.alg || !algorithms.some((algorithm) => algorithm === header.alg)) {
+        return null;
+      }
+      return issuer;
     } catch {
       return null;
     }
@@ -109,18 +126,24 @@ export class JwtVerifier {
     return toIssuer(issuer.trim().replace(/\/+$/, ''));
   }
 
-  private async keySetOf(issuer: Issuer, authKeyStoreTable: TableName): Promise<KeySet> {
+  private async keySetOf(issuer: Issuer, authKeyStoreTable: TableName): Promise<KeySet | null> {
     const cached = this.keySetsByIssuer.get(issuer);
     if (cached) {
       return cached;
     }
 
-    const keySet = createLocalJWKSet(await this.loadJwks(issuer, authKeyStoreTable));
+    const jwks = await this.loadJwks(issuer, authKeyStoreTable);
+    if (jwks === null) {
+      return null;
+    }
+
+    const keySet = createLocalJWKSet(jwks);
     this.keySetsByIssuer.set(issuer, keySet);
     return keySet;
   }
 
-  private async loadJwks(issuer: Issuer, authKeyStoreTable: TableName): Promise<Jwks> {
+  /** The key set the store holds for the issuer; null when it holds none or what it holds is not a key set. A failed read propagates. */
+  private async loadJwks(issuer: Issuer, authKeyStoreTable: TableName): Promise<Jwks | null> {
     const response = await this.dynamodb.send(
       new GetItemCommand({
         TableName: authKeyStoreTable,
@@ -133,15 +156,19 @@ export class JwtVerifier {
 
     const jwksJson = response.Item?.jwks?.S;
     if (!jwksJson) {
-      throw new Error(`JWKS not found in ${authKeyStoreTable} for issuer ${issuer}`);
+      return null;
     }
+    return this.parseJwks(jwksJson);
+  }
 
-    const jwks: unknown    = JSON.parse(jwksJson);
-    const errors: string[] = [];
-    if (!isJwks(jwks, { errors })) {
-      throw new Error(`JWKS of issuer ${issuer} in ${authKeyStoreTable} is malformed: ${errors.join('; ')}`);
+  private parseJwks(jwksJson: string): Jwks | null {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(jwksJson);
+    } catch {
+      return null;
     }
-    return jwks;
+    return isJwks(parsed) ? parsed : null;
   }
 
   private audienceOf(claims: JwtPayload): Audience {

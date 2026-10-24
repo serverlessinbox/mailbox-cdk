@@ -312,6 +312,16 @@ describe('CloudFormationStacks', () => {
       await expect(stacks.startOrUpdate(operation())).rejects.toMatchObject({ name: 'AlreadyExistsException' });
     });
 
+    it('logs a create failure with its exception name and message', async () => {
+      const consoleSpies = silenceConsole();
+      cfn.on(DescribeStacksCommand).resolves({ Stacks: [] });
+      cfn.on(CreateStackCommand).rejects(Object.assign(new Error('needs capabilities'), { name: 'ValidationError' }));
+
+      await expect(stacks.startOrUpdate(operation())).rejects.toThrow('needs capabilities');
+
+      expect(consoleSpies.error).toHaveBeenCalledWith('CreateStack failed', expect.objectContaining({ error: 'ValidationError: needs capabilities' }));
+    });
+
     it('rethrows a create that fails for another reason without describing again', async () => {
       cfn.on(DescribeStacksCommand).resolves({ Stacks: [] });
       cfn.on(CreateStackCommand).rejects({ name: 'InsufficientCapabilitiesException', message: 'needs capabilities' });

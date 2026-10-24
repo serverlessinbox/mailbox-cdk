@@ -306,6 +306,17 @@ describe('deletePrefix', () => {
     expect(s3Mock.commandCalls(DeleteObjectsCommand)).toHaveLength(2);
   });
 
+  it('fails naming each key S3 reports as not deleted, instead of counting it deleted', async () => {
+    s3Mock.on(ListObjectsV2Command).resolves({ Contents: keysNamed(2) });
+    s3Mock.on(DeleteObjectsCommand).resolves({
+      Errors: [{ Key: 'content/file-1', Code: 'AccessDenied', Message: 'Access Denied' }],
+    });
+
+    await expect(deletePrefix(new S3Client({}), 'target-bucket', 'content/')).rejects.toThrow(
+      'Failed to delete 1 object(s) in target-bucket: content/file-1 (AccessDenied)',
+    );
+  });
+
   it('deletes a page of more than 1000 keys in batches of at most 1000', async () => {
     s3Mock.on(ListObjectsV2Command).resolves({ Contents: keysNamed(1001) });
 

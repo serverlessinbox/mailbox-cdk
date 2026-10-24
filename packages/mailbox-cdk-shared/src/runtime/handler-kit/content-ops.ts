@@ -61,7 +61,7 @@ export async function deletePrefix(s3: S3Client, bucket: string, prefix: string)
 
     for (let i = 0; i < keys.length; i += S3_DELETE_OBJECTS_LIMIT) {
       const batch: string[] = keys.slice(i, i + S3_DELETE_OBJECTS_LIMIT);
-      await s3.send(
+      const response        = await s3.send(
         new DeleteObjectsCommand({
           Bucket: bucket,
           Delete: {
@@ -70,6 +70,12 @@ export async function deletePrefix(s3: S3Client, bucket: string, prefix: string)
           },
         }),
       );
+      const failed          = response.Errors ?? [];
+      if (failed.length > 0) {
+        throw new Error(
+          `Failed to delete ${failed.length} object(s) in ${bucket}: ${failed.map((error) => `${error.Key} (${error.Code})`).join(', ')}`,
+        );
+      }
       deleted += batch.length;
     }
 

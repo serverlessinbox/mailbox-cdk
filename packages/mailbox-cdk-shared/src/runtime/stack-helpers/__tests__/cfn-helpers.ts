@@ -42,7 +42,13 @@ export interface FakeDeleteEvent extends FakeCfnEventBase {
   PhysicalResourceId: string;
 }
 
-export type FakeCfnEvent = FakeCreateEvent | FakeDeleteEvent;
+export interface FakeUpdateEvent extends FakeCfnEventBase {
+  RequestType:           'Update';
+  PhysicalResourceId:    string;
+  OldResourceProperties: FakeCfnEventBase['ResourceProperties'];
+}
+
+export type FakeCfnEvent = FakeCreateEvent | FakeDeleteEvent | FakeUpdateEvent;
 
 function fakeCfnEventBase(resourceProperties: Record<string, unknown>): FakeCfnEventBase {
   const serviceToken = 'arn:aws:lambda:us-east-1:123456789012:function:stack-helpers';
@@ -59,6 +65,11 @@ function fakeCfnEventBase(resourceProperties: Record<string, unknown>): FakeCfnE
 
 export function fakeCreateEvent(resourceProperties: Record<string, unknown>): FakeCreateEvent {
   return { ...fakeCfnEventBase(resourceProperties), RequestType: 'Create' };
+}
+
+export function fakeUpdateEvent(resourceProperties: Record<string, unknown>): FakeUpdateEvent {
+  const base = fakeCfnEventBase(resourceProperties);
+  return { ...base, RequestType: 'Update', PhysicalResourceId: 'physical-id', OldResourceProperties: base.ResourceProperties };
 }
 
 export function fakeDeleteEvent(resourceProperties: Record<string, unknown>): FakeDeleteEvent {

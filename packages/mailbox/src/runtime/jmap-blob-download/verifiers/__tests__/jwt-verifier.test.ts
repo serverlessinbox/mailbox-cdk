@@ -242,10 +242,10 @@ describe('JwtVerifier', () => {
       await expect(verify(jwtOf())).resolves.toBeNull();
     });
 
-    it('rejects a token when the key store cannot be read', async () => {
+    it('propagates a failure to read the key store instead of answering that the token has no identity', async () => {
       dynamodb.on(GetItemCommand).rejects(new Error('AccessDeniedException'));
 
-      await expect(verify(jwtOf())).resolves.toBeNull();
+      await expect(verify(jwtOf())).rejects.toThrow('AccessDeniedException');
     });
 
     it('rejects a token whose issuer published a malformed key set', async () => {

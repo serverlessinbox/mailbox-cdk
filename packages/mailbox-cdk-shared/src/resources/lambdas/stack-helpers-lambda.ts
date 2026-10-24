@@ -1,11 +1,12 @@
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import * as iam                   from 'aws-cdk-lib/aws-iam';
-import * as cdk                   from 'aws-cdk-lib';
-import { Construct }              from 'constructs';
+import type { IArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
+import * as iam                           from 'aws-cdk-lib/aws-iam';
+import * as cdk                           from 'aws-cdk-lib';
+import { Construct }                      from 'constructs';
 
-import { KIT_ARTIFACT_PACKAGE }   from '../../artifacts/kit-artifact-package';
+import { KIT_ARTIFACT_PACKAGE }           from '../../artifacts/kit-artifact-package';
+import { parentStackStatusReadStatement } from '../../grants/parent-stack-status-read';
 
-import { TypeScriptLambda }       from './ts-lambda';
+import { TypeScriptLambda }               from './ts-lambda';
 
 /** The artifact resolver the stack-helpers Lambda's code is loaded through. */
 export interface StackHelpersLambdaProps {
@@ -23,6 +24,8 @@ export class StackHelpersLambda extends TypeScriptLambda {
       timeout:          cdk.Duration.seconds(30),
       memorySize:       256,
     });
+
+    this.addToRolePolicy(parentStackStatusReadStatement());
   }
 
   /** Lets the Lambda read the one hosted zone a resolver call names. */

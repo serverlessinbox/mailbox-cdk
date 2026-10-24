@@ -8,17 +8,18 @@
  * sends to the ResponseURL.
  */
 
-import type * as Route53Sdk                                    from '@aws-sdk/client-route-53';
-import { mockClient }                                          from 'aws-sdk-client-mock';
-import type { AwsClientStub }                                  from 'aws-sdk-client-mock';
+import type * as CloudFormationSdk                                              from '@aws-sdk/client-cloudformation';
+import type * as Route53Sdk                                                     from '@aws-sdk/client-route-53';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
+import type { AwsClientStub }                                                   from 'aws-sdk-client-mock';
 
-import { captureCfnResponse }                                  from '../../../runtime-test-support';
-import type * as LoggerBufferModule                            from '../../handler-kit/logger-buffer';
-import type { SmokeTestProbe }                                 from '../../handler-kit/smoke-test';
-import type * as HandlerModule                                 from '../handler';
+import { captureCfnResponse }                                                   from '../../../runtime-test-support';
+import type * as LoggerBufferModule                                             from '../../handler-kit/logger-buffer';
+import type { SmokeTestProbe }                                                  from '../../handler-kit/smoke-test';
+import type * as HandlerModule                                                  from '../handler';
 
-import { fakeCreateEvent, fakeDeleteEvent, fakeLambdaContext } from './cfn-helpers';
-import type { FakeCfnEvent }                                   from './cfn-helpers';
+import { fakeCreateEvent, fakeDeleteEvent, fakeLambdaContext, fakeUpdateEvent } from './cfn-helpers';
+import type { FakeCfnEvent }                                                    from './cfn-helpers';
 
 jest.mock('https', () => ({
   request: jest.fn(),
@@ -45,7 +46,12 @@ describe('stack-helpers handler', () => {
   async function invoke(
     event: FakeCfnEvent | SmokeTestProbe,
     environment: Record<string, string>,
-    arrange: (route53Mock: AwsClientStub<Route53Sdk.Route53Client>, sdk: typeof Route53Sdk) => void = () => undefined,
+    arrange: (
+      route53Mock: AwsClientStub<Route53Sdk.Route53Client>,
+      route53Sdk: typeof Route53Sdk,
+      cloudFormationMock: AwsClientStub<CloudFormationSdk.CloudFormationClient>,
+      cloudFormationSdk: typeof CloudFormationSdk,
+    ) => void = () => undefined,
   ) {
     jest.resetModules();
     process.env = { ...originalEnv, ...environment };
@@ -57,7 +63,11 @@ describe('stack-helpers handler', () => {
     route53Mock.on(GetHostedZoneCommand).resolves({
       HostedZone: { Id: '/hostedzone/Z123', Name: 'example.com.', CallerReference: 'ref' },
     });
-    arrange(route53Mock, route53Sdk);
+    // The parent stack is not rolling back unless a test says so.
+    const cloudFormationSdk  = require('@aws-sdk/client-cloudformation') as typeof CloudFormationSdk;
+    const cloudFormationMock = mockClient(cloudFormationSdk.CloudFormationClient);
+    cloudFormationMock.on(cloudFormationSdk.DescribeStacksCommand).resolves({ Stacks: [] });
+    arrange(route53Mock, route53Sdk, cloudFormationMock, cloudFormationSdk);
 
     const readResponse = captureCfnResponse();
 
@@ -127,6 +137,32 @@ describe('stack-helpers handler', () => {
       hostedZoneId: 'Z123',
       service:      'stack-helpers',
     });
+  });
+
+  it('answers SUCCESS with the unchanged physical id to an Update that fails while the parent stack rolls back', async () => {
+    const { response } = await invoke(
+      fakeUpdateEvent({ HostedZoneId: 'Z123' }),
+      { SERVICE_NAME: 'stack-helpers' },
+      (route53Mock, route53Sdk, cloudFormationMock, cloudFormationSdk) => {
+        route53Mock.on(route53Sdk.GetHostedZoneCommand).rejects(new Error('AccessDenied'));
+        cloudFormationMock.on(cloudFormationSdk.DescribeStacksCommand).resolves({
+          Stacks: [{ StackName: 'test', CreationTime: new Date(), StackStatus: 'UPDATE_ROLLBACK_IN_PROGRESS' }],
+        });
+      },
+    );
+
+    expect(response).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'physical-id' });
+  });
+
+  it('answers FAILED to an Update that fails while the parent stack is not rolling back', async () => {
+    const { response } = await invoke(
+      fakeUpdateEvent({ HostedZoneId: 'Z123' }),
+      { SERVICE_NAME: 'stack-helpers' },
+      (route53Mock, route53Sdk) => route53Mock.on(route53Sdk.GetHostedZoneCommand).rejects(new Error('AccessDenied')),
+    );
+
+    expect(response.Status).toBe('FAILED');
+    expect(response.Reason).toContain('AccessDenied');
   });
 
   it('answers FAILED with the invalid properties and flushes the trace when our template wrote properties it should not', async () => {

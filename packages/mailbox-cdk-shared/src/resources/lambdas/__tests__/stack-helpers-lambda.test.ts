@@ -1,9 +1,10 @@
 /// <reference types="jest" />
 
 /**
- * Pins the deployed shape of the stack-helpers Lambda's Route 53 access: it runs the stack-helpers
- * bundle, and it gets `route53:GetHostedZone` only on the one zone a resolver call names. Without the
- * grant every zone lookup fails at deploy time with AccessDenied, which no synth-time check reports.
+ * Pins the deployed shape of the stack-helpers Lambda: it runs the stack-helpers bundle, it gets
+ * `route53:GetHostedZone` only on the one zone a resolver call names, and it may read the status of its
+ * parent stack (`cloudformation:DescribeStacks` on the stack id). Without the grants a zone lookup or a
+ * status read fails at deploy time with AccessDenied, which no synth-time check reports.
  */
 
 import { Match, Template }                         from 'aws-cdk-lib/assertions';
@@ -43,6 +44,15 @@ describe('StackHelpersLambda', () => {
         Action:   'route53:GetHostedZone',
         Resource: { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':route53:::hostedzone/Z123']] },
       },
+    ]);
+  });
+
+  it('grants cloudformation:DescribeStacks on the stack id and nothing else', () => {
+    const statusStatements = allPolicyStatements(template)
+      .filter((statement) => actionsOf(statement).some((action) => action.startsWith('cloudformation:')));
+
+    expect(statusStatements).toEqual([
+      { Effect: 'Allow', Action: 'cloudformation:DescribeStacks', Resource: { Ref: 'AWS::StackId' } },
     ]);
   });
 });
