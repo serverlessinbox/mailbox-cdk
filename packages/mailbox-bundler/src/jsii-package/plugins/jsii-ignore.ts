@@ -1,6 +1,6 @@
 import type { Plugin, PluginBuild } from 'esbuild';
 import { createRequire }            from 'module';
-import { dirname }                  from 'path';
+import { dirname, join }            from 'path';
 
 /**
  * Marks every `import` of a jsii package external, so the bundle keeps referring to the one
@@ -8,7 +8,7 @@ import { dirname }                  from 'path';
  * see them, starting from its own entry file.
  */
 export function jsiiIgnorePlugin(packageFolder: string): Plugin {
-  const packageRequire = createRequire(require.resolve(packageFolder));
+  const packageRequire = createRequire(join(packageFolder, 'package.json'));
   return {
     name: 'jsiiIgnore',
     setup(build: PluginBuild) {

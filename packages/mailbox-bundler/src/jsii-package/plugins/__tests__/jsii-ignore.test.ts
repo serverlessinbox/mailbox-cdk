@@ -64,6 +64,25 @@ describe('jsiiIgnorePlugin', () => {
       expect(output).not.toContain('JSII_LIB_MARKER');
       expect(output).toContain('PLAIN_LIB_MARKER');
     });
+
+    it('marks a jsii package external for a package folder without a resolvable main', async () => {
+      const emptyFolder = join(root, 'empty');
+      const entry       = join(emptyFolder, 'entry.js');
+      await writeFile(entry, "import { a } from 'jsii-lib';\nconsole.log(a);");
+
+      const result = await build({
+        entryPoints: [entry],
+        bundle:      true,
+        write:       false,
+        platform:    'node',
+        format:      'cjs',
+        plugins:     [jsiiIgnorePlugin(emptyFolder)],
+      });
+      const output = result.outputFiles.map(file => file.text).join('\n');
+
+      expect(output).toContain('require("jsii-lib")');
+      expect(output).not.toContain('JSII_LIB_MARKER');
+    });
   });
 
   describe('onResolve decisions', () => {
@@ -93,11 +112,5 @@ describe('jsiiIgnorePlugin', () => {
       await expect(stub.resolve({ kind: 'require-call', path: 'jsii-lib' }))
         .resolves.toBeUndefined();
     });
-  });
-
-  it('fails at plugin creation when the package main does not resolve (BND-12, current behaviour)', () => {
-    const emptyFolder = join(root, 'empty');
-
-    expect(() => jsiiIgnorePlugin(emptyFolder)).toThrow('Cannot find module');
   });
 });

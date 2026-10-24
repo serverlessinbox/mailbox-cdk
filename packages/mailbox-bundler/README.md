@@ -40,7 +40,7 @@ Paths listed in the package's jsii `excludeTypescript` are skipped.
 
 | Argument | Meaning |
 |---|---|
-| `package-folder` | Folder of the jsii package, relative to the current directory. An absolute path is not accepted. |
+| `package-folder` | Folder of the jsii package, relative to the current directory or absolute. |
 
 Example:
 

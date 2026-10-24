@@ -1,4 +1,5 @@
 import { Cli }                   from 'clipanion';
+import { tmpdir }                from 'os';
 import { join }                  from 'path';
 
 import { bundleJsiiPackage }     from '../../jsii-package/bundle-jsii-package';
@@ -19,13 +20,23 @@ beforeEach(() => {
 });
 
 describe('BundlePackageCommand', () => {
-  it('bundles the package folder joined to the current directory', async () => {
+  it('resolves a relative package folder against the current directory', async () => {
     jest.mocked(readPackageJson).mockResolvedValue({});
 
     await runCommand('pkg');
 
     expect(readPackageJson).toHaveBeenCalledWith(join(process.cwd(), 'pkg'));
     expect(bundleJsiiPackage).toHaveBeenCalledWith(join(process.cwd(), 'pkg'), []);
+  });
+
+  it('uses an absolute package folder as given', async () => {
+    const absolutePackage = join(tmpdir(), 'abs-pkg');
+    jest.mocked(readPackageJson).mockResolvedValue({});
+
+    await runCommand(absolutePackage);
+
+    expect(readPackageJson).toHaveBeenCalledWith(absolutePackage);
+    expect(bundleJsiiPackage).toHaveBeenCalledWith(absolutePackage, []);
   });
 
   it('passes the jsii excludeTypescript paths on to the bundler', async () => {
