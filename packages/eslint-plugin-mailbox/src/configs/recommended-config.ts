@@ -42,8 +42,11 @@ export function recommendedConfig(options: RecommendedConfigOptions): TSESLint.F
         ...typeSafetyRules,
         ...styleRules,
         ...forbiddenGrantRules,
-        'mailbox/align':       'error',
-        'mailbox/plan-labels': 'error',
+        'mailbox/align':         'error',
+        'mailbox/events-import': 'error',
+        'mailbox/kit-isolation': 'error',
+        'mailbox/plan-labels':   'error',
+        'mailbox/zone-imports':  'error',
       },
     },
     {
