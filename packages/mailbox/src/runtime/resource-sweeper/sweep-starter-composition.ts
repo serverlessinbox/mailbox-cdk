@@ -1,10 +1,10 @@
-import { CloudFormationClient }                 from '@aws-sdk/client-cloudformation';
-import { SFNClient }                            from '@aws-sdk/client-sfn';
-import { ParentStackStatus, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { CloudFormationClient }                                        from '@aws-sdk/client-cloudformation';
+import { SFNClient }                                                   from '@aws-sdk/client-sfn';
+import { FailedRequestAnswerer, ParentStackStatus, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { StarterConfig }                   from './config';
-import { SweepStarter }                         from './sweep-starter';
-import { SweepTargetPlanner }                   from './sweep-target-planner';
+import type { StarterConfig }                                          from './config';
+import { SweepStarter }                                                from './sweep-starter';
+import { SweepTargetPlanner }                                          from './sweep-target-planner';
 
 /** The clients the starter calls AWS with. */
 interface StarterClients {
@@ -35,6 +35,12 @@ export class SweepStarterComposition {
       new SweepTargetPlanner(),
       logger,
     );
+  }
+
+  /** Decides the answer to a failed request of one invocation, logging to `logger`. The starter reports no attributes, so a suppressed answer carries an empty `Data`. */
+  public failedRequestAnswerer(logger: LoggerBuffer): FailedRequestAnswerer {
+    const clients = this.clientsOnce();
+    return new FailedRequestAnswerer(new ParentStackStatus(clients.cloudFormation, logger), logger, {});
   }
 
   private clientsOnce(): StarterClients {

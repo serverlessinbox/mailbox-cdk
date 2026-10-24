@@ -78,7 +78,7 @@ export class OpsSection extends Construct {
 
     new DeferredRemoval(this, 'deferred-removal', {
       sweeperStarter: sweeperInfra.starter,
-      removals,
+      removals:       [...removals, sweeperInfra.workerRoleRemoval],
     });
   }
 

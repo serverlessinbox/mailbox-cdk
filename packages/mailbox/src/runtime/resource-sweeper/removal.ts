@@ -30,6 +30,11 @@ const stackFailureDetectorTargetFields = {
   ...stackFailureDetectorRoleFields,
 };
 
+const sweeperRoleTargetFields = {
+  workerRoleArn:        t.isString(),
+  workerRolePolicyName: isNonEmptyString,
+};
+
 const workerRootStackFields = {
   rootStackName: t.isString(),
   rootStackId:   t.isString(),
@@ -39,6 +44,7 @@ const isCertRemovalTarget                 = t.isObject(certTargetFields);
 const isEdgeFunctionRemovalTarget         = t.isObject(edgeFunctionTargetFields);
 const isStackFailureDetectorRemovalTarget = t.isObject(stackFailureDetectorTargetFields);
 const isWorkerRootStack                   = t.isObject(workerRootStackFields);
+const isSweeperRoleRemovalTarget          = t.isObject(sweeperRoleTargetFields);
 
 /** One entry of the custom resource's properties as the planner reads it: every removal's fields are strings. */
 export const isRemovalEntry = t.isRecord(t.isString());
@@ -67,13 +73,25 @@ export interface RemovalPartFields {
  * ARN. The detector is three resources: its rule, function and role.
  */
 export const REMOVAL_PARTS: { readonly [TId in RemovalId]: ReadonlyArray<RemovalPart<RemovalTargets[TId]>> } = {
-  'cert':     [{ identity: 'certArn', fields: ['certArn'] }],
-  'edge-fn':  [{ identity: 'edgeFnArn', fields: ['edgeFnArn'] }],
-  'detector': [
+  'cert':         [{ identity: 'certArn', fields: ['certArn'] }],
+  'edge-fn':      [{ identity: 'edgeFnArn', fields: ['edgeFnArn'] }],
+  'detector':     [
     { identity: 'ruleArn', fields: ['ruleArn', 'ruleTargetId'] },
     { identity: 'detectorFnArn', fields: ['detectorFnArn'] },
     { identity: 'detectorRoleArn', fields: ['detectorRoleArn', 'detectorRolePolicyName'] },
   ],
+  'sweeper-role': [{ identity: 'workerRoleArn', fields: ['workerRoleArn', 'workerRolePolicyName'] }],
+};
+
+/**
+ * Whether a Delete sweeps a removal's target. A Delete plans the target of every removal present, except a removal
+ * whose target the workflow's self-cleanup tail removes after the last removal: the sweeper's own worker role.
+ */
+export const SWEPT_ON_DELETE: { readonly [TId in RemovalId]: boolean } = {
+  'cert':         true,
+  'edge-fn':      true,
+  'detector':     true,
+  'sweeper-role': false,
 };
 
 const detectorSweepPartsFields = {
@@ -110,6 +128,7 @@ const isStackFailureDetectorWorkerInput = t.isPartial({
   target:      isStackFailureDetectorSweepParts,
   ...workerRootStackFields,
 });
+const isSweeperRoleWorkerInput          = t.isPartial({ removalType: t.isLiteral('sweeper-role'), ...sweeperRoleTargetFields, ...workerRootStackFields });
 
 /** The ACM certificate to sweep, as the custom resource's `ResourceProperties` entry carries it. */
 export type CertRemovalTarget = t.InferType<typeof isCertRemovalTarget>;
@@ -124,6 +143,9 @@ export type EdgeFunctionRemovalTarget = t.InferType<typeof isEdgeFunctionRemoval
  */
 export type StackFailureDetectorRemovalTarget = t.InferType<typeof isStackFailureDetectorRemovalTarget>;
 
+/** The sweeper's own worker IAM role, as the custom resource's `ResourceProperties` entry carries it. */
+export type SweeperRoleRemovalTarget = t.InferType<typeof isSweeperRoleRemovalTarget>;
+
 /**
  * The parts of the stack-failure detector the sweep removes: any of the rule (`ruleArn` with
  * `ruleTargetId`), the function (`detectorFnArn`) and the role (`detectorRoleArn` with
@@ -136,9 +158,10 @@ export type StackFailureDetectorSweepParts = t.InferType<typeof isStackFailureDe
  * also the key of its target in the sweep's `toSweep` map.
  */
 export interface RemovalTargets {
-  readonly cert:      CertRemovalTarget;
-  readonly 'edge-fn': EdgeFunctionRemovalTarget;
-  readonly detector:  StackFailureDetectorRemovalTarget;
+  readonly cert:           CertRemovalTarget;
+  readonly 'edge-fn':      EdgeFunctionRemovalTarget;
+  readonly detector:       StackFailureDetectorRemovalTarget;
+  readonly 'sweeper-role': SweeperRoleRemovalTarget;
 }
 
 /** The id of a removal type. */
@@ -160,6 +183,9 @@ export type EdgeFunctionRemovalInput = EdgeFunctionRemovalTarget & WorkerRootSta
  */
 export type StackFailureDetectorRemovalInput = StackFailureDetectorSweepParts & WorkerRootStack;
 
+/** The sweeper's own worker IAM role to sweep, and the root stack it must belong to. */
+export type SweeperRoleRemovalInput = SweeperRoleRemovalTarget & WorkerRootStack;
+
 /** The worker payload of a certificate removal. */
 export type CertWorkerInput = t.InferType<typeof isCertWorkerInput>;
 
@@ -169,8 +195,16 @@ export type EdgeFunctionWorkerInput = t.InferType<typeof isEdgeFunctionWorkerInp
 /** The worker payload of a stack-failure detector removal: the parts to sweep sit in `target`. */
 export type StackFailureDetectorWorkerInput = t.InferType<typeof isStackFailureDetectorWorkerInput>;
 
-/** Accepts a worker payload of one of the three removal types, and nothing else. */
-export const isWorkerInput = t.isOneOf([isCertWorkerInput, isEdgeFunctionWorkerInput, isStackFailureDetectorWorkerInput]);
+/** The worker payload of a sweeper worker role removal. */
+export type SweeperRoleWorkerInput = t.InferType<typeof isSweeperRoleWorkerInput>;
+
+/** Accepts a worker payload of one of the four removal types, and nothing else. */
+export const isWorkerInput = t.isOneOf([
+  isCertWorkerInput,
+  isEdgeFunctionWorkerInput,
+  isStackFailureDetectorWorkerInput,
+  isSweeperRoleWorkerInput,
+]);
 
 /**
  * Discriminated per-removal-type payload of the worker Lambda. A payload carries exactly the fields

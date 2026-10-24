@@ -12,6 +12,8 @@ import { retainOnUpdateOrDelete }                                    from '../..
 
 import type { IResourceRemoval }                                     from './removal';
 import { SweeperExecutionGrants }                                    from './sweeper-execution-grants';
+import { SWEEPER_WORKER_ROLE_NAME_PREFIX }                           from './sweeper-worker-role-name';
+import { SweeperWorkerRoleRemoval }                                  from './sweeper-worker-role-removal';
 
 export interface SweeperInfraProps {
   readonly artifactResolver: IArtifactResolver;
@@ -46,6 +48,7 @@ interface SweeperResourceNames {
  */
 export class SweeperInfra extends Construct {
   readonly starter: IFunction;
+  readonly workerRoleRemoval: IResourceRemoval;
 
   constructor(scope: Construct, id: string, props: SweeperInfraProps) {
     super(scope, id);
@@ -57,6 +60,13 @@ export class SweeperInfra extends Construct {
 
     const executionRole = this.createExecutionRole(names.executionRole);
     const workerRole    = this.createWorkerRole(names.workerRole);
+
+    // Registered last, so its chain runs after the chains of every other removal.
+    this.workerRoleRemoval = new SweeperWorkerRoleRemoval(this, 'worker-role-removal', {
+      workerRoleArn,
+      workerRolePolicyName: SweeperPolicyNames.workerPolicy,
+    });
+    const removals         = [...props.removals, this.workerRoleRemoval];
 
     // Worker Lambda (RETAIN'd — invoked by the state machine after the stack is deleted)
     const worker = new ResourceSweeperWorkerLambda(this, 'worker', {
@@ -82,7 +92,7 @@ export class SweeperInfra extends Construct {
       worker,
       stateMachineName: names.stateMachine,
       stateMachineArn,
-      removals: props.removals,
+      removals,
     });
     // The starter may start an execution during the deploy, which must not run before the role holds its grants.
     workflow.node.addDependency(executionPolicy);
@@ -96,7 +106,7 @@ export class SweeperInfra extends Construct {
     // The starter receives the state machine ARN as a plain string, so only this edge makes a replaced state machine exist before the starter, and the custom resources it serves, update.
     this.starter.node.addDependency(workflow);
 
-    this.attachWorkerPolicy(workerRole, props.removals);
+    this.attachWorkerPolicy(workerRole, removals);
 
     workflow.grantStartExecution(this.starter);
     workflow.grantExecutionReaping(this.starter);
@@ -115,7 +125,7 @@ export class SweeperInfra extends Construct {
     return {
       stateMachine:  Fn.join('', ['mailbox-sweeper-', positionHash, '-', guidPrefix]),
       executionRole: Fn.join('', ['mailbox-sweeper-exec-', positionHash, '-', guidPrefix]),
-      workerRole:    Fn.join('', ['mailbox-sweeper-worker-', positionHash, '-', guidPrefix]),
+      workerRole:    Fn.join('', [SWEEPER_WORKER_ROLE_NAME_PREFIX, positionHash, '-', guidPrefix]),
     };
   }
 

@@ -84,4 +84,17 @@ describe('SweepWorkerComposition', () => {
     expect(await regionOfSender(lambdaMock.call(0).thisValue)).toBe(STACK_REGION);
     expect(await regionOfSender(iamMock.call(0).thisValue)).toBe(STACK_REGION);
   });
+
+  it('calls IAM in the region of the config for the sweeper worker role', async () => {
+    iamMock.on(ListRoleTagsCommand).rejects(notFound('NoSuchEntityException'));
+
+    await sweepWorker().handle({
+      removalType:          'sweeper-role',
+      workerRoleArn:        'arn:aws:iam::123456789012:role/mailbox-sweeper-worker-aaaa1111-bbbb2222',
+      workerRolePolicyName: 'worker-policy',
+      ...ROOT_STACK,
+    });
+
+    expect(await regionOfSender(iamMock.call(0).thisValue)).toBe(STACK_REGION);
+  });
 });

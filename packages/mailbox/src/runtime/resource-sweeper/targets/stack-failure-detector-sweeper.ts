@@ -4,14 +4,16 @@ import {
   RemoveTargetsCommand,
   DeleteRuleCommand,
 } from '@aws-sdk/client-eventbridge';
-import { IAMClient, ListRoleTagsCommand, DeleteRolePolicyCommand, DeleteRoleCommand }          from '@aws-sdk/client-iam';
-import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand }                             from '@aws-sdk/client-lambda';
-import { CaughtError, parseArn, type LoggerBuffer }                                            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { IAMClient }                                                                            from '@aws-sdk/client-iam';
+import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand }                              from '@aws-sdk/client-lambda';
+import { parseArn, type LoggerBuffer }                                                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { OwnershipCheckedDelete }                                                              from '../ownership-checked-delete';
-import type { StackFailureDetectorRemovalInput, TargetResult, TargetSweeper, WorkerRootStack } from '../removal';
-import { RootStackMembership }                                                                 from '../root-stack-membership';
-import { TargetResults }                                                                       from '../target-results';
+import { OwnershipCheckedDelete }                                                               from '../ownership-checked-delete';
+import type { StackFailureDetectorRemovalInput, TargetResult, TargetSweeper, WorkerRootStack }  from '../removal';
+import { RootStackMembership }                                                                  from '../root-stack-membership';
+import { TargetResults }                                                                        from '../target-results';
+
+import { OwnedRoleSweep }                                                                       from './owned-role-sweep';
 
 /**
  * Sweeps the parts of the stack-failure detector the input carries, sequentially: rule, then
@@ -25,15 +27,17 @@ import { TargetResults }                                                        
 export class StackFailureDetectorSweeper implements TargetSweeper<StackFailureDetectorRemovalInput> {
   private readonly results = new TargetResults('detector');
   private readonly ownershipCheckedDelete: OwnershipCheckedDelete;
+  private readonly ownedRoleSweep: OwnedRoleSweep;
 
   constructor(
     private readonly eventsClient: EventBridgeClient,
     private readonly lambdaClient: LambdaClient,
-    private readonly iamClient: IAMClient,
+    iamClient: IAMClient,
     private readonly rootStackMembership: RootStackMembership,
     private readonly logger: LoggerBuffer,
   ) {
     this.ownershipCheckedDelete = new OwnershipCheckedDelete(this.results, logger);
+    this.ownedRoleSweep         = new OwnedRoleSweep(iamClient, rootStackMembership, this.results, logger);
   }
 
   /**
@@ -118,61 +122,6 @@ export class StackFailureDetectorSweeper implements TargetSweeper<StackFailureDe
   }
 
   private sweepRole(root: WorkerRootStack, detectorRoleArn: string, detectorRolePolicyName: string): Promise<TargetResult> {
-    return this.ownershipCheckedDelete.sweep({
-      label:                 'Detector IAM role',
-      goneErrorName:         'NoSuchEntityException',
-      otherErrors:           'failed',
-      findRootStackMismatch: () => this.findRoleRootStackMismatch(root, detectorRoleArn),
-      deleteResource:        () => this.deleteRolePolicyAndRole(detectorRoleArn, detectorRolePolicyName),
-    });
-  }
-
-  private async findRoleRootStackMismatch(root: WorkerRootStack, detectorRoleArn: string): Promise<string | undefined> {
-    this.logger.debug('Verifying detector IAM role belongs to the root stack');
-    const tagsResp = await this.iamClient.send(new ListRoleTagsCommand({ RoleName: parseArn(detectorRoleArn).resourceName }));
-    return this.rootStackMembership.mismatchInTagList(root, 'Detector IAM role', tagsResp.Tags);
-  }
-
-  private async deleteRolePolicyAndRole(detectorRoleArn: string, detectorRolePolicyName: string): Promise<TargetResult> {
-    const roleName = parseArn(detectorRoleArn).resourceName;
-
-    this.logger.info('Detector IAM role belongs to the root stack; deleting policy and role');
-    await this.deleteRolePolicyIfPresent(roleName, detectorRolePolicyName);
-    return this.deleteRole(roleName);
-  }
-
-  private async deleteRolePolicyIfPresent(roleName: string, policyName: string): Promise<void> {
-    try {
-      await this.iamClient.send(new DeleteRolePolicyCommand({ RoleName: roleName, PolicyName: policyName }));
-    } catch (thrown) {
-      this.ignoreMissingPolicy(thrown);
-    }
-  }
-
-  private ignoreMissingPolicy(thrown: unknown): void {
-    // A policy that is already gone is the state the sweep is after; any other error ends the role step.
-    if (!CaughtError.is(thrown, 'NoSuchEntityException')) {
-      throw thrown;
-    }
-  }
-
-  private async deleteRole(roleName: string): Promise<TargetResult> {
-    try {
-      await this.iamClient.send(new DeleteRoleCommand({ RoleName: roleName }));
-      this.logger.info('Detector IAM role deleted successfully');
-      return this.results.done();
-    } catch (thrown) {
-      return this.resultOfRoleDeletionFailure(thrown);
-    }
-  }
-
-  private resultOfRoleDeletionFailure(thrown: unknown): TargetResult {
-    // IAM answers `DeleteConflictException` while an attached policy is still draining, which a later run clears.
-    if (CaughtError.is(thrown, 'DeleteConflictException')) {
-      this.logger.info('Detector IAM role still has attached policies; will retry');
-      return this.results.retry('DeleteConflictException');
-    }
-
-    throw thrown;
+    return this.ownedRoleSweep.sweep(root, detectorRoleArn, detectorRolePolicyName, 'Detector IAM role');
   }
 }

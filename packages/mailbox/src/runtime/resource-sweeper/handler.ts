@@ -49,8 +49,10 @@ export const workerHandler = withSmokeTest(async (payload: unknown): Promise<Wor
  * without a sweep, so a stack in DELETE_FAILED stays fixable.
  */
 export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
+  const request = readCustomResourceRequest(event);
+
   if (starterConfigError) {
-    return answerRequestWithBadConfig(readCustomResourceRequest(event), starterConfigError);
+    return answerRequestWithBadConfig(request, starterConfigError);
   }
 
   const logger = new LoggerBuffer(starterConfig.serviceName, starterConfig.logLevel);
@@ -67,6 +69,11 @@ export const starterHandler = withSmokeTest(wrapHandler(async (event) => {
   } catch (thrown) {
     if (!(thrown instanceof ExpectedFailure)) {
       logger.flush();
+    }
+
+    const suppressedAnswer = await starterComposition.failedRequestAnswerer(logger).answer(request, thrown);
+    if (suppressedAnswer) {
+      return suppressedAnswer;
     }
     throw thrown;
   }

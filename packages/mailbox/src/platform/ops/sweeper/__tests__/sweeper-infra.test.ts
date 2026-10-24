@@ -20,6 +20,7 @@ import type { TemplateResource }                                              fr
 import { SweeperPolicyNames }                                                 from '../../../../resources/workflows/sweeper-workflow';
 import { newArtifactResolver, newTestStack }                                  from '../../../__tests__/platform-helpers';
 import { SweeperInfra }                                                       from '../sweeper-infra';
+import { SweeperWorkerRoleRemoval }                                           from '../sweeper-worker-role-removal';
 
 import { newRemovals, resolveStatements }                                     from './sweeper-helpers';
 
@@ -137,12 +138,19 @@ describe('SweeperInfra', () => {
   });
 
   describe('worker role', () => {
-    it('holds the grants of every registered removal in order, then the worker\'s write-only log grants in the stack\'s partition', () => {
+    it('holds the grants of every registered removal in order, its own worker role removal last, then the worker\'s write-only log grants in the stack\'s partition', () => {
       const { template, removals, opsGroup } = synthesize('WorkerPolicyStack');
 
       const statements = statementsOfNamedPolicy(template, SweeperPolicyNames.workerPolicy);
 
-      const removalStatements = resolveStatements(opsGroup, removals.flatMap((removal) => removal.grantStatements()));
+      const workerRoleRemoval = new SweeperWorkerRoleRemoval(opsGroup, 'expected-worker-role-removal', {
+        workerRoleArn:        'arn:aws:iam::123456789012:role/mailbox-sweeper-worker-aaaa1111-bbbb2222',
+        workerRolePolicyName: SweeperPolicyNames.workerPolicy,
+      });
+      const removalStatements = resolveStatements(opsGroup, [
+        ...removals.flatMap((removal) => removal.grantStatements()),
+        ...workerRoleRemoval.grantStatements(),
+      ]);
       const logArn            = (resource: string): unknown => ({
         'Fn::Join': [
           '',

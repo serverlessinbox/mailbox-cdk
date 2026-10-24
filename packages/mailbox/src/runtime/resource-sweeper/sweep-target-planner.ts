@@ -1,12 +1,13 @@
-import type { CloudFormationCustomResourceEvent }                                      from 'aws-lambda';
+import type { CloudFormationCustomResourceEvent }                                                       from 'aws-lambda';
 
-import { REMOVAL_PARTS, isRemovalEntry }                                               from './removal';
-import type { RemovalEntry, RemovalId, RemovalPartFields, RemovalPropertiesMap }       from './removal';
+import { REMOVAL_PARTS, SWEPT_ON_DELETE, isRemovalEntry }                                               from './removal';
+import type { RemovalEntry, RemovalId, RemovalPartFields, RemovalPropertiesMap }                        from './removal';
 
 /**
  * Decides what a custom-resource request needs to sweep, per registered removal and per part of it;
  * makes no AWS calls.
- * - Delete: every removal present in `ResourceProperties`, the last-known targets, whole.
+ * - Delete: every removal present in `ResourceProperties`, the last-known targets, whole, except removals the
+ *   workflow's self-cleanup tail removes.
  * - Update: for each removal in the old properties, the OLD parts whose identity changed, or all its
  *   parts when the removal is now absent, e.g. a domain change replacing a cert or edge function. A part
  *   whose identity is unchanged is live, so it is never swept, and a removal with no part to sweep
@@ -28,7 +29,7 @@ export class SweepTargetPlanner {
 
     // A Delete removes the resource, so every removal it last held is a target.
     if (event.RequestType === 'Delete') {
-      return currentProps;
+      return this.withoutSelfCleaned(currentProps);
     }
     // A Create has no earlier state, so nothing exists yet to sweep.
     if (event.RequestType === 'Create') {
@@ -36,6 +37,17 @@ export class SweepTargetPlanner {
     }
 
     return this.supersededParts(currentProps, this.withoutReservedKeys(event.OldResourceProperties));
+  }
+
+  /** The present removals a Delete sweeps: all of them except those whose target the self-cleanup tail removes. */
+  private withoutSelfCleaned(currentProps: RemovalPropertiesMap): RemovalPropertiesMap {
+    const toSweep: RemovalPropertiesMap = {};
+    for (const [key, value] of Object.entries(currentProps)) {
+      if (!this.isRemovalId(key) || SWEPT_ON_DELETE[key]) {
+        toSweep[key] = value;
+      }
+    }
+    return toSweep;
   }
 
   private supersededParts(currentProps: RemovalPropertiesMap, oldProps: RemovalPropertiesMap): RemovalPropertiesMap {

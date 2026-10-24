@@ -10,6 +10,7 @@ import { SweepWorker }                                    from './sweep-worker';
 import { CertSweeper }                                    from './targets/cert-sweeper';
 import { EdgeFunctionSweeper }                            from './targets/edge-function-sweeper';
 import { StackFailureDetectorSweeper }                    from './targets/stack-failure-detector-sweeper';
+import { SweeperRoleSweeper }                             from './targets/sweeper-role-sweeper';
 
 /** Lambda@Edge functions live in this region only, wherever the stack runs. */
 const LAMBDA_AT_EDGE_REGION = toRegion('us-east-1');
@@ -45,6 +46,7 @@ export class SweepWorkerComposition {
       new CertSweeper(clients.acm, rootStackMembership, logger),
       new EdgeFunctionSweeper(clients.lambdaAtEdge, rootStackMembership, logger),
       new StackFailureDetectorSweeper(clients.eventBridge, clients.lambda, clients.iam, rootStackMembership, logger),
+      new SweeperRoleSweeper(clients.iam, rootStackMembership, logger),
     );
   }
 

@@ -28,6 +28,12 @@ const NEW_RULE_ARN                                = 'arn:aws:events:us-west-2:12
 const NEW_FN_ARN                                  = 'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-2';
 const NEW_ROLE_ARN                                = 'arn:aws:iam::123456789012:role/mailbox-diag-role-2';
 
+const SWEEPER_ROLE_OLD     = {
+  workerRoleArn:        'arn:aws:iam::123456789012:role/mailbox-sweeper-worker-aaaa1111-bbbb2222',
+  workerRolePolicyName: 'worker-policy',
+};
+const SWEEPER_ROLE_NEW_ARN = 'arn:aws:iam::123456789012:role/mailbox-sweeper-worker-cccc3333-bbbb2222';
+
 const COMMON = {
   ServiceToken:      SERVICE_TOKEN,
   ResponseURL:       'https://example.com/response',
@@ -85,6 +91,15 @@ describe('SweepTargetPlanner', () => {
     });
   });
 
+  it('Delete: plans the other removals and never the sweeper worker role, which the self-cleanup tail removes', () => {
+    const event = deleteEvent({
+      cert:           { certArn: CERT_ARN_NEW },
+      'sweeper-role': SWEEPER_ROLE_OLD,
+    });
+
+    expect(planner.plan(event)).toEqual({ cert: { certArn: CERT_ARN_NEW } });
+  });
+
   it('Create: nothing exists yet to sweep', () => {
     expect(planner.plan(createEvent({ cert: { certArn: CERT_ARN_NEW } }))).toEqual({});
   });
@@ -97,6 +112,21 @@ describe('SweepTargetPlanner', () => {
       );
 
       expect(planner.plan(event)).toEqual({ cert: { certArn: CERT_ARN_OLD } });
+    });
+
+    it('a changed worker role ARN sweeps the OLD role with its policy name', () => {
+      const event = updateEvent(
+        { 'sweeper-role': { ...SWEEPER_ROLE_OLD, workerRoleArn: SWEEPER_ROLE_NEW_ARN } },
+        { 'sweeper-role': SWEEPER_ROLE_OLD },
+      );
+
+      expect(planner.plan(event)).toEqual({ 'sweeper-role': SWEEPER_ROLE_OLD });
+    });
+
+    it('an unchanged worker role sweeps nothing', () => {
+      const event = updateEvent({ 'sweeper-role': SWEEPER_ROLE_OLD }, { 'sweeper-role': SWEEPER_ROLE_OLD });
+
+      expect(planner.plan(event)).toEqual({});
     });
 
     it('a removal disappearing entirely sweeps all of its parts', () => {

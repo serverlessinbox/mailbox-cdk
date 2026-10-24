@@ -4,10 +4,10 @@
  * outcome is the status Step Functions branches on. The sweepers are fakes.
  */
 
-import { InvalidOwnInput, LoggerBuffer }                                                                                                                     from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { InvalidOwnInput, LoggerBuffer }                                                                                                                                              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput, StackFailureDetectorRemovalTarget, TargetResult, TargetSweeper } from '../removal';
-import { SweepWorker }                                                                                                                                       from '../sweep-worker';
+import type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput, StackFailureDetectorRemovalTarget, SweeperRoleRemovalInput, TargetResult, TargetSweeper } from '../removal';
+import { SweepWorker }                                                                                                                                                                from '../sweep-worker';
 
 const SWEPT: TargetResult = { target: 'cert', status: 'SUCCESS' };
 
@@ -34,12 +34,13 @@ function sweeperAnswering<TInput>(result: TargetResult): jest.Mocked<TargetSweep
   return { sweep: jest.fn().mockResolvedValue(result) };
 }
 
-function workerWith(results: { cert?: TargetResult; edge?: TargetResult; detector?: TargetResult } = {}) {
-  const cert     = sweeperAnswering<CertRemovalInput>(results.cert ?? SWEPT);
-  const edge     = sweeperAnswering<EdgeFunctionRemovalInput>(results.edge ?? SWEPT);
-  const detector = sweeperAnswering<StackFailureDetectorRemovalInput>(results.detector ?? SWEPT);
-  const worker   = new SweepWorker(new LoggerBuffer('resource-sweeper-worker', 'error'), cert, edge, detector);
-  return { worker, cert, edge, detector };
+function workerWith(results: { cert?: TargetResult; edge?: TargetResult; detector?: TargetResult; sweeperRole?: TargetResult } = {}) {
+  const cert        = sweeperAnswering<CertRemovalInput>(results.cert ?? SWEPT);
+  const edge        = sweeperAnswering<EdgeFunctionRemovalInput>(results.edge ?? SWEPT);
+  const detector    = sweeperAnswering<StackFailureDetectorRemovalInput>(results.detector ?? SWEPT);
+  const sweeperRole = sweeperAnswering<SweeperRoleRemovalInput>(results.sweeperRole ?? SWEPT);
+  const worker      = new SweepWorker(new LoggerBuffer('resource-sweeper-worker', 'error'), cert, edge, detector, sweeperRole);
+  return { worker, cert, edge, detector, sweeperRole };
 }
 
 describe('SweepWorker', () => {
@@ -50,6 +51,23 @@ describe('SweepWorker', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  describe('sweeper-role', () => {
+    it('hands the worker role payload to the sweeper of that type and reports its outcome', async () => {
+      const payload                       = {
+        removalType:          'sweeper-role',
+        workerRoleArn:        'arn:aws:iam::123456789012:role/mailbox-sweeper-worker-aaaa1111-bbbb2222',
+        workerRolePolicyName: 'worker-policy',
+        ...ROOT_STACK,
+      };
+      const { worker, sweeperRole, cert } = workerWith({ sweeperRole: { target: 'sweeper-role', status: 'RETRY', reason: 'busy' } });
+
+      await expect(worker.handle(payload)).resolves.toEqual({ status: 'RETRY', reason: 'busy' });
+
+      expect(sweeperRole.sweep).toHaveBeenCalledWith(payload);
+      expect(cert.sweep).not.toHaveBeenCalled();
+    });
   });
 
   describe('payload', () => {

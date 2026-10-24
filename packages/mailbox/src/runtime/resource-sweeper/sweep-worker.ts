@@ -5,6 +5,7 @@ import {
   type CertRemovalInput,
   type EdgeFunctionRemovalInput,
   type StackFailureDetectorRemovalInput,
+  type SweeperRoleRemovalInput,
   type TargetResult,
   type TargetSweeper,
   type WorkerInput,
@@ -22,6 +23,7 @@ export class SweepWorker {
     private readonly certSweeper: TargetSweeper<CertRemovalInput>,
     private readonly edgeFunctionSweeper: TargetSweeper<EdgeFunctionRemovalInput>,
     private readonly stackFailureDetectorSweeper: TargetSweeper<StackFailureDetectorRemovalInput>,
+    private readonly sweeperRoleSweeper: TargetSweeper<SweeperRoleRemovalInput>,
   ) {}
 
   /**
@@ -59,6 +61,8 @@ export class SweepWorker {
           rootStackName: input.rootStackName,
           rootStackId:   input.rootStackId,
         });
+      case 'sweeper-role':
+        return this.sweeperRoleSweeper.sweep(input);
     }
   }
 
