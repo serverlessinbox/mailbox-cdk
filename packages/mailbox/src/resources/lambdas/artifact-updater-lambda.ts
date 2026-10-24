@@ -26,6 +26,9 @@ export interface ArtifactUpdaterLambdaProps {
   readonly isTracking: CfnCondition;
 }
 
+/** The timeout of the artifact updater function; the deploy-end trigger's service timeout is derived from it. */
+export const ARTIFACT_UPDATER_TIMEOUT = Duration.minutes(5);
+
 /**
  * The Lambda that moves a stack's tagged artifacts to newer releases. Its role holds every grant the
  * update needs, each scoped to the root stack by tag wherever the service honours the tag.
@@ -40,7 +43,7 @@ export class ArtifactUpdaterLambda extends TypeScriptLambda {
       pipeline:         'infra',
       artifactResolver: props.artifactResolver,
       packageName:      MAILBOX_ARTIFACT_PACKAGE,
-      timeout:          Duration.minutes(5),
+      timeout:          ARTIFACT_UPDATER_TIMEOUT,
       memorySize:       256,
       environment:      {
         ARTIFACT_BUCKET_BASE: props.artifactBucketBase,

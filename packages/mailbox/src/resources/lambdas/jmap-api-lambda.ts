@@ -66,7 +66,7 @@ export class JmapApiLambda extends GoLambda implements IWebSocketPushTargetWithU
           // Go expects map[string][]string; Permission[] is string[] at runtime.
           scopeMap: props.scopeMap,
         }),
-        OAUTH_PROTECTED_RESOURCE_URL:       props.oauthProtectedResourceUrl ?? '',
+        ...(props.oauthProtectedResourceUrl ? { OAUTH_PROTECTED_RESOURCE_URL: props.oauthProtectedResourceUrl } : {}),
       },
     });
 

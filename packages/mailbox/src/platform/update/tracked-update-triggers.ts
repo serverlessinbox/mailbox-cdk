@@ -1,7 +1,11 @@
-import { GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
-import * as lambda               from 'aws-cdk-lib/aws-lambda';
-import * as cdk                  from 'aws-cdk-lib';
-import { Construct, IConstruct } from 'constructs';
+import { GateOnConditionAspect }    from '@serverlessinbox/mailbox-cdk-shared';
+import * as lambda                  from 'aws-cdk-lib/aws-lambda';
+import * as cdk                     from 'aws-cdk-lib';
+import { Construct, IConstruct }    from 'constructs';
+
+import { ARTIFACT_UPDATER_TIMEOUT } from '../../resources/lambdas/artifact-updater-lambda';
+
+const SERVICE_TIMEOUT_MARGIN = cdk.Duration.seconds(30);
 
 /** Inputs of the tracked update triggers. */
 export interface TrackedUpdateTriggersProps {
@@ -23,7 +27,7 @@ export class TrackedUpdateTriggers extends Construct {
 
     this.deployEnd = new cdk.CustomResource(this, 'deploy-end-cr', {
       serviceToken:   props.updater.functionArn,
-      serviceTimeout: cdk.Duration.seconds(600),
+      serviceTimeout: ARTIFACT_UPDATER_TIMEOUT.plus(SERVICE_TIMEOUT_MARGIN),
       resourceType:   'Custom::DeployEndTrigger',
       properties:     {
         // CloudFormation re-invokes a custom resource only when its properties change; the nonce

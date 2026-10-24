@@ -1,8 +1,9 @@
 /// <reference types="jest" />
 
 /**
- * JmapApiLambda: the read-only grant on the auth-key-store table, the table-name environment variable, and the
- * OAUTH_HANDLER_CONFIG value, which carries the scope map the Go handler reads and no other field.
+ * JmapApiLambda: the read-only grant on the auth-key-store table, the table-name environment variable, the
+ * OAUTH_HANDLER_CONFIG value, which carries the scope map the Go handler reads and no other field, and the
+ * OAUTH_PROTECTED_RESOURCE_URL variable, which is set only when the caller supplies the URL.
  */
 
 import { VENDOR_ACCOUNT_ID }                    from '@serverlessinbox/mailbox-cdk-shared';
@@ -27,7 +28,7 @@ describe('JmapApiLambda', () => {
   let template: Template;
   let authKeyStoreTable: AuthKeyStoreTable;
 
-  beforeEach(() => {
+  function buildTemplate(oauthProtectedResourceUrl?: string): Template {
     const arrangement = arrangeWrapperStack();
     stack             = arrangement.stack;
 
@@ -64,9 +65,14 @@ describe('JmapApiLambda', () => {
       identityProvisioner: identityProvisionerFunction,
       scopeMap:            { 'mail.read': [Permission.MAIL_READ] },
       vendorAccountIds:    [VENDOR_ACCOUNT_ID],
+      oauthProtectedResourceUrl,
     });
 
-    template = Template.fromStack(stack);
+    return Template.fromStack(stack);
+  }
+
+  beforeEach(() => {
+    template = buildTemplate();
   });
 
   function authKeyStoreResources(): unknown {
@@ -105,6 +111,28 @@ describe('JmapApiLambda', () => {
       Environment: {
         Variables: Match.objectLike({
           OAUTH_HANDLER_CONFIG: JSON.stringify({ scopeMap: { 'mail.read': [Permission.MAIL_READ] } }),
+        }),
+      },
+    });
+  });
+
+  it('omits OAUTH_PROTECTED_RESOURCE_URL from the function environment when no URL is supplied', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.not(Match.objectLike({
+          OAUTH_PROTECTED_RESOURCE_URL: Match.anyValue(),
+        })),
+      },
+    });
+  });
+
+  it('sets OAUTH_PROTECTED_RESOURCE_URL to the supplied URL', () => {
+    const withUrl = buildTemplate('https://jmap.example.com/.well-known/oauth-protected-resource');
+
+    withUrl.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.objectLike({
+          OAUTH_PROTECTED_RESOURCE_URL: 'https://jmap.example.com/.well-known/oauth-protected-resource',
         }),
       },
     });

@@ -68,11 +68,12 @@ export class AdminUi extends MailboxUi {
   readonly oauthRedirectUri: string;
 
   constructor(scope: Construct, id: string, props: AdminUiProps) {
-    const staticUiConfig: MailboxUiConfig | undefined = props.uiConfig ? {
+    const adminUiConfig: MailboxUiConfig              = {
       ...props.uiConfig,
       ...(props.apiUrl ? { apiUrl: props.apiUrl } : {}),
       ...(props.webmailUrl ? { webmailUrl: props.webmailUrl } : {}),
-    } : undefined;
+    };
+    const staticUiConfig: MailboxUiConfig | undefined = Object.keys(adminUiConfig).length > 0 ? adminUiConfig : undefined;
 
     super(scope, id, {
       label:                    'Admin UI',

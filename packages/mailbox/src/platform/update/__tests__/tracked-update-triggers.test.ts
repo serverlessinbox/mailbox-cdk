@@ -38,8 +38,8 @@ function synthesize(): Template {
 }
 
 describe('TrackedUpdateTriggers', () => {
-  it('fires a deploy-end custom resource that CloudFormation may take ten minutes to answer', () => {
-    synthesize().hasResourceProperties('Custom::DeployEndTrigger', { ServiceTimeout: '600' });
+  it('gives the deploy-end custom resource the updater timeout plus a 30-second margin', () => {
+    synthesize().hasResourceProperties('Custom::DeployEndTrigger', { ServiceTimeout: '330' });
   });
 
   it('changes the deploy-end properties on every synthesis so the trigger fires on every deploy', () => {

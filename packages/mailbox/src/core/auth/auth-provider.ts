@@ -110,7 +110,9 @@ export interface IMailboxAuthProviderBase {
 
 /** Provider-supplied mapping from IdP concepts (typically groups) to mailbox roles. */
 export interface MailboxAuthorizationConfig {
+  /** Names of the identity-provider groups whose members get the admin role. Written to the Admin UI config as `authorization.roles.adminGroups`. */
   readonly adminGroups: string[];
+  /** Names of the identity-provider groups whose members get the user role. Written to the Admin UI config as `authorization.roles.userGroups`. */
   readonly userGroups:  string[];
 }
 

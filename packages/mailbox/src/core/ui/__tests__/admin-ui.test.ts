@@ -30,6 +30,11 @@ const isContentDeploymentProperties = t.isPartial({
 
 const isDataSource = t.isPartial({ key: t.isString(), body: t.isString() });
 
+const isUrlOnlyConfig = t.isObject({
+  apiUrl:     t.isString(),
+  webmailUrl: t.isString(),
+});
+
 const isWrittenConfig = t.isObject({
   featureFlag: t.isBoolean(),
   apiUrl:      t.isString(),
@@ -138,6 +143,22 @@ describe('AdminUi', () => {
       featureFlag: true,
       apiUrl:      'https://api.admin.example.com',
       webmailUrl:  'https://mail.example.com',
+    });
+  });
+
+  it('writes the API and webmail URLs to the UI config when no other UI config is given', () => {
+    createAdminUi({
+      apiUrl:     'https://api.admin.example.com',
+      webmailUrl: 'https://mail.example.com',
+    });
+
+    const bodies = writtenConfigBodies(Template.fromStack(stack));
+    expect(bodies).toHaveLength(1);
+    const written: unknown = JSON.parse(bodies[0] ?? '');
+    t.assert(written, isUrlOnlyConfig);
+    expect(written).toEqual({
+      apiUrl:     'https://api.admin.example.com',
+      webmailUrl: 'https://mail.example.com',
     });
   });
 });
