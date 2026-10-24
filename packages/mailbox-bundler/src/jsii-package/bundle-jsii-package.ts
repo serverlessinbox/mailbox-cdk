@@ -12,7 +12,7 @@ const sourcesWithoutDeclarationsGlob = 'src/**/!(*.d).ts';
  * Bundles the TypeScript sources of a jsii package into its `lib/` folder, leaving jsii packages
  * and relative imports external, and emits the `.d.ts` files once the bundle succeeds.
  * `jsiiExcludes` are the package's jsii `excludeTypescript` paths, relative to the package folder.
- * Rejects when esbuild reports errors; a failing declaration emit does not.
+ * Rejects when esbuild reports errors, or when the declaration emit exits non-zero.
  */
 export async function bundleJsiiPackage(absoluteFolder: string, jsiiExcludes: string[]): Promise<void> {
   const ignorePatterns = jsiiExcludes.map(excludePath => join(absoluteFolder, excludePath));

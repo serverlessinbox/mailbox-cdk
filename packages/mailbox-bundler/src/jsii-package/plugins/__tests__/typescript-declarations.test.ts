@@ -44,6 +44,18 @@ describe('typescriptDeclarationsPlugin', () => {
       expect(runWithInheritedStdio).toHaveBeenCalledTimes(1);
       expect(runWithInheritedStdio).toHaveBeenCalledWith('yarn', declarationCommand, packageFolder);
     });
+
+    it('rejects the build when the declaration emit exits non-zero', async () => {
+      jest.mocked(runWithInheritedStdio).mockResolvedValue(2);
+
+      await expect(build({
+        entryPoints: [join(packageFolder, 'clean.js')],
+        bundle:      true,
+        write:       false,
+        platform:    'node',
+        plugins:     [typescriptDeclarationsPlugin(packageFolder)],
+      })).rejects.toThrow('exited with code 2');
+    });
   });
 
   describe('onEnd decisions', () => {
@@ -62,11 +74,17 @@ describe('typescriptDeclarationsPlugin', () => {
       expect(runWithInheritedStdio).not.toHaveBeenCalled();
     });
 
-    it('does not fail the build when tsc exits non-zero (BND-16, pinned current behaviour)', async () => {
+    it('rejects the build with the exit code when tsc exits non-zero', async () => {
       jest.mocked(runWithInheritedStdio).mockResolvedValue(2);
 
-      await expect(stub.end([])).resolves.toBeUndefined();
+      await expect(stub.end([])).rejects.toThrow('exited with code 2');
       expect(runWithInheritedStdio).toHaveBeenCalledWith('yarn', declarationCommand, stubPackageFolder);
+    });
+
+    it('rejects the build when tsc is killed by a signal', async () => {
+      jest.mocked(runWithInheritedStdio).mockResolvedValue(null);
+
+      await expect(stub.end([])).rejects.toThrow('terminated by a signal');
     });
 
     it('rejects the build when tsc cannot be started', async () => {
