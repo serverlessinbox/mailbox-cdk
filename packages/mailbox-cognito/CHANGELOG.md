@@ -4,6 +4,76 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.4.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.3.1...v0.4.0) (Fri Oct 23 2026)
+
+### build
+
+* **lint** one ESLint 10 toolchain over every TypeScript file, CI gate over clean packages ([3a38af4](https://github.com/serverlessinbox/mailbox-cdk/commit/3a38af43720e93673e5bf28c79fed9d38a4af699))
+
+### style
+
+* **lint** apply eslint auto-fixes for import order, alignment and curly ([2f268fb](https://github.com/serverlessinbox/mailbox-cdk/commit/2f268fb22f77815172cf0b90c7912a0d46d08d24))
+
+* one local rule aligns = and : in strict line groups ([4898ead](https://github.com/serverlessinbox/mailbox-cdk/commit/4898ead1807348fd39d98263aabae96ea359ed39))
+
+### refactor
+
+* **admin-api** lint-clean, typed boundaries, build and test setup ([805a4b0](https://github.com/serverlessinbox/mailbox-cdk/commit/805a4b0db66ae777f8568e013ee412f3b4001495))
+
+* **kit** shared runtime custom-resource, config and error units move into runtime/handler-kit/ (CS2.1) ([8b079db](https://github.com/serverlessinbox/mailbox-cdk/commit/8b079db7bfee5ebe12a4e739ce936f8a6dadfe59))
+
+* **kit** the rest of the shared runtime moves into runtime/handler-kit/, stack-helpers into runtime/stack-helpers/ (CS2.2) ([da3a8a3](https://github.com/serverlessinbox/mailbox-cdk/commit/da3a8a3c54a581c6da741e47adb92e74fd5c7594))
+
+* **cognito** bootstrap-user and the shared cognito runtime move to src/runtime/ (CS3.1) ([cf73c7e](https://github.com/serverlessinbox/mailbox-cdk/commit/cf73c7e082cca1c3f614473738aba87496e5ae73))
+
+* **cognito** jmap-oauth-dcr runtime moves to src/runtime/ (CS3.2) ([c3a141e](https://github.com/serverlessinbox/mailbox-cdk/commit/c3a141ed40ee915be353b11cddcf9c49082dc5c3))
+
+* **cognito** user-pool/, data-stack/, addons at the root and resources/lambdas/ (CS3.4) ([4cb4062](https://github.com/serverlessinbox/mailbox-cdk/commit/4cb40627c42b47c9f58b89164aefd9d49989a78a))
+
+* **mailbox** the deployer worker wrappers join resources/lambdas/ (CR2.2, CR2.3) ([0fca109](https://github.com/serverlessinbox/mailbox-cdk/commit/0fca1094f7de5c7f27dbad163d6c6a7fef50d3a1))
+
+* **kit** drop the ignored version option from the tag helpers ([e945320](https://github.com/serverlessinbox/mailbox-cdk/commit/e945320fa845f8e8ab0de00ddea71264ef212919))
+
+* **cognito** structure and dead code conform to the skills (CQ-cognito-A) ([b39573e](https://github.com/serverlessinbox/mailbox-cdk/commit/b39573eebd12d155d88db0e8d4f38041a9456645))
+
+* **cognito** typing, lint and small structure conform to the skills (CQ-cognito-B) ([7f54f4a](https://github.com/serverlessinbox/mailbox-cdk/commit/7f54f4a0cd3511f748ebdca2f4b74a4182ce712b))
+
+* **kit** the custom-resource request contract is closed and typed ([f1239ca](https://github.com/serverlessinbox/mailbox-cdk/commit/f1239ca4932407300f78f3cf4030ce068050383b))
+
+* **cognito** grants take narrow interfaces and the worker gets its stack identity as props (CQ-cognito-C) ([acc16a6](https://github.com/serverlessinbox/mailbox-cdk/commit/acc16a6a86931263b62d0d483fba4d28063baccf))
+
+* **cognito** every file conforms to the skills (CQ-cognito-D) ([2e5a5e7](https://github.com/serverlessinbox/mailbox-cdk/commit/2e5a5e769ef7d9cbbece56143e4e8f3962b921e4))
+
+* **kit** constructs take objects instead of ARN strings and resources grant themselves ([7b92ea9](https://github.com/serverlessinbox/mailbox-cdk/commit/7b92ea9b46a04f12cdd3ea84d101d210a51ae742))
+
+* **mailbox** the first ten Lambda wrappers and the email section conform to the skills (K-07) ([fd884e7](https://github.com/serverlessinbox/mailbox-cdk/commit/fd884e796f94e9ff7a488e95e6e48dae338e020d))
+
+* **mailbox** the remaining wrappers conform; one artifact-package constant, a named exported ScopeMap, and only the edge section holds the zone (K-08) ([4032744](https://github.com/serverlessinbox/mailbox-cdk/commit/4032744bb11ccf2eec276b09aea7aaa38d378e14))
+
+### feat
+
+* **kit** version tags only where they are read; other tags unchanged ([928e180](https://github.com/serverlessinbox/mailbox-cdk/commit/928e180138be84a8724cfdbf2887d4a373a5616c))
+
+* **mailbox** the data and cognito data stacks drop their unused productVersion parameter ([73bb807](https://github.com/serverlessinbox/mailbox-cdk/commit/73bb807baa74694d972aa2cd0c8c8a0f73c68061))
+
+* **cognito** the user pool's public API is strongly typed (CQ-cognito-E) ([981bda3](https://github.com/serverlessinbox/mailbox-cdk/commit/981bda35c50783dbea226417a723bd7c8391e3e9))
+
+### fix
+
+* test rows, addon spacing and one source per OAuth scope list side ([be8c583](https://github.com/serverlessinbox/mailbox-cdk/commit/be8c5831aae8f90f2092ba1a8bdd02dd1b6d2336))
+
+* **cognito** the bootstrap password meets the pool minimum length ([1f4b705](https://github.com/serverlessinbox/mailbox-cdk/commit/1f4b7051c2724eaf60bcf8eb3a17e1e7d8a6979e))
+
+* **cognito** the cognito data stack build passes no env, so its template is account- and region-agnostic ([a65d14d](https://github.com/serverlessinbox/mailbox-cdk/commit/a65d14d76643979ea8b2dfd721f0f5f66025f966))
+
+* **cognito** grantAdminAccess grants only the Cognito actions its users Lambda calls ([cce8f38](https://github.com/serverlessinbox/mailbox-cdk/commit/cce8f3872244400f605043c8cf9347f87237574c))
+
+### chore
+
+* **lint** enforce id-length and member-ordering; rename short locals and reorder members ([14a46f0](https://github.com/serverlessinbox/mailbox-cdk/commit/14a46f08010125ce9a0fe2eac062262216680951))
+
+* **lint** finish the id-length rule; rename grantAdminAccess parameter to grantee ([2de17c9](https://github.com/serverlessinbox/mailbox-cdk/commit/2de17c9f2e4c44a8d89187f2eaf3876e857678e5))
+
 ## [0.3.1](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.3.0...v0.3.1) (Tue Oct 20 2026)
 
 ### refactor
