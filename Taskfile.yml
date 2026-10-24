@@ -1,5 +1,8 @@
 version: '3'
 
+vars:
+  REGISTRY_FLAGS: --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1
+
 tasks:
   publish:dev:
     desc: Publish all CDK artifacts (mailbox-cdk-shared + mailbox + mailbox-cognito) to dev channel
@@ -17,3 +20,14 @@ tasks:
       - yarn workspace @serverlessinbox/mailbox build:data-stack
       - yarn workspace @serverlessinbox/mailbox build:edge-stack
       - yarn workspace @serverlessinbox/mailbox-cognito build:cognito-data-stack
+
+  resolve-artifacts:
+    desc: Resolve component artifact versions from the S3 registry (pass --output after --)
+    cmds:
+      - artifact-registry resolve-artifacts {{.REGISTRY_FLAGS}} --component mailbox-go:package:mailbox-go:regional --component mailbox-admin-ui:package:mailbox-admin-ui:regional --component mailbox-webmail-ui:package:mailbox-webmail-ui:regional {{.CLI_ARGS}}
+
+  fetch-registry-record:
+    desc: Fetch the mailbox and mailbox-cognito registry records from S3
+    cmds:
+      - artifact-registry registry-record fetch {{.REGISTRY_FLAGS}} --output packages/mailbox/registry-record.json {{.CLI_ARGS}}
+      - artifact-registry registry-record fetch {{.REGISTRY_FLAGS}} --output packages/mailbox-cognito/registry-record.json {{.CLI_ARGS}}
