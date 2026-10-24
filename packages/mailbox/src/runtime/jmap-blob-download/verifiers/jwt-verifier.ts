@@ -1,44 +1,17 @@
-import { DynamoDBClient, GetItemCommand }                                 from '@aws-sdk/client-dynamodb';
-import { toIssuer, type Issuer, type TableName }                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { createLocalJWKSet, decodeJwt, decodeProtectedHeader, jwtVerify } from 'jose';
-import * as t                                                             from 'typanion';
+import { DynamoDBClient, GetItemCommand }                                                  from '@aws-sdk/client-dynamodb';
+import { toIssuer, type Issuer, type TableName }                                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { createLocalJWKSet, decodeJwt, decodeProtectedHeader, jwtVerify, type JWTPayload } from 'jose';
+import * as t                                                                              from 'typanion';
 
-import { toAudience, type Audience }                                      from '../auth-identifiers';
-import type { SupportedAlgorithm }                                        from '../cloudfront/origin-headers';
+import { toAudience, type Audience }                                                       from '../auth-identifiers';
+import type { SupportedAlgorithm }                                                         from '../cloudfront/origin-headers';
 
-import type { VerifiedJwt }                                               from './auth-tokens';
+import type { VerifiedJwt }                                                                from './auth-tokens';
 
-const isJwtPayload = t.isPartial({
-  sub:       t.isOptional(t.isString()),
-  iss:       t.isOptional(t.isString()),
-  aud:       t.isOptional(t.isOneOf([t.isString(), t.isArray(t.isString())])),
-  client_id: t.isOptional(t.isString()),
-  exp:       t.isOptional(t.isNumber()),
-  nbf:       t.isOptional(t.isNumber()),
-});
+const isKeySetDocument = t.isPartial({ keys: t.isArray(t.isUnknown()) });
+const isJwkMember      = t.isPartial({ kty: t.isString() });
 
-// A JWKS is the issuer's published document (RFC 7517); a key lists every field jose may read when matching it.
-const isJwk = t.isPartial({
-  kid: t.isOptional(t.isString()),
-  kty: t.isString(),
-  use: t.isOptional(t.isString()),
-  alg: t.isOptional(t.isString()),
-  'n': t.isOptional(t.isString()),
-  'e': t.isOptional(t.isString()),
-  crv: t.isOptional(t.isString()),
-  'x': t.isOptional(t.isString()),
-  'y': t.isOptional(t.isString()),
-});
-
-const isJwks = t.isPartial({
-  keys: t.isArray(isJwk),
-});
-
-/** The claims of a JWT payload that the verifier reads. */
-type JwtPayload = t.InferType<typeof isJwtPayload>;
-
-/** The JSON Web Key Set an issuer publishes. */
-type Jwks = t.InferType<typeof isJwks>;
+type JwkMember = t.InferType<typeof isJwkMember>;
 
 /** The keys of one issuer, ready to select a key by the `kid` of a token. */
 type KeySet = ReturnType<typeof createLocalJWKSet>;
@@ -88,12 +61,7 @@ export class JwtVerifier {
         algorithms:     [...this.algorithmsOf(allowedAlgorithms)],
       });
 
-      const claims = this.claimsOf(payload);
-      if (!claims?.sub) {
-        return null;
-      }
-
-      return { sub: claims.sub, issuer, audience: this.audienceOf(claims) };
+      return this.verifiedJwtOf(payload, issuer);
     } catch {
       return null;
     }
@@ -102,9 +70,13 @@ export class JwtVerifier {
   /** The normalized issuer of a token that decodes, names a `kid` and an allowed `alg`; otherwise null. */
   private unverifiedIssuerOf(token: string, allowedAlgorithms: readonly SupportedAlgorithm[] | undefined): Issuer | null {
     try {
-      const issuer     = this.normalizeIssuer(this.claimsOf(decodeJwt(token))?.iss ?? '');
+      const { iss }    = decodeJwt(token);
       const header     = decodeProtectedHeader(token);
       const algorithms = this.algorithmsOf(allowedAlgorithms);
+      if (typeof iss !== 'string') {
+        return null;
+      }
+      const issuer = this.normalizeIssuer(iss);
       if (!issuer || !header.kid || !header.alg || !algorithms.some((algorithm) => algorithm === header.alg)) {
         return null;
       }
@@ -112,10 +84,6 @@ export class JwtVerifier {
     } catch {
       return null;
     }
-  }
-
-  private claimsOf(payload: unknown): JwtPayload | null {
-    return isJwtPayload(payload) ? payload : null;
   }
 
   private algorithmsOf(allowedAlgorithms: readonly SupportedAlgorithm[] | undefined): readonly SupportedAlgorithm[] {
@@ -132,18 +100,20 @@ export class JwtVerifier {
       return cached;
     }
 
-    const jwks = await this.loadJwks(issuer, authKeyStoreTable);
-    if (jwks === null) {
+    const jwksJson = await this.loadJwksJson(issuer, authKeyStoreTable);
+    if (jwksJson === null) {
       return null;
     }
 
-    const keySet = createLocalJWKSet(jwks);
-    this.keySetsByIssuer.set(issuer, keySet);
+    const keySet = this.keySetFrom(jwksJson);
+    if (keySet !== null) {
+      this.keySetsByIssuer.set(issuer, keySet);
+    }
     return keySet;
   }
 
-  /** The key set the store holds for the issuer; null when it holds none or what it holds is not a key set. A failed read propagates. */
-  private async loadJwks(issuer: Issuer, authKeyStoreTable: TableName): Promise<Jwks | null> {
+  /** The JWKS text the store holds for the issuer; null when it holds none. A failed read propagates. */
+  private async loadJwksJson(issuer: Issuer, authKeyStoreTable: TableName): Promise<string | null> {
     const response = await this.dynamodb.send(
       new GetItemCommand({
         TableName: authKeyStoreTable,
@@ -154,30 +124,45 @@ export class JwtVerifier {
       }),
     );
 
-    const jwksJson = response.Item?.jwks?.S;
-    if (!jwksJson) {
-      return null;
-    }
-    return this.parseJwks(jwksJson);
+    return response.Item?.jwks?.S || null;
   }
 
-  private parseJwks(jwksJson: string): Jwks | null {
-    let parsed: unknown;
+  /** The key set of a JWKS document; null when the text is not JSON or the document is not a key set. */
+  private keySetFrom(jwksJson: string): KeySet | null {
     try {
-      parsed = JSON.parse(jwksJson);
+      const document: unknown = JSON.parse(jwksJson);
+      if (!isKeySetDocument(document)) {
+        return null;
+      }
+      return createLocalJWKSet({ keys: document.keys.filter((member): member is JwkMember => isJwkMember(member)) });
     } catch {
       return null;
     }
-    return isJwks(parsed) ? parsed : null;
   }
 
-  private audienceOf(claims: JwtPayload): Audience {
-    const clientId = claims.client_id?.trim();
+  /** The identity of a verified payload; null when its subject or client id is not a string, or its aud is neither a string nor a list of strings. */
+  private verifiedJwtOf(payload: JWTPayload, issuer: Issuer): VerifiedJwt | null {
+    const { sub, aud, client_id: clientId } = payload;
+    if (typeof sub !== 'string' || !sub) {
+      return null;
+    }
+    if (clientId !== undefined && typeof clientId !== 'string') {
+      return null;
+    }
+    if (aud !== undefined && typeof aud !== 'string' && !(Array.isArray(aud) && aud.every((value) => typeof value === 'string'))) {
+      return null;
+    }
+
+    return { sub, issuer, audience: this.audienceOf(payload) };
+  }
+
+  private audienceOf(payload: JWTPayload): Audience {
+    const clientId = typeof payload.client_id === 'string' ? payload.client_id.trim() : '';
     if (clientId) {
       return toAudience(clientId);
     }
 
-    const audience = Array.isArray(claims.aud) ? claims.aud[0] : claims.aud;
+    const audience = Array.isArray(payload.aud) ? payload.aud[0] : payload.aud;
     return toAudience(audience || '');
   }
 }

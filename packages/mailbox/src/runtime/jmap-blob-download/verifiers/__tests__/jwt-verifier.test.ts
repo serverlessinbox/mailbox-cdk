@@ -189,10 +189,10 @@ describe('JwtVerifier', () => {
       await expect(verify(jwtOf({ payload: { iat: 'yesterday' } }))).resolves.toBeNull();
     });
 
-    it('rejects every token when the issuer published a key without a key type, even one signed by a valid key', async () => {
+    it('accepts a token signed by a valid key when the issuer also published a key without a key type', async () => {
       issuerPublishes([{ ...RSA_KEY.jwk, kid: KID }, { kid: 'broken' }]);
 
-      await expect(verify(jwtOf())).resolves.toBeNull();
+      await expect(verify(jwtOf())).resolves.toMatchObject({ sub: 'user-1' });
     });
 
     it('allows RS256 and nothing else when the allowed list is empty', async () => {
@@ -248,8 +248,12 @@ describe('JwtVerifier', () => {
       await expect(verify(jwtOf())).rejects.toThrow('AccessDeniedException');
     });
 
-    it('rejects a token whose issuer published a malformed key set', async () => {
-      dynamodb.on(GetItemCommand).resolves({ Item: { jwks: { S: '{"keys":"none"}' } } });
+    it.each([
+      { document: 'a key set whose keys are not a list', jwks: '{"keys":"none"}' },
+      { document: 'a document without keys', jwks: '{}' },
+      { document: 'text that is not JSON', jwks: 'not-json' },
+    ])('rejects every token when the issuer published $document', async ({ jwks }) => {
+      dynamodb.on(GetItemCommand).resolves({ Item: { jwks: { S: jwks } } });
 
       await expect(verify(jwtOf())).resolves.toBeNull();
     });
