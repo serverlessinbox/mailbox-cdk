@@ -4,6 +4,7 @@ import { globSync }            from 'node:fs';
 import tseslint                from 'typescript-eslint';
 
 import { mailboxRules }        from '../rules/mailbox-rules';
+import { sourceRuleScope }     from '../zones/package-roots';
 
 import { classFamilyFiles }    from './class-family-files';
 import { forbiddenGrantRules } from './forbidden-grant-helpers';
@@ -56,6 +57,11 @@ export function recommendedConfig(options: RecommendedConfigOptions): TSESLint.F
     {
       files: ['**/__tests__/**', '**/*.test.ts'],
       rules: { 'max-lines-per-function': 'off' },
+    },
+    {
+      files:   [...sourceRuleScope.files],
+      ignores: [...sourceRuleScope.ignores],
+      rules:   { 'mailbox/resource-kind-home': 'error' },
     },
     ...(options.extraConfigs ?? []),
   ];
