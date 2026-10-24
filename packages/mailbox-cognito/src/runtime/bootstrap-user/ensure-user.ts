@@ -15,6 +15,17 @@ export interface BootstrapUser {
   readonly temporaryPassword: string;
 }
 
+/** The outcome of `UserEnsurer.ensure`: whether the user was created now, and the groups it could not be joined to. */
+export interface EnsuredUser {
+  readonly created:      boolean;
+  readonly failedGroups: readonly GroupName[];
+}
+
+interface GroupJoinFailure {
+  readonly groupName: GroupName;
+  readonly error:     string;
+}
+
 const USERNAME_EXISTS = 'UsernameExistsException';
 
 /**
@@ -32,17 +43,35 @@ export class UserEnsurer {
 
   /**
    * Creates the user, or leaves an existing one unchanged, and adds it to its groups. A group that cannot be
-   * joined is logged with its name and the error and does not fail the call, so a missing group never fails the
-   * stack. Resolves to true when the user was newly created, false when it already existed.
+   * joined is logged and listed in `failedGroups`. When the user has groups and none of them can be joined, the
+   * call throws instead, naming every group with its error.
    */
-  public async ensure(user: BootstrapUser): Promise<boolean> {
+  public async ensure(user: BootstrapUser): Promise<EnsuredUser> {
     const userWasCreated = await this.createUser(user);
+    const failures       = await this.joinGroups(user);
+
+    this.failIfEveryJoinFailed(user, failures);
+    return { created: userWasCreated, failedGroups: failures.map((failure) => failure.groupName) };
+  }
+
+  private async joinGroups(user: BootstrapUser): Promise<GroupJoinFailure[]> {
+    const failures: GroupJoinFailure[] = [];
 
     for (const groupName of user.groups) {
-      await this.addToGroup(user, groupName);
+      const failure = await this.addToGroup(user, groupName);
+      if (failure !== undefined) {
+        failures.push(failure);
+      }
     }
 
-    return userWasCreated;
+    return failures;
+  }
+
+  private failIfEveryJoinFailed(user: BootstrapUser, failures: readonly GroupJoinFailure[]): void {
+    if (user.groups.length > 0 && failures.length === user.groups.length) {
+      const reasons = failures.map((failure) => `${failure.groupName}: ${failure.error}`).join('; ');
+      throw new Error(`No group of the bootstrap user could be joined: ${reasons}`);
+    }
   }
 
   private async createUser(user: BootstrapUser): Promise<boolean> {
@@ -69,7 +98,7 @@ export class UserEnsurer {
     throw failure;
   }
 
-  private async addToGroup(user: BootstrapUser, groupName: GroupName): Promise<void> {
+  private async addToGroup(user: BootstrapUser, groupName: GroupName): Promise<GroupJoinFailure | undefined> {
     try {
       await this.cognito.send(
         new AdminAddUserToGroupCommand({
@@ -78,11 +107,11 @@ export class UserEnsurer {
           GroupName:  groupName,
         }),
       );
+      return undefined;
     } catch (failure) {
-      this.logger.error('bootstrap_user_group_join_failed', {
-        groupName,
-        error: CaughtError.readableMessage(failure),
-      });
+      const error = CaughtError.readableMessage(failure);
+      this.logger.error('bootstrap_user_group_join_failed', { groupName, error });
+      return { groupName, error };
     }
   }
 }

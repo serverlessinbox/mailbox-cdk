@@ -23,7 +23,11 @@ type Handler = (typeof HandlerModule)['handler'];
 const sharedLambdaSdk  = jest.requireActual<typeof LambdaSdk>('@aws-sdk/client-lambda');
 const sharedCognitoSdk = jest.requireActual<typeof CognitoSdk>('@aws-sdk/client-cognito-identity-provider');
 
-const MANDATORY_ENVIRONMENT = { IDENTITY_PROVISIONER_FUNCTION_NAME: 'identity-provisioner-fn', USER_POOL_ID: 'pool-1' };
+const MANDATORY_ENVIRONMENT = {
+  IDENTITY_PROVISIONER_FUNCTION_NAME: 'identity-provisioner-fn',
+  SERVICE_NAME:                       'jmap-oauth-dcr',
+  USER_POOL_ID:                       'pool-1',
+};
 
 const UNEXPECTED_SHAPE_ERROR: unknown = expect.stringContaining('identity-provisioner returned an unexpected shape');
 
@@ -119,7 +123,8 @@ describe('jmap-oauth-dcr handler', () => {
 
     expect(answer).toMatchObject({ statusCode: 500 });
     expect(errorLog).toHaveBeenCalledWith('jmap_oauth_dcr_unhandled_error', {
-      error: UNEXPECTED_SHAPE_ERROR,
+      error:   UNEXPECTED_SHAPE_ERROR,
+      service: 'jmap-oauth-dcr',
     });
     expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(0);
   });
@@ -133,7 +138,7 @@ describe('jmap-oauth-dcr handler', () => {
       statusCode: 500,
       body:       JSON.stringify({ error: 'server_error', error_description: 'Internal error processing registration' }),
     });
-    expect(errorLog).toHaveBeenCalledWith('jmap_oauth_dcr_unhandled_error', { error: 'Error: unexpected failure' });
-    expect(debugLog).toHaveBeenCalledWith('buffered_before_failure');
+    expect(errorLog).toHaveBeenCalledWith('jmap_oauth_dcr_unhandled_error', { error: 'Error: unexpected failure', service: 'jmap-oauth-dcr' });
+    expect(debugLog).toHaveBeenCalledWith('buffered_before_failure', { service: 'jmap-oauth-dcr' });
   });
 });

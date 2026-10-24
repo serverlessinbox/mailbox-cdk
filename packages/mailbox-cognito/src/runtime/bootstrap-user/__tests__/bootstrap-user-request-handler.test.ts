@@ -49,8 +49,17 @@ describe('BootstrapUserRequestHandler', () => {
 
       expect(answer).toEqual({
         PhysicalResourceId: `BootstrapUser:${USER_POOL_ID}:testadmin`,
-        Data:               { temporaryPassword: SUPPLIED_PASSWORD },
+        Data:               { temporaryPassword: SUPPLIED_PASSWORD, failedGroups: '' },
       });
+    });
+
+    it('Create reports the groups it could not join and still answers success', async () => {
+      cognitoMock.on(AdminAddUserToGroupCommand, { GroupName: 'missing' }).rejects(new Error('no such group'));
+
+      const answer = await requestHandler.handle(request('Create', templateProperties({ groups: ['missing', 'admin'] })));
+
+      expect(answer.Data.failedGroups).toBe('missing');
+      expect(answer.PhysicalResourceId).toBe(PHYSICAL_RESOURCE_ID);
     });
 
     it('Create without a username creates and names the user admin', async () => {
@@ -98,19 +107,19 @@ describe('BootstrapUserRequestHandler', () => {
     it('Update answers the password without a physical id, so the resource keeps its own', async () => {
       const answer = await requestHandler.handle(request('Update', templateProperties({ temporaryPassword: SUPPLIED_PASSWORD })));
 
-      expect(answer).toEqual({ Data: { temporaryPassword: SUPPLIED_PASSWORD } });
+      expect(answer).toEqual({ Data: { temporaryPassword: SUPPLIED_PASSWORD, failedGroups: '' } });
     });
 
     it('Delete answers the marker without a physical id', async () => {
       const answer = await requestHandler.handle(request('Delete'));
 
-      expect(answer).toEqual({ Data: { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME } });
+      expect(answer).toEqual({ Data: { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME, failedGroups: '' } });
     });
 
     it('Delete answers the marker although its properties are not valid', async () => {
       const answer = await requestHandler.handle(request('Delete', { ServiceToken: 'x' }));
 
-      expect(answer).toEqual({ Data: { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME } });
+      expect(answer).toEqual({ Data: { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME, failedGroups: '' } });
     });
 
     it('adds the user to its groups and skips an empty group name', async () => {

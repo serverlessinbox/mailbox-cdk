@@ -6,10 +6,10 @@ import {
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { generateSecurePassword }                                                       from '../../utils/secure-password';
-import { toGroupName, toUserPoolId, toUsername }                                        from '../shared/cognito-identifiers';
+import { toGroupName, toUserPoolId, toUsername, type GroupName }                        from '../shared/cognito-identifiers';
 
 import { BootstrapUserAnswers, PASSWORD_SET_AT_INSTALL_TIME, type BootstrapUserAnswer } from './bootstrap-user-answers';
-import { UserEnsurer, type BootstrapUser }                                              from './ensure-user';
+import { UserEnsurer, type BootstrapUser, type EnsuredUser }                            from './ensure-user';
 import { isBootstrapUserProperties, type BootstrapUserProperties }                      from './properties';
 
 const DEFAULT_USERNAME        = 'admin';
@@ -42,10 +42,10 @@ export class BootstrapUserRequestHandler {
     const temporaryPassword = properties.temporaryPassword ?? generateSecurePassword(this.passwordLength(properties));
     const user              = this.toBootstrapUser(properties, temporaryPassword);
 
-    const userWasCreated = await this.ensureUser(user);
+    const ensured = await this.ensureUser(user);
 
-    const reportedPassword = userWasCreated ? temporaryPassword : PASSWORD_SET_AT_INSTALL_TIME;
-    return this.answerEnsured(request, user, reportedPassword);
+    const reportedPassword = ensured.created ? temporaryPassword : PASSWORD_SET_AT_INSTALL_TIME;
+    return this.answerEnsured(request, user, reportedPassword, ensured.failedGroups);
   }
 
   private readProperties(request: CustomResourceRequest): BootstrapUserProperties {
@@ -78,19 +78,28 @@ export class BootstrapUserRequestHandler {
     };
   }
 
-  private async ensureUser(user: BootstrapUser): Promise<boolean> {
+  private async ensureUser(user: BootstrapUser): Promise<EnsuredUser> {
     this.logger.debug('bootstrap_user_ensuring_user');
-    const userWasCreated = await this.userEnsurer.ensure(user);
+    const ensured = await this.userEnsurer.ensure(user);
     this.logger.info('bootstrap_user_ensured');
-    return userWasCreated;
+    if (ensured.failedGroups.length > 0) {
+      this.logger.warn('bootstrap_user_groups_not_joined', { groupNames: ensured.failedGroups.join(',') });
+    }
+    return ensured;
   }
 
-  private answerEnsured(request: CustomResourceRequest, user: BootstrapUser, reportedPassword: string): BootstrapUserAnswer {
+  private answerEnsured(
+    request: CustomResourceRequest,
+    user: BootstrapUser,
+    reportedPassword: string,
+    failedGroups: readonly GroupName[],
+  ): BootstrapUserAnswer {
     this.logger.debug('bootstrap_user_sending_success_response');
+    const failedGroupNames = failedGroups.join(',');
 
     if (request.RequestType === 'Create') {
-      return BootstrapUserAnswers.withPassword(reportedPassword, toPhysicalResourceId(`BootstrapUser:${user.userPoolId}:${user.username}`));
+      return BootstrapUserAnswers.withPassword(reportedPassword, failedGroupNames, toPhysicalResourceId(`BootstrapUser:${user.userPoolId}:${user.username}`));
     }
-    return BootstrapUserAnswers.withPassword(reportedPassword);
+    return BootstrapUserAnswers.withPassword(reportedPassword, failedGroupNames);
   }
 }

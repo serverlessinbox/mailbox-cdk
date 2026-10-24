@@ -2,8 +2,8 @@
 
 /**
  * Pins what this configuration adds to the shared base configuration: the user pool and the identity provisioner
- * function are mandatory, and SERVICE_NAME is optional. A Lambda that started without either mandatory variable
- * would count a registration against the tenant's cap before it failed, so both must be reported at load.
+ * function are mandatory alongside SERVICE_NAME. A Lambda that started without one of them would count a
+ * registration against the tenant's cap before it failed, so each missing variable must be reported at load.
  */
 
 import { env }  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
@@ -24,14 +24,15 @@ describe('jmap-oauth-dcr config', () => {
     process.env = originalEnvironment;
   });
 
-  it('loads the user pool and the identity provisioner function', () => {
+  it('loads the user pool, the identity provisioner function and the service name', () => {
     process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'fn-provisioner';
     process.env.USER_POOL_ID                       = 'pool-123';
+    process.env.SERVICE_NAME                       = 'oauth-dcr-service';
 
     expect(env.tryLoad(load)).toEqual({
       config: {
         logLevel:                        'error',
-        serviceName:                     '',
+        serviceName:                     'oauth-dcr-service',
         identityProvisionerFunctionName: 'fn-provisioner',
         userPoolId:                      'pool-123',
       },
@@ -46,11 +47,10 @@ describe('jmap-oauth-dcr config', () => {
     expect(result.error).toContain('USER_POOL_ID');
   });
 
-  it('loads SERVICE_NAME when it is set', () => {
+  it('reports SERVICE_NAME when it is missing', () => {
     process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'fn-provisioner';
     process.env.USER_POOL_ID                       = 'pool-123';
-    process.env.SERVICE_NAME                       = 'oauth-dcr-service';
 
-    expect(env.tryLoad(load).config?.serviceName).toBe('oauth-dcr-service');
+    expect(env.tryLoad(load).error).toContain('SERVICE_NAME');
   });
 });

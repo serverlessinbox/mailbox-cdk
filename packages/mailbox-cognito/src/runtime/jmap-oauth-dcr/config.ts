@@ -1,6 +1,6 @@
 import {
   env,
-  loadLogLevel,
+  loadBaseConfig,
   toFunctionName,
   type BaseConfig,
   type FunctionName,
@@ -17,11 +17,9 @@ export interface Config extends BaseConfig {
   readonly identityProvisionerFunctionName: FunctionName;
 }
 
-/** Reads `SERVICE_NAME` as optional where `loadBaseConfig` requires it, so an empty service name is accepted. */
 export function load(loader: env.Loader): Config {
   return {
-    logLevel:                        loadLogLevel(loader),
-    serviceName:                     loader.optional('SERVICE_NAME', ''),
+    ...loadBaseConfig(loader),
     userPoolId:                      env.mandatoryAs(loader, 'USER_POOL_ID', toUserPoolId, toUserPoolId('')),
     identityProvisionerFunctionName: env.mandatoryAs(loader, 'IDENTITY_PROVISIONER_FUNCTION_NAME', toFunctionName, toFunctionName('')),
   };

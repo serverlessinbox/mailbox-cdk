@@ -20,9 +20,8 @@ import type { CloudFormationCustomResourceEvent, Context }                      
 import { mockClient }                                                                     from 'aws-sdk-client-mock';
 import * as t                                                                             from 'typanion';
 
-// Import handler AFTER mocking https
 import { PASSWORD_SET_AT_INSTALL_TIME }                                                   from '../bootstrap-user-answers';
-import { handler }                                                                        from '../index';
+import type * as BootstrapUserModule                                                      from '../index';
 
 import { FUNCTION_ARN, PHYSICAL_RESOURCE_ID, STACK_ID, templateProperties, USER_POOL_ID } from './bootstrap-user-helpers';
 
@@ -34,7 +33,7 @@ jest.mock('https', () => ({
 const isCfnResponse = t.isPartial({
   Status:             t.isEnum(['SUCCESS', 'FAILED']),
   Reason:             t.isOptional(t.isString()),
-  Data:               t.isOptional(t.isObject({ temporaryPassword: t.isOptional(t.isString()) })),
+  Data:               t.isOptional(t.isObject({ temporaryPassword: t.isOptional(t.isString()), failedGroups: t.isOptional(t.isString()) })),
   PhysicalResourceId: t.isString(),
 });
 type CfnResponse = t.InferType<typeof isCfnResponse>;
@@ -84,7 +83,7 @@ function cfnEvent(requestType: 'Create' | 'Update' | 'Delete', resourcePropertie
   }
 }
 
-type HandlerOf = typeof handler;
+type HandlerOf = typeof BootstrapUserModule.handler;
 
 /**
  * Reads the response the handler under test PUT. Re-captured wherever a handler is loaded: a handler loaded in
@@ -103,9 +102,12 @@ async function invoke(invokedHandler: HandlerOf, event: CloudFormationCustomReso
   return body;
 }
 
-/** The handler as a cold start loads it under an environment whose LOG_LEVEL is not a log level; the caller restores the environment. */
-function loadHandlerWithBadConfig(): HandlerOf {
-  process.env.LOG_LEVEL = 'verbose';
+/**
+ * The handler as a cold start loads it under the environment `prepare` sets; the caller restores the environment.
+ * The handler reads its configuration when it is loaded, so every variable it needs is set before the load.
+ */
+function loadHandlerWith(prepare: () => void): HandlerOf {
+  prepare();
   let loaded: HandlerOf | undefined;
   jest.isolateModules(() => {
     readResponse = captureCfnResponse();
@@ -117,11 +119,27 @@ function loadHandlerWithBadConfig(): HandlerOf {
   return loaded;
 }
 
+/** The handler as a cold start loads it under an environment whose LOG_LEVEL is not a log level. */
+function loadHandlerWithBadConfig(): HandlerOf {
+  return loadHandlerWith(() => {
+    process.env.SERVICE_NAME = 'bootstrap-user';
+    process.env.LOG_LEVEL    = 'verbose';
+  });
+}
+
+/** The handler as a cold start loads it when SERVICE_NAME is not set. */
+function loadHandlerWithoutServiceName(): HandlerOf {
+  return loadHandlerWith(() => {
+    delete process.env.SERVICE_NAME;
+  });
+}
+
 /**
  * The handler as a cold start loads it when its request handler logs a debug line and then fails with an
  * `ExpectedFailure`. No failure the real request handler throws follows a buffered line, so this one is staged.
  */
 function loadHandlerWhoseRequestHandlerRejectsOnPurpose(): HandlerOf {
+  process.env.SERVICE_NAME = 'bootstrap-user';
   let loaded: HandlerOf | undefined;
   jest.isolateModules(() => {
     jest.doMock('../bootstrap-user-request-handler', () => {
@@ -159,6 +177,13 @@ describe('bootstrap-user handler', () => {
   let debugLog: jest.SpyInstance;
   let errorLog: jest.SpiedFunction<typeof console.error>;
   let originalEnvironment: NodeJS.ProcessEnv;
+
+  let handler: HandlerOf;
+
+  beforeAll(() => {
+    process.env.SERVICE_NAME = 'bootstrap-user';
+    handler                  = jest.requireActual<{ handler: HandlerOf }>('../index').handler;
+  });
 
   /** The first argument of every line written at error level. */
   function loggedErrorMessages(): unknown[] {
@@ -208,11 +233,28 @@ describe('bootstrap-user handler', () => {
         Data:               { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME },
       });
     });
+
+    it('answers a Create with FAILED, naming SERVICE_NAME when it is missing', async () => {
+      const response = await invoke(loadHandlerWithoutServiceName(), cfnEvent('Create'));
+
+      expect(response.Status).toBe('FAILED');
+      expect(response.Reason).toContain('SERVICE_NAME');
+    });
+
+    it('answers a Delete with SUCCESS and the marker when SERVICE_NAME is missing', async () => {
+      const response = await invoke(loadHandlerWithoutServiceName(), cfnEvent('Delete'));
+
+      expect(response).toMatchObject({
+        Status:             'SUCCESS',
+        PhysicalResourceId: PHYSICAL_RESOURCE_ID,
+        Data:               { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME },
+      });
+    });
   });
 
   describe('with a configuration that loads', () => {
     it('answers a Create with SUCCESS, the physical id and the password it applied', async () => {
-      const response = await invoke(handler, cfnEvent('Create', templateProperties({ username: 'testadmin' })));
+      const response = await invoke(handler,cfnEvent('Create', templateProperties({ username: 'testadmin' })));
 
       expect(response).toMatchObject({
         Status:             'SUCCESS',
@@ -222,7 +264,7 @@ describe('bootstrap-user handler', () => {
     });
 
     it('answers an Update under the physical id it came with', async () => {
-      const response = await invoke(handler, cfnEvent('Update'));
+      const response = await invoke(handler,cfnEvent('Update'));
 
       expect(response).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: PHYSICAL_RESOURCE_ID });
     });
@@ -230,7 +272,7 @@ describe('bootstrap-user handler', () => {
     it('answers an Update that fails while the parent stack rolls back with SUCCESS and the marker', async () => {
       isRollingBack.mockResolvedValue(true);
 
-      const response = await invoke(handler, cfnEvent('Update', { ServiceToken: FUNCTION_ARN }));
+      const response = await invoke(handler,cfnEvent('Update', { ServiceToken: FUNCTION_ARN }));
 
       expect(response).toMatchObject({
         Status:             'SUCCESS',
@@ -245,14 +287,14 @@ describe('bootstrap-user handler', () => {
         Stacks: [{ StackName: 'parent', CreationTime: new Date(0), StackStatus: 'UPDATE_ROLLBACK_IN_PROGRESS' }],
       });
 
-      const response = await invoke(handler, cfnEvent('Update', { ServiceToken: FUNCTION_ARN }));
+      const response = await invoke(handler,cfnEvent('Update', { ServiceToken: FUNCTION_ARN }));
 
       expect(response.Status).toBe('SUCCESS');
       expect(cloudFormationMock.commandCalls(DescribeStacksCommand)).toHaveLength(1);
     });
 
     it('answers a request with invalid properties with FAILED and the properties as the reason, and writes the buffered trace', async () => {
-      const response = await invoke(handler, cfnEvent('Create', { ServiceToken: FUNCTION_ARN, temporaryPassword: 'Sup3rSecret1', kept: 'visible' }));
+      const response = await invoke(handler,cfnEvent('Create', { ServiceToken: FUNCTION_ARN, temporaryPassword: 'Sup3rSecret1', kept: 'visible' }));
 
       expect(response.Status).toBe('FAILED');
       expect(response.Reason).toContain('Invalid ResourceProperties');
@@ -275,10 +317,10 @@ describe('bootstrap-user handler', () => {
     it('answers an unexpected failure with FAILED and writes the buffered trace that led to it', async () => {
       cognitoMock.on(AdminCreateUserCommand).rejects(new NotAuthorizedException({ message: 'denied', $metadata: {} }));
 
-      const response = await invoke(handler, cfnEvent('Create'));
+      const response = await invoke(handler,cfnEvent('Create'));
 
       expect(response.Status).toBe('FAILED');
-      expect(debugLog).toHaveBeenCalledWith('bootstrap_user_ensuring_user');
+      expect(debugLog).toHaveBeenCalledWith('bootstrap_user_ensuring_user', { service: 'bootstrap-user' });
       expect(loggedErrorMessages()).toContain('Handler failed');
     });
   });
