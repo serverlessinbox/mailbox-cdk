@@ -1,12 +1,24 @@
+import * as esbuildModule                                    from 'esbuild';
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile }  from 'fs/promises';
 import { existsSync }                                        from 'fs';
-import { tmpdir }                                            from 'os';
+import * as osModule                                         from 'os';
 import { dirname, join }                                     from 'path';
 
 import { runWithInheritedStdio }                             from '../../utils/run-process';
 import { LambdaZipBundler, LambdaZipSpec }                   from '../lambda-zip-bundler';
 
 jest.mock('../../utils/run-process');
+jest.mock('esbuild', () => {
+  const actual = jest.requireActual<typeof esbuildModule>('esbuild');
+  return { ...actual, build: jest.fn(actual.build) };
+});
+jest.mock('os', () => {
+  const actual = jest.requireActual<typeof osModule>('os');
+  return { ...actual, tmpdir: jest.fn(actual.tmpdir) };
+});
+
+const realBuild  = jest.requireActual<typeof esbuildModule>('esbuild').build;
+const realTmpdir = jest.requireActual<typeof osModule>('os').tmpdir;
 
 interface ZipRun {
   readonly command:       string;
@@ -14,8 +26,6 @@ interface ZipRun {
   readonly outZipExisted: boolean;
   readonly bundledJs:     string;
 }
-
-const tempDirPrefix = 'mailbox-bundler-lambda-';
 
 const handlerSource = `
 import { S3Client } from '@aws-sdk/client-s3';
@@ -30,6 +40,7 @@ export const marker = 'BUNDLED_HELPER_MARKER';
 `;
 
 let workDir: string;
+let tempRoot: string;
 let zipRuns: ZipRun[];
 
 /** Fakes the `zip` binary: records its arguments and what it saw, then returns the exit code. */
@@ -44,6 +55,15 @@ function zipExitsWith(exitCode: number | null): void {
     });
     return exitCode;
   });
+}
+
+/** Stands in for esbuild by writing a placeholder index.js, so the zip fake has a file to read. */
+async function stubBuild(options: esbuildModule.BuildOptions): Promise<esbuildModule.BuildResult> {
+  if (options.outfile === undefined) {
+    throw new Error('stubBuild needs an outfile');
+  }
+  await writeFile(options.outfile, 'module.exports = {};\n');
+  return { errors: [], warnings: [], outputFiles: undefined, metafile: undefined, mangleCache: undefined };
 }
 
 function bundleSpec(overrides: Partial<LambdaZipSpec> = {}): LambdaZipSpec {
@@ -66,13 +86,16 @@ async function bundleAndCaptureJs(spec: LambdaZipSpec): Promise<string> {
   return lastRun.bundledJs;
 }
 
-async function bundlerTempDirs(): Promise<string[]> {
-  return (await readdir(tmpdir())).filter(name => name.startsWith(tempDirPrefix));
+async function leftoverTempDirs(): Promise<string[]> {
+  return readdir(tempRoot);
 }
 
 beforeEach(async () => {
   jest.clearAllMocks();
-  workDir = await mkdtemp(join(tmpdir(), 'lambda-zip-test-'));
+  workDir  = await mkdtemp(join(realTmpdir(), 'lambda-zip-test-'));
+  tempRoot = await mkdtemp(join(workDir, 'tmp-'));
+  jest.mocked(osModule.tmpdir).mockReturnValue(tempRoot);
+  jest.mocked(esbuildModule.build).mockImplementation(stubBuild);
   zipRuns = [];
   await writeFile(join(workDir, 'handler.ts'), handlerSource);
   await writeFile(join(workDir, 'helper.ts'), helperSource);
@@ -80,6 +103,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  jest.mocked(osModule.tmpdir).mockImplementation(realTmpdir);
   await rm(workDir, { recursive: true, force: true });
 });
 
@@ -106,6 +130,8 @@ describe('LambdaZipBundler.bundle', () => {
   });
 
   it('bundles CommonJS and keeps the external packages as require calls', async () => {
+    jest.mocked(esbuildModule.build).mockImplementationOnce(realBuild);
+
     const bundledJs = await bundleAndCaptureJs(bundleSpec());
 
     expect(bundledJs).toContain('module.exports');
@@ -113,11 +139,12 @@ describe('LambdaZipBundler.bundle', () => {
     expect(bundledJs).toContain('BUNDLED_HELPER_MARKER');
   });
 
-  it('produces a smaller bundle when minification is on', async () => {
-    const plainJs    = await bundleAndCaptureJs(bundleSpec({ minify: false }));
-    const minifiedJs = await bundleAndCaptureJs(bundleSpec({ minify: true }));
+  it.each([true, false])('passes the minify flag to esbuild (minify: %s)', async (minify) => {
+    jest.mocked(runWithInheritedStdio).mockResolvedValue(0);
 
-    expect(minifiedJs.length).toBeLessThan(plainJs.length);
+    await LambdaZipBundler.bundle(bundleSpec({ minify }));
+
+    expect(esbuildModule.build).toHaveBeenCalledWith(expect.objectContaining({ minify }));
   });
 
   it('rejects with the exit code and the zip path when zip exits non-zero', async () => {
@@ -135,6 +162,7 @@ describe('LambdaZipBundler.bundle', () => {
   });
 
   it('rejects without running zip when esbuild fails', async () => {
+    jest.mocked(esbuildModule.build).mockImplementationOnce(realBuild);
     const spec = bundleSpec({ entryPath: join(workDir, 'missing.ts') });
 
     await expect(LambdaZipBundler.bundle(spec)).rejects.toThrow();
@@ -142,27 +170,25 @@ describe('LambdaZipBundler.bundle', () => {
   });
 
   it('removes its temp folder after a successful bundle', async () => {
-    const before = await bundlerTempDirs();
-
     await LambdaZipBundler.bundle(bundleSpec());
 
-    expect(await bundlerTempDirs()).toEqual(before);
+    expect(zipRuns[0]?.args[2]).toEqual(expect.stringContaining(tempRoot));
+    expect(await leftoverTempDirs()).toEqual([]);
   });
 
   it('removes its temp folder when zip fails', async () => {
-    const before = await bundlerTempDirs();
     zipExitsWith(3);
 
     await LambdaZipBundler.bundle(bundleSpec()).catch(() => undefined);
 
-    expect(await bundlerTempDirs()).toEqual(before);
+    expect(await leftoverTempDirs()).toEqual([]);
   });
 
   it('removes its temp folder when esbuild fails', async () => {
-    const before = await bundlerTempDirs();
+    jest.mocked(esbuildModule.build).mockImplementationOnce(realBuild);
 
     await LambdaZipBundler.bundle(bundleSpec({ entryPath: join(workDir, 'missing.ts') })).catch(() => undefined);
 
-    expect(await bundlerTempDirs()).toEqual(before);
+    expect(await leftoverTempDirs()).toEqual([]);
   });
 });
