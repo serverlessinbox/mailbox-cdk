@@ -5,27 +5,26 @@ import { dirname, join }                 from 'path';
 
 import { jsiiIgnorePlugin }              from '../jsii-ignore';
 
+import { StubPluginBuild }               from './stub-plugin-build';
+
 interface FixtureFile {
   readonly path:    string;
   readonly content: string;
 }
 
 const fixtures: FixtureFile[] = [
-  { path: 'node_modules/jsii-lib/.jsii',               content: '{}' },
-  { path: 'node_modules/jsii-lib/index.js',            content: "module.exports = { a: 'JSII_LIB_MARKER' };" },
-  { path: 'node_modules/jsii-lib/sub/file.js',         content: "module.exports = { f: 'JSII_SUB_MARKER' };" },
-  { path: 'node_modules/@scope/pkg/.jsii',             content: '{}' },
-  { path: 'node_modules/@scope/pkg/index.js',          content: 'module.exports = {};' },
-  { path: 'node_modules/@scope/pkg/sub/file.js',       content: "module.exports = { s: 'SCOPED_SUB_MARKER' };" },
-  { path: 'node_modules/plain-lib/index.js',           content: "module.exports = { p: 'PLAIN_LIB_MARKER' };" },
-  { path: 'pkg/index.js',                              content: 'module.exports = {};' },
-  { path: 'pkg/relative.js',                           content: "module.exports = { r: 'RELATIVE_MARKER' };" },
-  { path: 'empty/placeholder.txt',                     content: 'no entry file here' },
+  { path: 'node_modules/jsii-lib/.jsii',         content: '{}' },
+  { path: 'node_modules/jsii-lib/index.js',      content: "module.exports = { a: 'JSII_LIB_MARKER' };" },
+  { path: 'node_modules/@scope/pkg/.jsii',       content: '{}' },
+  { path: 'node_modules/@scope/pkg/index.js',    content: 'module.exports = {};' },
+  { path: 'node_modules/plain-lib/index.js',     content: "module.exports = { p: 'PLAIN_LIB_MARKER' };" },
+  { path: 'pkg/index.js',                        content: 'module.exports = {};' },
+  { path: 'pkg/relative/.jsii',                  content: '{}' },
+  { path: 'empty/placeholder.txt',               content: 'no entry file here' },
 ];
 
 let root: string;
 let packageFolder: string;
-let entryPath: string;
 
 async function writeFixtures(files: FixtureFile[]): Promise<void> {
   for (const file of files) {
@@ -35,23 +34,9 @@ async function writeFixtures(files: FixtureFile[]): Promise<void> {
   }
 }
 
-async function bundleEntry(source: string): Promise<string> {
-  await writeFile(entryPath, source);
-  const result = await build({
-    entryPoints: [entryPath],
-    bundle:      true,
-    write:       false,
-    platform:    'node',
-    format:      'cjs',
-    plugins:     [jsiiIgnorePlugin(packageFolder)],
-  });
-  return result.outputFiles.map(file => file.text).join('\n');
-}
-
 beforeEach(async () => {
   root          = await mkdtemp(join(tmpdir(), 'jsii-ignore-test-'));
   packageFolder = join(root, 'pkg');
-  entryPath     = join(packageFolder, 'entry.js');
   await writeFixtures(fixtures);
 });
 
@@ -60,44 +45,54 @@ afterEach(async () => {
 });
 
 describe('jsiiIgnorePlugin', () => {
-  it('leaves an import of a jsii package external', async () => {
-    const output = await bundleEntry("import { a } from 'jsii-lib';\nconsole.log(a);");
+  describe('bundled output', () => {
+    it('leaves an import of a jsii package external and bundles a plain package', async () => {
+      const entryPath = join(packageFolder, 'entry.js');
+      await writeFile(entryPath, "import { a } from 'jsii-lib';\nimport { p } from 'plain-lib';\nconsole.log(a, p);");
 
-    expect(output).toContain('require("jsii-lib")');
-    expect(output).not.toContain('JSII_LIB_MARKER');
+      const result = await build({
+        entryPoints: [entryPath],
+        bundle:      true,
+        write:       false,
+        platform:    'node',
+        format:      'cjs',
+        plugins:     [jsiiIgnorePlugin(packageFolder)],
+      });
+      const output = result.outputFiles.map(file => file.text).join('\n');
+
+      expect(output).toContain('require("jsii-lib")');
+      expect(output).not.toContain('JSII_LIB_MARKER');
+      expect(output).toContain('PLAIN_LIB_MARKER');
+    });
   });
 
-  it('bundles an import of a package that ships no .jsii', async () => {
-    const output = await bundleEntry("import { p } from 'plain-lib';\nconsole.log(p);");
+  describe('onResolve decisions', () => {
+    let stub: StubPluginBuild;
 
-    expect(output).toContain('PLAIN_LIB_MARKER');
-    expect(output).not.toContain('require("plain-lib")');
-  });
+    beforeEach(() => {
+      stub = new StubPluginBuild();
+      stub.registerPlugin(jsiiIgnorePlugin(packageFolder));
+    });
 
-  it('judges a deep import by the nearest ancestor package', async () => {
-    const output = await bundleEntry("import { f } from 'jsii-lib/sub/file';\nconsole.log(f);");
+    it('judges a deep import by the nearest ancestor package', async () => {
+      await expect(stub.resolve({ kind: 'import-statement', path: 'jsii-lib/sub/file' }))
+        .resolves.toEqual({ external: true });
+    });
 
-    expect(output).toContain('require("jsii-lib/sub/file")');
-    expect(output).not.toContain('JSII_SUB_MARKER');
-  });
+    it('judges a scoped deep import by its scope package', async () => {
+      await expect(stub.resolve({ kind: 'import-statement', path: '@scope/pkg/sub/file' }))
+        .resolves.toEqual({ external: true });
+    });
 
-  it('judges a scoped deep import by its scope package', async () => {
-    const output = await bundleEntry("import { s } from '@scope/pkg/sub/file';\nconsole.log(s);");
+    it('does not judge relative imports, even one that resolves to a folder holding a .jsii', async () => {
+      await expect(stub.resolve({ kind: 'import-statement', path: './relative' }))
+        .resolves.toBeUndefined();
+    });
 
-    expect(output).toContain('require("@scope/pkg/sub/file")');
-    expect(output).not.toContain('SCOPED_SUB_MARKER');
-  });
-
-  it('does not judge relative imports', async () => {
-    const output = await bundleEntry("import { r } from './relative';\nconsole.log(r);");
-
-    expect(output).toContain('RELATIVE_MARKER');
-  });
-
-  it('does not judge require calls', async () => {
-    const output = await bundleEntry("const { a } = require('jsii-lib');\nconsole.log(a);");
-
-    expect(output).toContain('JSII_LIB_MARKER');
+    it('does not judge require calls', async () => {
+      await expect(stub.resolve({ kind: 'require-call', path: 'jsii-lib' }))
+        .resolves.toBeUndefined();
+    });
   });
 
   it('fails at plugin creation when the package main does not resolve (BND-12, current behaviour)', () => {

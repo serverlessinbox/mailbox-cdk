@@ -1,4 +1,5 @@
 import { build }                        from 'esbuild';
+import type { Message }                 from 'esbuild';
 import { mkdtemp, rm, writeFile }       from 'fs/promises';
 import { tmpdir }                       from 'os';
 import { join }                         from 'path';
@@ -6,61 +7,72 @@ import { join }                         from 'path';
 import { runWithInheritedStdio }        from '../../../utils/run-process';
 import { typescriptDeclarationsPlugin } from '../typescript-declarations';
 
+import { StubPluginBuild }              from './stub-plugin-build';
+
 jest.mock('../../../utils/run-process');
 
 const declarationCommand = ['tsc', '--emitDeclarationOnly', '--project', 'tsconfig.build.json'];
+const stubPackageFolder  = '/r/typescript-declarations';
 
-let packageFolder: string;
-let cleanEntry: string;
-let brokenEntry: string;
-
-function buildEntry(entryPath: string) {
-  return build({
-    entryPoints: [entryPath],
-    bundle:      true,
-    write:       false,
-    platform:    'node',
-    plugins:     [typescriptDeclarationsPlugin(packageFolder)],
-  });
-}
-
-beforeEach(async () => {
+beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(runWithInheritedStdio).mockResolvedValue(0);
-  packageFolder = await mkdtemp(join(tmpdir(), 'typescript-declarations-test-'));
-  cleanEntry    = join(packageFolder, 'clean.js');
-  brokenEntry   = join(packageFolder, 'broken.js');
-  await writeFile(cleanEntry, 'export const value = 1;');
-  await writeFile(brokenEntry, 'export const = ;');
-});
-
-afterEach(async () => {
-  await rm(packageFolder, { recursive: true, force: true });
 });
 
 describe('typescriptDeclarationsPlugin', () => {
-  it('emits declarations with tsc, in the package folder, after a clean bundle', async () => {
-    await buildEntry(cleanEntry);
+  describe('bundled output', () => {
+    let packageFolder: string;
 
-    expect(runWithInheritedStdio).toHaveBeenCalledTimes(1);
-    expect(runWithInheritedStdio).toHaveBeenCalledWith('yarn', declarationCommand, packageFolder);
+    beforeEach(async () => {
+      packageFolder = await mkdtemp(join(tmpdir(), 'typescript-declarations-test-'));
+      await writeFile(join(packageFolder, 'clean.js'), 'export const value = 1;');
+    });
+
+    afterEach(async () => {
+      await rm(packageFolder, { recursive: true, force: true });
+    });
+
+    it('emits declarations with tsc, in the package folder, after a clean bundle', async () => {
+      await build({
+        entryPoints: [join(packageFolder, 'clean.js')],
+        bundle:      true,
+        write:       false,
+        platform:    'node',
+        plugins:     [typescriptDeclarationsPlugin(packageFolder)],
+      });
+
+      expect(runWithInheritedStdio).toHaveBeenCalledTimes(1);
+      expect(runWithInheritedStdio).toHaveBeenCalledWith('yarn', declarationCommand, packageFolder);
+    });
   });
 
-  it('emits nothing when the bundle has errors', async () => {
-    await expect(buildEntry(brokenEntry)).rejects.toThrow();
+  describe('onEnd decisions', () => {
+    let stub: StubPluginBuild;
 
-    expect(runWithInheritedStdio).not.toHaveBeenCalled();
-  });
+    beforeEach(() => {
+      stub = new StubPluginBuild();
+      stub.registerPlugin(typescriptDeclarationsPlugin(stubPackageFolder));
+    });
 
-  it('does not fail the build when tsc exits non-zero (BND-16, pinned current behaviour)', async () => {
-    jest.mocked(runWithInheritedStdio).mockResolvedValue(2);
+    it('emits nothing when the bundle has errors', async () => {
+      const bundleError: Message = { id: '', pluginName: '', text: 'Unexpected token', location: null, notes: [], detail: undefined };
 
-    await expect(buildEntry(cleanEntry)).resolves.toMatchObject({ errors: [] });
-  });
+      await stub.end([bundleError]);
 
-  it('rejects the build when tsc cannot be started', async () => {
-    jest.mocked(runWithInheritedStdio).mockRejectedValue(new Error('spawn yarn ENOENT'));
+      expect(runWithInheritedStdio).not.toHaveBeenCalled();
+    });
 
-    await expect(buildEntry(cleanEntry)).rejects.toThrow('spawn yarn ENOENT');
+    it('does not fail the build when tsc exits non-zero (BND-16, pinned current behaviour)', async () => {
+      jest.mocked(runWithInheritedStdio).mockResolvedValue(2);
+
+      await expect(stub.end([])).resolves.toBeUndefined();
+      expect(runWithInheritedStdio).toHaveBeenCalledWith('yarn', declarationCommand, stubPackageFolder);
+    });
+
+    it('rejects the build when tsc cannot be started', async () => {
+      jest.mocked(runWithInheritedStdio).mockRejectedValue(new Error('spawn yarn ENOENT'));
+
+      await expect(stub.end([])).rejects.toThrow('spawn yarn ENOENT');
+    });
   });
 });

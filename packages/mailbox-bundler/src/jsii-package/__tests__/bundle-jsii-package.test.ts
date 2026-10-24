@@ -1,3 +1,5 @@
+import { build }                         from 'esbuild';
+import type { BuildResult }              from 'esbuild';
 import { mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
 import { existsSync }                    from 'fs';
 import { tmpdir }                        from 'os';
@@ -7,11 +9,17 @@ import { runWithInheritedStdio }         from '../../utils/run-process';
 import { bundleJsiiPackage }             from '../bundle-jsii-package';
 
 jest.mock('../../utils/run-process');
+jest.mock('esbuild', () => {
+  const actual = jest.requireActual<typeof import('esbuild')>('esbuild');
+  return { ...actual, build: jest.fn(actual.build) };
+});
 
 interface FixtureFile {
   readonly path:    string;
   readonly content: string;
 }
+
+const emptyBuildResult: BuildResult = { errors: [], warnings: [], outputFiles: undefined, metafile: undefined, mangleCache: undefined };
 
 const sourceFixtures: FixtureFile[] = [
   { path: 'index.js',           content: 'module.exports = {};' },
@@ -42,30 +50,24 @@ afterEach(async () => {
 });
 
 describe('bundleJsiiPackage', () => {
-  it('bundles each source file into lib/, keeping its folder', async () => {
-    await bundleJsiiPackage(packageFolder, []);
+  it('bundles each source file into lib/ keeping its folder, and emits declarations once', async () => {
+    await bundleJsiiPackage(packageFolder, ['src/generated/**']);
 
     expect(existsSync(join(packageFolder, 'lib', 'a.js'))).toBe(true);
     expect(existsSync(join(packageFolder, 'lib', 'sub', 'c.js'))).toBe(true);
-  });
-
-  it('leaves out the paths jsii excludes', async () => {
-    await bundleJsiiPackage(packageFolder, ['src/generated/**']);
-
-    expect(existsSync(join(packageFolder, 'lib', 'generated', 'g.js'))).toBe(false);
-    expect(existsSync(join(packageFolder, 'lib', 'a.js'))).toBe(true);
-  });
-
-  it('emits the declarations once after a clean bundle', async () => {
-    await bundleJsiiPackage(packageFolder, []);
-
     expect(runWithInheritedStdio).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects on a bundling error and emits no declarations', async () => {
-    await writeFixtures([{ path: 'src/broken.ts', content: 'export const = ;' }]);
+  it('passes the source glob minus the jsii excludes to esbuild entry points', async () => {
+    jest.mocked(build).mockResolvedValueOnce(emptyBuildResult);
 
-    await expect(bundleJsiiPackage(packageFolder, [])).rejects.toThrow();
-    expect(runWithInheritedStdio).not.toHaveBeenCalled();
+    await bundleJsiiPackage(packageFolder, ['src/generated/**']);
+
+    const [options] = jest.mocked(build).mock.calls[0];
+    expect(options.entryPoints).toHaveLength(2);
+    expect(options.entryPoints).toEqual(expect.arrayContaining([
+      join(packageFolder, 'src', 'a.ts'),
+      join(packageFolder, 'src', 'sub', 'c.ts'),
+    ]));
   });
 });

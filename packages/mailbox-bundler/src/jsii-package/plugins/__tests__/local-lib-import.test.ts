@@ -1,89 +1,85 @@
 import { build }                                   from 'esbuild';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'fs/promises';
 import { tmpdir }                                  from 'os';
-import { dirname, join }                           from 'path';
+import { join }                                    from 'path';
 
 import { localLibImportPlugin }                    from '../local-lib-import';
 
-interface FixtureFile {
-  readonly path:    string;
-  readonly content: string;
-}
+import { StubPluginBuild }                         from './stub-plugin-build';
 
-let root: string;
-let packageFolder: string;
-
-async function writeFixtures(files: FixtureFile[]): Promise<void> {
-  for (const file of files) {
-    const target = join(root, file.path);
-    await mkdir(dirname(target), { recursive: true });
-    await writeFile(target, file.content);
-  }
-}
-
-async function bundleFrom(entryPath: string): Promise<string> {
-  const result = await build({
-    entryPoints: [entryPath],
-    bundle:      true,
-    write:       false,
-    platform:    'node',
-    format:      'cjs',
-    plugins:     [localLibImportPlugin(packageFolder)],
-  });
-  return result.outputFiles.map(file => file.text).join('\n');
-}
-
-beforeEach(async () => {
-  root          = await realpath(await mkdtemp(join(tmpdir(), 'local-lib-import-test-')));
-  packageFolder = join(root, 'mailbox');
-  await writeFixtures([
-    { path: 'mailbox/src/entry.js',                content: "import { h } from './helper.js';\nconsole.log(h);" },
-    { path: 'mailbox/src/helper.js',                content: "module.exports = { h: 'HELPER_MARKER' };" },
-    { path: 'outside/entry.js',                     content: "import { h } from '../mailbox/src/helper.js';\nconsole.log(h);" },
-    { path: 'mailbox-cdk-shared/entry.js',          content: "import { s } from './helper.js';\nconsole.log(s);" },
-    { path: 'mailbox-cdk-shared/helper.js',         content: "module.exports = { s: 'SIBLING_HELPER_MARKER' };" },
-    { path: 'node_modules/plain-lib/index.js',      content: "module.exports = { p: 'PLAIN_LIB_MARKER' };" },
-  ]);
-});
-
-afterEach(async () => {
-  await rm(root, { recursive: true, force: true });
-});
+const stubPackageFolder = '/r/mailbox';
 
 describe('localLibImportPlugin', () => {
-  it('leaves a relative import made by a file in the package external', async () => {
-    const output = await bundleFrom(join(packageFolder, 'src', 'entry.js'));
+  describe('bundled output', () => {
+    let root: string;
+    let packageFolder: string;
 
-    expect(output).toContain('require("./helper.js")');
-    expect(output).not.toContain('HELPER_MARKER');
+    beforeEach(async () => {
+      root          = await realpath(await mkdtemp(join(tmpdir(), 'local-lib-import-test-')));
+      packageFolder = join(root, 'mailbox');
+      await mkdir(join(packageFolder, 'src'), { recursive: true });
+      await writeFile(join(packageFolder, 'src', 'entry.js'), "import { h } from './helper.js';\nconsole.log(h);");
+      await writeFile(join(packageFolder, 'src', 'helper.js'), "module.exports = { h: 'HELPER_MARKER' };");
+    });
+
+    afterEach(async () => {
+      await rm(root, { recursive: true, force: true });
+    });
+
+    it('leaves a relative import made by a file in the package external', async () => {
+      const result = await build({
+        entryPoints: [join(packageFolder, 'src', 'entry.js')],
+        bundle:      true,
+        write:       false,
+        platform:    'node',
+        format:      'cjs',
+        plugins:     [localLibImportPlugin(packageFolder)],
+      });
+      const output = result.outputFiles.map(file => file.text).join('\n');
+
+      expect(output).toContain('require("./helper.js")');
+      expect(output).not.toContain('HELPER_MARKER');
+    });
   });
 
-  it('bundles a relative import made by a file outside the package folder', async () => {
-    const output = await bundleFrom(join(root, 'outside', 'entry.js'));
+  describe('onResolve decisions', () => {
+    let stub: StubPluginBuild;
 
-    expect(output).toContain('HELPER_MARKER');
-  });
+    beforeEach(() => {
+      stub = new StubPluginBuild();
+      stub.registerPlugin(localLibImportPlugin(stubPackageFolder));
+    });
 
-  it('currently leaves a relative import of a sibling folder that shares the name prefix external (BND-15, pinned current behaviour)', async () => {
-    const output = await bundleFrom(join(root, 'mailbox-cdk-shared', 'entry.js'));
+    it('bundles a relative import made by a file outside the package folder', async () => {
+      await expect(stub.resolve({
+        kind:     'import-statement',
+        path:     '../mailbox/src/helper.js',
+        importer: '/r/outside/entry.js',
+      })).resolves.toBeUndefined();
+    });
 
-    expect(output).toContain('require("./helper.js")');
-    expect(output).not.toContain('SIBLING_HELPER_MARKER');
-  });
+    it('currently leaves a relative import of a sibling folder that shares the name prefix external (BND-15, pinned current behaviour)', async () => {
+      await expect(stub.resolve({
+        kind:     'import-statement',
+        path:     './helper.js',
+        importer: '/r/mailbox-cdk-shared/entry.js',
+      })).resolves.toEqual({ external: true });
+    });
 
-  it('does not judge non-relative imports', async () => {
-    await writeFile(join(packageFolder, 'src', 'plain.js'), "import { p } from 'plain-lib';\nconsole.log(p);");
+    it('does not judge non-relative imports', async () => {
+      await expect(stub.resolve({
+        kind:     'import-statement',
+        path:     'plain-lib',
+        importer: '/r/mailbox/src/plain.js',
+      })).resolves.toBeUndefined();
+    });
 
-    const output = await bundleFrom(join(packageFolder, 'src', 'plain.js'));
-
-    expect(output).toContain('PLAIN_LIB_MARKER');
-  });
-
-  it('does not judge require calls', async () => {
-    await writeFile(join(packageFolder, 'src', 'required.js'), "const { h } = require('./helper.js');\nconsole.log(h);");
-
-    const output = await bundleFrom(join(packageFolder, 'src', 'required.js'));
-
-    expect(output).toContain('HELPER_MARKER');
+    it('does not judge require calls', async () => {
+      await expect(stub.resolve({
+        kind:     'require-call',
+        path:     './helper.js',
+        importer: '/r/mailbox/src/required.js',
+      })).resolves.toBeUndefined();
+    });
   });
 });
