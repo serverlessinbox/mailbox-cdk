@@ -6,7 +6,7 @@ import { jsiiIgnorePlugin }             from './plugins/jsii-ignore';
 import { localLibImportPlugin }         from './plugins/local-lib-import';
 import { typescriptDeclarationsPlugin } from './plugins/typescript-declarations';
 
-const sourcesWithoutDeclarationsGlob = 'src/**/*!(.d).ts';
+const sourcesWithoutDeclarationsGlob = 'src/**/!(*.d).ts';
 
 /**
  * Bundles the TypeScript sources of a jsii package into its `lib/` folder, leaving jsii packages

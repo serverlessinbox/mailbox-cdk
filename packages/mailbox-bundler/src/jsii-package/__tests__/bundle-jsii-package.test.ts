@@ -26,6 +26,7 @@ const sourceFixtures: FixtureFile[] = [
   { path: 'src/a.ts',           content: "export const a = 'A';" },
   { path: 'src/sub/c.ts',       content: "export const c = 'C';" },
   { path: 'src/generated/g.ts', content: "export const g = 'G';" },
+  { path: 'src/types.d.ts',     content: 'export declare const t: string;' },
 ];
 
 let packageFolder: string;
@@ -69,5 +70,14 @@ describe('bundleJsiiPackage', () => {
       join(packageFolder, 'src', 'a.ts'),
       join(packageFolder, 'src', 'sub', 'c.ts'),
     ]));
+  });
+
+  it('leaves declaration files out of the entry points', async () => {
+    jest.mocked(build).mockResolvedValueOnce(emptyBuildResult);
+
+    await bundleJsiiPackage(packageFolder, []);
+
+    const [options] = jest.mocked(build).mock.calls[0];
+    expect(options.entryPoints).not.toContain(join(packageFolder, 'src', 'types.d.ts'));
   });
 });

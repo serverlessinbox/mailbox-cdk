@@ -26,19 +26,35 @@ describe('localLibImportPlugin', () => {
       await rm(root, { recursive: true, force: true });
     });
 
-    it('leaves a relative import made by a file in the package external', async () => {
+    async function bundleFrom(entry: string): Promise<string> {
       const result = await build({
-        entryPoints: [join(packageFolder, 'src', 'entry.js')],
+        entryPoints: [entry],
         bundle:      true,
         write:       false,
         platform:    'node',
         format:      'cjs',
         plugins:     [localLibImportPlugin(packageFolder)],
       });
-      const output = result.outputFiles.map(file => file.text).join('\n');
+      return result.outputFiles.map(file => file.text).join('\n');
+    }
+
+    it('leaves a relative import made by a file in the package external', async () => {
+      const output = await bundleFrom(join(packageFolder, 'src', 'entry.js'));
 
       expect(output).toContain('require("./helper.js")');
       expect(output).not.toContain('HELPER_MARKER');
+    });
+
+    it('bundles a relative import made by a sibling folder that shares the name prefix', async () => {
+      const siblingFolder = join(root, 'mailbox-cdk-shared');
+      await mkdir(siblingFolder, { recursive: true });
+      await writeFile(join(siblingFolder, 'entry.js'), "import { h } from './helper.js';\nconsole.log(h);");
+      await writeFile(join(siblingFolder, 'helper.js'), "module.exports = { h: 'SIBLING_HELPER_MARKER' };");
+
+      const output = await bundleFrom(join(siblingFolder, 'entry.js'));
+
+      expect(output).toContain('SIBLING_HELPER_MARKER');
+      expect(output).not.toContain('require("./helper.js")');
     });
   });
 
@@ -56,14 +72,6 @@ describe('localLibImportPlugin', () => {
         path:     '../mailbox/src/helper.js',
         importer: '/r/outside/entry.js',
       })).resolves.toBeUndefined();
-    });
-
-    it('currently leaves a relative import of a sibling folder that shares the name prefix external (BND-15, pinned current behaviour)', async () => {
-      await expect(stub.resolve({
-        kind:     'import-statement',
-        path:     './helper.js',
-        importer: '/r/mailbox-cdk-shared/entry.js',
-      })).resolves.toEqual({ external: true });
     });
 
     it('does not judge non-relative imports', async () => {
