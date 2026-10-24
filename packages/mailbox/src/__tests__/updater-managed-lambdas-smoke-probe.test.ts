@@ -31,6 +31,12 @@ import { createMockAuthProvider, TEST_ARTIFACT_CONTEXT } from './mailbox-helpers
 
 const GO_PACKAGE = 'mailbox-go';
 
+/**
+ * Synthesis and probing load and run every managed handler; measured at about 2 s for the whole suite alone
+ * and about 1.2 s for the probing test under six parallel copies, so the 5 s Jest default is too tight.
+ */
+const SUITE_TIMEOUT_MILLIS = 30_000;
+
 /** The source folders that hold the TypeScript handlers of the Lambdas of this repository, by bundle entry. */
 const TS_LAMBDA_ROOTS = [
   path.join(__dirname, '..', 'runtime'),
@@ -86,7 +92,7 @@ describe('Lambdas the artifact updater manages', () => {
 
   beforeAll(() => {
     managed = [...managedLambdasOf(synthesizeMailbox()), ...managedLambdasOf(synthesizeEdge())];
-  });
+  }, SUITE_TIMEOUT_MILLIS);
 
   beforeEach(() => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -147,7 +153,7 @@ describe('Lambdas the artifact updater manages', () => {
     }
 
     expect(failures).toEqual([]);
-  });
+  }, SUITE_TIMEOUT_MILLIS);
 
   it('include the jmap-blob-download, which answers the probe', async () => {
     const lambda = managed.find((candidate) => candidate.artifactName === 'jmap-blob-download');
@@ -159,5 +165,5 @@ describe('Lambdas the artifact updater manages', () => {
     const outcome = await probeManagedLambda(lambda, source);
 
     expect(outcome).toMatchObject({ answered: true, handlerReached: true });
-  });
+  }, SUITE_TIMEOUT_MILLIS);
 });
