@@ -7,7 +7,7 @@ import type { IDataTable }        from '../tables/data-tables';
 import { IWebSocketTable }        from '../tables/websocket-table';
 
 /**
- * The connections table the disconnect handler writes and the config table it reads. The caller creates
+ * The connections table the disconnect handler removes connections from and the config table it reads. The caller creates
  * both.
  */
 export interface WebSocketDisconnectLambdaProps {
@@ -31,7 +31,7 @@ export class WebSocketDisconnectLambda extends GoLambda {
       },
     });
 
-    props.connectionsTable.grantReadWrite(this);
+    props.connectionsTable.grantRemoveConnection(this);
     props.configTable.grantRead(this);
   }
 }

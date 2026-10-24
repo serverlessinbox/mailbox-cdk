@@ -1,7 +1,7 @@
 /// <reference types="jest" />
 
 /**
- * WebSocketBroadcastLambda wiring: the read-write grant on the connections table, the endpoint it reads from the
+ * WebSocketBroadcastLambda wiring: the Query grant on the connections table and its index, the remove grant it takes for stale-connection cleanup, the endpoint it reads from the
  * push API, and the grantManageConnections call with the function itself as grantee. The push API is a jest fake,
  * so this suite pins only what the broadcast Lambda passes to it.
  */
@@ -20,6 +20,19 @@ import { WebSocketBroadcastLambda }             from '../websocket-broadcast-lam
 import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
 
 const FAKE_MANAGEMENT_ENDPOINT = 'https://fake.execute-api.us-west-2.amazonaws.com/prod';
+
+interface PolicyResource {
+  readonly Type:        string;
+  readonly Properties?: { readonly PolicyDocument?: { readonly Statement?: unknown[] } };
+}
+
+function statementsOnTable(template: Template, tableId: string): unknown[] {
+  const resources = template.toJSON().Resources as Record<string, PolicyResource>;
+  return Object.values(resources)
+    .filter((resource) => resource.Type === 'AWS::IAM::Policy')
+    .flatMap((resource) => resource.Properties?.PolicyDocument?.Statement ?? [])
+    .filter((statement) => JSON.stringify(statement).includes(tableId));
+}
 
 describe('WebSocketBroadcastLambda connections-table and push-API wiring', () => {
   let stack: cdk.Stack;
@@ -54,23 +67,22 @@ describe('WebSocketBroadcastLambda connections-table and push-API wiring', () =>
     template = Template.fromStack(stack);
   });
 
-  it('grants exactly the read-write actions, Allow, on the connections table + index resources', () => {
-    const expectedResource = [
-      { 'Fn::GetAtt': [tableId, 'Arn'] },
-      { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
-    ];
-
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: {
-        Statement: Match.arrayWith([
-          Match.objectEquals({
-            Action:   Match.arrayEquals(['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem']),
-            Effect:   'Allow',
-            Resource: expectedResource,
-          }),
-        ]),
+  it('grants exactly two statements on the connections table: Query on the table and its index, and Query and DeleteItem on the table', () => {
+    expect(statementsOnTable(template, tableId)).toEqual([
+      {
+        Action:   'dynamodb:Query',
+        Effect:   'Allow',
+        Resource: [
+          { 'Fn::GetAtt': [tableId, 'Arn'] },
+          { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
+        ],
       },
-    });
+      {
+        Action:   ['dynamodb:Query', 'dynamodb:DeleteItem'],
+        Effect:   'Allow',
+        Resource: { 'Fn::GetAtt': [tableId, 'Arn'] },
+      },
+    ]);
   });
 
   it('calls grantManageConnections on the push API once, with the function itself as the grantee', () => {

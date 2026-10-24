@@ -5,14 +5,20 @@ import { RemovalPolicy }                from 'aws-cdk-lib';
 import { Construct }                    from 'constructs';
 
 /**
- * Read-write access to the WebSocket connections table without exposing the underlying DynamoDB
- * table. A holder can look up the table name and request a scoped grant (`grantReadWrite`); it
- * cannot reach the raw CDK table construct through this interface.
+ * Access to the WebSocket connections table without exposing the underlying DynamoDB table. A
+ * holder can look up the table name and request one of three scoped grants, each named for what
+ * the grantee does: `grantStoreConnection` (connect, message), `grantRemoveConnection` (disconnect)
+ * and `grantBroadcast` (broadcast). It cannot reach the raw CDK table construct through this
+ * interface.
  */
 export interface IWebSocketTable {
   readonly tableName: string;
 
-  grantReadWrite(grantee: IGrantable): void;
+  grantStoreConnection(grantee: IGrantable): void;
+
+  grantRemoveConnection(grantee: IGrantable): void;
+
+  grantBroadcast(grantee: IGrantable): void;
 }
 
 /**
@@ -25,7 +31,7 @@ export interface IWebSocketTable {
  *
  * Pay-per-request billing, removed along with the stack, point-in-time recovery disabled.
  * Physical table name is stack-derived and unique per position and install (`StackNamedTable`).
- * `grantReadWrite` exposes only the specific DynamoDB actions the caller needs (no `Scan` or PartiQL).
+ * Each grant exposes only the DynamoDB actions its caller performs (no `Scan`, `UpdateItem` or PartiQL).
  *
  * Not responsible for the WebSocket API, its Lambdas, or broadcast logic.
  */
@@ -51,22 +57,35 @@ export class WebSocketTable extends StackNamedTable implements IWebSocketTable {
     });
   }
 
-  public grantReadWrite(grantee: IGrantable): void {
+  public grantStoreConnection(grantee: IGrantable): void {
     Grant.addToPrincipal({
       grantee,
       actions:      [
         'dynamodb:GetItem',
-        'dynamodb:BatchGetItem',
-        'dynamodb:Query',
         'dynamodb:PutItem',
-        'dynamodb:UpdateItem',
-        'dynamodb:DeleteItem',
       ],
-      resourceArns: this.tableAndIndexArns(),
+      resourceArns: [this.tableArn],
     });
   }
 
-  private tableAndIndexArns(): string[] {
-    return [this.tableArn, `${this.tableArn}/index/*`];
+  public grantRemoveConnection(grantee: IGrantable): void {
+    Grant.addToPrincipal({
+      grantee,
+      actions:      [
+        'dynamodb:Query',
+        'dynamodb:DeleteItem',
+      ],
+      resourceArns: [this.tableArn],
+    });
+  }
+
+  public grantBroadcast(grantee: IGrantable): void {
+    Grant.addToPrincipal({
+      grantee,
+      actions:      [
+        'dynamodb:Query',
+      ],
+      resourceArns: [this.tableArn, `${this.tableArn}/index/*`],
+    });
   }
 }

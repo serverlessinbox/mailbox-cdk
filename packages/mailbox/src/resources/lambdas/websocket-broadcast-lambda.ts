@@ -8,7 +8,7 @@ import type { IDataTable }        from '../tables/data-tables';
 import { IWebSocketTable }        from '../tables/websocket-table';
 
 /**
- * The connections table it reads, the config table it reads, the WebSocket push API it posts to and the
+ * The connections table it queries and prunes, the config table it reads, the WebSocket push API it posts to and the
  * artifact resolver for its code. The caller creates the tables and the push API.
  */
 export interface WebSocketBroadcastLambdaProps {
@@ -34,7 +34,8 @@ export class WebSocketBroadcastLambda extends GoLambda {
       },
     });
 
-    props.connectionsTable.grantReadWrite(this);
+    props.connectionsTable.grantBroadcast(this);
+    props.connectionsTable.grantRemoveConnection(this);
     props.configTable.grantRead(this);
 
     props.webSocketPushApi.grantManageConnections(this);

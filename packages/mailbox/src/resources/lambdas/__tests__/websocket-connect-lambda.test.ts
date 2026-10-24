@@ -1,10 +1,11 @@
 /// <reference types="jest" />
 
 /**
- * WebSocketConnectLambda grants the read-write actions on the connections table and its index, and nothing else.
+ * WebSocketConnectLambda stores connections: its only policy statement that touches the connections table
+ * grants GetItem and PutItem on the table itself, with no index.
  */
 
-import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Template }                             from 'aws-cdk-lib/assertions';
 import { AttributeType, Table }                 from 'aws-cdk-lib/aws-dynamodb';
 import type * as cdk                            from 'aws-cdk-lib';
 
@@ -14,6 +15,19 @@ import { WebSocketTable }                       from '../../tables/websocket-tab
 import { WebSocketConnectLambda }               from '../websocket-connect-lambda';
 
 import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+
+interface PolicyResource {
+  readonly Type:        string;
+  readonly Properties?: { readonly PolicyDocument?: { readonly Statement?: unknown[] } };
+}
+
+function statementsOnTable(template: Template, tableId: string): unknown[] {
+  const resources = template.toJSON().Resources as Record<string, PolicyResource>;
+  return Object.values(resources)
+    .filter((resource) => resource.Type === 'AWS::IAM::Policy')
+    .flatMap((resource) => resource.Properties?.PolicyDocument?.Statement ?? [])
+    .filter((statement) => JSON.stringify(statement).includes(tableId));
+}
 
 describe('WebSocketConnectLambda connections-table grant', () => {
   let stack: cdk.Stack;
@@ -39,22 +53,13 @@ describe('WebSocketConnectLambda connections-table grant', () => {
     template = Template.fromStack(stack);
   });
 
-  it('grants exactly the read-write actions, Allow, on the connections table + index resources', () => {
-    const expectedResource = [
-      { 'Fn::GetAtt': [tableId, 'Arn'] },
-      { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
-    ];
-
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: {
-        Statement: Match.arrayWith([
-          Match.objectEquals({
-            Action:   Match.arrayEquals(['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem']),
-            Effect:   'Allow',
-            Resource: expectedResource,
-          }),
-        ]),
+  it('grants exactly one statement on the connections table: GetItem and PutItem on the table, no index', () => {
+    expect(statementsOnTable(template, tableId)).toEqual([
+      {
+        Action:   ['dynamodb:GetItem', 'dynamodb:PutItem'],
+        Effect:   'Allow',
+        Resource: { 'Fn::GetAtt': [tableId, 'Arn'] },
       },
-    });
+    ]);
   });
 });

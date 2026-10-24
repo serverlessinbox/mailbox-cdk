@@ -81,31 +81,73 @@ describe('WebSocketTable', () => {
     expect(stack.resolve(sut.tableName)).toEqual({ Ref: stack.getLogicalId(defaultCfnResource(sut)) });
   });
 
-  it('grantReadWrite grants exactly one Allow statement with the read+write actions', () => {
+  it('grantStoreConnection grants exactly one Allow statement with GetItem and PutItem on the table only', () => {
     const stack = createStack();
     const sut   = new WebSocketTable(stack, 'websocket-table');
     const role  = new iam.Role(stack, 'TestRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
 
-    sut.grantReadWrite(role);
+    sut.grantStoreConnection(role);
 
-    const tableId  = stack.getLogicalId(defaultCfnResource(sut));
-    const template = Template.fromStack(stack);
+    const tableId = stack.getLogicalId(defaultCfnResource(sut));
 
-    template.hasResourceProperties('AWS::IAM::Policy', {
+    Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
       Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(defaultCfnResource(role)) }]),
       PolicyDocument: {
         Statement: Match.arrayEquals([
           Match.objectEquals({
-            Action:   [
-              'dynamodb:GetItem',
-              'dynamodb:BatchGetItem',
-              'dynamodb:Query',
-              'dynamodb:PutItem',
-              'dynamodb:UpdateItem',
-              'dynamodb:DeleteItem',
-            ],
+            Action:   ['dynamodb:GetItem', 'dynamodb:PutItem'],
+            Effect:   'Allow',
+            Resource: { 'Fn::GetAtt': [tableId, 'Arn'] },
+          }),
+        ]),
+      },
+    });
+  });
+
+  it('grantRemoveConnection grants exactly one Allow statement with Query and DeleteItem on the table only', () => {
+    const stack = createStack();
+    const sut   = new WebSocketTable(stack, 'websocket-table');
+    const role  = new iam.Role(stack, 'TestRole', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+    });
+
+    sut.grantRemoveConnection(role);
+
+    const tableId = stack.getLogicalId(defaultCfnResource(sut));
+
+    Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(defaultCfnResource(role)) }]),
+      PolicyDocument: {
+        Statement: Match.arrayEquals([
+          Match.objectEquals({
+            Action:   ['dynamodb:Query', 'dynamodb:DeleteItem'],
+            Effect:   'Allow',
+            Resource: { 'Fn::GetAtt': [tableId, 'Arn'] },
+          }),
+        ]),
+      },
+    });
+  });
+
+  it('grantBroadcast grants exactly one Allow statement with Query only, on the table and its indexes', () => {
+    const stack = createStack();
+    const sut   = new WebSocketTable(stack, 'websocket-table');
+    const role  = new iam.Role(stack, 'TestRole', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+    });
+
+    sut.grantBroadcast(role);
+
+    const tableId = stack.getLogicalId(defaultCfnResource(sut));
+
+    Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(defaultCfnResource(role)) }]),
+      PolicyDocument: {
+        Statement: Match.arrayEquals([
+          Match.objectEquals({
+            Action:   'dynamodb:Query',
             Effect:   'Allow',
             Resource: [
               { 'Fn::GetAtt': [tableId, 'Arn'] },

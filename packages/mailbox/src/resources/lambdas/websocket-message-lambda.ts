@@ -38,7 +38,7 @@ export class WebSocketMessageLambda extends GoLambda {
       },
     });
 
-    props.connectionsTable.grantReadWrite(this);
+    props.connectionsTable.grantStoreConnection(this);
     props.configTable.grantRead(this);
     props.itemTable.grantRead(this);
 
