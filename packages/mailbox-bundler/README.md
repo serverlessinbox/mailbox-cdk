@@ -36,7 +36,7 @@ mailbox-bundler lambda-zip --entry src/handler.ts --out dist/lambdas/handler.zip
 Bundles a jsii construct package: `src/**/*.ts` into `lib/`, with jsii packages and the package's
 own relative imports left external. Then it emits the `.d.ts` files with `tsc --emitDeclarationOnly`;
 a non-zero exit fails the build.
-Paths listed in the package's jsii `excludeTypescript` are skipped.
+Paths listed in the package's jsii `excludeTypescript` are skipped, and so are test folders (`__tests__`).
 
 | Argument | Meaning |
 |---|---|

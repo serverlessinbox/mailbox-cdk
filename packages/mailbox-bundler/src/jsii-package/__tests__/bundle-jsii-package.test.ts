@@ -27,6 +27,8 @@ const sourceFixtures: FixtureFile[] = [
   { path: 'src/sub/c.ts',       content: "export const c = 'C';" },
   { path: 'src/generated/g.ts', content: "export const g = 'G';" },
   { path: 'src/types.d.ts',     content: 'export declare const t: string;' },
+  { path: 'src/__tests__/a.test.ts',     content: "export const testA = 'A';" },
+  { path: 'src/sub/__tests__/c.test.ts', content: "export const testC = 'C';" },
 ];
 
 let packageFolder: string;
@@ -56,10 +58,12 @@ describe('bundleJsiiPackage', () => {
 
     expect(existsSync(join(packageFolder, 'lib', 'a.js'))).toBe(true);
     expect(existsSync(join(packageFolder, 'lib', 'sub', 'c.js'))).toBe(true);
+    expect(existsSync(join(packageFolder, 'lib', '__tests__', 'a.test.js'))).toBe(false);
+    expect(existsSync(join(packageFolder, 'lib', 'sub', '__tests__', 'c.test.js'))).toBe(false);
     expect(runWithInheritedStdio).toHaveBeenCalledTimes(1);
   });
 
-  it('passes the source glob minus the jsii excludes to esbuild entry points', async () => {
+  it('leaves the jsii excludes and test folders out of the entry points', async () => {
     jest.mocked(build).mockResolvedValueOnce(emptyBuildResult);
 
     await bundleJsiiPackage(packageFolder, ['src/generated/**']);
