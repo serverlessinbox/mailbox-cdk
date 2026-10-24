@@ -1,10 +1,10 @@
 import type { IArtifactResolver }            from '@serverlessinbox/artifact-registry-cdk';
 import { applyServerlessInboxComponentTag }  from '@serverlessinbox/mailbox-cdk-shared';
 import type * as acm                         from 'aws-cdk-lib/aws-certificatemanager';
-import type { IGrantable }                   from 'aws-cdk-lib/aws-iam';
 import { Construct }                         from 'constructs';
 import type { IDependable }                  from 'constructs';
 
+import type { IUiContentUpdater }            from '../../contracts/ui-content-updater';
 import type { MailboxOAuthClients }          from '../../mailbox-outputs';
 import type { MailboxCertificateOverrides }  from '../../mailbox-props';
 import type { IAuditEventsQueue }            from '../../resources/queues/audit-events-queue';
@@ -121,7 +121,7 @@ export class UiSection extends Construct {
       artifactResolver: props.artifactResolver,
     });
 
-    this.grantUiContentDeployIfGrantable(adminUi, props.artifactResolver);
+    this.enableUiContentUpdateIfSupported(adminUi, props.artifactResolver);
 
     return adminUi;
   }
@@ -138,7 +138,7 @@ export class UiSection extends Construct {
       dependsOn:        [props.auth.oauthClientsProvisioned],
     });
 
-    this.grantUiContentDeployIfGrantable(webmailUi, props.artifactResolver);
+    this.enableUiContentUpdateIfSupported(webmailUi, props.artifactResolver);
 
     return webmailUi;
   }
@@ -174,18 +174,17 @@ export class UiSection extends Construct {
   }
 
   /**
-   * Grants `resolver` write access to `ui`'s own content bucket, when `resolver` is capable of
-   * being granted at all. `resolver` is typed `IArtifactResolver`, which carries no IAM principal,
-   * so grantability is a runtime capability: a resolver without a principal needs no grant and is
-   * skipped rather than erroring.
+   * Lets `resolver` update `ui`'s content when the resolver offers that. `resolver` is typed
+   * `IArtifactResolver`, which has no content update, so a resolver without one needs no grant and
+   * is skipped.
    */
-  private grantUiContentDeployIfGrantable(ui: MailboxUi, resolver: IArtifactResolver): void {
-    if (this.isGrantable(resolver)) {
-      ui.grantContentDeploy(resolver);
+  private enableUiContentUpdateIfSupported(ui: MailboxUi, resolver: IArtifactResolver): void {
+    if (this.isUiContentUpdater(resolver)) {
+      resolver.enableUiContentUpdate(ui);
     }
   }
 
-  private isGrantable(resolver: IArtifactResolver): resolver is IArtifactResolver & IGrantable {
-    return 'grantPrincipal' in resolver;
+  private isUiContentUpdater(resolver: IArtifactResolver): resolver is IArtifactResolver & IUiContentUpdater {
+    return 'enableUiContentUpdate' in resolver && typeof resolver.enableUiContentUpdate === 'function';
   }
 }

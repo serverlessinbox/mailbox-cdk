@@ -21,6 +21,7 @@ import { CfnCondition, Duration, Fn }                                       from
 import * as t                                                               from 'typanion';
 
 import { isTemplateValue, resourcesOfType }                                 from '../../../__tests__/template-resources';
+import { Granularity }                                                      from '../../../contracts/granularity';
 import { load }                                                             from '../../../runtime/artifact-updater/config';
 import { ArtifactUpdaterLambda }                                            from '../artifact-updater-lambda';
 
@@ -69,7 +70,7 @@ describe('ArtifactUpdaterLambda', () => {
     new ArtifactUpdaterLambda(stack, 'artifact-updater', {
       artifactResolver,
       distTag:            'stable',
-      granularity:        'minor',
+      granularity:        Granularity.MINOR,
       rootStackTagValue:  ROOT_STACK,
       rootStackId:        ROOT_STACK_ID,
       artifactBucketBase: BUCKET_BASE,

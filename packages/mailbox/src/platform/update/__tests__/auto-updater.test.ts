@@ -11,12 +11,14 @@ import { getAttLogicalId, statementsForRole }             from '@serverlessinbox
 import { ServerlessInboxTagKeys }                         from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                                from 'aws-cdk-lib/assertions';
 import { PolicyStatement }                                from 'aws-cdk-lib/aws-iam';
+import type { IGrantable }                                from 'aws-cdk-lib/aws-iam';
 import type { Stack }                                     from 'aws-cdk-lib';
 import { Duration }                                       from 'aws-cdk-lib';
 import * as t                                             from 'typanion';
 
 import { isTemplateValue, resourcesOfType }               from '../../../__tests__/template-resources';
 import type { TemplateResource }                          from '../../../__tests__/template-resources';
+import { Granularity }                                    from '../../../contracts/granularity';
 import type { AdminApiAddonContext }                      from '../../../core/apis/addons';
 import { newInlineFunction, newTestStack }                from '../../__tests__/platform-helpers';
 import { AutoUpdater }                                    from '../auto-updater';
@@ -82,7 +84,7 @@ describe('AutoUpdater', () => {
     });
 
     it('passes the given dist-tag and granularity to the updater', () => {
-      const template = Template.fromStack(build({ distTag: 'beta', granularity: 'major' }).stack);
+      const template = Template.fromStack(build({ distTag: 'beta', granularity: Granularity.MAJOR }).stack);
 
       expect(updaterOf(template).properties.Environment?.Variables).toMatchObject({ DIST_TAG: 'beta', GRANULARITY: 'major' });
     });
@@ -117,13 +119,13 @@ describe('AutoUpdater', () => {
     });
 
     it('compares the given granularity with pinned', () => {
-      const template = Template.fromStack(build({ granularity: 'pinned' }).stack);
+      const template = Template.fromStack(build({ granularity: Granularity.PINNED }).stack);
 
       expect(Object.values(conditionsOf(template))).toEqual([{ 'Fn::Not': [{ 'Fn::Equals': ['pinned', 'pinned'] }] }]);
     });
 
     it('keeps the updater function ungated, so pinned stacks can still invoke it', () => {
-      const template = Template.fromStack(build({ granularity: 'pinned' }).stack);
+      const template = Template.fromStack(build({ granularity: Granularity.PINNED }).stack);
 
       template.hasResource('AWS::Lambda::Function', {
         Condition:  Match.absent(),
@@ -167,6 +169,18 @@ describe('AutoUpdater', () => {
         Effect:   'Allow',
         Resource: 'arn:aws:s3:::a-bucket/*',
       });
+    });
+  });
+
+  describe('enableUiContentUpdate', () => {
+    it('grants the UI content deploy to the updater role', () => {
+      const { autoUpdater }    = build();
+      const grantContentDeploy = jest.fn<void, [IGrantable]>();
+
+      autoUpdater.enableUiContentUpdate({ grantContentDeploy });
+
+      expect(grantContentDeploy).toHaveBeenCalledTimes(1);
+      expect(grantContentDeploy).toHaveBeenCalledWith(autoUpdater);
     });
   });
 

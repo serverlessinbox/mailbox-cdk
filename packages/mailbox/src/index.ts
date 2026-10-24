@@ -95,5 +95,6 @@ export type {
 // Artifact resolution — the auto-updating resolver and its settings
 export { AutoUpdater } from './platform/update/auto-updater';
 export type { AutoUpdaterProps } from './platform/update/auto-updater';
-export type { Granularity } from './contracts/granularity';
+export { Granularity } from './contracts/granularity';
+export type { IUiContentDeployTarget, IUiContentUpdater } from './contracts/ui-content-updater';
 

@@ -17,6 +17,7 @@ import * as cdk                                                   from 'aws-cdk-
 import { App, BootstraplessSynthesizer, CfnResource, TagManager } from 'aws-cdk-lib';
 import { DependencyGroup }                                        from 'constructs';
 
+import type { IUiContentDeployTarget }                            from '../../../contracts/ui-content-updater';
 import { AuditEventsQueue }                                       from '../../../resources/queues/audit-events-queue';
 import { DataTable }                                              from '../../../resources/tables/data-tables';
 import type { IMailboxAuthProvider }                              from '../../auth/types';
@@ -140,21 +141,23 @@ describe('UiSection', () => {
     });
   });
 
-  it('grants the artifact resolver it is given content deploy on the Admin UI bucket when the resolver has a principal', () => {
-    const role = new iam.Role(stack, 'resolver-role', { assumedBy: new iam.AccountRootPrincipal() });
+  it('calls enableUiContentUpdate on the artifact resolver once per UI when the resolver offers it', () => {
+    const role                  = new iam.Role(stack, 'resolver-role', { assumedBy: new iam.AccountRootPrincipal() });
+    const enableUiContentUpdate = jest.fn((ui: IUiContentDeployTarget) => ui.grantContentDeploy(role));
 
     newSection({
       enableWebmailUi:  false,
-      artifactResolver: Object.assign(newResolver(), { grantPrincipal: role }),
+      artifactResolver: Object.assign(newResolver(), { enableUiContentUpdate }),
     });
 
+    expect(enableUiContentUpdate).toHaveBeenCalledTimes(1);
     Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
       PolicyDocument: { Statement: Match.arrayWith([Match.objectLike({ Action: Match.arrayWith(['s3:PutObject']) })]) },
       Roles:          [stack.resolve(role.roleName)],
     });
   });
 
-  it('builds the Admin UI without a grant when the artifact resolver has no principal', () => {
+  it('builds the Admin UI without a content update when the artifact resolver does not offer one', () => {
     const section = newSection({ enableWebmailUi: false });
 
     expect(section.adminUi).toBeDefined();

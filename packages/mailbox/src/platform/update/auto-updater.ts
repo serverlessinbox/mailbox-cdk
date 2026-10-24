@@ -6,7 +6,8 @@ import { Aws, Duration, Fn, Tags }                                              
 import * as cdk                                                                  from 'aws-cdk-lib';
 import { Construct, IConstruct }                                                 from 'constructs';
 
-import type { Granularity }                                                      from '../../contracts/granularity';
+import { Granularity }                                                           from '../../contracts/granularity';
+import type { IUiContentDeployTarget, IUiContentUpdater }                        from '../../contracts/ui-content-updater';
 import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider }     from '../../core/apis/addons';
 import { createMailboxPinnedResolver }                                           from '../../mailbox-pinned-resolver';
 import { ArtifactUpdaterLambda }                                                 from '../../resources/lambdas/artifact-updater-lambda';
@@ -30,17 +31,12 @@ export interface AutoUpdaterProps {
   readonly distTag?: string;
 
   /**
-   * How the updater follows new releases. The literal values are those of {@link Granularity}:
-   * `'major'`, `'minor'` or `'pinned'`. With `'pinned'` the post-deploy trigger and the schedule
-   * are not created, and the updater only runs when invoked from the admin API.
+   * How the updater follows new releases. With {@link Granularity.PINNED} the post-deploy trigger
+   * and the schedule are not created, and the updater only runs when invoked from the admin API.
    *
-   * Accepts a CloudFormation parameter token, so a stack parameter can switch tracking on and
-   * off at deploy time. The prop is typed `string` for that reason, so a literal that is not a
-   * {@link Granularity} value is not caught at compile time.
-   *
-   * @default 'minor'
+   * @default Granularity.MINOR
    */
-  readonly granularity?: string;
+  readonly granularity?: Granularity;
 
   /**
    * How often the updater checks for newer releases. Ignored when `granularity` is `'pinned'`,
@@ -65,7 +61,7 @@ export interface AutoUpdaterProps {
  * updater Lambda exists in every mode, so it can also be invoked from the admin API: pass this
  * construct in `MailboxProps.adminApiAddonProviders` to expose that.
  */
-export class AutoUpdater extends Construct implements IArtifactResolver, IAdminApiAddonProvider, iam.IGrantable {
+export class AutoUpdater extends Construct implements IArtifactResolver, IAdminApiAddonProvider, iam.IGrantable, IUiContentUpdater {
   /**
    * The IAM principal of the updater Lambda's role. The updater writes to resources it does not
    * create, such as a UI bucket; grant this principal on the target resource itself, scoped to
@@ -93,12 +89,11 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
     this.pinned   = createMailboxPinnedResolver(this);
     this.location = this.pinned.location;
 
-    // cast: the prop is a string so that a CloudFormation parameter token is accepted.
-    const granularity = (props.granularity ?? 'minor') as Granularity;
+    const granularity = props.granularity ?? Granularity.MINOR;
 
     // False for 'pinned': the tracked triggers are then not created, while the updater Lambda stays.
     const isTracking = new cdk.CfnCondition(this, 'is-tracking', {
-      expression: Fn.conditionNot(Fn.conditionEquals(granularity, 'pinned')),
+      expression: Fn.conditionNot(Fn.conditionEquals(granularity, Granularity.PINNED)),
     });
 
     // The updater Lambda exists under 'pinned' too, so it stays invocable from the admin API.
@@ -185,6 +180,16 @@ export class AutoUpdater extends Construct implements IArtifactResolver, IAdminA
    */
   addDeployEndDependency(dependency: IConstruct): void {
     this.trackedTriggers.waitFor(dependency);
+  }
+
+  /**
+   * Gives the updater's role write access to the content of `ui`, so the updater can deploy the
+   * UI's release content on updates.
+   *
+   * @param ui The UI whose content bucket the updater writes to.
+   */
+  enableUiContentUpdate(ui: IUiContentDeployTarget): void {
+    ui.grantContentDeploy(this);
   }
 
   private excludeFromAutoUpdate(updater: lambda.IFunction): void {
