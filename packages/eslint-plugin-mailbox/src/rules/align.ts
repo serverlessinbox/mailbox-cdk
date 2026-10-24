@@ -28,6 +28,36 @@ interface AlignedPair {
   right: TSESTree.Node;
 }
 
+export const align = createRule({
+  name:           'align',
+  meta:           {
+    type:     'layout',
+    fixable:  'whitespace',
+    docs:     {
+      description: 'align = and : in groups of consecutive lines',
+    },
+    schema:   [],
+    messages: {
+      alignEquals: 'Align this "=" with the declarations and assignments on the lines directly above and below.',
+      alignValue:  'Align this value with the members on the lines directly above and below.',
+    },
+  },
+  defaultOptions: [],
+  create(context) {
+    const checker = new AlignChecker(context);
+
+    return {
+      Program:          (node) => checker.checkStatements(node.body),
+      BlockStatement:   (node) => checker.checkStatements(node.body),
+      StaticBlock:      (node) => checker.checkStatements(node.body),
+      TSModuleBlock:    (node) => checker.checkStatements(node.body),
+      ObjectExpression: (node) => checker.checkMembers(node.properties),
+      TSInterfaceBody:  (node) => checker.checkMembers(node.body),
+      TSTypeLiteral:    (node) => checker.checkMembers(node.members),
+    };
+  },
+});
+
 class AlignChecker {
   private readonly context: AlignContext;
 
@@ -161,33 +191,3 @@ class AlignChecker {
     return token.type === AST_TOKEN_TYPES.Punctuator && token.value === value;
   }
 }
-
-export const align = createRule({
-  name:           'align',
-  meta:           {
-    type:     'layout',
-    fixable:  'whitespace',
-    docs:     {
-      description: 'align = and : in groups of consecutive lines',
-    },
-    schema:   [],
-    messages: {
-      alignEquals: 'Align this "=" with the declarations and assignments on the lines directly above and below.',
-      alignValue:  'Align this value with the members on the lines directly above and below.',
-    },
-  },
-  defaultOptions: [],
-  create(context) {
-    const checker = new AlignChecker(context);
-
-    return {
-      Program:          (node) => checker.checkStatements(node.body),
-      BlockStatement:   (node) => checker.checkStatements(node.body),
-      StaticBlock:      (node) => checker.checkStatements(node.body),
-      TSModuleBlock:    (node) => checker.checkStatements(node.body),
-      ObjectExpression: (node) => checker.checkMembers(node.properties),
-      TSInterfaceBody:  (node) => checker.checkMembers(node.body),
-      TSTypeLiteral:    (node) => checker.checkMembers(node.members),
-    };
-  },
-});

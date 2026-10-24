@@ -1,16 +1,15 @@
-import { align }      from './rules/align';
-import { planLabels } from './rules/plan-labels';
+import { recommendedConfig } from './configs/recommended-config';
+import { mailboxRules }      from './rules/mailbox-rules';
 
 const plugin = {
   meta:    {
     name:    '@serverlessinbox/eslint-plugin-mailbox',
     version: '0.0.0',
   },
-  rules:   {
-    align,
-    'plan-labels': planLabels,
+  rules:   mailboxRules,
+  configs: {
+    recommended: recommendedConfig,
   },
-  configs: {},
 };
 
 export = plugin;

@@ -6849,7 +6849,6 @@ __metadata:
     clipanion: "npm:^4.0.0-rc.2"
     constructs: "npm:^10.5.0"
     eslint: "npm:^10"
-    eslint-plugin-arca: "npm:^0.17.0"
     jest: "npm:^29.0.0"
     ts-jest: "npm:^29.0.0"
     ts-node: "npm:^10.9.2"
