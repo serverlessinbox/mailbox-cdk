@@ -61,7 +61,12 @@ export function recommendedConfig(options: RecommendedConfigOptions): TSESLint.F
     {
       files:   [...sourceRuleScope.files],
       ignores: [...sourceRuleScope.ignores],
-      rules:   { 'mailbox/resource-kind-home': 'error' },
+      rules:   {
+        'mailbox/iam-statement-home': 'error',
+        'mailbox/logical-id-home':    'error',
+        'mailbox/removal-home':       'error',
+        'mailbox/resource-kind-home': 'error',
+      },
     },
     ...(options.extraConfigs ?? []),
   ];

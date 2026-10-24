@@ -6854,7 +6854,6 @@ __metadata:
     ts-node: "npm:^10.9.2"
     typanion: "npm:^3.14.0"
     typescript: "npm:^5.9.3"
-    typescript-eslint: "npm:^8"
   languageName: unknown
   linkType: soft
 

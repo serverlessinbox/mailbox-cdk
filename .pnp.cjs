@@ -3179,8 +3179,7 @@ const RAW_RUNTIME_STATE =
           ["ts-jest", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:29.4.6"],\
           ["ts-node", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:10.9.2"],\
           ["typanion", "npm:3.14.0"],\
-          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"],\
-          ["typescript-eslint", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:8.71.0"]\
+          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
         ],\
         "linkType": "SOFT"\
       }]\
@@ -12000,8 +11999,7 @@ const RAW_RUNTIME_STATE =
           ["ts-jest", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:29.4.6"],\
           ["ts-node", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:10.9.2"],\
           ["typanion", "npm:3.14.0"],\
-          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"],\
-          ["typescript-eslint", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:8.71.0"]\
+          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
         ],\
         "linkType": "SOFT"\
       }]\
