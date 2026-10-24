@@ -16,6 +16,7 @@ import {
   OWNED_BY_STACK_NAME_WITHOUT_ID,
   nameOfStateWhere,
   renderRemovalChain,
+  renderRemovalChainWithRefs,
   resolveStatements,
   startStateOf,
   stateOf,
@@ -64,7 +65,9 @@ describe('CertificateRemoval', () => {
     expect(stateOf(definition, guard).Default).toBe('Done');
     expect(stateOf(definition, guard).Choices?.[0]?.Next).toBe(invoke);
     expect(stateBodyOf(definition, invoke)).toContain('"certArn.$":"$.toSweep.cert.certArn"');
-    expect(stateBodyOf(definition, invoke)).toContain('"rootStackName":"CertificateChainStack"');
+    const refStack      = newTestStack('CertificateChainRefStack');
+    const refDefinition = renderRemovalChainWithRefs(refStack, newCertificateRemoval(refStack));
+    expect(refDefinition).toContain('"rootStackName":"{"Ref":"AWS::StackName"}"');
     expect(stateBodyOf(definition, invoke)).toContain('"rootStackId":');
   });
 });

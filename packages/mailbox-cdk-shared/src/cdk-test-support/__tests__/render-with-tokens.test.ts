@@ -4,7 +4,7 @@
  * wrongly scoped resource pass an equality check.
  */
 
-import { renderLiteralText, renderWithTokens } from '../render-with-tokens';
+import { renderLiteralText, renderWithRefs, renderWithTokens } from '../render-with-tokens';
 
 describe('renderLiteralText', () => {
   it('returns a plain string as it is', () => {
@@ -49,5 +49,17 @@ describe('renderWithTokens', () => {
 
   it('renders an intrinsic function that is not a join as <token>', () => {
     expect(renderWithTokens({ Ref: 'AWS::StackId' })).toBe('<token>');
+  });
+});
+
+describe('renderWithRefs', () => {
+  it('keeps a Ref inside an Fn::Join as its JSON between the literal parts', () => {
+    const value = { 'Fn::Join': ['', ['{"Name":"', { Ref: 'AWS::StackName' }, '-jobs"}']] };
+
+    expect(renderWithRefs(value)).toBe('{"Name":"{"Ref":"AWS::StackName"}-jobs"}');
+  });
+
+  it('renders a lone Ref that is not inside a join as its JSON', () => {
+    expect(renderWithRefs({ Ref: 'AWS::StackName' })).toBe('{"Ref":"AWS::StackName"}');
   });
 });

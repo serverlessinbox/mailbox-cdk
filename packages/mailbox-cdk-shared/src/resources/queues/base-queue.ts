@@ -28,6 +28,10 @@ export interface BaseQueueProps extends Omit<QueueProps, 'visibilityTimeout' | '
  * The default visibility timeout suits a Lambda consumer with a ~5-minute timeout and up to 60 seconds
  * of batching. For a consumer with other characteristics, override `visibilityTimeout` with a value
  * above (function timeout) + (maxBatchingWindow) + (processing headroom, e.g. 30 seconds).
+ *
+ * Unless `queueName` is given, the name is generated at deployment from the stack name, the construct's
+ * position and the install's guid prefix. A change of position or label therefore changes the name, which
+ * replaces the queue.
  */
 export class BaseQueue extends Queue {
   constructor(scope: Construct, id: string, props: BaseQueueProps = {}) {

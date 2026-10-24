@@ -81,7 +81,7 @@ describe('BaseQueue', () => {
 
     Template.fromStack(stack).hasResourceProperties('AWS::SQS::Queue', {
       QueueName: {
-        'Fn::Join': ['', [`123456789012-teststack-jobs-${PositionHash.ofChild(group, 'jobs')}-`, stack.resolve(StackIdentity.guidPrefix)]],
+        'Fn::Join': ['', [{ Ref: 'AWS::StackName' }, `-jobs-${PositionHash.ofChild(group, 'jobs')}-`, stack.resolve(StackIdentity.guidPrefix)]],
       },
     });
   });

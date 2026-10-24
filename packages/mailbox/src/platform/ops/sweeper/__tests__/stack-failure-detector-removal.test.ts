@@ -20,6 +20,7 @@ import {
   OWNED_BY_STACK_ID,
   OWNED_BY_STACK_NAME_WITHOUT_ID,
   renderRemovalChain,
+  renderRemovalChainWithRefs,
   resolveStatements,
   resolveValue,
   startStateOf,
@@ -175,7 +176,9 @@ describe('StackFailureDetectorRemoval', () => {
     expect(stateBodyOf(definition, guard)).toContain('"Variable":"$.toSweep.detector"');
     expect(stateOf(definition, guard).Default).toBe('Done');
     expect(stateBodyOf(definition, invoke)).toContain('"target.$":"$.toSweep.detector"');
-    expect(stateBodyOf(definition, invoke)).toContain('"rootStackName":"DetectorChainStack"');
+    const refStack      = newTestStack('DetectorChainRefStack');
+    const refDefinition = renderRemovalChainWithRefs(refStack, newDetectorRemoval(refStack).removal);
+    expect(refDefinition).toContain('"rootStackName":"{"Ref":"AWS::StackName"}"');
     expect(stateBodyOf(definition, invoke)).toContain('"rootStackId":');
   });
 });

@@ -106,7 +106,7 @@ describe('BootstrapLambda', () => {
       hasEnvironment(template, {
         CONFIG_TABLE_NAME:         Match.anyValue(),
         AUTH_KEY_STORE_TABLE_NAME: Match.anyValue(),
-        STACK_IDENTITY_TAG_VALUE:  'TestStack',
+        STACK_IDENTITY_TAG_VALUE:  { Ref: 'AWS::StackName' },
         STACK_IDENTITY_TAG_KEY:    ServerlessInboxTagKeys.rootStack,
         SES_RULE_SET_NAME:         Match.anyValue(),
       });
@@ -238,7 +238,7 @@ describe('BootstrapLambda', () => {
         Action:    'ses:TagResource',
         Resource:  identityArn('example.com'),
         Condition: Match.objectEquals({
-          StringEquals:                { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: 'TestStack' },
+          StringEquals:                { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
           Null:                        { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: 'true' },
           'ForAllValues:StringEquals': tagKeys,
         }),

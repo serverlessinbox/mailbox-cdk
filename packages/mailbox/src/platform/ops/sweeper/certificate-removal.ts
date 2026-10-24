@@ -3,7 +3,7 @@ import * as acm                                                       from 'aws-
 import * as iam                                                       from 'aws-cdk-lib/aws-iam';
 import { IFunction }                                                  from 'aws-cdk-lib/aws-lambda';
 import * as sfn                                                       from 'aws-cdk-lib/aws-stepfunctions';
-import { Aws, Duration, Stack }                                       from 'aws-cdk-lib';
+import { Aws, Duration }                                              from 'aws-cdk-lib';
 import { Construct }                                                  from 'constructs';
 
 import type { CertRemovalTarget, CertWorkerInput }                    from '../../../runtime/resource-sweeper/removal';
@@ -43,7 +43,7 @@ export class CertificateRemoval extends Construct implements IResourceRemoval<'c
     const payload: CertWorkerInput = {
       removalType:   'cert',
       certArn:       targetField(this.id, 'certArn'),
-      rootStackName: Stack.of(this).stackName,
+      rootStackName: Aws.STACK_NAME,
       rootStackId:   StackIdentity.guid,
     };
 

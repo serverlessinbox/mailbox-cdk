@@ -1,6 +1,7 @@
 import { DescribeExecutionCommand, SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
 import { mockClient }                                                 from 'aws-sdk-client-mock';
 
+import { MAX_ROOT_STACK_NAME_LENGTH }                                 from '../../../naming/root-stack-name-limit';
 import { ExpectedFailure }                                            from '../../../runtime/handler-kit/errors/expected-failure';
 import { InvalidOwnInput }                                            from '../../../runtime/handler-kit/errors/invalid-own-input';
 import { CfnResponder }                                               from '../answers/cfn-responder';
@@ -132,22 +133,23 @@ describe('StackDeployerStarter', () => {
   });
 
   describe('the root stack name', () => {
-    it('rejects a Create whose root stack name is longer than 24 characters, and starts nothing', async () => {
-      const request = cfnRequest({ StackId: stackIdOf('this-is-a-very-long-names') });
+    it(`rejects a Create whose root stack name is ${MAX_ROOT_STACK_NAME_LENGTH + 1} characters, longer than the ${MAX_ROOT_STACK_NAME_LENGTH} allowed, and starts nothing`, async () => {
+      const longName = 'x'.repeat(MAX_ROOT_STACK_NAME_LENGTH + 1);
+      const request  = cfnRequest({ StackId: stackIdOf(longName) });
 
       const failure = await failureOf(starterFor().start(request, replyTarget()));
 
       expect(failure).toBeInstanceOf(ExpectedFailure);
       expect(failure).toHaveProperty(
         'message',
-        'Root stack name "this-is-a-very-long-names" exceeds maximum length of 24 characters (got 25). ' +
+        `Root stack name "${longName}" exceeds maximum length of ${MAX_ROOT_STACK_NAME_LENGTH} characters (got ${MAX_ROOT_STACK_NAME_LENGTH + 1}). ` +
           'CloudFormation truncates auto-generated resource names to 64 characters, which can break name-based IAM lookups. Please use a shorter stack name.',
       );
       expect(sfn.commandCalls(StartExecutionCommand)).toHaveLength(0);
     });
 
-    it('accepts a Create whose root stack name has exactly 24 characters', async () => {
-      await starterFor().start(cfnRequest({ StackId: stackIdOf('exactly-twenty-four-char') }), replyTarget());
+    it(`accepts a Create whose root stack name has exactly ${MAX_ROOT_STACK_NAME_LENGTH} characters`, async () => {
+      await starterFor().start(cfnRequest({ StackId: stackIdOf('x'.repeat(MAX_ROOT_STACK_NAME_LENGTH)) }), replyTarget());
 
       expect(sfn.commandCalls(StartExecutionCommand)).toHaveLength(1);
     });

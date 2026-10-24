@@ -16,6 +16,7 @@ import {
   OWNED_BY_STACK_NAME_WITHOUT_ID,
   nameOfStateWhere,
   renderRemovalChain,
+  renderRemovalChainWithRefs,
   resolveStatements,
   startStateOf,
   stateOf,
@@ -57,7 +58,9 @@ describe('EdgeFunctionRemoval', () => {
     expect(stateOf(definition, guard).Default).toBe('Done');
     expect(stateOf(definition, guard).Choices?.[0]?.Next).toBe(invoke);
     expect(stateBodyOf(definition, invoke)).toContain('"edgeFnArn.$":"$.toSweep.edge-fn.edgeFnArn"');
-    expect(stateBodyOf(definition, invoke)).toContain('"rootStackName":"EdgeFunctionChainStack"');
+    const refStack      = newTestStack('EdgeFunctionChainRefStack');
+    const refDefinition = renderRemovalChainWithRefs(refStack, newEdgeFunctionRemoval(refStack));
+    expect(refDefinition).toContain('"rootStackName":"{"Ref":"AWS::StackName"}"');
     expect(stateBodyOf(definition, invoke)).toContain('"rootStackId":');
   });
 });

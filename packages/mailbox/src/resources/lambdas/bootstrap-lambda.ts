@@ -3,7 +3,7 @@ import { GoLambda, ServerlessInboxTagKeys, StackIdentity, rootStackRequestTagCon
 import type { RootStack, VendorLink }                                                               from '@serverlessinbox/mailbox-cdk-shared';
 import { PolicyStatement }                                                                          from 'aws-cdk-lib/aws-iam';
 import type { IReceiptRuleSet }                                                                     from 'aws-cdk-lib/aws-ses';
-import { Aws, Duration, Stack }                                                                     from 'aws-cdk-lib';
+import { Aws, Duration }                                                                            from 'aws-cdk-lib';
 import { Construct }                                                                                from 'constructs';
 
 import type { SesReceivingMode }                                                                    from '../../contracts/ses-receiving-mode';
@@ -48,7 +48,7 @@ export class BootstrapLambda extends GoLambda {
       environment:      {
         CONFIG_TABLE_NAME:         props.configTable.tableName,
         AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
-        STACK_IDENTITY_TAG_VALUE:  Stack.of(scope).stackName,
+        STACK_IDENTITY_TAG_VALUE:  Aws.STACK_NAME,
         STACK_IDENTITY_TAG_KEY:    props.vendorLink.stackIdentityTagKey,
         ROOT_STACK_ID:             StackIdentity.guid,
         SES_RULE_SET_NAME:         props.sesRuleSet.receiptRuleSetName,
@@ -138,7 +138,7 @@ export class BootstrapLambda extends GoLambda {
     // identity doesn't exist yet at that point, so aws:ResourceTag can't gate this — it would
     // always deny. Gate on aws:RequestTag (the tag being written) instead, and constrain
     // aws:TagKeys so this role can't ride along to write an unrelated tag key.
-    const rootStack: RootStack = { name: Stack.of(this).stackName, id: StackIdentity.guid };
+    const rootStack: RootStack = { name: Aws.STACK_NAME, id: StackIdentity.guid };
     for (const conditions of rootStackRequestTagConditions(rootStack)) {
       this.addToRolePolicy(new PolicyStatement({
         actions:    ['ses:TagResource'],

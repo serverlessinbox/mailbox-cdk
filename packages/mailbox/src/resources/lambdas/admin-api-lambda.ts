@@ -2,7 +2,7 @@ import type { IArtifactResolver }                                               
 import { GoLambda, ServerlessInboxTagKeys, StackIdentity, rootStackRequestTagConditions }           from '@serverlessinbox/mailbox-cdk-shared';
 import type { RootStack, VendorLink }                                                               from '@serverlessinbox/mailbox-cdk-shared';
 import { PolicyStatement, Effect }                                                                  from 'aws-cdk-lib/aws-iam';
-import { Aws, Duration, Stack }                                                                     from 'aws-cdk-lib';
+import { Aws, Duration }                                                                            from 'aws-cdk-lib';
 import { Construct }                                                                                from 'constructs';
 
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }                                  from '../../contracts/websocket-push';
@@ -63,7 +63,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
         SES_CONFIG_SET_NAME:                props.sesConfigSetName,
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
         SYSTEM_SENDER_ADDRESS:              props.systemSenderAddress,
-        STACK_IDENTITY_TAG_VALUE:           Stack.of(scope).stackName,
+        STACK_IDENTITY_TAG_VALUE:           Aws.STACK_NAME,
         STACK_IDENTITY_TAG_KEY:             props.vendorLink.stackIdentityTagKey,
         ROOT_STACK_ID:                      StackIdentity.guid,
         SES_RULE_SET_NAME:                  props.sesRuleSetName,
@@ -129,7 +129,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     // identity doesn't exist yet at that point, so aws:ResourceTag can't gate this — it would
     // always deny. Gate on aws:RequestTag (the tag being written) instead, and constrain
     // aws:TagKeys so this role can't ride along to write an unrelated tag key.
-    const rootStack: RootStack = { name: Stack.of(this).stackName, id: StackIdentity.guid };
+    const rootStack: RootStack = { name: Aws.STACK_NAME, id: StackIdentity.guid };
     for (const conditions of rootStackRequestTagConditions(rootStack)) {
       this.addToRolePolicy(new PolicyStatement({
         actions:    ['ses:TagResource'],

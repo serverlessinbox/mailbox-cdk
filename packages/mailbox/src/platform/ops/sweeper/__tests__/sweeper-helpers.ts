@@ -1,4 +1,4 @@
-import { renderLiteralText }                              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { renderLiteralText, renderWithRefs }              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ServerlessInboxTagKeys }                         from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                       from 'aws-cdk-lib/assertions';
 import * as acm                                           from 'aws-cdk-lib/aws-certificatemanager';
@@ -98,8 +98,15 @@ export function resolveValue(scope: Construct, value: unknown): unknown {
 
 /** The definition of a state machine whose chain is the removal's own, continuing to a Succeed state named `Done`. */
 export function renderRemovalChain(scope: Construct, removal: IResourceRemoval, retryInterval = Duration.minutes(5)): string {
-  const done = new sfn.Succeed(scope, 'Done');
-  return renderDefinition(scope, removal.buildChain(newWorkerFunction(scope), retryInterval, done));
+  return renderDefinition(scope, removalChainOf(scope, removal, retryInterval));
+}
+
+/**
+ * The same definition as `renderRemovalChain`, with each `Ref` kept as its JSON (`{"Ref":"AWS::StackName"}`),
+ * for the assertions that name a reference.
+ */
+export function renderRemovalChainWithRefs(scope: Construct, removal: IResourceRemoval, retryInterval = Duration.minutes(5)): string {
+  return renderWithRefs(definitionStringOf(scope, removalChainOf(scope, removal, retryInterval)));
 }
 
 export function newWorkerFunction(scope: Construct): lambda.IFunction {
@@ -108,9 +115,19 @@ export function newWorkerFunction(scope: Construct): lambda.IFunction {
 
 /** Wraps `chain` in a state machine of its own and returns its definition with the intrinsic functions dropped. */
 export function renderDefinition(scope: Construct, chain: sfn.IChainable): string {
+  return renderLiteralText(definitionStringOf(scope, chain));
+}
+
+function removalChainOf(scope: Construct, removal: IResourceRemoval, retryInterval: Duration): sfn.IChainable {
+  const done = new sfn.Succeed(scope, 'Done');
+  return removal.buildChain(newWorkerFunction(scope), retryInterval, done);
+}
+
+/** The `DefinitionString` of a state machine built over `chain` in `scope`, intrinsic functions included. */
+function definitionStringOf(scope: Construct, chain: sfn.IChainable): unknown {
   new sfn.StateMachine(scope, 'rendered-machine', { definition: chain });
   const [machine] = resourcesOfType(Template.fromStack(Stack.of(scope)), 'AWS::StepFunctions::StateMachine', isStateMachineProperties);
-  return renderLiteralText(machine.properties.DefinitionString);
+  return machine.properties.DefinitionString;
 }
 
 /** The fields of a rendered state the sweeper tests read. */

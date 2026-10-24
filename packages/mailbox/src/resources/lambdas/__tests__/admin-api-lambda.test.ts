@@ -120,7 +120,7 @@ describe('AdminApiLambda IAM scoping', () => {
         'ForAllValues:StringEquals': tagKeys,
       }),
       Match.objectEquals({
-        StringEquals:                { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: 'TestStack' },
+        StringEquals:                { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStack}`]: { Ref: 'AWS::StackName' } },
         Null:                        { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: 'true' },
         'ForAllValues:StringEquals': tagKeys,
       }),
@@ -241,12 +241,12 @@ describe('AdminApiLambda IAM scoping', () => {
     expect(broadcaster.grantInvoke).toHaveBeenCalledWith(lambda);
   });
 
-  it('sets STACK_IDENTITY_TAG_VALUE to the stack name', () => {
+  it('sets STACK_IDENTITY_TAG_VALUE to the deploy-time stack name', () => {
     const template = Template.fromStack(stack);
     template.hasResourceProperties('AWS::Lambda::Function', {
       Environment: {
         Variables: Match.objectLike({
-          STACK_IDENTITY_TAG_VALUE: stack.stackName,
+          STACK_IDENTITY_TAG_VALUE: { Ref: 'AWS::StackName' },
         }),
       },
     });

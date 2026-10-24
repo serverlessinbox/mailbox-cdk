@@ -1,5 +1,6 @@
 import { DescribeExecutionCommand, StartExecutionCommand, type ExecutionStatus, type SFNClient }         from '@aws-sdk/client-sfn';
 
+import { MAX_ROOT_STACK_NAME_LENGTH }                                                                    from '../../naming/root-stack-name-limit';
 import { formatArn, parseArn, type ParsedArn }                                                           from '../../runtime/handler-kit/arn';
 import type { StackId }                                                                                  from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
 import { CaughtError }                                                                                   from '../../runtime/handler-kit/errors/caught-error';
@@ -12,10 +13,6 @@ import { toExecutionArn, toExecutionName, type ExecutionArn, type ExecutionName,
 import type { StackDeploymentEventReader }                                                               from './stack/stack-deployment-event-reader';
 import type { BrandedStackDeployerProperties, CfnRequest, RequestType, WorkflowInput }                   from './stack/stack-deployment';
 import { StackOperationFailure }                                                                         from './stack/stack-operation-failure';
-
-// CloudFormation truncates auto-generated physical names to 64 characters; the root stack name is limited so
-// that the names built from it stay inside that.
-const MAX_ROOT_STACK_NAME_LENGTH = 24;
 
 // The execution name is the request id, and a rejected name is retried as `-r2` up to `-r5`.
 const LAST_EXECUTION_NAME_ATTEMPT = 5;

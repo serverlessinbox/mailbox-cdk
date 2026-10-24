@@ -3,7 +3,7 @@
 export { sharedWorkerServiceName } from './cdk-test-support/deployer-service-names';
 export { sharedSubStackTagKeys, tagKeysOf } from './cdk-test-support/deployer-tag-keys';
 export { getAttLogicalId } from './cdk-test-support/get-att-logical-id';
-export { renderLiteralText, renderWithTokens } from './cdk-test-support/render-with-tokens';
+export { renderLiteralText, renderWithRefs, renderWithTokens } from './cdk-test-support/render-with-tokens';
 export {
   handlerSourceOf,
   managedLambdasOf,

@@ -2,7 +2,7 @@ import { StackIdentity, rootStackResourceTagConditions }              from '@ser
 import * as iam                                                       from 'aws-cdk-lib/aws-iam';
 import * as lambda                                                    from 'aws-cdk-lib/aws-lambda';
 import * as sfn                                                       from 'aws-cdk-lib/aws-stepfunctions';
-import { Aws, Duration, Stack }                                       from 'aws-cdk-lib';
+import { Aws, Duration }                                              from 'aws-cdk-lib';
 import { Construct }                                                  from 'constructs';
 
 import type { EdgeFunctionRemovalTarget, EdgeFunctionWorkerInput }    from '../../../runtime/resource-sweeper/removal';
@@ -43,7 +43,7 @@ export class EdgeFunctionRemoval extends Construct implements IResourceRemoval<'
     const payload: EdgeFunctionWorkerInput = {
       removalType:   'edge-fn',
       edgeFnArn:     targetField(this.id, 'edgeFnArn'),
-      rootStackName: Stack.of(this).stackName,
+      rootStackName: Aws.STACK_NAME,
       rootStackId:   StackIdentity.guid,
     };
 
