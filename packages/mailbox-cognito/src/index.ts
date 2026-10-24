@@ -27,7 +27,6 @@ export type {
 
 // API — Cognito IdP users admin API addon
 export type {
-  CognitoIdpUsersAuthorizationConfig,
   ICognitoIdpUsersPoolConfig,
 } from './cognito-idp-users-pool-config';
 

@@ -10,18 +10,17 @@
 import { ArtifactZone, PinnedArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver }          from '@serverlessinbox/artifact-registry-cdk';
 import type { IAuditEventsQueue, IIdentityProvisioner } from '@serverlessinbox/mailbox';
+import { UserPool }                                     from 'aws-cdk-lib/aws-cognito';
 import { App, Stack, BootstraplessSynthesizer }         from 'aws-cdk-lib';
 
 import { CognitoIdpUsersAdminApiAddon }                 from '../cognito-idp-users-addon';
+import type { ICognitoIdpUsersPoolConfig }              from '../cognito-idp-users-pool-config';
 
 describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
   let stack: Stack;
   let artifactResolver: IArtifactResolver;
   let auditEventsQueue: IAuditEventsQueue;
-  const mockPoolConfig = {
-    userPoolId:       'us-west-2_abcdefgh',
-    grantAdminAccess: () => {},
-  };
+  let mockPoolConfig: ICognitoIdpUsersPoolConfig;
   // This suite tests uiConfig merging only — a minimal stub satisfies the required
   // `identityProvisioner` prop without exercising any invoke/grant behaviour.
   const mockIdentityProvisioner: IIdentityProvisioner = {
@@ -31,11 +30,15 @@ describe('CognitoIdpUsersAdminApiAddon uiConfig', () => {
   };
 
   beforeEach(() => {
-    const app = new App();
-    stack     = new Stack(app, 'TestStack', {
+    const app      = new App();
+    stack          = new Stack(app, 'TestStack', {
       env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
+    mockPoolConfig = {
+      userPool:         UserPool.fromUserPoolArn(stack, 'user-pool', 'arn:aws:cognito-idp:us-west-2:123456789012:userpool/us-west-2_abcdefgh'),
+      grantAdminAccess: () => {},
+    };
 
     // Set up artifact resolver
     const packages: Record<string, ArtifactPin> = {

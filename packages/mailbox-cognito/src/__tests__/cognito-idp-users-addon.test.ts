@@ -8,16 +8,19 @@
 
 import { ArtifactZone, PinnedArtifactResolver }                                                                   from '@serverlessinbox/artifact-registry-cdk';
 import type { IAuditEventsQueue, IIdentityProvisioner }                                                           from '@serverlessinbox/mailbox';
+import type { MailboxAuthorizationConfig }                                                                        from '@serverlessinbox/mailbox';
 import { Match, Template }                                                                                        from 'aws-cdk-lib/assertions';
 import { HttpLambdaAuthorizer, HttpLambdaResponseType }                                                           from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpApi }                                                                                                from 'aws-cdk-lib/aws-apigatewayv2';
+import { UserPool }                                                                                               from 'aws-cdk-lib/aws-cognito';
 import { Code, Function as LambdaFunction, Runtime }                                                              from 'aws-cdk-lib/aws-lambda';
 import { App, BootstraplessSynthesizer, Stack }                                                                   from 'aws-cdk-lib';
 
 import { CognitoIdpUsersAdminApiAddon }                                                                           from '../cognito-idp-users-addon';
-import type { CognitoIdpUsersAuthorizationConfig, ICognitoIdpUsersPoolConfig }                                    from '../cognito-idp-users-pool-config';
+import type { ICognitoIdpUsersPoolConfig }                                                                        from '../cognito-idp-users-pool-config';
 
-const USER_POOL_ID = 'us-west-2_abcdefgh';
+const USER_POOL_ARN = 'arn:aws:cognito-idp:us-west-2:123456789012:userpool/us-west-2_abcdefgh';
+const USER_POOL_ID  = 'us-west-2_abcdefgh';
 
 describe('CognitoIdpUsersAdminApiAddon', () => {
   const auditEventsQueue: IAuditEventsQueue       = {
@@ -31,7 +34,7 @@ describe('CognitoIdpUsersAdminApiAddon', () => {
     grantInvoke:  () => {},
   };
 
-  function synthesize(options: { authorization?: CognitoIdpUsersAuthorizationConfig; basePath?: string }): Template {
+  function synthesize(options: { authorization?: MailboxAuthorizationConfig; basePath?: string }): Template {
     const { authorization }                = options;
     const stack                            = new Stack(new App(), 'TestStack', {
       env:         { account: '123456789012', region: 'us-west-2' },
@@ -43,7 +46,7 @@ describe('CognitoIdpUsersAdminApiAddon', () => {
       deploymentRegion: stack.region,
     });
     const pool: ICognitoIdpUsersPoolConfig = {
-      userPoolId:       USER_POOL_ID,
+      userPool:         UserPool.fromUserPoolArn(stack, 'user-pool', USER_POOL_ARN),
       grantAdminAccess: () => {},
       ...(authorization ? { authorizationConfig: () => authorization } : {}),
     };

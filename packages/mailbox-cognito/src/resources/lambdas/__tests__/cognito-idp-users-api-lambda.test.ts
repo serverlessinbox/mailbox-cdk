@@ -10,13 +10,16 @@
 import { ArtifactZone, PinnedArtifactResolver }                         from '@serverlessinbox/artifact-registry-cdk';
 import type { IAuditEventsQueue, IIdentityProvisioner }                 from '@serverlessinbox/mailbox';
 import { Match, Template }                                              from 'aws-cdk-lib/assertions';
+import { UserPool }                                                     from 'aws-cdk-lib/aws-cognito';
 import { App, BootstraplessSynthesizer, Stack }                         from 'aws-cdk-lib';
 
 import type { ICognitoIdpUsersPoolConfig }                              from '../../../cognito-idp-users-pool-config';
 import { CognitoIdpUsersApiLambda, type CognitoIdpUsersApiLambdaProps } from '../cognito-idp-users-api-lambda';
 
+const USER_POOL_ARN = 'arn:aws:cognito-idp:us-west-2:123456789012:userpool/us-west-2_abcdefgh';
+
 describe('CognitoIdpUsersApiLambda', () => {
-  const pool: ICognitoIdpUsersPoolConfig          = { userPoolId: 'us-west-2_abcdefgh', grantAdminAccess: jest.fn() };
+  const grantAdminAccess                          = jest.fn();
   const auditEventsQueue: IAuditEventsQueue       = {
     queueUrl:  'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
     queueArn:  'arn:aws:sqs:us-west-2:123456789012:audit-events',
@@ -39,7 +42,8 @@ describe('CognitoIdpUsersApiLambda', () => {
       deploymentRegion: stack.region,
     });
 
-    const lambda = new CognitoIdpUsersApiLambda(stack, 'idp-users', { artifactResolver, auditEventsQueue, identityProvisioner, pool, ...groups });
+    const pool: ICognitoIdpUsersPoolConfig = { userPool: UserPool.fromUserPoolArn(stack, 'user-pool', USER_POOL_ARN), grantAdminAccess };
+    const lambda                           = new CognitoIdpUsersApiLambda(stack, 'idp-users', { artifactResolver, auditEventsQueue, identityProvisioner, pool, ...groups });
     return { template: Template.fromStack(stack), lambda };
   }
 
@@ -76,7 +80,7 @@ describe('CognitoIdpUsersApiLambda', () => {
   it('grants itself administrative access to the pool, send access to the queue and invoke access to the provisioner', () => {
     const { lambda } = synthesize({});
 
-    expect(pool.grantAdminAccess).toHaveBeenCalledWith(lambda);
+    expect(grantAdminAccess).toHaveBeenCalledWith(lambda);
     expect(auditEventsQueue.grantSend).toHaveBeenCalledWith(lambda);
     expect(identityProvisioner.grantInvoke).toHaveBeenCalledWith(lambda);
   });

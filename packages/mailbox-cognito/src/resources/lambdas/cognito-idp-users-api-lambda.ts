@@ -38,7 +38,7 @@ export class CognitoIdpUsersApiLambda extends TypeScriptLambda {
       timeout:          Duration.seconds(15),
       memorySize:       256,
       environment:      {
-        USER_POOL_ID:                       props.pool.userPoolId,
+        USER_POOL_ID:                       props.pool.userPool.userPoolId,
         AUDIT_EVENTS_QUEUE_URL:             props.auditEventsQueue.queueUrl,
         IDENTITY_PROVISIONER_FUNCTION_NAME: props.identityProvisioner.functionName,
         ...(props.adminGroups === undefined ? {} : { ADMIN_GROUPS: JSON.stringify(props.adminGroups) }),
