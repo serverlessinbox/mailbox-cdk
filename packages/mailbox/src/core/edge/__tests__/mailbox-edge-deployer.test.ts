@@ -20,6 +20,7 @@ import {
   TEST_ACCOUNT,
   newDeployerTestStack,
 } from '../../../__tests__/deployer-test-helpers';
+import type { IAuthKeyStoreTable }       from '../../../resources/tables/auth-key-store-table';
 import { DataTable }                     from '../../../resources/tables/data-tables';
 import { MailboxEdgeDeployer }           from '../mailbox-edge-deployer';
 import type { MailboxEdgeDeployerProps } from '../mailbox-edge-deployer';
@@ -52,6 +53,10 @@ function dataTable(stack: Stack, id: string, tableArn: string): DataTable {
   return new DataTable(Table.fromTableArn(stack, id, tableArn));
 }
 
+function authKeyStoreTable(stack: Stack, id: string, tableArn: string): IAuthKeyStoreTable {
+  return dataTable(stack, id, tableArn);
+}
+
 function synthDeployer(
   extraProps: (stack: Stack) => Partial<MailboxEdgeDeployerProps> = () => ({}),
   parentId?: string,
@@ -63,7 +68,7 @@ function synthDeployer(
     domainName:        'example.com',
     itemTable:         dataTable(stack, 'item-table', ITEM_TABLE_ARN),
     configTable:       dataTable(stack, 'config-table', CONFIG_TABLE_ARN),
-    authKeyStoreTable: dataTable(stack, 'auth-key-store-table', AUTH_KEY_STORE_TABLE_ARN),
+    authKeyStoreTable: authKeyStoreTable(stack, 'auth-key-store-table', AUTH_KEY_STORE_TABLE_ARN),
     productVersion:    '1.2.3',
     logGroupName:      'test-log-group',
     deployerType:      'cfn',
@@ -286,6 +291,7 @@ describe('MailboxEdgeDeployer', () => {
 
       const statements = statementsForAction(template, 'dynamodb:GetItem');
       expect(statements).toHaveLength(1);
+      expect(statements[0].Action).toEqual(['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query']);
       expect(JSON.stringify(statements[0].Resource)).toContain(AUTH_KEY_STORE_TABLE_ARN);
     });
   });

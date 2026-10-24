@@ -10,6 +10,7 @@ import { Construct }                                                            
 
 import { JmapBlobDownloadLambda }                                                                                                       from '../../resources/lambdas/jmap-blob-download-lambda';
 import { MailboxEdgeDeployerWorkerLambda }                                                                                              from '../../resources/lambdas/mailbox-edge-deployer-worker-lambda';
+import type { IAuthKeyStoreTable }                                                                                                      from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }                                                                                                              from '../../resources/tables/data-tables';
 
 import type { MailboxEdgeStackParameters }                                                                                              from './mailbox-edge-stack';
@@ -37,7 +38,7 @@ export interface MailboxEdgeDeployerProps {
    * Regional auth key store table. Read access is granted to the jmap-blob-download role, and its
    * ARN is passed to the edge stack as a template parameter.
    */
-  readonly authKeyStoreTable: IDataTable;
+  readonly authKeyStoreTable: IAuthKeyStoreTable;
 
   /** Product/stack version used for tagging edge resources. */
   readonly productVersion: string;
@@ -153,7 +154,7 @@ export class MailboxEdgeDeployer extends Construct {
    * replacement CloudFormation creates the new role before deleting the old one, and updates the
    * edge function with the new ARN in the same operation.
    */
-  private createJmapBlobDownloadRole(authKeyStoreTable: IDataTable): iam.Role {
+  private createJmapBlobDownloadRole(authKeyStoreTable: IAuthKeyStoreTable): iam.Role {
     const role = new iam.Role(this, 'jmap-blob-download-role', {
       assumedBy:       new iam.CompositePrincipal(
         new iam.ServicePrincipal('lambda.amazonaws.com'),

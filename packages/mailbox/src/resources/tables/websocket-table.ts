@@ -5,14 +5,12 @@ import { RemovalPolicy }                from 'aws-cdk-lib';
 import { Construct }                    from 'constructs';
 
 /**
- * Write or read-write access to the WebSocket connections table without exposing the underlying
- * DynamoDB table. A holder can look up the table name and request a scoped grant (`grantWrite`,
- * `grantReadWrite`); it cannot reach the raw CDK table construct through this interface.
+ * Read-write access to the WebSocket connections table without exposing the underlying DynamoDB
+ * table. A holder can look up the table name and request a scoped grant (`grantReadWrite`); it
+ * cannot reach the raw CDK table construct through this interface.
  */
 export interface IWebSocketTable {
   readonly tableName: string;
-
-  grantWrite(grantee: IGrantable): void;
 
   grantReadWrite(grantee: IGrantable): void;
 }
@@ -27,8 +25,7 @@ export interface IWebSocketTable {
  *
  * Pay-per-request billing, removed along with the stack, point-in-time recovery disabled.
  * Physical table name is stack-derived and unique per position and install (`StackNamedTable`).
- * `grantWrite`/`grantReadWrite` expose only the specific DynamoDB actions each kind of caller
- * needs (no `Scan` or PartiQL).
+ * `grantReadWrite` exposes only the specific DynamoDB actions the caller needs (no `Scan` or PartiQL).
  *
  * Not responsible for the WebSocket API, its Lambdas, or broadcast logic.
  */
@@ -51,14 +48,6 @@ export class WebSocketTable extends StackNamedTable implements IWebSocketTable {
       indexName:    'gsi1',
       partitionKey: { name: 'gsi1pk', type: AttributeType.STRING },
       sortKey:      { name: 'gsi1sk', type: AttributeType.STRING },
-    });
-  }
-
-  public grantWrite(grantee: IGrantable): void {
-    Grant.addToPrincipal({
-      grantee,
-      actions:      ['dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem'],
-      resourceArns: this.tableAndIndexArns(),
     });
   }
 

@@ -81,35 +81,6 @@ describe('WebSocketTable', () => {
     expect(stack.resolve(sut.tableName)).toEqual({ Ref: stack.getLogicalId(defaultCfnResource(sut)) });
   });
 
-  it('grantWrite grants exactly one Allow statement with the write actions', () => {
-    const stack = createStack();
-    const sut   = new WebSocketTable(stack, 'websocket-table');
-    const role  = new iam.Role(stack, 'TestRole', {
-      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-    });
-
-    sut.grantWrite(role);
-
-    const tableId  = stack.getLogicalId(defaultCfnResource(sut));
-    const template = Template.fromStack(stack);
-
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(defaultCfnResource(role)) }]),
-      PolicyDocument: {
-        Statement: Match.arrayEquals([
-          Match.objectEquals({
-            Action:   ['dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem'],
-            Effect:   'Allow',
-            Resource: [
-              { 'Fn::GetAtt': [tableId, 'Arn'] },
-              { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
-            ],
-          }),
-        ]),
-      },
-    });
-  });
-
   it('grantReadWrite grants exactly one Allow statement with the read+write actions', () => {
     const stack = createStack();
     const sut   = new WebSocketTable(stack, 'websocket-table');
