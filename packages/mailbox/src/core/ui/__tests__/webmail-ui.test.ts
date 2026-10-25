@@ -28,7 +28,7 @@ interface SynthesizedFunction {
 
 describe('WebmailUi', () => {
   let stack: cdk.Stack;
-  const provisionJmapApiClient = jest.fn(() => ({ clientId: 'webmail-client', requestScopeList: [], groups: [] }));
+  const provisionJmapApiClient = jest.fn((_request: { permissions: Permission[] }) => ({ clientId: 'webmail-client', requestScopeList: [], groups: [] }));
 
   function createAuthProvider(): IMailboxAuthProvider {
     return {
@@ -82,16 +82,34 @@ describe('WebmailUi', () => {
     });
   });
 
-  it('provisions a JMAP-API client named webmail-ui with every permission and the distribution callback URLs', () => {
+  it('provisions a JMAP-API client named webmail-ui with the explicit allow-list of permissions and the distribution callback URLs', () => {
     const webmailUi = createWebmailUi();
 
     expect(provisionJmapApiClient).toHaveBeenCalledTimes(1);
     expect(provisionJmapApiClient).toHaveBeenCalledWith({
       name:         'webmail-ui',
-      permissions:  Object.values(Permission),
+      permissions:  [
+        Permission.MAIL_READ,
+        Permission.MAIL_WRITE,
+        Permission.MAIL_SEND,
+        Permission.ACCOUNT_READ,
+        Permission.ALIAS_READ,
+        Permission.USER_READ,
+        Permission.CONTACTS_READ,
+        Permission.CONTACTS_WRITE,
+      ],
       callbackUrls: [`https://${webmailUi.distributionDomainName}/auth/callback`],
       logoutUrls:   [`https://${webmailUi.distributionDomainName}/`],
     });
+  });
+
+  it('never grants admin or alias write to the webmail client', () => {
+    createWebmailUi();
+
+    const [request] = provisionJmapApiClient.mock.calls[0];
+
+    expect(request.permissions).not.toContain(Permission.ADMIN);
+    expect(request.permissions).not.toContain(Permission.ALIAS_WRITE);
   });
 
   it('deploys the Webmail UI bundle published by the mailbox-webmail-ui artifact', () => {

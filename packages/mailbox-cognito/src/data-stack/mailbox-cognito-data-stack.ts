@@ -162,6 +162,7 @@ export class MailboxCognitoDataStack extends cdk.Stack {
       accountRecoverySetting: {
         recoveryMechanisms: [{ name: 'admin_only', priority: 1 }],
       },
+      deletionProtection:     'ACTIVE',
     });
     cfnPool.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
     return cfnPool;

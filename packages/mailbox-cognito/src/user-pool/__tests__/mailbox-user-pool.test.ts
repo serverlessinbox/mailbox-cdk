@@ -252,6 +252,10 @@ describe('MailboxUserPool headless client provisioning', () => {
 });
 
 describe('MailboxUserPool authorization', () => {
+  it('rejects an explicit empty adminGroups list, naming the prop, rather than gating the Admin API on no group', () => {
+    expect(() => createUserPool({ authorization: { adminGroups: [] } })).toThrow(/authorization\.adminGroups is an empty list/);
+  });
+
   it('requires the admin scope and the default admin group for the Admin API, and no scope for the JMAP API', () => {
     const { pool } = createUserPool();
 

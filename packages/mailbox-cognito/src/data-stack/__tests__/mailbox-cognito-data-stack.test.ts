@@ -49,3 +49,13 @@ describe('MailboxCognitoDataStack MFA mode mapping', () => {
     });
   });
 });
+
+describe('MailboxCognitoDataStack user pool deletion protection', () => {
+  it('turns on DeletionProtection for the retained user pool', () => {
+    synthesizeDataStack().hasResource('AWS::Cognito::UserPool', {
+      UpdateReplacePolicy: 'Retain',
+      DeletionPolicy:      'RetainExceptOnCreate',
+      Properties:          { DeletionProtection: 'ACTIVE' },
+    });
+  });
+});

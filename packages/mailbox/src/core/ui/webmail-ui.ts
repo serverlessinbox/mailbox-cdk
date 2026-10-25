@@ -74,11 +74,20 @@ export class WebmailUi extends MailboxUi {
     });
     ComponentDescription.describe(this, 'Webmail client — S3-hosted static site behind CloudFront with an OAuth token-exchange backend (BFF).');
 
-    const uiHost         = this.distributionDomainName;
-    const allPermissions = Object.values(Permission);
-    this.oauthClient     = props.authProvider.provisionJmapApiClient({
+    const uiHost                           = this.distributionDomainName;
+    const webmailPermissions: Permission[] = [
+      Permission.MAIL_READ,
+      Permission.MAIL_WRITE,
+      Permission.MAIL_SEND,
+      Permission.ACCOUNT_READ,
+      Permission.ALIAS_READ,
+      Permission.USER_READ,
+      Permission.CONTACTS_READ,
+      Permission.CONTACTS_WRITE,
+    ];
+    this.oauthClient                       = props.authProvider.provisionJmapApiClient({
       name:         'webmail-ui',
-      permissions:  allPermissions,
+      permissions:  webmailPermissions,
       callbackUrls: [`https://${uiHost}/auth/callback`],
       logoutUrls:   [`https://${uiHost}/`],
     });

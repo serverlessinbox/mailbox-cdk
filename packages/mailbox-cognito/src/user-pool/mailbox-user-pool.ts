@@ -306,13 +306,16 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
     this.passwordMinLength         = props.passwordMinLength ?? DEFAULT_PASSWORD_MIN_LENGTH;
     this.artifacts                 = props.artifactResolver
       ?? MailboxArtifactResolverFactory.fromContext(this, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions());
-    this.authzConfig               = {
+    if (props.authorization?.adminGroups?.length === 0) {
+      throw new Error('MailboxUserPool: authorization.adminGroups is an empty list; it must name at least one admin group, or be omitted to use the default [\'admin\'].');
+    }
+    this.authzConfig = {
       adminGroups: props.authorization?.adminGroups ?? [ADMIN_GROUP_NAME],
       userGroups:  props.authorization?.userGroups ?? [USER_GROUP_NAME],
     };
-    this.scopeMap                  = this.buildScopeMap();
-    this.policies                  = this.buildPolicies();
-    this.authFlows                 = props.authFlows ?? {
+    this.scopeMap    = this.buildScopeMap();
+    this.policies    = this.buildPolicies();
+    this.authFlows   = props.authFlows ?? {
       userPassword: false,
       userSrp:      false,
     };
