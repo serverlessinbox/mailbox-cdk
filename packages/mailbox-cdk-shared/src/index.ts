@@ -12,7 +12,7 @@ export { MailboxArtifactResolverFactory } from './artifacts/mailbox-artifact-res
 export { loadEmbeddedRegistryRecord } from './artifacts/embedded-registry-record';
 export { loadEmbeddedArtifactVersions } from './artifacts/embedded-artifact-versions';
 export type { EmbeddedArtifactVersions } from './artifacts/embedded-artifact-versions';
-export type { RegistryRecord } from '@serverlessinbox/artifact-registry/registry';
+export type { RegistryRecord } from './artifacts/registry-record-contract';
 
 // CDK aspects & patterns
 export { GateOnConditionAspect } from './gate-on-condition-aspect';
@@ -61,7 +61,7 @@ export { StaticContentDeployer } from './resources/lambdas/content-deployer';
 export type { StaticContentDeploymentProps, StaticContentInvalidationProps } from './resources/lambdas/content-deployer';
 export { StaticContentSource } from './static-content-source';
 export type { IStaticContentSource, StaticContentWriteOptions, StaticContentZipOptions } from './static-content-source';
-export type { StaticContentSourceSpec } from './runtime/content-deployer/resource-properties';
+export type { StaticContentSourceSpec } from './runtime/content-deployer/resource-properties-contract';
 
 // Stack-deployed event
 export { StackDeployedEvent } from './resources/events/stack-deployed-event';

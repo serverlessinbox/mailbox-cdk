@@ -11,7 +11,7 @@ import { parentStackStatusReadStatement }                            from '../..
 import type {
   ContentDeployerResourceProperties,
   StaticContentSourceSpec,
-} from '../../runtime/content-deployer/resource-properties';
+} from '../../runtime/content-deployer/resource-properties-contract';
 import type { IStaticContentSource }                                 from '../../static-content-source';
 import { getOrCreateSharedGroup }                                    from '../../tagging/shared-group';
 import type { IStaticContentTarget }                                 from '../buckets/static-content-target';

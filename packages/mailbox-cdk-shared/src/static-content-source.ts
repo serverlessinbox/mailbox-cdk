@@ -1,6 +1,6 @@
 import type { IBucket }                 from 'aws-cdk-lib/aws-s3';
 
-import type { StaticContentSourceSpec } from './runtime/content-deployer/resource-properties';
+import type { StaticContentSourceSpec } from './runtime/content-deployer/resource-properties-contract';
 
 /** HTTP metadata stored on an object written by a data source. */
 export interface StaticContentWriteOptions {

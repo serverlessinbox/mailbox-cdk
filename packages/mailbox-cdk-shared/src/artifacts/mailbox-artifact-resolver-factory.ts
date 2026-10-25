@@ -1,12 +1,12 @@
 import { PinnedArtifactResolver }                               from '@serverlessinbox/artifact-registry-cdk';
 import type { RegistryLocation }                                from '@serverlessinbox/artifact-registry-cdk';
-import type { RegistryRecord }                                  from '@serverlessinbox/artifact-registry/registry';
 import { Stack }                                                from 'aws-cdk-lib';
 import type { Construct }                                       from 'constructs';
 
 import { ARTIFACTS_CONTEXT_KEY, ARTIFACT_VERSIONS_CONTEXT_KEY } from '../context/context-keys';
 
 import type { EmbeddedArtifactVersions }                        from './embedded-artifact-versions';
+import type { RegistryRecord }                                  from './registry-record-contract';
 
 /**
  * Builds the artifact resolver of a mailbox package from what the package ships (its registry

@@ -10,13 +10,13 @@ import { InvalidOwnInput }                               from '../../runtime/han
 import { hasTimeLeft, type InvocationDeadline }          from '../../runtime/handler-kit/invocation-deadline';
 import type { LoggerBuffer }                             from '../../runtime/handler-kit/logger-buffer';
 
-import {
-  isContentDeployerResourceProperties,
-  type ContentDeployerResourceProperties,
-  type DataSourceSpec,
-  type StaticContentSourceSpec,
-  type ZipSourceSpec,
-} from './resource-properties';
+import type {
+  ContentDeployerResourceProperties,
+  DataSourceSpec,
+  StaticContentSourceSpec,
+  ZipSourceSpec,
+} from './resource-properties-contract';
+import { isContentDeployerResourceProperties } from './resource-properties';
 
 /** The attributes a content-deployer resource returns, all as strings. A type alias, because `wrapHandler` requires `Data` to be a `Record<string, string>`. */
 export type ContentDeployerResponseData = {

@@ -1,4 +1,4 @@
-import type { ResolvedArtifact }  from '@serverlessinbox/artifact-registry';
+import type { ResolvedArtifact }  from '@serverlessinbox/artifact-registry-cdk';
 import * as acm                   from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam                   from 'aws-cdk-lib/aws-iam';
 import type * as lambda           from 'aws-cdk-lib/aws-lambda';

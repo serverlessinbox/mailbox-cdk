@@ -4,11 +4,35 @@
  * tolerate the extra keys CloudFormation adds, such as `ServiceToken`.
  */
 
-import { isContentDeployerResourceProperties } from '../resource-properties';
+import type * as t                                from 'typanion';
 
-import { dataSource, zipSource }               from './content-deployer-helpers';
+import type { ContentDeployerResourceProperties } from '../resource-properties-contract';
+import { isContentDeployerResourceProperties }    from '../resource-properties';
+
+import { dataSource, zipSource }                  from './content-deployer-helpers';
+
+type SchemaProperties = t.InferType<typeof isContentDeployerResourceProperties>;
+
+const schemaToContract = (properties: SchemaProperties): ContentDeployerResourceProperties => properties;
+const contractToSchema = (properties: ContentDeployerResourceProperties): SchemaProperties => properties;
 
 describe('isContentDeployerResourceProperties', () => {
+  it('accepts a contract object with every field of every source kind populated', () => {
+    const fullProperties: ContentDeployerResourceProperties = {
+      targetBucket:      'my-bucket',
+      deploymentNonce:   'nonce',
+      sources:           [
+        { kind: 'data', key: 'config.json', body: '{}', contentType: 'application/json', cacheControl: 'no-store' },
+        { kind: 'zip', sourceBucket: 'src-bucket', sourceKey: 'app.zip', targetPrefix: 'app/', sourceVersionId: 'v1' },
+      ],
+      distributionId:    'E123ABC',
+      invalidationPaths: ['/index.html'],
+    };
+
+    expect(isContentDeployerResourceProperties(contractToSchema(fullProperties))).toBe(true);
+    expect(schemaToContract(fullProperties)).toBe(fullProperties);
+  });
+
   describe('accepts', () => {
     it.each([
       ['a data source with only its required fields', { targetBucket: 'my-bucket', sources: [dataSource()] }],
