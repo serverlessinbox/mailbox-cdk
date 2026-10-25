@@ -1,15 +1,15 @@
-import type { IArtifactResolver }                                                                      from '@serverlessinbox/artifact-registry-cdk';
-import { StaticContentDeployer, StaticContentSource, PublicStaticAssetsBucket, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IPublicStaticAssetsBucket }                                                              from '@serverlessinbox/mailbox-cdk-shared';
-import { IJmapApiAddon, IIdentityProvisioner }                                                         from '@serverlessinbox/mailbox';
-import { HttpUrlIntegration, HttpLambdaIntegration }                                                   from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { HttpApi, HttpMethod, HttpRoute, CfnStage }                                                    from 'aws-cdk-lib/aws-apigatewayv2';
-import { IUserPool }                                                                                   from 'aws-cdk-lib/aws-cognito';
-import * as cdk                                                                                        from 'aws-cdk-lib';
-import { Construct }                                                                                   from 'constructs';
+import type { IArtifactResolver }                                                                               from '@serverlessinbox/artifact-registry-cdk';
+import { StaticContentDeployer, StaticContentSource, PublicStaticAssetsBucket, GateOnConditionAspect }          from '@serverlessinbox/mailbox-cdk-shared';
+import type { IPublicStaticAssetsBucket }                                                                       from '@serverlessinbox/mailbox-cdk-shared';
+import { IJmapApiAddon, IIdentityProvisioner }                                                                  from '@serverlessinbox/mailbox';
+import { HttpUrlIntegration, HttpLambdaIntegration }                                                            from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { HttpApi, HttpMethod, HttpRoute, HttpStage, CfnStage }                                                  from 'aws-cdk-lib/aws-apigatewayv2';
+import { IUserPool }                                                                                            from 'aws-cdk-lib/aws-cognito';
+import * as cdk                                                                                                 from 'aws-cdk-lib';
+import { Construct }                                                                                            from 'constructs';
 
-import { JmapOAuthDcrLambda }                                                                          from './resources/lambdas/jmap-oauth-dcr-lambda';
-import { DynamicClientRegistrationMode }                                                               from './user-pool/dynamic-client-registration-mode';
+import { JmapOAuthDcrLambda }                                                                                   from './resources/lambdas/jmap-oauth-dcr-lambda';
+import { DynamicClientRegistrationMode }                                                                        from './user-pool/dynamic-client-registration-mode';
 
 /** RFC 7591 Dynamic Client Registration path, mounted on the JMAP API's HttpApi. */
 const REGISTRATION_PATH      = '/oauth/register';
@@ -223,8 +223,10 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
     return { ...(stage.routeSettings as RouteSettings | undefined) };
   }
 
+  // `HttpApi.defaultStage` is set only for the stage CDK creates itself; a stage added with `addStage` is found among the children.
   private defaultStageOf(api: HttpApi): CfnStage {
-    const stage = api.defaultStage?.node.defaultChild;
+    const httpStage = api.node.children.find((child) => child instanceof HttpStage && child.stageName === '$default');
+    const stage     = httpStage?.node.defaultChild;
     if (!(stage instanceof CfnStage)) {
       throw new Error('The HTTP API has no default stage to carry the route settings');
     }

@@ -20,6 +20,7 @@
 
 import { renderLiteralText }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { MailboxArtifactResolverFactory }     from '@serverlessinbox/mailbox-cdk-shared';
+import { Mailbox }                            from '@serverlessinbox/mailbox';
 import { Template, Match }                    from 'aws-cdk-lib/assertions';
 import { HttpApi }                            from 'aws-cdk-lib/aws-apigatewayv2';
 import * as lambda                            from 'aws-cdk-lib/aws-lambda';
@@ -362,6 +363,40 @@ describe('JmapOAuthAddon: dynamicClientRegistration gating', () => {
 
   it("an invalid value ('true') cast through the enum throws at synth with a clear message", () => {
     expect(() => buildHarness('true' as DynamicClientRegistrationMode)).toThrow(/dynamicClientRegistration must be 'enabled' or 'disabled'/);
+  });
+
+  // Regression: the JMAP API builds its throttled stage with `addStage` and `createDefaultStage: false`, so the addon
+  // read an undefined `api.defaultStage` and `Mailbox` failed to synthesize with "no default stage".
+  it('a Mailbox whose JMAP API has a throttled stage carries the OAuth route settings on that stage', () => {
+    const app = new App();
+    app.node.setContext('serverlessinbox:artifact_versions', {});
+    app.node.setContext('serverlessinbox:artifacts', {
+      bucketBase: 'test-artifacts',
+      packages:   Object.fromEntries(
+        ['mailbox-go', 'mailbox-cdk', 'mailbox-cdk-shared', 'mailbox-admin-ui', 'mailbox-webmail-ui', 'mailbox-cognito', 'mailbox']
+          .map((name) => [name, { zone: 'regional', version: '1.0.0' }]),
+      ),
+    });
+    const stack    = new cdk.Stack(app, 'TestMailboxWithOAuthStack', {
+      env:         { account: '123456789012', region: 'us-west-2' },
+      synthesizer: new BootstraplessSynthesizer(),
+    });
+    const resolver = MailboxArtifactResolverFactory.fromContext(stack, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions());
+    const pool     = new MailboxUserPool(stack, 'user-pool', {
+      domain:                   { kind: 'cognito', cognitoDomainPrefix: 'test-oauth' },
+      artifactResolver:         resolver,
+      enableJmapOAuthDiscovery: true,
+    });
+    new Mailbox(stack, 'mailbox', { authProvider: pool });
+
+    const stages = Object.values(Template.fromStack(stack).findResources('AWS::ApiGatewayV2::Stage', {
+      Properties: Match.objectLike({
+        DefaultRouteSettings: { ThrottlingBurstLimit: 200, ThrottlingRateLimit: 100 },
+        RouteSettings:        Match.objectLike({ 'GET /.well-known/openid-configuration': { ThrottlingBurstLimit: 20, ThrottlingRateLimit: 10 } }),
+      }),
+    }));
+
+    expect(stages).toHaveLength(1);
   });
 
   it('adding routes to an HTTP API without a default stage throws, naming the missing stage', () => {
