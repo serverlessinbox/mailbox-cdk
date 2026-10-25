@@ -22,7 +22,7 @@ interface CachedHmacKeys {
 }
 
 const HMAC_KEYS_TTL_MS          = 30 * 60 * 1000;
-const SESSION_TOKEN_FIELD_COUNT = 4;
+const SESSION_TOKEN_FIELD_COUNT = 5;
 
 /**
  * Verifies the HMAC-signed values the Go services issue: the session token that names the accounts a bearer
@@ -43,7 +43,7 @@ export class HmacVerifier {
    * The payload of a session token signed by a current or previous key; a token signed by neither, and a
    * store without keys, have none. Token format:
    * `base64RawURL(payload) + "." + base64RawURL(HMAC-SHA256(key, payload))`, with the payload string
-   * `{tenantId}|{issuer}|{audience}|{accountId1,accountId2,...}`.
+   * `{tenantId}|{issuer}|{audience}|{sub}|{accountId1,accountId2,...}`.
    */
   public async verifySessionToken(token: string, authKeyStoreTable: TableName): Promise<HmacTokenPayload | null> {
     const keys = await this.hmacKeys(authKeyStoreTable);
@@ -136,11 +136,12 @@ export class HmacVerifier {
       return null;
     }
 
-    const [tenantId, issuer, audience, accountIds] = fields;
+    const [tenantId, issuer, audience, sub, accountIds] = fields;
     return {
       tenantId:   toTenantId(tenantId),
       issuer:     toIssuer(issuer),
       audience:   toAudience(audience),
+      sub:        sub,
       accountIds: accountIds.split(',').filter(Boolean).map(toAccountId),
     };
   }

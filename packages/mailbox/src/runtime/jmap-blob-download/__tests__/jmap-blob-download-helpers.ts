@@ -28,8 +28,15 @@ export function decodedBlobIdOf(raw: string): DecodedBlobId {
 }
 
 /** A session token as the Go signer builds it: `base64RawURL(payload).base64RawURL(HMAC-SHA256(key, payload))`. */
-export function sessionTokenSignedBy(key: Buffer, tenantId: string, issuer: string, audience: string, accountIds: string[]): string {
-  return sessionTokenOverPayload(key, `${tenantId}|${issuer}|${audience}|${accountIds.join(',')}`);
+export function sessionTokenSignedBy(
+  key: Buffer,
+  tenantId: string,
+  issuer: string,
+  audience: string,
+  sub: string,
+  accountIds: string[],
+): string {
+  return sessionTokenOverPayload(key, `${tenantId}|${issuer}|${audience}|${sub}|${accountIds.join(',')}`);
 }
 
 /** A session token signing an arbitrary payload string, for payloads the Go signer would not build. */

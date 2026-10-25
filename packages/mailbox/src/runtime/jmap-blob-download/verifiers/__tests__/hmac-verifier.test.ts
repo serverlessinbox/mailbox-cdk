@@ -46,14 +46,15 @@ describe('HmacVerifier', () => {
   });
 
   describe('verifySessionToken', () => {
-    it('returns the payload of a token signed by the current key', async () => {
+    it('returns the payload of a token signed by the current key, including the subject it was issued to', async () => {
       storeHoldsKeys(CURRENT_KEY);
-      const token = sessionTokenSignedBy(CURRENT_KEY, 'tenant-1', 'https://issuer.example.com', 'client-1', ['acc-1', 'acc-2']);
+      const token = sessionTokenSignedBy(CURRENT_KEY, 'tenant-1', 'https://issuer.example.com', 'client-1', 'user-1', ['acc-1', 'acc-2']);
 
       await expect(verifier.verifySessionToken(token, AUTH_KEY_STORE_TABLE)).resolves.toEqual({
         tenantId:   'tenant-1',
         issuer:     'https://issuer.example.com',
         audience:   'client-1',
+        sub:        'user-1',
         accountIds: ['acc-1', 'acc-2'],
       });
     });
@@ -61,7 +62,7 @@ describe('HmacVerifier', () => {
     it('reads the signing keys from the hmac / blob-url-signing item of the given table', async () => {
       storeHoldsKeys(CURRENT_KEY);
 
-      await verifier.verifySessionToken(sessionTokenSignedBy(CURRENT_KEY, 't', 'i', 'a', []), AUTH_KEY_STORE_TABLE);
+      await verifier.verifySessionToken(sessionTokenSignedBy(CURRENT_KEY, 't', 'i', 'a', 's', []), AUTH_KEY_STORE_TABLE);
 
       expect(dynamodb.commandCalls(GetItemCommand)[0].args[0].input).toEqual({
         TableName: AUTH_KEY_STORE_TABLE,
@@ -71,50 +72,51 @@ describe('HmacVerifier', () => {
 
     it('returns the payload of a token signed by the previous key while a rotation is in flight', async () => {
       storeHoldsKeys(CURRENT_KEY, PREVIOUS_KEY);
-      const token = sessionTokenSignedBy(PREVIOUS_KEY, 'tenant-1', 'issuer', 'aud', ['acc-1']);
+      const token = sessionTokenSignedBy(PREVIOUS_KEY, 'tenant-1', 'issuer', 'aud', 'user-1', ['acc-1']);
 
       await expect(verifier.verifySessionToken(token, AUTH_KEY_STORE_TABLE)).resolves.toMatchObject({ tenantId: 'tenant-1' });
     });
 
     it('returns an empty account list for a token that lists no account', async () => {
       storeHoldsKeys(CURRENT_KEY);
-      const token = sessionTokenSignedBy(CURRENT_KEY, 'tenant-1', 'issuer', 'aud', []);
+      const token = sessionTokenSignedBy(CURRENT_KEY, 'tenant-1', 'issuer', 'aud', 'user-1', []);
 
       await expect(verifier.verifySessionToken(token, AUTH_KEY_STORE_TABLE)).resolves.toMatchObject({ accountIds: [] });
     });
 
     it('rejects a token signed by a key that is neither current nor previous', async () => {
       storeHoldsKeys(CURRENT_KEY, PREVIOUS_KEY);
-      const token = sessionTokenSignedBy(OTHER_KEY, 'tenant-1', 'issuer', 'aud', ['acc-1']);
+      const token = sessionTokenSignedBy(OTHER_KEY, 'tenant-1', 'issuer', 'aud', 'user-1', ['acc-1']);
 
       await expect(verifier.verifySessionToken(token, AUTH_KEY_STORE_TABLE)).resolves.toBeNull();
     });
 
     it('rejects a token signed by the previous key when the store holds no previous key', async () => {
       storeHoldsKeys(CURRENT_KEY);
-      const token = sessionTokenSignedBy(PREVIOUS_KEY, 'tenant-1', 'issuer', 'aud', ['acc-1']);
+      const token = sessionTokenSignedBy(PREVIOUS_KEY, 'tenant-1', 'issuer', 'aud', 'user-1', ['acc-1']);
 
       await expect(verifier.verifySessionToken(token, AUTH_KEY_STORE_TABLE)).resolves.toBeNull();
     });
 
     it('rejects a token whose payload was changed after signing', async () => {
       storeHoldsKeys(CURRENT_KEY);
-      const [, signature] = sessionTokenSignedBy(CURRENT_KEY, 'tenant-1', 'issuer', 'aud', ['acc-1']).split('.');
-      const forgedPayload = Buffer.from('tenant-1|issuer|aud|acc-1,acc-2', 'utf-8').toString('base64url');
+      const [, signature] = sessionTokenSignedBy(CURRENT_KEY, 'tenant-1', 'issuer', 'aud', 'user-1', ['acc-1']).split('.');
+      const forgedPayload = Buffer.from('tenant-1|issuer|aud|user-1|acc-1,acc-2', 'utf-8').toString('base64url');
 
       await expect(verifier.verifySessionToken(`${forgedPayload}.${signature}`, AUTH_KEY_STORE_TABLE)).resolves.toBeNull();
     });
 
     it('rejects a correctly signed token that has a second dot after its signature', async () => {
       storeHoldsKeys(CURRENT_KEY);
-      const token = sessionTokenSignedBy(CURRENT_KEY, 'tenant-1', 'issuer', 'aud', ['acc-1']);
+      const token = sessionTokenSignedBy(CURRENT_KEY, 'tenant-1', 'issuer', 'aud', 'user-1', ['acc-1']);
 
       await expect(verifier.verifySessionToken(`${token}.`, AUTH_KEY_STORE_TABLE)).resolves.toBeNull();
     });
 
     it.each([
       { fields: 'three fields', payload: 'tenant-1|issuer|aud' },
-      { fields: 'five fields', payload: 'tenant-1|issuer|aud|acc-1|extra' },
+      { fields: 'four fields (the pre-subject format)', payload: 'tenant-1|issuer|aud|acc-1' },
+      { fields: 'six fields', payload: 'tenant-1|issuer|aud|user-1|acc-1|extra' },
     ])('rejects a correctly signed token whose payload has $fields', async ({ payload }) => {
       storeHoldsKeys(CURRENT_KEY);
 
@@ -125,7 +127,7 @@ describe('HmacVerifier', () => {
 
     it('rejects every token when the store holds no signing keys', async () => {
       dynamodb.on(GetItemCommand).resolves({});
-      const token = sessionTokenSignedBy(CURRENT_KEY, 'tenant-1', 'issuer', 'aud', ['acc-1']);
+      const token = sessionTokenSignedBy(CURRENT_KEY, 'tenant-1', 'issuer', 'aud', 'user-1', ['acc-1']);
 
       await expect(verifier.verifySessionToken(token, AUTH_KEY_STORE_TABLE)).resolves.toBeNull();
     });
@@ -207,7 +209,7 @@ describe('HmacVerifier', () => {
     it('reads the store once for the session token and the blob MAC of a request', async () => {
       storeHoldsKeys(CURRENT_KEY);
 
-      await verifier.verifySessionToken(sessionTokenSignedBy(CURRENT_KEY, 't', 'i', 'a', []), AUTH_KEY_STORE_TABLE);
+      await verifier.verifySessionToken(sessionTokenSignedBy(CURRENT_KEY, 't', 'i', 'a', 's', []), AUTH_KEY_STORE_TABLE);
       await verifier.verifyBlobMac(MAC_PAYLOAD, blobMacSignedBy(CURRENT_KEY, 'tenant-1', 'account-1', 'email-1'), AUTH_KEY_STORE_TABLE);
 
       expect(dynamodb.commandCalls(GetItemCommand)).toHaveLength(1);

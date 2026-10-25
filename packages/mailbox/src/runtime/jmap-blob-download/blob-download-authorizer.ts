@@ -166,8 +166,11 @@ export class BlobDownloadAuthorizer {
     }
   }
 
-  // A JWT that names no issuer or audience is not held to the session's; one that names them must agree.
+  // The session must have been issued to the JWT's subject. A JWT that names no issuer or audience is not held to the session's; one that names them must agree.
   private requireSameIdentity(jwt: VerifiedJwt, session: HmacTokenPayload): void {
+    if (session.sub !== jwt.sub) {
+      throw this.reject(403, 'Access denied: subject mismatch');
+    }
     if (jwt.issuer && session.issuer !== jwt.issuer) {
       throw this.reject(403, 'Access denied: issuer mismatch');
     }

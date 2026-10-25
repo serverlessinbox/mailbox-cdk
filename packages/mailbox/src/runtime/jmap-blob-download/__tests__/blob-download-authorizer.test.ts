@@ -34,7 +34,7 @@ import {
 } from './jmap-blob-download-helpers';
 
 const VERIFIED_JWT: VerifiedJwt = { sub: 'user-1', issuer: ISSUER, audience: AUDIENCE };
-const SESSION: HmacTokenPayload = { tenantId: TENANT_ID, issuer: ISSUER, audience: AUDIENCE, accountIds: [ACCOUNT_ID] };
+const SESSION: HmacTokenPayload = { tenantId: TENANT_ID, issuer: ISSUER, audience: AUDIENCE, sub: 'user-1', accountIds: [ACCOUNT_ID] };
 
 interface DownloadOptions {
   readonly blob?:      string;
@@ -245,6 +245,12 @@ describe('BlobDownloadAuthorizer', () => {
   });
 
   describe('identity agreement between JWT and session', () => {
+    it('rejects a session issued to another subject than the JWT with a 403', async () => {
+      verifySessionToken.mockResolvedValue({ ...SESSION, sub: 'user-2' });
+
+      await expectRejected(downloadRequest(), 403, 'Access denied: subject mismatch');
+    });
+
     it('rejects a session issued for another issuer with a 403', async () => {
       verifySessionToken.mockResolvedValue({ ...SESSION, issuer: ANOTHER_ISSUER });
 

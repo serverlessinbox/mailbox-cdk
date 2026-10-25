@@ -11,12 +11,13 @@ export interface VerifiedJwt {
 }
 
 /**
- * The payload of an HMAC session token: the tenant it was issued for, the issuer and audience that must agree
- * with the JWT, and the accounts the bearer may read blobs of.
+ * The payload of an HMAC session token: the tenant it was issued for, the issuer, audience and subject that must
+ * agree with the JWT, and the accounts the bearer may read blobs of.
  */
 export interface HmacTokenPayload {
   readonly tenantId:   TenantId;
   readonly issuer:     Issuer;
   readonly audience:   Audience;
+  readonly sub:        string;
   readonly accountIds: AccountId[];
 }
