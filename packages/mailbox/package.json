@@ -29,7 +29,7 @@
     "build:watch": "tsc --watch",
     "build:edge-stack": "task build:edge-stack",
     "build:data-stack": "task build:data-stack",
-    "prepack": "yarn prepare-manifest build && yarn build:edge-stack && yarn build:data-stack && yarn bundle && yarn bundle:jsii",
+    "prepack": "yarn prepare-manifest build && node -e \"require('fs').copyFileSync('../../LICENSE', 'LICENSE')\" && yarn build:edge-stack && yarn build:data-stack && yarn bundle && yarn bundle:jsii",
     "test": "tsc -p tsconfig.test.json && jest",
     "clean": "rm -rf dist lib *.tsbuildinfo",
     "dev": "task build:watch",
@@ -104,6 +104,7 @@
     "lib",
     "artifact-versions.json",
     "registry-record.json",
+    "LICENSE",
     "!src/**/__tests__",
     "!lib/**/__tests__"
   ]

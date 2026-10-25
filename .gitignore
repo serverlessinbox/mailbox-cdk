@@ -22,6 +22,10 @@ packages/mailbox-cdk-shared/tsconfig.build.tsbuildinfo
 build.log
 /build
 
+# LICENSE copied into each published package by its prepack (root LICENSE is the source)
+/packages/mailbox/LICENSE
+/packages/mailbox-cognito/LICENSE
+
 # Synthesized templates captured by `yarn template-baseline capture`
 .template-baseline/
 .github/copilot-instructions.md
