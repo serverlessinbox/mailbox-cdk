@@ -29,7 +29,7 @@ import {
   type AdminAuthContext,
   type AuditContext,
   type HandlerContext,
-} from '@serverlessinbox/mailbox-admin-api';
+} from '@serverlessinbox/mailbox-addon-sdk';
 import { LoggerBuffer, toAccountId, toFunctionName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }                                from 'aws-sdk-client-mock';
 

@@ -7,7 +7,7 @@
  */
 
 import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
-import type { AuditEvent }               from '@serverlessinbox/mailbox-admin-api';
+import type { AuditEvent }               from '@serverlessinbox/mailbox-addon-sdk';
 import { toQueueUrl }                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }                    from 'aws-sdk-client-mock';
 

@@ -1,8 +1,9 @@
 import { create }                                                                               from '@bufbuild/protobuf';
 
-import { SubscribeSchema }                                                                      from '../generated/pushws/push_ws_pb';
 import { ServiceSpecBuilder, type GeneratedServiceRuntime, type ServiceSpecFromRuntimeOptions } from '../service-spec-builder';
 import type { HandlerContext }                                                                  from '../service-spec';
+
+import { SubscribeSchema }                                                                      from './fixtures/subscribe-message';
 
 /*
  * Pins how a generated service description becomes callable methods. A request is parsed and a response
@@ -85,7 +86,7 @@ describe('ServiceSpecBuilder', () => {
       const spec = build({ subscribe: () => Promise.resolve(undefined) });
 
       expect(() => spec.methods['Subscribe'].serializeResponse?.({ id: 'c1', accountId: 'a1' }))
-        .toThrow('Response of PushService.Subscribe is not a pushws.v1.Subscribe message');
+        .toThrow('Response of PushService.Subscribe is not a fixture.v1.Subscribe message');
     });
 
     it('uses the serializer of the options, given the method name', () => {

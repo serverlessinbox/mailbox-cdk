@@ -23,8 +23,8 @@ const RAW_RUNTIME_STATE =
       "reference": "workspace:packages/mailbox"\
     },\
     {\
-      "name": "@serverlessinbox/mailbox-admin-api",\
-      "reference": "workspace:packages/mailbox-admin-api"\
+      "name": "@serverlessinbox/mailbox-addon-sdk",\
+      "reference": "workspace:packages/mailbox-addon-sdk"\
     },\
     {\
       "name": "@serverlessinbox/mailbox-bundler",\
@@ -45,7 +45,7 @@ const RAW_RUNTIME_STATE =
   "fallbackExclusionList": [\
     ["@serverlessinbox/eslint-plugin-mailbox", ["workspace:packages/eslint-plugin-mailbox"]],\
     ["@serverlessinbox/mailbox", ["virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox", "workspace:packages/mailbox"]],\
-    ["@serverlessinbox/mailbox-admin-api", ["workspace:packages/mailbox-admin-api"]],\
+    ["@serverlessinbox/mailbox-addon-sdk", ["virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox-addon-sdk", "workspace:packages/mailbox-addon-sdk"]],\
     ["@serverlessinbox/mailbox-bundler", ["virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#workspace:packages/mailbox-bundler", "workspace:packages/mailbox-bundler"]],\
     ["@serverlessinbox/mailbox-cdk-shared", ["workspace:packages/mailbox-cdk-shared"]],\
     ["@serverlessinbox/mailbox-cognito", ["workspace:packages/mailbox-cognito"]],\
@@ -749,8 +749,8 @@ const RAW_RUNTIME_STATE =
       "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox"\
     ],\
     [\
-      "@serverlessinbox/mailbox-admin-api",\
-      "workspace:packages/mailbox-admin-api"\
+      "@serverlessinbox/mailbox-addon-sdk",\
+      "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox-addon-sdk"\
     ],\
     [\
       "@serverlessinbox/mailbox-bundler",\
@@ -5980,12 +5980,30 @@ const RAW_RUNTIME_STATE =
         "linkType": "SOFT"\
       }]\
     ]],\
-    ["@serverlessinbox/mailbox-admin-api", [\
-      ["workspace:packages/mailbox-admin-api", {\
-        "packageLocation": "./packages/mailbox-admin-api/",\
+    ["@serverlessinbox/mailbox-addon-sdk", [\
+      ["virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox-addon-sdk", {\
+        "packageLocation": "./.yarn/__virtual__/@serverlessinbox-mailbox-addon-sdk-virtual-428797e9d8/1/packages/mailbox-addon-sdk/",\
         "packageDependencies": [\
           ["@bufbuild/protobuf", "npm:2.10.2"],\
-          ["@serverlessinbox/mailbox-admin-api", "workspace:packages/mailbox-admin-api"],\
+          ["@serverlessinbox/mailbox-addon-sdk", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox-addon-sdk"],\
+          ["@types/bufbuild__protobuf", null],\
+          ["@types/jest", "npm:29.5.14"],\
+          ["jest", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:29.7.0"],\
+          ["ts-jest", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:29.4.6"],\
+          ["typanion", "npm:3.14.0"],\
+          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
+        ],\
+        "packagePeers": [\
+          "@bufbuild/protobuf",\
+          "@types/bufbuild__protobuf"\
+        ],\
+        "linkType": "SOFT"\
+      }],\
+      ["workspace:packages/mailbox-addon-sdk", {\
+        "packageLocation": "./packages/mailbox-addon-sdk/",\
+        "packageDependencies": [\
+          ["@bufbuild/protobuf", "npm:2.10.2"],\
+          ["@serverlessinbox/mailbox-addon-sdk", "workspace:packages/mailbox-addon-sdk"],\
           ["@types/jest", "npm:29.5.14"],\
           ["jest", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:29.7.0"],\
           ["ts-jest", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:29.4.6"],\
@@ -6082,7 +6100,7 @@ const RAW_RUNTIME_STATE =
           ["@serverlessinbox/artifact-registry", "npm:0.3.0"],\
           ["@serverlessinbox/artifact-registry-cdk", "virtual:18aa64ba92d78387e200e5b44bcf43b06204cbf3f763f86636ce57acb7635002abe16b7ea7f442476cd390df45560c2a09ada9212b44aaa7a06df1e86d6d5320#npm:0.3.0"],\
           ["@serverlessinbox/mailbox", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox"],\
-          ["@serverlessinbox/mailbox-admin-api", "workspace:packages/mailbox-admin-api"],\
+          ["@serverlessinbox/mailbox-addon-sdk", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox-addon-sdk"],\
           ["@serverlessinbox/mailbox-bundler", "virtual:eb64bb8275d329da5970bfab052478c81c6fa4e8469261c8f04d0ab8d1dd0592aa62837c313e38752dbbd84114809371ac938af6e81b847634f2fc9464516698#workspace:packages/mailbox-bundler"],\
           ["@serverlessinbox/mailbox-cdk-shared", "workspace:packages/mailbox-cdk-shared"],\
           ["@serverlessinbox/mailbox-cognito", "workspace:packages/mailbox-cognito"],\

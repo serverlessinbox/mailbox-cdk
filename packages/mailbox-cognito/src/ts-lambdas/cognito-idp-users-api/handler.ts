@@ -1,7 +1,7 @@
 import { CognitoIdentityProviderClient }    from '@aws-sdk/client-cognito-identity-provider';
 import { LambdaClient }                     from '@aws-sdk/client-lambda';
 import { SQSClient }                        from '@aws-sdk/client-sqs';
-import type { ApiGatewayV2EventLike }       from '@serverlessinbox/mailbox-admin-api';
+import type { ApiGatewayV2EventLike }       from '@serverlessinbox/mailbox-addon-sdk';
 import { env, LoggerBuffer, withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { IdentityProvisionerClient }        from '../../runtime/shared/identity-provisioner-client';

@@ -14,6 +14,7 @@
     "resolve-artifacts": "task resolve-artifacts --",
     "bake-artifact-versions": "ts-node --project tsconfig.scripts.json scripts/bake-artifact-versions/bake-artifact-versions.ts",
     "template-baseline": "ts-node --project tsconfig.scripts.json scripts/template-baseline/template-baseline.ts",
+    "api-report": "ts-node --project tsconfig.scripts.json scripts/api-report/api-report.ts",
     "build-stack": "ts-node --project tsconfig.scripts.json scripts/build-stack/build-stack.ts",
     "fetch-registry-record": "task fetch-registry-record",
     "test:scripts": "tsc -p tsconfig.scripts.json --noEmit && jest --config jest.config.js",

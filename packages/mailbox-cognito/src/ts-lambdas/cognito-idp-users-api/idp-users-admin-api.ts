@@ -7,7 +7,7 @@ import {
   type ApiGatewayV2EventLike,
   type ApiGatewayV2ResultLike,
   type AuditContext,
-} from '@serverlessinbox/mailbox-admin-api';
+} from '@serverlessinbox/mailbox-addon-sdk';
 import { toIssuer, type Issuer }                                                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { toGroupName, toUserSubject, toUsername, type GroupName, type UserSubject, type Username } from '../../runtime/shared/cognito-identifiers';

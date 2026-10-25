@@ -1,5 +1,5 @@
 import { SendMessageCommand, type SQSClient }       from '@aws-sdk/client-sqs';
-import type { AuditEvent }                          from '@serverlessinbox/mailbox-admin-api';
+import type { AuditEvent }                          from '@serverlessinbox/mailbox-addon-sdk';
 import { toTenantId, type QueueUrl, type TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 /** The message the audit writer reads from the audit events queue: an audit event that always names its tenant and actor. */

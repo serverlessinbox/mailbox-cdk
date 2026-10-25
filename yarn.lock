@@ -1994,9 +1994,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@serverlessinbox/mailbox-admin-api@workspace:*, @serverlessinbox/mailbox-admin-api@workspace:packages/mailbox-admin-api":
+"@serverlessinbox/mailbox-addon-sdk@workspace:*, @serverlessinbox/mailbox-addon-sdk@workspace:packages/mailbox-addon-sdk":
   version: 0.0.0-use.local
-  resolution: "@serverlessinbox/mailbox-admin-api@workspace:packages/mailbox-admin-api"
+  resolution: "@serverlessinbox/mailbox-addon-sdk@workspace:packages/mailbox-addon-sdk"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.2.3"
     "@types/jest": "npm:^29.0.0"
@@ -2004,6 +2004,8 @@ __metadata:
     ts-jest: "npm:^29.0.0"
     typanion: "npm:^3.14.0"
     typescript: "npm:^5.9.3"
+  peerDependencies:
+    "@bufbuild/protobuf": ^2.2.3
   languageName: unknown
   linkType: soft
 
@@ -2071,7 +2073,7 @@ __metadata:
     "@serverlessinbox/artifact-registry": "npm:^0.3.0"
     "@serverlessinbox/artifact-registry-cdk": "npm:^0.3.0"
     "@serverlessinbox/mailbox": "workspace:*"
-    "@serverlessinbox/mailbox-admin-api": "workspace:*"
+    "@serverlessinbox/mailbox-addon-sdk": "workspace:*"
     "@serverlessinbox/mailbox-bundler": "workspace:*"
     "@serverlessinbox/mailbox-cdk-shared": "workspace:*"
     "@types/aws-lambda": "npm:^8.10.159"

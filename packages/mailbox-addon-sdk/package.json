@@ -1,0 +1,70 @@
+{
+  "name": "@serverlessinbox/mailbox-addon-sdk",
+  "version": "0.0.0",
+  "description": "Handler SDK for Lambdas that serve Admin API services of Serverless Inbox addons",
+  "author": "Joost van der Waal <joost@jvdwaal.nl>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/serverlessinbox/mailbox-cdk",
+    "directory": "packages/mailbox-addon-sdk"
+  },
+  "homepage": "https://github.com/serverlessinbox/mailbox-cdk",
+  "bugs": {
+    "url": "https://github.com/serverlessinbox/serverlessinbox/issues"
+  },
+  "keywords": [
+    "aws",
+    "lambda",
+    "serverless",
+    "email",
+    "mailbox",
+    "addon"
+  ],
+  "packageManager": "yarn@4.12.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "publishConfig": {
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./lib/index.d.ts",
+        "default": "./lib/index.js"
+      }
+    },
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "lib",
+    "LICENSE",
+    "!src/**/__tests__",
+    "!lib/**/__tests__"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "yarn prepare-manifest build && node -e \"require('fs').copyFileSync('../../LICENSE', 'LICENSE')\"",
+    "test": "tsc -p tsconfig.test.json && jest",
+    "clean": "rm -rf lib *.tsbuildinfo"
+  },
+  "dependencies": {
+    "typanion": "^3.14.0"
+  },
+  "peerDependencies": {
+    "@bufbuild/protobuf": "^2.2.3"
+  },
+  "devDependencies": {
+    "@bufbuild/protobuf": "^2.2.3",
+    "@types/jest": "^29.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.9.3"
+  }
+}

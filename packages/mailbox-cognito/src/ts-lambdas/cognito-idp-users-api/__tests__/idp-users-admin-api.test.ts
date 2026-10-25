@@ -9,7 +9,7 @@
 
 import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { create }                        from '@bufbuild/protobuf';
-import type { ApiGatewayV2EventLike }    from '@serverlessinbox/mailbox-admin-api';
+import type { ApiGatewayV2EventLike }    from '@serverlessinbox/mailbox-addon-sdk';
 import { toQueueUrl }                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }                    from 'aws-sdk-client-mock';
 

@@ -6,7 +6,7 @@
  * username, and one rejected wrongly would block an admin from managing a user.
  */
 
-import { InvalidInputError }        from '@serverlessinbox/mailbox-admin-api';
+import { InvalidInputError }        from '@serverlessinbox/mailbox-addon-sdk';
 
 import { IdpUsersRequestValidator } from '../idp-users.validation';
 

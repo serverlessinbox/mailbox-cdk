@@ -1,5 +1,5 @@
 import { create }                                                                                                                                                                      from '@bufbuild/protobuf';
-import { createValidator, InvalidInputError }                                                                                                                                          from '@serverlessinbox/mailbox-admin-api';
+import { createValidator, InvalidInputError }                                                                                                                                          from '@serverlessinbox/mailbox-addon-sdk';
 import * as t                                                                                                                                                                          from 'typanion';
 
 import type { CreateIdpUserRequest, DeleteIdpUserRequest, GetIdpUserRequest, ListIdpUsersRequest, SetIdpUserEnabledRequest, SetIdpUserPasswordRequest }                                from './generated/idp_users_pb';

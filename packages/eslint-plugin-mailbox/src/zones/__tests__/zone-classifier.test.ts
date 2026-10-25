@@ -17,7 +17,7 @@ describe('ZoneClassifier.locate', () => {
   });
 
   it('has no package root for a package that is not one of the three source roots', () => {
-    expect(classifier.locate('packages/mailbox-admin-api/src/x.ts').packageRoot).toBeNull();
+    expect(classifier.locate('packages/mailbox-addon-sdk/src/x.ts').packageRoot).toBeNull();
   });
 
   it('keeps the kit package root for the kit folder', () => {

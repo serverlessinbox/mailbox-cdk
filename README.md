@@ -65,7 +65,7 @@ flowchart LR
   cognito -->|authProvider| mailbox
   shared["@serverlessinbox/mailbox-cdk-shared"] -. inlined at publish .-> mailbox
   shared -. inlined at publish .-> cognito
-  adminapi["@serverlessinbox/mailbox-admin-api"] -. bundled into Lambda code .-> cognito
+  adminapi["@serverlessinbox/mailbox-addon-sdk"] -. bundled into Lambda code .-> cognito
 ```
 
 The app creates a `MailboxUserPool` and passes it to the `Mailbox` as its `authProvider`. The shared
@@ -79,7 +79,7 @@ bundled into the Lambda code that `mailbox-cognito` deploys.
 | [`@serverlessinbox/mailbox`](packages/mailbox/) | The `Mailbox` construct: the JMAP email server and everything around it |
 | [`@serverlessinbox/mailbox-cognito`](packages/mailbox-cognito/) | Cognito user pool as the sign-in provider of a `Mailbox`, plus the user-management API for it |
 | [`@serverlessinbox/mailbox-cdk-shared`](packages/mailbox-cdk-shared/) | Shared artifact-resolution infrastructure, inlined into the published packages |
-| [`@serverlessinbox/mailbox-admin-api`](packages/mailbox-admin-api/) | Handler SDK for Lambdas that serve Admin API services: routing, auth context, validation and audit events |
+| [`@serverlessinbox/mailbox-addon-sdk`](packages/mailbox-addon-sdk/) | Handler SDK for Lambdas that serve Admin API services: routing, auth context, validation and audit events |
 
 ## Where to look
 
