@@ -5,7 +5,7 @@
 
 import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
 
-import type { ResourceProperties, TableRole }              from '../resource-properties';
+import type { ResourceProperties, TableRole }              from '../resource-properties-contract';
 
 export const SERVICE_TOKEN = 'arn:aws:lambda:eu-west-1:123456789012:function:data-override-resolver';
 

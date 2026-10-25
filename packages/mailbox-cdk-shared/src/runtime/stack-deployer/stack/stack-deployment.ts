@@ -1,7 +1,6 @@
 import * as t                    from 'typanion';
 
 import { isRegion, type Region } from '../../../runtime/handler-kit/aws-identifiers';
-import type { Unbranded }        from '../../../runtime/handler-kit/branded';
 import {
   isLogicalResourceId,
   isPhysicalResourceId,
@@ -55,9 +54,6 @@ export const isDeletionProperties = t.isPartial({
 
 /** The properties of the custom resource that deploys one CloudFormation stack, with the identifiers as the Lambda reads them. */
 export type BrandedStackDeployerProperties = t.InferType<typeof isStackDeployerProperties>;
-
-/** The properties of the custom resource that deploys one CloudFormation stack, as the construct writes them: plain strings. */
-export type StackDeployerProperties = Unbranded<BrandedStackDeployerProperties>;
 
 // The starter copies the properties of the resource into the operation as they came, so the operation accepts
 // the keys the properties accept.

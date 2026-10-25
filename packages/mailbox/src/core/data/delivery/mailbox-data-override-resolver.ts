@@ -4,7 +4,7 @@ import * as cdk                               from 'aws-cdk-lib';
 import { Construct }                          from 'constructs';
 
 import { DataOverrideResolverLambda }         from '../../../resources/lambdas/data-override-resolver-lambda';
-import type { ResourceProperties, TableRole } from '../../../runtime/data-override-resolver/resource-properties';
+import type { ResourceProperties, TableRole } from '../../../runtime/data-override-resolver/resource-properties-contract';
 
 /** Incoming data table ARNs by table role, and the artifact resolver for the resolver Lambda's code. */
 export interface MailboxDataOverrideResolverProps {

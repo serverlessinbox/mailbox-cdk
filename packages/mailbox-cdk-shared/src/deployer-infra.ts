@@ -8,7 +8,7 @@ import { StackIdentity }                from './naming/stack-identity';
 import { DeployerStarterLambda }        from './resources/lambdas/deployer-starter-lambda';
 import type { IDeployedStack }          from './resources/stacks/deployed-stack';
 import { PollingCfnDeployerWorkflow }   from './resources/workflows/polling-cfn-deployer-workflow';
-import type { StackDeployerProperties } from './runtime/stack-deployer/stack/stack-deployment';
+import type { StackDeployerProperties } from './runtime/stack-deployer/stack/stack-deployer-properties-contract';
 
 /** What `DeployerInfra` needs: the stack it deploys, the name of its workflow, and how its worker Lambda is built. */
 export interface DeployerInfraProps {
