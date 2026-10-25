@@ -44,6 +44,22 @@ describe('readPackageJson', () => {
     await expect(readPackageJson(packageFolder)).rejects.toThrow(`${packageJsonPath} has an unexpected shape`);
   });
 
+  it('returns the dependencies, peer dependencies and published types entry', async () => {
+    await writePackageJson('{"dependencies":{"dep":"1"},"peerDependencies":{"peer":"^2"},"publishConfig":{"types":"lib/index.d.ts"}}');
+
+    await expect(readPackageJson(packageFolder)).resolves.toEqual({
+      dependencies:     { dep: '1' },
+      peerDependencies: { peer: '^2' },
+      publishConfig:    { types: 'lib/index.d.ts' },
+    });
+  });
+
+  it('rejects naming the file when a dependency version is not a string', async () => {
+    await writePackageJson('{"peerDependencies":{"peer":2}}');
+
+    await expect(readPackageJson(packageFolder)).rejects.toThrow(`${packageJsonPath} has an unexpected shape`);
+  });
+
   it('accepts a package without a jsii section', async () => {
     await writePackageJson('{"name":"pkg"}');
 

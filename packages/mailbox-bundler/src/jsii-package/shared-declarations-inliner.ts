@@ -6,31 +6,17 @@ import { dirname, join, relative, sep }                     from 'path';
 
 import { runWithInheritedStdio }                            from '../utils/run-process';
 
+import { findSpecifierReferences }                          from './declaration-references';
 import { readPackageJson }                                  from './package-json';
 
 const declarationsFolderName = 'lib';
 const declarationSuffix      = '.d.ts';
 const testFoldersGlob        = 'lib/**/__tests__/**';
 
-/**
- * Finds module specifiers in emitted declarations: `from 'x'`, `import 'x'`, `import('x')` and
- * `require('x')`. The lookbehind keeps a string literal type such as `'from'` from matching.
- */
-const specifierPattern = /(?<![\w'"$.])(?:from\s*|import\s*\(\s*|import\s*|require\s*\(\s*)(['"])([^'"\s]+)\1/g;
-
-/** String literals are matched too, so a `/*` inside one does not start a comment. */
-const commentPattern = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
-
 /** A declaration file read from `source` and written to `destination`; the two differ for a copied file. */
 interface DeclarationFile {
   readonly source:      string;
   readonly destination: string;
-}
-
-/** A module specifier found in a declaration file, with the offset of the specifier text itself. */
-interface SpecifierReference {
-  readonly specifier: string;
-  readonly start:     number;
 }
 
 /** The inlined package: its folder and the declaration path it publishes for each `exports` key. */
@@ -97,7 +83,7 @@ export class SharedDeclarationsInliner {
   private async anyReferencesSharedPackage(files: string[]): Promise<boolean> {
     for (const file of files) {
       const content = await readFile(file, 'utf-8');
-      if (this.findReferences(content).some(reference => this.subpathOf(reference.specifier) !== undefined)) {
+      if (findSpecifierReferences(content).some(reference => this.subpathOf(reference.specifier) !== undefined)) {
         return true;
       }
     }
@@ -173,7 +159,7 @@ export class SharedDeclarationsInliner {
       let rewritten   = '';
       let copiedUntil = 0;
 
-      for (const reference of this.findReferences(content)) {
+      for (const reference of findSpecifierReferences(content)) {
         const target = await this.resolveReference(file, reference.specifier, shared);
         if (target !== undefined && !queued.has(target.destination)) {
           queued.add(target.destination);
@@ -252,20 +238,5 @@ export class SharedDeclarationsInliner {
   private relativeSpecifier(fromFile: string, toFile: string): string {
     const path = relative(dirname(fromFile), toFile).split(sep).join('/').slice(0, -declarationSuffix.length);
     return path.startsWith('.') ? path : `./${path}`;
-  }
-
-  private findReferences(content: string): SpecifierReference[] {
-    const comments = [...content.matchAll(commentPattern)]
-      .filter(match => match[0].startsWith('/'))
-      .map(match => ({ start: match.index, end: match.index + match[0].length }));
-
-    const references: SpecifierReference[] = [];
-    for (const match of content.matchAll(specifierPattern)) {
-      const insideComment = comments.some(comment => match.index >= comment.start && match.index < comment.end);
-      if (!insideComment) {
-        references.push({ specifier: match[2], start: match.index + match[0].length - match[2].length - 1 });
-      }
-    }
-    return references;
   }
 }

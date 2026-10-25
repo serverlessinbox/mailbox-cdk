@@ -21,19 +21,23 @@ const isExportsEntry = t.isOneOf([
 export type ExportsEntry = t.InferType<typeof isExportsEntry>;
 
 const isPublishConfig = t.isPartial({
+  types:   t.isOptional(t.isString()),
   exports: t.isOptional(t.isRecord(isExportsEntry)),
 });
 
 const isPackageJson = t.isPartial({
-  name:          t.isOptional(t.isString()),
-  publishConfig: t.isOptional(isPublishConfig),
-  jsii:          t.isOptional(isJsiiSettings),
+  name:             t.isOptional(t.isString()),
+  dependencies:     t.isOptional(t.isRecord(t.isString())),
+  peerDependencies: t.isOptional(t.isRecord(t.isString())),
+  publishConfig:    t.isOptional(isPublishConfig),
+  jsii:             t.isOptional(isJsiiSettings),
 });
 
 /**
- * A package's package.json, reduced to the fields the bundler reads: its name, the `exports` map
- * it publishes with, and the jsii settings. It is an npm document the bundler does not define,
- * so every other field is accepted and ignored.
+ * A package's package.json, reduced to the fields the bundler reads: its name, the packages it
+ * depends on at runtime, the `types` entry and `exports` map it publishes with, and the jsii
+ * settings. It is an npm document the bundler does not define, so every other field is accepted
+ * and ignored.
  */
 export type PackageJson = t.InferType<typeof isPackageJson>;
 
