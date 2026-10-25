@@ -5,13 +5,17 @@ import { join }                         from 'path';
 import { jsiiIgnorePlugin }             from './plugins/jsii-ignore';
 import { localLibImportPlugin }         from './plugins/local-lib-import';
 import { typescriptDeclarationsPlugin } from './plugins/typescript-declarations';
+import { SharedDeclarationsInliner }    from './shared-declarations-inliner';
 
 const sourcesWithoutDeclarationsGlob = 'src/**/!(*.d).ts';
 const testFoldersGlob                = 'src/**/__tests__/**';
+const inlinedPackageName             = '@serverlessinbox/mailbox-cdk-shared';
 
 /**
  * Bundles the TypeScript sources of a jsii package into its `lib/` folder, leaving jsii packages
- * and relative imports external, and emits the `.d.ts` files once the bundle succeeds.
+ * and relative imports external, and emits the `.d.ts` files once the bundle succeeds. The
+ * declarations of `@serverlessinbox/mailbox-cdk-shared`, whose code esbuild inlines, are copied
+ * into `lib/` so the emitted declarations never import that package.
  * `jsiiExcludes` are the package's jsii `excludeTypescript` paths, relative to the package folder.
  * Test folders (`__tests__`) are left out: they are never part of the built library.
  * Rejects when esbuild reports errors, or when the declaration emit exits non-zero.
@@ -24,7 +28,7 @@ export async function bundleJsiiPackage(absoluteFolder: string, jsiiExcludes: st
     plugins: [
       jsiiIgnorePlugin(absoluteFolder),
       localLibImportPlugin(absoluteFolder),
-      typescriptDeclarationsPlugin(absoluteFolder),
+      typescriptDeclarationsPlugin(absoluteFolder, new SharedDeclarationsInliner(absoluteFolder, inlinedPackageName)),
     ],
     entryPoints,
     outdir:   join(absoluteFolder, 'lib'),

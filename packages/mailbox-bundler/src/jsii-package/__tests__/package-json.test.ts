@@ -29,6 +29,21 @@ describe('readPackageJson', () => {
     });
   });
 
+  it('returns the name and the published exports, whether a subpath is a path or has conditions', async () => {
+    await writePackageJson('{"name":"pkg","publishConfig":{"exports":{".":{"types":"./lib/index.d.ts","default":"./lib/index.js"},"./plain":"./lib/plain.js"}}}');
+
+    await expect(readPackageJson(packageFolder)).resolves.toEqual({
+      name:          'pkg',
+      publishConfig: { exports: { '.': { types: './lib/index.d.ts', default: './lib/index.js' }, './plain': './lib/plain.js' } },
+    });
+  });
+
+  it('rejects naming the file when a published exports entry has a types condition that is not a path', async () => {
+    await writePackageJson('{"publishConfig":{"exports":{".":{"types":3}}}}');
+
+    await expect(readPackageJson(packageFolder)).rejects.toThrow(`${packageJsonPath} has an unexpected shape`);
+  });
+
   it('accepts a package without a jsii section', async () => {
     await writePackageJson('{"name":"pkg"}');
 

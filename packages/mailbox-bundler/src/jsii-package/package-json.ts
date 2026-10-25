@@ -12,19 +12,34 @@ const isJsiiSettings = t.isPartial({
  */
 export type JsiiSettings = t.InferType<typeof isJsiiSettings>;
 
+const isExportsEntry = t.isOneOf([
+  t.isString(),
+  t.isPartial({ types: t.isOptional(t.isString()) }),
+]);
+
+/** One value of an `exports` map: a path, or the conditions of a subpath reduced to the `types` one. */
+export type ExportsEntry = t.InferType<typeof isExportsEntry>;
+
+const isPublishConfig = t.isPartial({
+  exports: t.isOptional(t.isRecord(isExportsEntry)),
+});
+
 const isPackageJson = t.isPartial({
-  jsii: t.isOptional(isJsiiSettings),
+  name:          t.isOptional(t.isString()),
+  publishConfig: t.isOptional(isPublishConfig),
+  jsii:          t.isOptional(isJsiiSettings),
 });
 
 /**
- * A jsii package's package.json, reduced to the fields the bundler reads. It is an npm
- * document the bundler does not define, so every other field is accepted and ignored.
+ * A package's package.json, reduced to the fields the bundler reads: its name, the `exports` map
+ * it publishes with, and the jsii settings. It is an npm document the bundler does not define,
+ * so every other field is accepted and ignored.
  */
 export type PackageJson = t.InferType<typeof isPackageJson>;
 
 /**
  * Reads and validates `package.json` in the given folder. Rejects, naming the file path, when
- * the file cannot be read, is not valid JSON, or has a `jsii` section of the wrong shape.
+ * the file cannot be read, is not valid JSON, or has a field the bundler reads of the wrong shape.
  */
 export async function readPackageJson(packageFolder: string): Promise<PackageJson> {
   const packageJsonPath = join(packageFolder, 'package.json');
