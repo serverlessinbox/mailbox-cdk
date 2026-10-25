@@ -1,13 +1,11 @@
 import type { IArtifactResolver }                                                              from '@serverlessinbox/artifact-registry-cdk';
 import { buildArtifactKey, buildReleasePointerKey, buildArtifactUrl, buildArtifactBucketName } from '@serverlessinbox/artifact-registry';
-import { HttpLambdaAuthorizer }                                                                from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpLambdaIntegration }                                                               from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { HttpApi, HttpMethod }                                                                 from 'aws-cdk-lib/aws-apigatewayv2';
+import { HttpMethod }                                                                          from 'aws-cdk-lib/aws-apigatewayv2';
 import * as cdk                                                                                from 'aws-cdk-lib';
 import { Aws }                                                                                 from 'aws-cdk-lib';
 import { Construct }                                                                           from 'constructs';
 
-import { IAdminApiAddon }                                                                      from '../../core/apis/addons';
+import type { AdminApiRouteSpec, IAdminApiAddon }                                              from '../../core/apis/addons';
 import { StackUpdateApiLambda }                                                                from '../../resources/lambdas/stack-update-api-lambda';
 import type { IAuditEventsQueue }                                                              from '../../resources/queues/audit-events-queue';
 import type { IDataTable }                                                                     from '../../resources/tables/data-tables';
@@ -46,8 +44,7 @@ type StackUpdateUiConfig = { readonly stackUpdate: { readonly available: boolean
  */
 export class StackUpdateAddon extends Construct implements IAdminApiAddon {
   public readonly uiConfig: StackUpdateUiConfig;
-
-  private readonly lambdaConstruct: StackUpdateApiLambda;
+  public readonly routeSpec: AdminApiRouteSpec;
 
   constructor(scope: Construct, id: string, props: StackUpdateAddonProps) {
     super(scope, id);
@@ -77,7 +74,7 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
       templateVersion: props.templateVersion,
     });
 
-    this.lambdaConstruct = new StackUpdateApiLambda(this, 'lambda', {
+    const lambdaConstruct = new StackUpdateApiLambda(this, 'lambda', {
       rootStackArn:     cdk.Stack.of(this).stackId,
       configTable:      props.configTable,
       artifactResolver: props.artifactResolver,
@@ -87,14 +84,12 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
       templateUrlTemplate,
       auditEventsQueue:    props.auditEventsQueue,
     });
+
+    this.routeSpec = {
+      basePath: '/stack-update',
+      methods:  [HttpMethod.POST],
+      handler:  lambdaConstruct,
+    };
   }
 
-  addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {
-    api.addRoutes({
-      path:        '/stack-update/{proxy+}',
-      methods:     [HttpMethod.POST],
-      integration: new HttpLambdaIntegration('stack-update', this.lambdaConstruct),
-      authorizer,
-    });
-  }
 }

@@ -12,10 +12,11 @@ import { VENDOR_ACCOUNT_ID }                     from '@serverlessinbox/mailbox-
 import { Match, Template }                       from 'aws-cdk-lib/assertions';
 import * as cdk                                  from 'aws-cdk-lib';
 
+import { routeAndAdminHandlerRoute }             from '../../../core/apis/__tests__/apis-helpers';
+import { synthesizeOnAdminApi }                  from '../../__tests__/platform-helpers';
 import { SupportAddon, SupportMode }             from '../support-addon';
 
 import {
-  createApiWithAuthorizer,
   createSupportTestStack,
   findFunction,
   type SupportTestStack,
@@ -57,13 +58,10 @@ describe('SupportAddon', () => {
       expect(addon.uiConfig).toEqual({ support: { available: false } });
     });
 
-    it('mounts no routes', () => {
-      const inputs              = createSupportTestStack();
-      const { api, authorizer } = createApiWithAuthorizer(inputs.stack);
+    it('asks the Admin API for no route', () => {
+      const addon = createAddon(createSupportTestStack(), SupportMode.DISABLED);
 
-      createAddon(inputs, SupportMode.DISABLED).addRoutes(api, authorizer);
-
-      Template.fromStack(inputs.stack).resourceCountIs('AWS::ApiGatewayV2::Route', 0);
+      expect(addon.routeSpec).toBeUndefined();
     });
   });
 
@@ -100,15 +98,14 @@ describe('SupportAddon', () => {
     });
 
     it('mounts POST /support/{proxy+} behind the Admin API authorizer', () => {
-      const inputs              = createSupportTestStack();
-      const { api, authorizer } = createApiWithAuthorizer(inputs.stack);
+      const inputs   = createSupportTestStack();
+      const template = synthesizeOnAdminApi(inputs.stack, createAddon(inputs, SupportMode.ENABLED));
 
-      createAddon(inputs, SupportMode.ENABLED).addRoutes(api, authorizer);
+      const { route, handlerRoute } = routeAndAdminHandlerRoute(template, 'POST /support/{proxy+}');
 
-      Template.fromStack(inputs.stack).hasResourceProperties('AWS::ApiGatewayV2::Route', {
-        RouteKey:          'POST /support/{proxy+}',
-        AuthorizationType: 'CUSTOM',
-      });
+      expect(route.AuthorizationType).toBe('CUSTOM');
+      expect(route.AuthorizerId).toBeDefined();
+      expect(route.AuthorizerId).toEqual(handlerRoute.AuthorizerId);
     });
 
     it('provisions the support-api Lambda and the role-assumption collector', () => {

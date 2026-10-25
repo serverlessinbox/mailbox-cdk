@@ -9,63 +9,39 @@
  * tsc and synth, so these assertions are the only guard.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }      from '@serverlessinbox/artifact-registry-cdk';
-import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                           from 'aws-cdk-lib/assertions';
-import { HttpLambdaAuthorizer }                      from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpApi }                                   from 'aws-cdk-lib/aws-apigatewayv2';
-import { Function as LambdaFunction }                from 'aws-cdk-lib/aws-lambda';
-import { Bucket }                                    from 'aws-cdk-lib/aws-s3';
+import { HttpMethod }                                from 'aws-cdk-lib/aws-apigatewayv2';
+import type { IFunction }                            from 'aws-cdk-lib/aws-lambda';
 import * as cdk                                      from 'aws-cdk-lib';
 
 import type { IWebSocketBroadcastPublisher }         from '../../../contracts/websocket-push';
-import { DataBlobStore }                             from '../../../resources/buckets/data-blob-store';
-import { AuditEventsQueue }                          from '../../../resources/queues/audit-events-queue';
-import { EmailSendingQueue }                         from '../../../resources/queues/email-sending-queue';
-import { AuthKeyStoreTable }                         from '../../../resources/tables/auth-key-store-table';
 import type { IAdminApiAddon }                       from '../addons';
 import { AdminApi }                                  from '../admin-api';
 import type { AdminApiProps }                        from '../admin-api';
 
-import { certificate, dataTable, newApiStack }       from './apis-helpers';
+import {
+  certificate,
+  inlineFunction,
+  newAdminApiProps,
+  newApiStack,
+  routeAndAdminHandlerRoute,
+} from './apis-helpers';
 
 describe('AdminApi', () => {
   let stack: cdk.Stack;
+  let addonHandler: IFunction;
 
   function propsWith(overrides: Partial<AdminApiProps> = {}): AdminApiProps {
-    return {
-      configTable:          dataTable(stack, 'config-table'),
-      itemTable:            dataTable(stack, 'item-table'),
-      auditLogTable:        dataTable(stack, 'audit-log-table'),
-      changelogTable:       dataTable(stack, 'changelog-table'),
-      mailFeedbackTable:    dataTable(stack, 'mail-feedback-table'),
-      authKeyStoreTable:    new AuthKeyStoreTable(stack, 'auth-key-store-table'),
-      blobStore:            new DataBlobStore(new Bucket(stack, 'blob-store')),
-      emailSubmissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
-      auditEventsQueue:     new AuditEventsQueue(stack, 'audit-events-queue'),
-      artifactResolver:     new PinnedArtifactResolver({
-        packages:         {
-          'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-          'mailbox-go':  { version: '1.0.0', zone: ArtifactZone.REGIONAL },
-        },
-        location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
-        deploymentRegion: stack.region,
-      }),
-      identityProvisioner:  LambdaFunction.fromFunctionArn(
-        stack,
-        'identity-provisioner-ref',
-        'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
-      ),
-      sesRuleSetName:       'test-rule-set',
-      sesConfigSetName:     'test-config-set',
-      systemSenderAddress:  'noreply@example.com',
-      vendorLink:           { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
-      ...overrides,
-    };
+    return newAdminApiProps(stack, overrides);
+  }
+
+  function addonAt(basePath: string): IAdminApiAddon {
+    return { routeSpec: { basePath, methods: [HttpMethod.POST], handler: addonHandler } };
   }
 
   beforeEach(() => {
-    stack = newApiStack();
+    stack        = newApiStack();
+    addonHandler = inlineFunction(stack, 'addon-handler');
   });
 
   describe('without a custom domain', () => {
@@ -165,16 +141,37 @@ describe('AdminApi', () => {
       });
     });
 
-    it('mounts each addon with the API and the same authorizer', () => {
-      const first: IAdminApiAddon  = { addRoutes: jest.fn() };
-      const second: IAdminApiAddon = { addRoutes: jest.fn() };
+    it.each(['/first', '/second'])('mounts the route of the addon at %s behind the authorizer of the handler route', (basePath) => {
+      new AdminApi(stack, 'admin-api', propsWith({ addons: [addonAt('/first'), addonAt('/second')] }));
 
-      new AdminApi(stack, 'admin-api', propsWith({ addons: [first, second] }));
+      const { route, handlerRoute } = routeAndAdminHandlerRoute(Template.fromStack(stack), `POST ${basePath}/{proxy+}`);
 
-      for (const addon of [first, second]) {
-        expect(addon.addRoutes).toHaveBeenCalledTimes(1);
-        expect(addon.addRoutes).toHaveBeenCalledWith(expect.any(HttpApi), expect.any(HttpLambdaAuthorizer));
-      }
+      expect(route.AuthorizationType).toBe('CUSTOM');
+      expect(route.AuthorizerId).toBeDefined();
+      expect(route.AuthorizerId).toEqual(handlerRoute.AuthorizerId);
+    });
+
+    it('mounts the methods the route spec lists and no others', () => {
+      const addon: IAdminApiAddon = { routeSpec: { basePath: '/multi', methods: [HttpMethod.POST, HttpMethod.GET], handler: addonHandler } };
+
+      new AdminApi(stack, 'admin-api', propsWith({ addons: [addon] }));
+
+      const template = Template.fromStack(stack);
+      template.hasResourceProperties('AWS::ApiGatewayV2::Route', { RouteKey: 'POST /multi/{proxy+}' });
+      template.hasResourceProperties('AWS::ApiGatewayV2::Route', { RouteKey: 'GET /multi/{proxy+}' });
+      template.resourceCountIs('AWS::ApiGatewayV2::Route', 3);
+    });
+
+    it('mounts nothing for an addon without a route spec', () => {
+      new AdminApi(stack, 'admin-api', propsWith({ addons: [{}] }));
+
+      Template.fromStack(stack).resourceCountIs('AWS::ApiGatewayV2::Route', 1);
+    });
+
+    it('fails the synthesis when two addons use the same base path', () => {
+      expect(() => new AdminApi(stack, 'admin-api', propsWith({ addons: [addonAt('/same'), addonAt('/same')] }))).toThrow(
+        "Two Admin API addons use the base path '/same'; each addon needs its own.",
+      );
     });
   });
 

@@ -39,7 +39,7 @@ describe('ApisSection', () => {
   }
 
   function newSection(): ApisSection {
-    const addon: IAdminApiAddon              = { addRoutes: () => undefined };
+    const addon: IAdminApiAddon              = {};
     const authProvider: IMailboxAuthProvider = {
       issuer:                  'https://example.com/issuer',
       tokenEndpoint:           'https://example.com/token',

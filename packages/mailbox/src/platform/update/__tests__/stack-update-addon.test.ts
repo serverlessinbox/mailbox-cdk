@@ -8,16 +8,15 @@
 
 import { getAttLogicalId }                                              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Match, Template }                                              from 'aws-cdk-lib/assertions';
-import { HttpLambdaAuthorizer, HttpLambdaResponseType }                 from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpApi }                                                      from 'aws-cdk-lib/aws-apigatewayv2';
 import * as dynamodb                                                    from 'aws-cdk-lib/aws-dynamodb';
 import type { Stack }                                                   from 'aws-cdk-lib';
 import * as t                                                           from 'typanion';
 
 import { isTemplateValue, resourcesOfType }                             from '../../../__tests__/template-resources';
+import { routeAndAdminHandlerRoute }                                    from '../../../core/apis/__tests__/apis-helpers';
 import { AuditEventsQueue }                                             from '../../../resources/queues/audit-events-queue';
 import { DataTable }                                                    from '../../../resources/tables/data-tables';
-import { newArtifactResolver, newInlineFunction, newTestStack }         from '../../__tests__/platform-helpers';
+import { newArtifactResolver, newTestStack, synthesizeOnAdminApi }      from '../../__tests__/platform-helpers';
 import { StackUpdateAddon }                                             from '../stack-update-addon';
 
 const REGION   = { Ref: 'AWS::Region' };
@@ -105,23 +104,18 @@ describe('StackUpdateAddon routes', () => {
   let template: Template;
 
   beforeAll(() => {
-    const stack      = newTestStack('TestStack');
-    const authorizer = new HttpLambdaAuthorizer('authorizer', newInlineFunction(stack, 'authorizer'), {
-      responseTypes: [HttpLambdaResponseType.SIMPLE],
-    });
+    const stack = newTestStack('TestStack');
 
-    newAddon(stack).addRoutes(new HttpApi(stack, 'api'), authorizer);
-
-    template = Template.fromStack(stack);
+    template = synthesizeOnAdminApi(stack, newAddon(stack));
   });
 
-  it('serves POST /stack-update/{proxy+} behind the authorizer and nothing else', () => {
-    template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
-      RouteKey:          'POST /stack-update/{proxy+}',
-      AuthorizationType: 'CUSTOM',
-      AuthorizerId:      Match.anyValue(),
-    });
-    expect(Object.keys(template.findResources('AWS::ApiGatewayV2::Route'))).toHaveLength(1);
+  it('serves POST /stack-update/{proxy+} behind the authorizer of the Admin API and no other method', () => {
+    const { route, handlerRoute } = routeAndAdminHandlerRoute(template, 'POST /stack-update/{proxy+}');
+
+    expect(route.AuthorizationType).toBe('CUSTOM');
+    expect(route.AuthorizerId).toBeDefined();
+    expect(route.AuthorizerId).toEqual(handlerRoute.AuthorizerId);
+    template.resourcePropertiesCountIs('AWS::ApiGatewayV2::Route', { RouteKey: Match.stringLikeRegexp('/stack-update/') }, 1);
   });
 
   it('routes that path to the stack-update Lambda', () => {
@@ -132,6 +126,6 @@ describe('StackUpdateAddon routes', () => {
       getAttLogicalId(integration.properties.IntegrationUri),
     );
 
-    expect(integrationTargets).toEqual([lambdaId]);
+    expect(integrationTargets).toContain(lambdaId);
   });
 });

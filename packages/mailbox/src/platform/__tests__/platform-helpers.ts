@@ -1,10 +1,13 @@
 import { ArtifactZone, PinnedArtifactResolver }      from '@serverlessinbox/artifact-registry-cdk';
 import type { IArtifactResolver }                    from '@serverlessinbox/artifact-registry-cdk';
+import { Template }                                  from 'aws-cdk-lib/assertions';
 import { AttributeType, Table }                      from 'aws-cdk-lib/aws-dynamodb';
 import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { App, BootstraplessSynthesizer, Stack }      from 'aws-cdk-lib';
 
-import type { AdminApiAddonContext }                 from '../../core/apis/addons';
+import { newAdminApiProps }                          from '../../core/apis/__tests__/apis-helpers';
+import type { AdminApiAddonContext, IAdminApiAddon } from '../../core/apis/addons';
+import { AdminApi }                                  from '../../core/apis/admin-api';
 import type { IIdentityProvisioner }                 from '../../resources/lambdas/identity-provisioner-lambda';
 import { AuditEventsQueue }                          from '../../resources/queues/audit-events-queue';
 import { DataTable }                                 from '../../resources/tables/data-tables';
@@ -53,6 +56,13 @@ export function newDataTable(stack: Stack, id: string): DataTable {
 /** A Lambda function with inline code, for a test that needs a function and nothing about its code. */
 export function newInlineFunction(stack: Stack, id: string): LambdaFunction {
   return new LambdaFunction(stack, id, { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });
+}
+
+/** Mounts `addon` on a real `AdminApi` in `stack` and returns the synthesized template. */
+export function synthesizeOnAdminApi(stack: Stack, addon: IAdminApiAddon): Template {
+  new AdminApi(stack, 'admin-api', newAdminApiProps(stack, { addons: [addon] }));
+
+  return Template.fromStack(stack);
 }
 
 /**

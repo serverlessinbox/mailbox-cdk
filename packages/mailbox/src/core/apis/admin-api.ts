@@ -110,9 +110,7 @@ export class AdminApi extends Construct {
 
     const httpLambdaAuthorize = this.createAuthorizer(props);
 
-    for (const addon of props.addons ?? []) {
-      addon.addRoutes(api, httpLambdaAuthorize);
-    }
+    this.mountAddonRoutes(api, httpLambdaAuthorize, props.addons ?? []);
 
     api.addRoutes({
       integration: new HttpLambdaIntegration('handler', this.apiHandlerLambda),
@@ -125,6 +123,28 @@ export class AdminApi extends Construct {
   /** Lets the handler Lambda publish through `broadcaster` to connected WebSocket clients. */
   public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
     this.apiHandlerLambda.enableWebSocketPush(broadcaster);
+  }
+
+  private mountAddonRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer, addons: IAdminApiAddon[]): void {
+    const mountedBasePaths = new Set<string>();
+
+    for (const { routeSpec } of addons) {
+      if (!routeSpec) {
+        continue;
+      }
+
+      if (mountedBasePaths.has(routeSpec.basePath)) {
+        throw new Error(`Two Admin API addons use the base path '${routeSpec.basePath}'; each addon needs its own.`);
+      }
+      mountedBasePaths.add(routeSpec.basePath);
+
+      api.addRoutes({
+        path:        `${routeSpec.basePath}/{proxy+}`,
+        methods:     routeSpec.methods,
+        integration: new HttpLambdaIntegration(routeSpec.basePath.replace(/^\//, ''), routeSpec.handler),
+        authorizer,
+      });
+    }
   }
 
   private corsPreflight(allowedOrigins: string[] | undefined): CorsPreflightOptions | undefined {

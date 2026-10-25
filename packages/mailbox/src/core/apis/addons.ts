@@ -1,6 +1,6 @@
 import type { IArtifactResolver }    from '@serverlessinbox/artifact-registry-cdk';
-import type { HttpLambdaAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import type { HttpApi }              from 'aws-cdk-lib/aws-apigatewayv2';
+import type { HttpApi, HttpMethod }  from 'aws-cdk-lib/aws-apigatewayv2';
+import type { IFunction }            from 'aws-cdk-lib/aws-lambda';
 import type { Construct }            from 'constructs';
 
 import type { IIdentityProvisioner } from '../../resources/lambdas/identity-provisioner-lambda';
@@ -32,14 +32,41 @@ export interface IAdminApiAddon {
   readonly uiConfig?: AdminUiConfigFragment;
 
   /**
-   * Mounts the addon's routes on the Admin API.
+   * The route the Admin API mounts for this addon, behind the same authorizer that protects every
+   * other Admin API route. The addon never sees the authorizer, so it cannot mount an
+   * unprotected route.
    *
-   * Pass `authorizer` to every route you add so it is protected like the other Admin API routes.
+   * Two addons of one Admin API must not use the same `basePath`: the Admin API fails the
+   * synthesis when they do.
    *
-   * @param api The Admin API's HTTP API to add routes to.
-   * @param authorizer The authorizer that protects every other Admin API route.
+   * @default - the addon mounts no route
    */
-  addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void;
+  readonly routeSpec?: AdminApiRouteSpec;
+}
+
+/**
+ * The one route an {@link IAdminApiAddon} asks the Admin API to mount: every request under
+ * `basePath` is forwarded to `handler`.
+ */
+export interface AdminApiRouteSpec {
+  /**
+   * The path the addon owns, starting with a slash and without a trailing slash, for example
+   * `/my-addon`. The Admin API mounts `${basePath}/{proxy+}`, so every sub-path of it reaches
+   * `handler`. Choose a path no other addon of the same Admin API uses.
+   */
+  readonly basePath: string;
+
+  /**
+   * The HTTP methods the route accepts. The Admin API handler itself only accepts POST, so list
+   * more methods only when `handler` serves them.
+   */
+  readonly methods: HttpMethod[];
+
+  /**
+   * The Lambda function that serves the route. Grant it access to whatever it needs inside its own
+   * construct; the Admin API only grants API Gateway permission to invoke it.
+   */
+  readonly handler: IFunction;
 }
 
 /**

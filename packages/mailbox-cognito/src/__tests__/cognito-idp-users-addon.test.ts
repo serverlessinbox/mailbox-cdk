@@ -6,20 +6,35 @@
  * the groups decide how the Lambda reads the roles of a caller. The UI config the addon publishes is tested beside it.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }                                                                   from '@serverlessinbox/artifact-registry-cdk';
-import type { IAuditEventsQueue, IIdentityProvisioner }                                                           from '@serverlessinbox/mailbox';
-import type { MailboxAuthorizationConfig }                                                                        from '@serverlessinbox/mailbox';
-import { Match, Template }                                                                                        from 'aws-cdk-lib/assertions';
-import { HttpLambdaAuthorizer, HttpLambdaResponseType }                                                           from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpApi }                                                                                                from 'aws-cdk-lib/aws-apigatewayv2';
-import { UserPool }                                                                                               from 'aws-cdk-lib/aws-cognito';
-import { Code, Function as LambdaFunction, Runtime }                                                              from 'aws-cdk-lib/aws-lambda';
-import { App, BootstraplessSynthesizer, Stack }                                                                   from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver }                                                                    from '@serverlessinbox/artifact-registry-cdk';
+import { MailboxArtifactResolverFactory }                                                                          from '@serverlessinbox/mailbox-cdk-shared';
+import { Mailbox }                                                                                                 from '@serverlessinbox/mailbox';
+import type { IAuditEventsQueue, IIdentityProvisioner }                                                            from '@serverlessinbox/mailbox';
+import type { MailboxAuthorizationConfig }                                                                         from '@serverlessinbox/mailbox';
+import { Match, Template }                                                                                         from 'aws-cdk-lib/assertions';
+import { HttpMethod }                                                                                              from 'aws-cdk-lib/aws-apigatewayv2';
+import { UserPool }                                                                                                from 'aws-cdk-lib/aws-cognito';
+import { App, BootstraplessSynthesizer, Stack }                                                                    from 'aws-cdk-lib';
+import * as t                                                                                                      from 'typanion';
 
-import { CognitoIdpUsersAdminApiAddon }                                                                           from '../cognito-idp-users-addon';
-import type { ICognitoIdpUsersPoolConfig }                                                                        from '../cognito-idp-users-pool-config';
+import { CognitoIdpUsersAdminApiAddon }                                                                            from '../cognito-idp-users-addon';
+import type { ICognitoIdpUsersPoolConfig }                                                                         from '../cognito-idp-users-pool-config';
+import { loadMailboxCognitoArtifactVersions }                                                                      from '../mailbox-cognito-artifact-versions';
+import { loadMailboxCognitoRegistryRecord }                                                                        from '../mailbox-cognito-registry-record';
+import { MailboxUserPool }                                                                                         from '../user-pool/mailbox-user-pool';
 
-const USER_POOL_ARN = 'arn:aws:cognito-idp:us-west-2:123456789012:userpool/us-west-2_abcdefgh';
+const isReference = t.isPartial({ Ref: t.isString() });
+
+const isRouteProperties = t.isPartial({
+  RouteKey:          t.isString(),
+  ApiId:             isReference,
+  AuthorizationType: t.isOptional(t.isString()),
+  AuthorizerId:      t.isOptional(isReference),
+});
+
+type RouteProperties = t.InferType<typeof isRouteProperties>;
+
+const USER_POOL_ARN ='arn:aws:cognito-idp:us-west-2:123456789012:userpool/us-west-2_abcdefgh';
 const USER_POOL_ID  = 'us-west-2_abcdefgh';
 
 describe('CognitoIdpUsersAdminApiAddon', () => {
@@ -34,12 +49,8 @@ describe('CognitoIdpUsersAdminApiAddon', () => {
     grantInvoke:  () => {},
   };
 
-  function synthesize(options: { authorization?: MailboxAuthorizationConfig; basePath?: string }): Template {
+  function createAddon(stack: Stack, options: { authorization?: MailboxAuthorizationConfig; basePath?: string }): CognitoIdpUsersAdminApiAddon {
     const { authorization }                = options;
-    const stack                            = new Stack(new App(), 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
     const artifactResolver                 = new PinnedArtifactResolver({
       packages:         { 'mailbox-cognito': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
       location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
@@ -51,14 +62,21 @@ describe('CognitoIdpUsersAdminApiAddon', () => {
       ...(authorization ? { authorizationConfig: () => authorization } : {}),
     };
 
-    const addon = new CognitoIdpUsersAdminApiAddon(stack, 'addon', { artifactResolver, auditEventsQueue, identityProvisioner, pool, basePath: options.basePath });
+    return new CognitoIdpUsersAdminApiAddon(stack, 'addon', { artifactResolver, auditEventsQueue, identityProvisioner, pool, basePath: options.basePath });
+  }
 
-    const authorizerFunction = new LambdaFunction(stack, 'authorizer-stub', {
-      runtime: Runtime.NODEJS_24_X,
-      handler: 'index.handler',
-      code:    Code.fromInline('exports.handler = async () => {};'),
+  function newStack(): Stack {
+    return new Stack(new App(), 'TestStack', {
+      env:         { account: '123456789012', region: 'us-west-2' },
+      synthesizer: new BootstraplessSynthesizer(),
     });
-    addon.addRoutes(new HttpApi(stack, 'api'), new HttpLambdaAuthorizer('authorizer', authorizerFunction, { responseTypes: [HttpLambdaResponseType.SIMPLE] }));
+  }
+
+  function synthesize(options: { authorization?: MailboxAuthorizationConfig }): Template {
+    const stack = newStack();
+
+    createAddon(stack, options);
+
     return Template.fromStack(stack);
   }
 
@@ -81,17 +99,60 @@ describe('CognitoIdpUsersAdminApiAddon', () => {
   });
 
   it.each([
-    { basePath: undefined, routeKey: 'POST /idp-users/{proxy+}' },
-    { basePath: '/custom/idp-api/v2', routeKey: 'POST /custom/idp-api/v2/{proxy+}' },
-  ])('routes $routeKey through the authorizer to the Lambda', ({ basePath, routeKey }) => {
-    const template = synthesize({ basePath });
+    { basePath: undefined, expectedBasePath: '/idp-users' },
+    { basePath: '/custom/idp-api/v2', expectedBasePath: '/custom/idp-api/v2' },
+  ])('asks the Admin API to route POST under $expectedBasePath to its Lambda', ({ basePath, expectedBasePath }) => {
+    const addon = createAddon(newStack(), { basePath });
 
-    template.hasResourceProperties('AWS::ApiGatewayV2::Route', {
-      RouteKey:          routeKey,
-      AuthorizationType: 'CUSTOM',
-      AuthorizerId:      Match.anyValue(),
-      Target:            Match.anyValue(),
-    });
-    template.resourceCountIs('AWS::ApiGatewayV2::Route', 1);
+    expect(addon.routeSpec).toEqual({ basePath: expectedBasePath, methods: [HttpMethod.POST], handler: addon.lambdaFunction });
   });
+
+  it('is routed behind the authorizer of the Admin API when a Mailbox mounts it', () => {
+    const template = synthesizeMailboxWithUserPool();
+
+    const routes       = routesOf(template);
+    const route        = routes.find((candidate) => candidate.RouteKey === 'POST /idp-users/{proxy+}');
+    const handlerRoute = routes.find((candidate) => candidate.RouteKey === 'POST /{proxy+}' && JSON.stringify(candidate.ApiId) === JSON.stringify(route?.ApiId));
+
+    expect(route?.AuthorizationType).toBe('CUSTOM');
+    expect(route?.AuthorizerId).toBeDefined();
+    expect(route?.AuthorizerId).toEqual(handlerRoute?.AuthorizerId);
+  });
+
+  function routesOf(template: Template): RouteProperties[] {
+    return Object.values(template.findResources('AWS::ApiGatewayV2::Route')).map((resource) => {
+      const properties: unknown = resource.Properties;
+      const errors: string[]    = [];
+
+      if (!isRouteProperties(properties, { errors })) {
+        throw new Error(`Unexpected route properties: ${errors.join('; ')}`);
+      }
+
+      return properties;
+    });
+  }
+
+  function synthesizeMailboxWithUserPool(): Template {
+    const app = new App();
+    app.node.setContext('serverlessinbox:artifact_versions', {});
+    app.node.setContext('serverlessinbox:artifacts', {
+      bucketBase: 'test-artifacts',
+      packages:   Object.fromEntries(
+        ['mailbox-go', 'mailbox-cdk', 'mailbox-cdk-shared', 'mailbox-admin-ui', 'mailbox-webmail-ui', 'mailbox-cognito', 'mailbox']
+          .map((name) => [name, { zone: 'regional', version: '1.0.0' }]),
+      ),
+    });
+    const stack    = new Stack(app, 'TestMailboxStack', {
+      env:         { account: '123456789012', region: 'us-west-2' },
+      synthesizer: new BootstraplessSynthesizer(),
+    });
+    const resolver = MailboxArtifactResolverFactory.fromContext(stack, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions());
+    const pool     = new MailboxUserPool(stack, 'user-pool', {
+      domain:           { kind: 'cognito', cognitoDomainPrefix: 'test-idp-users' },
+      artifactResolver: resolver,
+    });
+    new Mailbox(stack, 'mailbox', { authProvider: pool });
+
+    return Template.fromStack(stack);
+  }
 });

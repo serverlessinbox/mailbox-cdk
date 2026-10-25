@@ -1,8 +1,5 @@
 import type { IArtifactResolver }                          from '@serverlessinbox/artifact-registry-cdk';
 import type { Template }                                   from 'aws-cdk-lib/assertions';
-import { HttpLambdaAuthorizer, HttpLambdaResponseType }    from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpApi }                                         from 'aws-cdk-lib/aws-apigatewayv2';
-import * as lambda                                         from 'aws-cdk-lib/aws-lambda';
 import type { Stack }                                      from 'aws-cdk-lib';
 
 import type { AdminApiAddonContext }                       from '../../../core/apis/addons';
@@ -50,21 +47,6 @@ export function createAddonContext(inputs: SupportTestStack): AdminApiAddonConte
     auditLogTable:       newDataTable(inputs.stack, 'audit-log-table'),
     identityProvisioner: unusedIdentityProvisioner,
     artifactResolver:    inputs.artifactResolver,
-  };
-}
-
-/** An HTTP API and a Lambda authorizer to mount the addon's routes on. */
-export function createApiWithAuthorizer(stack: Stack): { api: HttpApi; authorizer: HttpLambdaAuthorizer } {
-  const authorizerFunction = new lambda.Function(stack, 'authorizer-function', {
-    runtime: lambda.Runtime.NODEJS_20_X,
-    handler: 'index.handler',
-    code:    lambda.Code.fromInline('exports.handler = async () => ({ isAuthorized: true });'),
-  });
-  return {
-    api:        new HttpApi(stack, 'api'),
-    authorizer: new HttpLambdaAuthorizer('authorizer', authorizerFunction, {
-      responseTypes: [HttpLambdaResponseType.SIMPLE],
-    }),
   };
 }
 

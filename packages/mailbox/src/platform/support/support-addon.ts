@@ -1,15 +1,12 @@
 import type { IArtifactResolver }                                                                      from '@serverlessinbox/artifact-registry-cdk';
 import { GateOnConditionAspect }                                                                       from '@serverlessinbox/mailbox-cdk-shared';
 import { resolveVendorAccountIds }                                                                     from '@serverlessinbox/mailbox-cdk-shared';
-import { HttpLambdaAuthorizer }                                                                        from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpLambdaIntegration }                                                                       from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { HttpApi, HttpMethod }                                                                         from 'aws-cdk-lib/aws-apigatewayv2';
-import type { IFunction }                                                                              from 'aws-cdk-lib/aws-lambda';
+import { HttpMethod }                                                                                  from 'aws-cdk-lib/aws-apigatewayv2';
 import * as cdk                                                                                        from 'aws-cdk-lib';
 import { Fn }                                                                                          from 'aws-cdk-lib';
 import { Construct }                                                                                   from 'constructs';
 
-import { IAdminApiAddon }                                                                              from '../../core/apis/addons';
+import type { AdminApiRouteSpec, IAdminApiAddon }                                                      from '../../core/apis/addons';
 import { SupportApiLambda }                                                                            from '../../resources/lambdas/support-api-lambda';
 import { SupportRoleAssumptionCollectorLambda }                                                        from '../../resources/lambdas/support-role-assumption-collector-lambda';
 import type { IAuditEventsQueue }                                                                      from '../../resources/queues/audit-events-queue';
@@ -63,7 +60,8 @@ type SupportUiConfig = { readonly support: SupportAvailability };
 export class SupportAddon extends Construct implements IAdminApiAddon {
   public readonly uiConfig: SupportUiConfig;
 
-  private readonly apiHandler?: IFunction;
+  /** Absent when support is disabled at synth time, because the handler Lambda is then not created. */
+  public readonly routeSpec?: AdminApiRouteSpec;
 
   constructor(scope: Construct, id: string, props: SupportAddonProps) {
     super(scope, id);
@@ -95,13 +93,19 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
       });
 
       // Support API Lambda: case RPCs and tag-based access control via the support-hop role.
-      this.apiHandler = new SupportApiLambda(this, 'lambda', {
+      const apiHandler = new SupportApiLambda(this, 'lambda', {
         supportRoles,
         configTable:      props.configTable,
         auditEventsQueue: props.auditEventsQueue,
         artifactResolver: props.artifactResolver,
         vendorAccountIds,
       });
+
+      this.routeSpec = {
+        basePath: '/support',
+        methods:  [HttpMethod.POST],
+        handler:  apiHandler,
+      };
 
       // Role-assumption collector Lambda.
       new SupportRoleAssumptionCollectorLambda(this, 'collector', {
@@ -114,16 +118,4 @@ export class SupportAddon extends Construct implements IAdminApiAddon {
     }
   }
 
-  addRoutes(api: HttpApi, authorizer: HttpLambdaAuthorizer): void {
-    // Only mount routes if the lambda was created (feature not disabled at synth time)
-    if (!this.apiHandler) {
-      return;
-    }
-    api.addRoutes({
-      path:        '/support/{proxy+}',
-      methods:     [HttpMethod.POST],
-      integration: new HttpLambdaIntegration('support', this.apiHandler),
-      authorizer,
-    });
-  }
 }
