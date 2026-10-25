@@ -1,11 +1,24 @@
 {
   "name": "@serverlessinbox/mailbox",
   "version": "0.0.0",
-  "author": "Joost van der Waal",
+  "author": "Joost van der Waal <joost@jvdwaal.nl>",
   "repository": {
+    "type": "git",
     "url": "https://github.com/serverlessinbox/mailbox-cdk",
-    "type": "git"
+    "directory": "packages/mailbox"
   },
+  "homepage": "https://github.com/serverlessinbox/mailbox-cdk",
+  "bugs": {
+    "url": "https://github.com/serverlessinbox/mailbox-cdk/issues"
+  },
+  "keywords": [
+    "aws",
+    "cdk",
+    "serverless",
+    "email",
+    "jmap",
+    "mailbox"
+  ],
   "license": "Apache-2.0",
   "description": "CDK construct library for Mailbox infrastructure",
   "main": "src/index.ts",
