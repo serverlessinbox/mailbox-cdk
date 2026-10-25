@@ -32,13 +32,11 @@ export abstract class BuildStackCommand extends Command {
   protected abstract createStack(factory: StandaloneStackFactory, app: App): Stack;
 
   /**
-   * Reads the environment the entry owns: the account and region fall back to the values the template
-   * has always been built with when no environment is set. The cognito stack gets no environment.
+   * The standalone templates are environment-agnostic, so this entry reads no environment: the data and
+   * cognito-data stacks get none, and the edge stack keeps only its us-east-1 region from the factory.
    */
   private createFactory(): StandaloneStackFactory {
-    const account = process.env.CDK_DEFAULT_ACCOUNT ?? '000000000000';
-    const region  = process.env.CDK_DEFAULT_REGION ?? 'eu-west-1';
-    return new StandaloneStackFactory('Mailbox', { account, region }, undefined);
+    return new StandaloneStackFactory('Mailbox', undefined, undefined);
   }
 
   private synthesizeTemplate(app: App, stack: Stack): JsonObject {

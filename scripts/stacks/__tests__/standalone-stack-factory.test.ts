@@ -4,9 +4,9 @@ import { StandaloneStackFactory }                 from '../standalone-stack-fact
 
 /**
  * Pins what the factory gives every consumer: the stack ids carry the consumer's prefix, the edge stack
- * sits in us-east-1 in the data account, the cognito stack is environment-agnostic when given none, and
- * every stack uses the bootstrapless synthesizer. A change to any of these changes the templates a
- * consumer ships, so the assertions read the stacks the factory returns, not a copy of its logic.
+ * sits in us-east-1 with no account, the data and cognito stacks are environment-agnostic when given
+ * none, and every stack uses the bootstrapless synthesizer. A change to any of these changes the
+ * templates a consumer ships, so the assertions read the stacks the factory returns, not a copy of its logic.
  */
 describe('StandaloneStackFactory', () => {
   const DATA_ENVIRONMENT    = { account: '111122223333', region: 'eu-west-2' };
@@ -20,13 +20,22 @@ describe('StandaloneStackFactory', () => {
     expect(factory.createCognitoDataStack(new App()).node.id).toBe(`${idPrefix}CognitoData`);
   });
 
-  it('places the edge stack in us-east-1 in the data account', () => {
+  it('places the edge stack in us-east-1 with an unresolved account', () => {
     const factory = new StandaloneStackFactory('Mailbox', DATA_ENVIRONMENT, COGNITO_ENVIRONMENT);
 
     const edgeStack = factory.createEdgeStack(new App());
 
     expect(edgeStack.region).toBe('us-east-1');
-    expect(edgeStack.account).toBe(DATA_ENVIRONMENT.account);
+    expect(Token.isUnresolved(edgeStack.account)).toBe(true);
+  });
+
+  it('leaves the data stack environment-agnostic when none is given', () => {
+    const factory = new StandaloneStackFactory('Mailbox', undefined, undefined);
+
+    const dataStack = factory.createDataStack(new App());
+
+    expect(Token.isUnresolved(dataStack.account)).toBe(true);
+    expect(Token.isUnresolved(dataStack.region)).toBe(true);
   });
 
   it('passes the data environment to the data stack', () => {

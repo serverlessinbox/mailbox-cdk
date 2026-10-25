@@ -14,7 +14,7 @@ export class StandaloneStackFactory {
 
   constructor(
     private readonly idPrefix: string,
-    private readonly dataEnvironment: Environment,
+    private readonly dataEnvironment: Environment | undefined,
     private readonly cognitoDataEnvironment: Environment | undefined,
   ) {}
 
@@ -22,11 +22,10 @@ export class StandaloneStackFactory {
     return new MailboxDataStack(app, `${this.idPrefix}Data`, this.stackProps(this.dataEnvironment));
   }
 
-  /** The edge stack is always in us-east-1, in the same account as the data stack. */
+  /** The edge stack is always in us-east-1. It carries no account, so its account stays unresolved. */
   createEdgeStack(app: App): MailboxEdgeStack {
     const edgeEnvironment: Environment = {
-      account: this.dataEnvironment.account,
-      region:  StandaloneStackFactory.EDGE_REGION,
+      region: StandaloneStackFactory.EDGE_REGION,
     };
     return new MailboxEdgeStack(app, `${this.idPrefix}Edge`, this.stackProps(edgeEnvironment));
   }
