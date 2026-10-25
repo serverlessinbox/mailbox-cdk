@@ -45,7 +45,6 @@ function buildWorker(props: Partial<MailboxEdgeDeployerWorkerLambdaProps> = {}):
   const worker                        = new MailboxEdgeDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
     edgeStackNamePattern: 'test-stack-edge-*',
-    legacyEdgeStackName:  'test-stack-edge',
     edgeStack,
     rootStack:            ROOT_STACK,
     rootStackId:          ROOT_STACK_ID,
@@ -172,13 +171,10 @@ describe('MailboxEdgeDeployerWorkerLambda', () => {
       expect(statementsForAction(template, 'resource-groups:CreateGroup')[0].Resource).toBe('*');
     });
 
-    it('changes only the group of the unhashed legacy edge stack and the groups named after the edge stack name pattern', () => {
-      const resources = [statementsForAction(template, 'resource-groups:DeleteGroup')[0].Resource].flat();
-
-      expect(resources.map(renderWithTokens)).toEqual([
-        `arn:<token>:resource-groups:${EDGE_REGION}:${TEST_ACCOUNT}:group/test-stack-edge-serverless-inbox`,
+    it('changes only the groups named after the edge stack name pattern', () => {
+      expect(resourceOf(template, 'resource-groups:DeleteGroup')).toBe(
         `arn:<token>:resource-groups:${EDGE_REGION}:${TEST_ACCOUNT}:group/test-stack-edge-*-serverless-inbox`,
-      ]);
+      );
     });
   });
 

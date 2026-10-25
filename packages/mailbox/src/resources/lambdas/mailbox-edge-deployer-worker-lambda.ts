@@ -23,8 +23,6 @@ export interface MailboxEdgeDeployerWorkerLambdaProps {
    * stack's Lambda functions and resource group, which are named after the stack.
    */
   readonly edgeStackNamePattern: string;
-  /** The unhashed name earlier installs gave the edge stack (`${AWS::StackName}-edge`); its resource group is named after it, which the pattern does not match. */
-  readonly legacyEdgeStackName: string;
   /** The edge stack the worker deploys. */
   readonly edgeStack: IDeployedStack;
   readonly rootStack: string;
@@ -72,7 +70,7 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
     this.grantCertificateLifecycle(rootStack);
     this.grantLambdaFunctionLifecycle(props.edgeStackNamePattern, rootStack);
     this.grantExecutionRolePassage(props.jmapBlobDownloadRole);
-    this.grantResourceGroupLifecycle([props.legacyEdgeStackName, props.edgeStackNamePattern]);
+    this.grantResourceGroupLifecycle(props.edgeStackNamePattern);
 
     if (props.hostedZoneId !== undefined) {
       this.grantDnsValidationAccess(props.hostedZoneId);
@@ -241,13 +239,13 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
    * is scoped to it. CreateGroup stays on `*`: group-ARN scoping for it is unverified, and a wrongly scoped
    * create fails the whole edge deployment.
    */
-  private grantResourceGroupLifecycle(edgeStackNames: string[]): void {
-    const edgeResourceGroupArns = edgeStackNames.map((edgeStackName) => Stack.of(this).formatArn({
+  private grantResourceGroupLifecycle(edgeStackNamePattern: string): void {
+    const edgeResourceGroupArn = Stack.of(this).formatArn({
       service:      'resource-groups',
       region:       'us-east-1',
       resource:     'group',
-      resourceName: `${edgeStackName}-serverless-inbox`,
-    }));
+      resourceName: `${edgeStackNamePattern}-serverless-inbox`,
+    });
     this.addToRolePolicy(
       new PolicyStatement({
         actions:   ['resource-groups:CreateGroup'],
@@ -267,7 +265,7 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
           'resource-groups:Untag',
           'resource-groups:GetTags',
         ],
-        resources: edgeResourceGroupArns,
+        resources: [edgeResourceGroupArn],
       })
     );
   }

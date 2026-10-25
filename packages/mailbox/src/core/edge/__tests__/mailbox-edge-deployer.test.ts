@@ -260,74 +260,78 @@ describe('MailboxEdgeDeployer', () => {
   });
 
   describe('worker', () => {
-    it('manages edge stacks in us-east-1 under exactly the unhashed and the hashed name', () => {
+    it('manages edge stacks in us-east-1 under the hashed name only', () => {
       const { template } = synthDeployer();
 
       const statements = statementsForAction(template, 'cloudformation:CreateStack');
       expect(statements).toHaveLength(1);
       expect(renderResources(statements[0].Resource)).toEqual([
-        `arn:<token>:cloudformation:us-east-1:${TEST_ACCOUNT}:stack/<token>-edge/*`,
         `arn:<token>:cloudformation:us-east-1:${TEST_ACCOUNT}:stack/<token>-edge-*/*`,
       ]);
     });
 
-    it('matches the unhashed and a hashed edge stack, and not a sibling stack that merely starts with the same name', () => {
-      const { template } = synthDeployer();
-
-      const patterns = renderResources(statementsForAction(template, 'cloudformation:CreateStack')[0].Resource)
-        .map((arn) => arn.split('stack/')[1].replace('<token>', ROOT_STACK_NAME));
-
-      expect(matchesAnyPattern(patterns, `${ROOT_STACK_NAME}-edge/0a1b-uuid`)).toBe(true);
-      expect(matchesAnyPattern(patterns, `${ROOT_STACK_NAME}-edge-0a1b2c3d/0a1b-uuid`)).toBe(true);
-      expect(matchesAnyPattern(patterns, `${ROOT_STACK_NAME}-edgefoo-edge-0a1b2c3d/0a1b-uuid`)).toBe(false);
-      expect(matchesAnyPattern(patterns, `${ROOT_STACK_NAME}-edgefoo/0a1b-uuid`)).toBe(false);
-    });
-
-    const functionNames                                                                   = { legacy: `${ROOT_STACK_NAME}-edge-JmapBlobDownload0A1B-xyz`, sibling: `${ROOT_STACK_NAME}-edgefoo-JmapBlobDownload0A1B-xyz` };
-    const hashedGroup                                                                     = `${ROOT_STACK_NAME}-edge-0a1b2c3d-serverless-inbox`;
+    const hashedSuffix                                                                    = 'edge-0a1b2c3d';
     const scopedByName: Array<[string, (template: Template) => string[], string, string]> = [
+      [
+        'the stack',
+        (template) => renderResources(statementsForAction(template, 'cloudformation:CreateStack')[0].Resource).map((arn) => arn.split('stack/')[1]),
+        `${ROOT_STACK_NAME}-${hashedSuffix}/0a1b-uuid`,
+        `${ROOT_STACK_NAME}-edgefoo-${hashedSuffix}/0a1b-uuid`,
+      ],
       [
         'the Lambda function ARN',
         (template) => renderResources(statementsForAction(template, 'lambda:CreateFunction')[0].Resource).map((arn) => arn.split('function:')[1]),
-        functionNames.legacy,
-        functionNames.sibling,
+        `${ROOT_STACK_NAME}-${hashedSuffix}-JmapBlobDownload0A1B-xyz`,
+        `${ROOT_STACK_NAME}-edgefoo-JmapBlobDownload0A1B-xyz`,
       ],
       [
         'the Lambda function-name condition',
         (template) => [functionNameConditionOf(statementsForAction(template, 'lambda:CreateFunction')[1].Condition)],
-        functionNames.legacy,
-        functionNames.sibling,
+        `${ROOT_STACK_NAME}-${hashedSuffix}-JmapBlobDownload0A1B-xyz`,
+        `${ROOT_STACK_NAME}-edgefoo-JmapBlobDownload0A1B-xyz`,
       ],
       [
         'the replica log group',
         (template) => renderResources(statementsForAction(template, 'logs:CreateLogGroup')[0].Resource).map((arn) => arn.split('log-group:')[1]),
-        `/aws/lambda/us-east-1.${functionNames.legacy}`,
-        `/aws/lambda/us-east-1.${functionNames.sibling}`,
+        `/aws/lambda/us-east-1.${ROOT_STACK_NAME}-${hashedSuffix}-JmapBlobDownload0A1B-xyz`,
+        `/aws/lambda/us-east-1.${ROOT_STACK_NAME}-edgefoo-JmapBlobDownload0A1B-xyz`,
+      ],
+      [
+        'the resource group',
+        (template) => renderResources(statementsForAction(template, 'resource-groups:DeleteGroup')[0].Resource).map((arn) => arn.split('group/')[1]),
+        `${ROOT_STACK_NAME}-${hashedSuffix}-serverless-inbox`,
+        `${ROOT_STACK_NAME}-edgefoo-serverless-inbox`,
+      ],
+    ];
+
+    it.each(scopedByName)('scopes %s to a hashed edge stack and not to a sibling stack\'s', (_scope, patternsOf, hashedName, siblingName) => {
+      const { template } = synthDeployer();
+
+      const patterns = patternsOf(template).map((pattern) => pattern.replace('<token>', ROOT_STACK_NAME));
+
+      expect(matchesAnyPattern(patterns, hashedName)).toBe(true);
+      expect(matchesAnyPattern(patterns, siblingName)).toBe(false);
+    });
+
+    const unhashedScopes: Array<[string, (template: Template) => string[], string]> = [
+      [
+        'the stack',
+        (template) => renderResources(statementsForAction(template, 'cloudformation:CreateStack')[0].Resource).map((arn) => arn.split('stack/')[1]),
+        `${ROOT_STACK_NAME}-edge/0a1b-uuid`,
       ],
       [
         'the resource group',
         (template) => renderResources(statementsForAction(template, 'resource-groups:DeleteGroup')[0].Resource).map((arn) => arn.split('group/')[1]),
         `${ROOT_STACK_NAME}-edge-serverless-inbox`,
-        `${ROOT_STACK_NAME}-edgefoo-serverless-inbox`,
       ],
     ];
 
-    it.each(scopedByName)('scopes %s to the legacy and a hashed edge stack and not to a sibling stack\'s', (_scope, patternsOf, legacyName, siblingName) => {
+    it.each(unhashedScopes)('does not scope %s to the unhashed edge stack', (_scope, patternsOf, unhashedName) => {
       const { template } = synthDeployer();
 
       const patterns = patternsOf(template).map((pattern) => pattern.replace('<token>', ROOT_STACK_NAME));
 
-      expect(matchesAnyPattern(patterns, legacyName)).toBe(true);
-      expect(matchesAnyPattern(patterns, siblingName)).toBe(false);
-    });
-
-    it('scopes the resource group of a hashed edge stack too', () => {
-      const { template } = synthDeployer();
-
-      const patterns = renderResources(statementsForAction(template, 'resource-groups:DeleteGroup')[0].Resource)
-        .map((arn) => arn.split('group/')[1].replace('<token>', ROOT_STACK_NAME));
-
-      expect(matchesAnyPattern(patterns, hashedGroup)).toBe(true);
+      expect(matchesAnyPattern(patterns, unhashedName)).toBe(false);
     });
 
     it('lets the starter read the same edge stacks', () => {
@@ -335,7 +339,6 @@ describe('MailboxEdgeDeployer', () => {
 
       const describing = statementsForAction(template, 'cloudformation:DescribeStacks')
         .flatMap((statement) => renderResources(statement.Resource));
-      expect(describing).toContain(`arn:<token>:cloudformation:us-east-1:${TEST_ACCOUNT}:stack/<token>-edge/*`);
       expect(describing).toContain(`arn:<token>:cloudformation:us-east-1:${TEST_ACCOUNT}:stack/<token>-edge-*/*`);
     });
 

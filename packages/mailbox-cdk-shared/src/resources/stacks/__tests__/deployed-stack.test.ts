@@ -56,16 +56,4 @@ describe('DeployedStack', () => {
     expect(statements[0].Action).toBe('cloudformation:DescribeStacks');
     expect(statements[0].Resource).toEqual(STACK_ARN);
   });
-
-  it('names every ARN pattern it is given in each grant', () => {
-    const otherArn  = 'arn:aws:cloudformation:us-west-2:123456789012:stack/other-*/*';
-    const { stack } = newDeployerTestStack();
-    const grantee   = newWorkerStandIn(stack, 'grantee');
-
-    new DeployedStack(STACK_ARN, otherArn).grantLifecycle(grantee);
-
-    const statements = statementsForAction(Template.fromStack(stack), 'cloudformation:CreateStack');
-    expect(statements).toHaveLength(1);
-    expect(statements[0].Resource).toEqual([STACK_ARN, otherArn]);
-  });
 });

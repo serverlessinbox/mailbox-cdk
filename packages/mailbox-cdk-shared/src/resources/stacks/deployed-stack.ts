@@ -18,11 +18,7 @@ export interface IDeployedStack {
  * resource creates it at deploy time. The deployer that owns the stack builds this from the pattern it deploys to.
  */
 export class DeployedStack implements IDeployedStack {
-  private readonly stackArns: string[];
-
-  constructor(...stackArns: string[]) {
-    this.stackArns = stackArns;
-  }
+  constructor(private readonly stackArn: string) {}
 
   public grantLifecycle(grantee: IGrantable): void {
     Grant.addToPrincipal({
@@ -37,7 +33,7 @@ export class DeployedStack implements IDeployedStack {
         'cloudformation:GetStackPolicy',
         'cloudformation:SetStackPolicy',
       ],
-      resourceArns: this.stackArns,
+      resourceArns: [this.stackArn],
     });
   }
 
@@ -45,7 +41,7 @@ export class DeployedStack implements IDeployedStack {
     Grant.addToPrincipal({
       grantee,
       actions:      ['cloudformation:GetTemplate'],
-      resourceArns: this.stackArns,
+      resourceArns: [this.stackArn],
     });
   }
 
@@ -53,7 +49,7 @@ export class DeployedStack implements IDeployedStack {
     Grant.addToPrincipal({
       grantee,
       actions:      ['cloudformation:DescribeStacks'],
-      resourceArns: this.stackArns,
+      resourceArns: [this.stackArn],
     });
   }
 }

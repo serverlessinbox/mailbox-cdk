@@ -82,14 +82,13 @@ export class MailboxEdgeDeployer extends Construct {
 
     // Scopes the functions and replica log groups, which are named from the edge stack name, and the hashed stack's resource group.
     const edgeStackNamePattern = `${Aws.STACK_NAME}-edge-*`;
-    const legacyEdgeStackName  = `${Aws.STACK_NAME}-edge`;
     this.jmapBlobDownloadRole  = new EdgeFunctionRole(this, 'jmap-blob-download-role', { authKeyStoreTable: props.authKeyStoreTable, edgeStackNamePattern });
-    // Two exact patterns: the hashed edge stack name above and the unhashed `${Aws.STACK_NAME}-edge` that
-    // earlier installs deployed, whose resource is deleted with this policy in force.
-    const edgeStack            = new DeployedStack(
-      this.edgeStackArn(`${legacyEdgeStackName}/*`),
-      this.edgeStackArn(`${edgeStackNamePattern}/*`),
-    );
+    const edgeStack            = new DeployedStack(Stack.of(this).formatArn({
+      service:      'cloudformation',
+      region:       MailboxEdgeDeployer.EDGE_REGION,
+      resource:     'stack',
+      resourceName: `${edgeStackNamePattern}/*`,
+    }));
 
     const infra = new DeployerInfra(this, 'infra', {
       artifactResolver:       props.artifactResolver,
@@ -99,7 +98,6 @@ export class MailboxEdgeDeployer extends Construct {
       createWorker:           (workerScope: Construct, workerId: string) => new MailboxEdgeDeployerWorkerLambda(workerScope, workerId, {
         artifactResolver: props.artifactResolver,
         edgeStackNamePattern,
-        legacyEdgeStackName,
         edgeStack,
         rootStack:            Aws.STACK_NAME,
         rootStackId:          StackIdentity.guid,
@@ -145,15 +143,6 @@ export class MailboxEdgeDeployer extends Construct {
   /** Read a specific CloudFormation output (OutputKey) from the deployed edge stack. */
   public getOutput(outputKey: string): string {
     return this.resource.getAttString(outputKey);
-  }
-
-  private edgeStackArn(resourceName: string): string {
-    return Stack.of(this).formatArn({
-      service:  'cloudformation',
-      region:   MailboxEdgeDeployer.EDGE_REGION,
-      resource: 'stack',
-      resourceName,
-    });
   }
 
   private templateParameters(props: MailboxEdgeDeployerProps, jmapBlobDownload: ResolvedArtifact): MailboxEdgeStackParameters {
