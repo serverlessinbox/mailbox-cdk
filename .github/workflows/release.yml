@@ -4,14 +4,44 @@ on:
   push:
     branches:
       - main
-      - 'feat/*'
+
+permissions:
+  contents: read
 
 jobs:
-  release:
+  build-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    concurrency:
+      group: release-build-test-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+      - uses: arduino/setup-task@v2
+      - run: yarn install
+      - run: yarn lint
+      - run: yarn test
+
+  publish:
+    needs: build-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       id-token: write
       contents: write
+    concurrency:
+      group: release-publish
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,8 +52,6 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - uses: arduino/setup-task@v2
       - run: yarn install
-      - run: yarn lint
-      - run: yarn test
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}

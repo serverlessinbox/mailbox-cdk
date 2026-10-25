@@ -78,12 +78,22 @@ tasks:
 
   publish:data:dev:
     desc: Publish data stack template to dev channel
+    env:
+      AWS_PROFILE: '{{.AWS_PROFILE}}'
+    preconditions:
+      - sh: '[ -n "{{.AWS_PROFILE}}" ]'
+        msg: "AWS_PROFILE is required: run task publish:data:dev AWS_PROFILE=<profile>"
     cmds:
       - task: build:data-stack
       - yarn  artifact-registry publish channel --channel dev --cwd {{.TASKFILE_DIR}} --object data-stack-template.json
 
   publish:edge:dev:
     desc: Publish edge stack template and lambdas to dev channel
+    env:
+      AWS_PROFILE: '{{.AWS_PROFILE}}'
+    preconditions:
+      - sh: '[ -n "{{.AWS_PROFILE}}" ]'
+        msg: "AWS_PROFILE is required: run task publish:edge:dev AWS_PROFILE=<profile>"
     cmds:
       - task: build:edge-stack
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/runtime/jmap-blob-download/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/jmap-blob-download.zip
@@ -93,6 +103,11 @@ tasks:
 
   publish:regional:dev:
     desc: Bundle and publish the regional runtime lambdas in src/runtime/ (resource-sweeper, artifact-updater, data-override-resolver) to the dev channel
+    env:
+      AWS_PROFILE: '{{.AWS_PROFILE}}'
+    preconditions:
+      - sh: '[ -n "{{.AWS_PROFILE}}" ]'
+        msg: "AWS_PROFILE is required: run task publish:regional:dev AWS_PROFILE=<profile>"
     cmds:
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/runtime/resource-sweeper/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/resource-sweeper.zip
       - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/runtime/artifact-updater/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/artifact-updater.zip
