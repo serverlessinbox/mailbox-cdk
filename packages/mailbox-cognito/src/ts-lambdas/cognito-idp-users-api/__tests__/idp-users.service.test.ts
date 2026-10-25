@@ -28,7 +28,7 @@ import {
   NotFoundError,
   type AdminAuthContext,
   type AuditContext,
-  type HandlerContext,
+  type LegacyHandlerContext,
 } from '@serverlessinbox/mailbox-addon-sdk';
 import { LoggerBuffer, toAccountId, toFunctionName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }                                from 'aws-sdk-client-mock';
@@ -47,7 +47,7 @@ import {
 import { IdpUserMapper }          from '../idp-user-mapper';
 import { CognitoIdpUsersService } from '../idp-users.service';
 
-type IdpUsersContext = HandlerContext<AdminAuthContext, AuditContext>;
+type IdpUsersContext = LegacyHandlerContext<AdminAuthContext, AuditContext>;
 
 const USER_POOL_ID    = 'pool-1';
 const TENANT_ID       = 'tenant-123';

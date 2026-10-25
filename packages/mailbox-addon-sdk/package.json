@@ -55,6 +55,7 @@
     "clean": "rm -rf lib *.tsbuildinfo"
   },
   "dependencies": {
+    "@types/aws-lambda": "^8.10.159",
     "typanion": "^3.14.0"
   },
   "peerDependencies": {

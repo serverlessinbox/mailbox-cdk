@@ -103,9 +103,6 @@ export type ApiGatewayV2ResultLike = {
     body?: string;
     isBase64Encoded?: boolean;
 };
-export type JsonValue = null | boolean | number | string | JsonValue[] | {
-    [key: string]: JsonValue;
-};
 
 // audit.d.ts
 export type AuditEvent = {
@@ -129,9 +126,57 @@ export type AuditContext = {
     action: string;
 };
 
+// caller/authorized-event.d.ts
+import type { APIGatewayProxyEventV2WithLambdaAuthorizer } from 'aws-lambda';
+export type AuthorizedEvent = APIGatewayProxyEventV2WithLambdaAuthorizer<unknown>;
+
+// caller/caller-context-reader.d.ts
+import type { AuthorizedEvent } from './authorized-event';
+import type { Caller } from './caller';
+export declare class CallerContextReader {
+    read(event: AuthorizedEvent): Caller;
+    private contextOf;
+    private groupsOf;
+    private parseGroups;
+}
+
+// caller/caller.d.ts
+import type { TenantId } from './tenant-id';
+export interface Caller {
+    readonly tenantId: TenantId;
+    readonly subject: string;
+    readonly username?: string;
+    readonly groups: readonly string[];
+}
+
+// caller/handler-context.d.ts
+import type { Caller } from './caller';
+export interface HandlerContext {
+    readonly caller: Caller;
+    readonly requestId: string;
+}
+
+// caller/index.d.ts
+export type { Caller } from './caller';
+export { CallerContextReader } from './caller-context-reader';
+export type { HandlerContext } from './handler-context';
+export { toTenantId, type TenantId } from './tenant-id';
+
+// caller/tenant-id.d.ts
+export type TenantId = string & {
+    readonly brand: 'TenantId';
+};
+export declare function toTenantId(value: string): TenantId;
+
 // errors.d.ts
 export declare class InvalidInputError extends Error {
     readonly name = "InvalidInputError";
+}
+export declare class UnauthenticatedError extends Error {
+    readonly name = "UnauthenticatedError";
+}
+export declare class AlreadyExistsError extends Error {
+    readonly name = "AlreadyExistsError";
 }
 export declare class NotFoundError extends Error {
     readonly name = "NotFoundError";
@@ -146,9 +191,12 @@ export declare class ConflictError extends Error {
 }
 
 // index.d.ts
-export type { ApiGatewayV2EventLike, ApiGatewayV2ResultLike, JsonValue } from './api-gateway';
-export { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from './errors';
-export type { HandlerContext, MethodSpec, ServiceSpec } from './service-spec';
+export * from './caller/index';
+export * from './runtime/index';
+export type { JsonValue } from './json-value';
+export { AlreadyExistsError, ConflictError, ForbiddenError, InvalidInputError, NotFoundError, UnauthenticatedError, } from './errors';
+export type { ApiGatewayV2EventLike, ApiGatewayV2ResultLike } from './api-gateway';
+export type { HandlerContext as LegacyHandlerContext, MethodSpec, ServiceSpec } from './service-spec';
 export { ServiceRegistry } from './service-registry';
 export { AdminAuthExtractor } from './admin-auth-extractor';
 export type { AdminAuthContext, AdminAuthType, ExtractAuthOptions } from './admin-auth-extractor';
@@ -158,6 +206,58 @@ export type { AdminApiHandlerOptions } from './admin-api-handler';
 export { createValidator, type Validator } from './validation';
 export { ServiceSpecBuilder } from './service-spec-builder';
 export type { GeneratedMethodRuntime, GeneratedServiceRuntime, ServiceSpecFromRuntimeOptions, } from './service-spec-builder';
+
+// json-value.d.ts
+export type JsonValue = null | boolean | number | string | JsonValue[] | {
+    [key: string]: JsonValue;
+};
+
+// runtime/index.d.ts
+export type { LogFields, RequestLogger } from './request-logger';
+export type { ServiceMethod } from './service-method';
+export { ServiceRuntime } from './service-runtime';
+
+// runtime/request-logger.d.ts
+export type LogFields = Record<string, unknown>;
+export interface RequestLogger {
+    debug(message: string, fields?: LogFields): void;
+    warn(message: string, fields?: LogFields): void;
+    error(message: string, fields?: LogFields): void;
+    flush(): void;
+}
+
+// runtime/service-method.d.ts
+import type { HandlerContext } from '../caller/handler-context';
+import type { JsonValue } from '../json-value';
+export interface ServiceMethod {
+    readonly admin?: boolean;
+    invoke(context: HandlerContext, body: JsonValue): Promise<unknown>;
+}
+
+// runtime/service-runtime.d.ts
+import type { APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
+import type { AuthorizedEvent } from '../caller/authorized-event';
+import type { CallerContextReader } from '../caller/caller-context-reader';
+import type { RequestLogger } from './request-logger';
+import type { ServiceMethod } from './service-method';
+export declare class ServiceRuntime {
+    private readonly methods;
+    private readonly adminGroups;
+    private readonly callerReader;
+    private readonly logger;
+    readonly basePath: string;
+    private readonly bodyReader;
+    constructor(basePath: string, methods: ReadonlyMap<string, ServiceMethod>, adminGroups: readonly string[], callerReader: CallerContextReader, logger: RequestLogger);
+    handle(event: AuthorizedEvent): Promise<APIGatewayProxyStructuredResultV2>;
+    private serve;
+    private methodOf;
+    private authorize;
+    private answerFailure;
+    private statusOf;
+    private causeOf;
+    private textResponse;
+    private jsonResponse;
+}
 
 // service-registry.d.ts
 import type { ServiceSpec } from './service-spec';
@@ -200,7 +300,7 @@ export declare class ServiceSpecBuilder<TAuth = unknown, TAudit = unknown> {
 }
 
 // service-spec.d.ts
-import type { JsonValue } from './api-gateway';
+import type { JsonValue } from './json-value';
 export type HandlerContext<TAuth = unknown, TAudit = unknown> = {
     auth: TAuth;
     audit: TAudit;

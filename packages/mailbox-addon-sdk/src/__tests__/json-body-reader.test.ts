@@ -1,4 +1,5 @@
-import { JsonBodyReader } from '../json-body-reader';
+import { InvalidInputError } from '../errors';
+import { JsonBodyReader }    from '../json-body-reader';
 
 /*
  * Pins how a request body becomes a JsonValue. A body that is not JSON must stay an error with this message,
@@ -32,7 +33,8 @@ describe('JsonBodyReader', () => {
     expect(reader.read('0')).toBe(0);
   });
 
-  it('throws "invalid JSON body" for a body that is not JSON', () => {
-    expect(() => reader.read('{not json')).toThrow('invalid JSON body');
+  it('throws an InvalidInputError "invalid JSON body" for a body that is not JSON', () => {
+    expect(() => reader.read('{not json')).toThrow(new InvalidInputError('invalid JSON body'));
+    expect(() => reader.read('{not json')).toThrow(InvalidInputError);
   });
 });

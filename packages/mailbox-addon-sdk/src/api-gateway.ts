@@ -28,6 +28,3 @@ export type ApiGatewayV2ResultLike = {
   body?:            string;
   isBase64Encoded?: boolean;
 };
-
-/** Any value `JSON.parse` can return. */
-export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };

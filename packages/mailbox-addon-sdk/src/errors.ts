@@ -3,6 +3,16 @@ export class InvalidInputError extends Error {
   readonly name = 'InvalidInputError';
 }
 
+/** The request carries no valid identity: the authorizer supplied no tenant or no subject. */
+export class UnauthenticatedError extends Error {
+  readonly name = 'UnauthenticatedError';
+}
+
+/** The entity a request would create already exists. */
+export class AlreadyExistsError extends Error {
+  readonly name = 'AlreadyExistsError';
+}
+
 /** The entity a request names does not exist. */
 export class NotFoundError extends Error {
   readonly name = 'NotFoundError';

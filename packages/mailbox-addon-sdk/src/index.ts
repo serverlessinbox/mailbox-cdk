@@ -1,6 +1,18 @@
-export type { ApiGatewayV2EventLike, ApiGatewayV2ResultLike, JsonValue } from './api-gateway';
-export { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from './errors';
-export type { HandlerContext, MethodSpec, ServiceSpec }                  from './service-spec';
+export * from './caller/index';
+export * from './runtime/index';
+export type { JsonValue }                                                from './json-value';
+export {
+  AlreadyExistsError,
+  ConflictError,
+  ForbiddenError,
+  InvalidInputError,
+  NotFoundError,
+  UnauthenticatedError,
+}                                                                        from './errors';
+
+// Legacy admin pipeline, kept only for the IdP users API until it moves onto `ServiceRuntime`.
+export type { ApiGatewayV2EventLike, ApiGatewayV2ResultLike }            from './api-gateway';
+export type { HandlerContext as LegacyHandlerContext, MethodSpec, ServiceSpec } from './service-spec';
 export { ServiceRegistry }                                               from './service-registry';
 export { AdminAuthExtractor }                                            from './admin-auth-extractor';
 export type { AdminAuthContext, AdminAuthType, ExtractAuthOptions }      from './admin-auth-extractor';

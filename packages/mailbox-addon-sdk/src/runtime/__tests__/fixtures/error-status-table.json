@@ -1,0 +1,9 @@
+[
+  { "error": "InvalidInput", "status": 400 },
+  { "error": "Unauthenticated", "status": 401 },
+  { "error": "Forbidden", "status": 403 },
+  { "error": "NotFound", "status": 404 },
+  { "error": "AlreadyExists", "status": 409 },
+  { "error": "Conflict", "status": 409 },
+  { "error": "Other", "status": 500 }
+]

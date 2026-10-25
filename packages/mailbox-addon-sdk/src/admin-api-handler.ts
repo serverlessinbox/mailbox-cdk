@@ -1,7 +1,8 @@
-import type { ApiGatewayV2EventLike, ApiGatewayV2ResultLike, JsonValue }   from './api-gateway';
+import type { ApiGatewayV2EventLike, ApiGatewayV2ResultLike }              from './api-gateway';
 import type { AuditContext, AuditEvent }                                   from './audit';
 import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from './errors';
 import { JsonBodyReader }                                                  from './json-body-reader';
+import type { JsonValue }                                                  from './json-value';
 import type { ServiceRegistry }                                            from './service-registry';
 import type { HandlerContext, MethodSpec, ServiceSpec }                    from './service-spec';
 

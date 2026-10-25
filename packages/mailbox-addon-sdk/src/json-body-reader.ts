@@ -1,10 +1,11 @@
-import * as t             from 'typanion';
+import * as t                 from 'typanion';
 
-import type { JsonValue } from './api-gateway';
+import { InvalidInputError }  from './errors';
+import type { JsonValue }     from './json-value';
 
 /**
  * Reads the body of a request as JSON. A missing or empty body reads as an empty object; a body that is not
- * JSON is an error, and what was parsed is checked to be a `JsonValue` before it is handed on.
+ * JSON is an `InvalidInputError`, and what was parsed is checked to be a `JsonValue` before it is handed on.
  */
 export class JsonBodyReader {
   private readonly isJsonValue: t.StrictValidator<unknown, JsonValue>;
@@ -36,7 +37,7 @@ export class JsonBodyReader {
     try {
       return JSON.parse(body);
     } catch {
-      throw new Error('invalid JSON body');
+      throw new InvalidInputError('invalid JSON body');
     }
   }
 }

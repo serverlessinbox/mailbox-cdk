@@ -5986,6 +5986,7 @@ const RAW_RUNTIME_STATE =
         "packageDependencies": [\
           ["@bufbuild/protobuf", "npm:2.10.2"],\
           ["@serverlessinbox/mailbox-addon-sdk", "virtual:3a729a5adfa6a00b7fa8fdec3ba98e73c47136a4989c6f46655da25cc98b7a0ac5cf1d3b584bd3ccb151d40fe55038db98ba480d529df891ea127469e4ee91d1#workspace:packages/mailbox-addon-sdk"],\
+          ["@types/aws-lambda", "npm:8.10.159"],\
           ["@types/bufbuild__protobuf", null],\
           ["@types/jest", "npm:29.5.14"],\
           ["jest", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:29.7.0"],\
@@ -6004,6 +6005,7 @@ const RAW_RUNTIME_STATE =
         "packageDependencies": [\
           ["@bufbuild/protobuf", "npm:2.10.2"],\
           ["@serverlessinbox/mailbox-addon-sdk", "workspace:packages/mailbox-addon-sdk"],\
+          ["@types/aws-lambda", "npm:8.10.159"],\
           ["@types/jest", "npm:29.5.14"],\
           ["jest", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:29.7.0"],\
           ["ts-jest", "virtual:b307096eddcc03c69d05f9528156c738ccc1cf45cbd79f870909484d1d981b2184424a74f770b8f489140f4a798930798af5441c2968b449384c94a0a611495f#npm:29.4.6"],\

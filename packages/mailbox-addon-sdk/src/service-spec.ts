@@ -1,4 +1,4 @@
-import type { JsonValue } from './api-gateway';
+import type { JsonValue } from './json-value';
 
 /** What a service handler is called with besides the request: the caller's auth, its audit record and the request id. */
 export type HandlerContext<TAuth = unknown, TAudit = unknown> = {
