@@ -8,28 +8,29 @@ import {
   HttpApi,
   HttpMethod,
   IHttpApi,
+  IHttpStage,
 } from 'aws-cdk-lib/aws-apigatewayv2';
-import type { CorsPreflightOptions }                                         from 'aws-cdk-lib/aws-apigatewayv2';
-import type { IFunction }                                                    from 'aws-cdk-lib/aws-lambda';
-import { Duration, Aws, CfnResource }                                        from 'aws-cdk-lib';
-import { Construct }                                                         from 'constructs';
-import type { IConstruct }                                                   from 'constructs';
+import type { CorsPreflightOptions }                                          from 'aws-cdk-lib/aws-apigatewayv2';
+import type { IFunction }                                                     from 'aws-cdk-lib/aws-lambda';
+import { Duration, Aws, CfnResource }                                         from 'aws-cdk-lib';
+import { Construct }                                                          from 'constructs';
+import type { IConstruct }                                                    from 'constructs';
 
-import { AuthPolicyName }                                                    from '../../contracts/auth-names';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl }    from '../../contracts/websocket-push';
-import type { IDataBlobStore }                                               from '../../resources/buckets/data-blob-store';
-import { AuthorizerLambda }                                                  from '../../resources/lambdas/authorizer-lambda';
-import type { IIdentityProvisioner }                                         from '../../resources/lambdas/identity-provisioner-lambda';
-import { JmapApiLambda }                                                     from '../../resources/lambdas/jmap-api-lambda';
-import type { IAuditEventsQueue }                                            from '../../resources/queues/audit-events-queue';
-import type { IEmailSendingQueue }                                           from '../../resources/queues/email-sending-queue';
-import type { IAuthKeyStoreTable }                                           from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                                                   from '../../resources/tables/data-tables';
-import { IMailboxAuthProvider }                                              from '../auth/auth-provider';
+import { AuthPolicyName }                                                     from '../../contracts/auth-names';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl }     from '../../contracts/websocket-push';
+import type { IDataBlobStore }                                                from '../../resources/buckets/data-blob-store';
+import { AuthorizerLambda }                                                   from '../../resources/lambdas/authorizer-lambda';
+import type { IIdentityProvisioner }                                          from '../../resources/lambdas/identity-provisioner-lambda';
+import { JmapApiLambda }                                                      from '../../resources/lambdas/jmap-api-lambda';
+import type { IAuditEventsQueue }                                             from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }                                            from '../../resources/queues/email-sending-queue';
+import type { IAuthKeyStoreTable }                                            from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                                                    from '../../resources/tables/data-tables';
+import { IMailboxAuthProvider }                                               from '../auth/auth-provider';
 
-import type { IJmapApiAddon }                                                from './addons';
-import { ApiCustomDomain }                                                   from './api-custom-domain';
-import type { ApiCustomDomainProps, ILogicalIdPin }                          from './api-custom-domain';
+import type { IJmapApiAddon }                                                 from './addons';
+import { ApiCustomDomain }                                                    from './api-custom-domain';
+import type { ApiCustomDomainProps, ILogicalIdPin }                           from './api-custom-domain';
 
 /**
  * Inputs of {@link JmapApi}: the tables, queues and blob store its handler Lambda works on, the
@@ -93,6 +94,7 @@ export class JmapApi extends Construct {
   /** The underlying HTTP API, for constructs that add routes to it. */
   public readonly httpApi: IHttpApi;
   private readonly apiHandlerLambda: IWebSocketPushTargetWithUrl;
+  private readonly defaultStage: IHttpStage;
 
   constructor(scope: Construct, id: string, props: JmapApiProps) {
     super(scope, id);
@@ -110,10 +112,15 @@ export class JmapApi extends Construct {
 
     this.authorizerLambda = lambdaAuthorizer;
 
-    const api = new HttpApi(this, 'jmap-api', {
-      apiName:       `Mailbox ${Aws.STACK_NAME} JMAP API`,
-      description:   'This service serves mailbox operations.',
-      corsPreflight: this.corsPreflight(props.allowedOrigins),
+    const api         = new HttpApi(this, 'jmap-api', {
+      apiName:            `Mailbox ${Aws.STACK_NAME} JMAP API`,
+      createDefaultStage: false,
+      description:        'This service serves mailbox operations.',
+      corsPreflight:      this.corsPreflight(props.allowedOrigins),
+    });
+    this.defaultStage = api.addStage('DefaultStage', {
+      autoDeploy: true,
+      throttle:   { rateLimit: 100, burstLimit: 200 },
     });
 
     if (props.customDomain) {
@@ -166,6 +173,7 @@ export class JmapApi extends Construct {
     new ApiMapping(this, 'mapping', {
       api,
       domainName: domain,
+      stage:      this.defaultStage,
     });
 
     return domain;
@@ -253,7 +261,7 @@ export class JmapApi extends Construct {
       integration: protectedResourceIntegration,
     });
 
-    const cfnStage = this.defaultCfnResource(api.defaultStage);
+    const cfnStage = this.defaultCfnResource(this.defaultStage);
 
     // API Gateway rejects a RouteSettings entry whose route does not exist yet, and CloudFormation
     // updates the Stage before creating the Route unless told otherwise:

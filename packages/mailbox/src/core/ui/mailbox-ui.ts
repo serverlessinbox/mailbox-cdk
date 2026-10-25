@@ -18,11 +18,13 @@ import {
   FunctionEventType,
   IDistribution,
   OriginRequestPolicy,
+  ResponseHeadersPolicy,
+  SecurityPolicyProtocol,
   ViewerProtocolPolicy,
 } from 'aws-cdk-lib/aws-cloudfront';
 import * as iam                            from 'aws-cdk-lib/aws-iam';
 import { Bucket }                          from 'aws-cdk-lib/aws-s3';
-import { Fn, Tags }                        from 'aws-cdk-lib';
+import { Duration, Fn, Tags }              from 'aws-cdk-lib';
 import { Construct, IDependable }          from 'constructs';
 
 import { AuthPolicyName, OAuthClientName } from '../../contracts/auth-names';
@@ -107,18 +109,22 @@ export class MailboxUi extends Construct {
 
     BucketAutoEmpty.getOrCreate(this, artifacts).attach(this, 'bucket-auto-empty', this.bucket);
 
+    const responseHeadersPolicy = this.createResponseHeadersPolicy(props.label);
+
     const distribution = new Distribution(this, 'distribution', {
-      comment:           `Mailbox ${props.label}`,
-      defaultRootObject: 'index.html',
-      domainNames:       props.certificate ? [props.domainName] : undefined,
-      certificate:       props.certificate,
-      defaultBehavior:   {
+      comment:                `Mailbox ${props.label}`,
+      defaultRootObject:      'index.html',
+      domainNames:            props.certificate ? [props.domainName] : undefined,
+      certificate:            props.certificate,
+      minimumProtocolVersion: SecurityPolicyProtocol.TLS_V1_2_2021,
+      defaultBehavior:        {
         origin:               this.bucket.contentOrigin(),
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy:          CachePolicy.CACHING_OPTIMIZED,
         compress:             true,
+        responseHeadersPolicy,
       },
-      errorResponses:    [
+      errorResponses:         [
         {
           httpStatus:         404,
           responseHttpStatus: 200,
@@ -140,9 +146,10 @@ export class MailboxUi extends Construct {
       cachePolicy:          CachePolicy.CACHING_DISABLED,
       compress:             true,
       allowedMethods:       AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+      responseHeadersPolicy,
     });
 
-    this.addAuthBehavior(distribution, props);
+    this.addAuthBehavior(distribution, props, responseHeadersPolicy);
 
     if (props.uiBundle || props.uiConfig) {
       this.addUiDeployment(props);
@@ -163,6 +170,24 @@ export class MailboxUi extends Construct {
    */
   grantContentDeploy(grantee: iam.IGrantable): void {
     this.bucket.grantContentDeploy(grantee);
+  }
+
+  private createResponseHeadersPolicy(label: string): ResponseHeadersPolicy {
+    return new ResponseHeadersPolicy(this, 'response-headers-policy', {
+      comment:                 `Security headers for Mailbox ${label}`,
+      securityHeadersBehavior: {
+        strictTransportSecurity: {
+          accessControlMaxAge: Duration.days(365),
+          includeSubdomains:   false,
+          override:            true,
+        },
+        contentTypeOptions:      { override: true },
+        contentSecurityPolicy:   {
+          contentSecurityPolicy: "frame-ancestors 'none'",
+          override:              true,
+        },
+      },
+    });
   }
 
   private addUiDeployment(props: MailboxUiProps): void {
@@ -208,7 +233,7 @@ export class MailboxUi extends Construct {
     });
   }
 
-  private addAuthBehavior(distribution: Distribution, props: MailboxUiProps): void {
+  private addAuthBehavior(distribution: Distribution, props: MailboxUiProps, responseHeadersPolicy: ResponseHeadersPolicy): void {
     const tokenExchange = new IdpTokenExchangeApi(this, 'oauth-api', {
       artifactResolver: props.artifactResolver,
       configTable:      props.configTable,
@@ -244,6 +269,7 @@ export class MailboxUi extends Construct {
       ],
       compress:             false,
       allowedMethods:       AllowedMethods.ALLOW_ALL,
+      responseHeadersPolicy,
     });
   }
 }

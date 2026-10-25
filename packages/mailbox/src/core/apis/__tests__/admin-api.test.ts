@@ -83,6 +83,20 @@ describe('AdminApi', () => {
     });
   });
 
+  it('keeps the default endpoint enabled, since the no-domain configuration serves through it', () => {
+    new AdminApi(stack, 'admin-api', propsWith());
+
+    Template.fromStack(stack).resourcePropertiesCountIs('AWS::ApiGatewayV2::Api', { DisableExecuteApiEndpoint: true }, 0);
+  });
+
+  it('throttles its default stage', () => {
+    new AdminApi(stack, 'admin-api', propsWith());
+
+    Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Stage', {
+      DefaultRouteSettings: { ThrottlingBurstLimit: 200, ThrottlingRateLimit: 100 },
+    });
+  });
+
   describe('with a custom domain', () => {
     it('serves on the domain, maps the API onto it and publishes its regional target', () => {
       const customDomain = { domainName: 'api.example.com', certificate: certificate(stack, 'api.example.com') };

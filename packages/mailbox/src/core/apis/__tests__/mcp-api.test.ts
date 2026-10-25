@@ -57,6 +57,16 @@ describe('McpApi', () => {
     template.resourceCountIs('AWS::ApiGatewayV2::ApiMapping', 1);
   });
 
+  it('disables the default execute-api endpoint', () => {
+    Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Api', { DisableExecuteApiEndpoint: true });
+  });
+
+  it('throttles its default stage', () => {
+    Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Stage', {
+      DefaultRouteSettings: { ThrottlingBurstLimit: 200, ThrottlingRateLimit: 100 },
+    });
+  });
+
   it('creates the HTTP Lambda authorizer that its routes reference', () => {
     Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Authorizer', {
       AuthorizerType: 'REQUEST',

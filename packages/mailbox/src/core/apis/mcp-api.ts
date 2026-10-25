@@ -48,9 +48,15 @@ export class McpApi extends Construct {
     super(scope, id);
     ComponentDescription.describe(this, 'Model Context Protocol (MCP) endpoint exposing mailbox tools to AI clients.');
 
-    const api = new HttpApi(this, 'mcp-api', {
-      apiName:     `Mailbox ${Aws.STACK_NAME} MCP API`,
-      description: 'This service serves MCP (Model Context Protocol) endpoints.',
+    const api          = new HttpApi(this, 'mcp-api', {
+      apiName:                   `Mailbox ${Aws.STACK_NAME} MCP API`,
+      createDefaultStage:        false,
+      description:               'This service serves MCP (Model Context Protocol) endpoints.',
+      disableExecuteApiEndpoint: true,
+    });
+    const defaultStage = api.addStage('DefaultStage', {
+      autoDeploy: true,
+      throttle:   { rateLimit: 100, burstLimit: 200 },
     });
 
     const domain = new ApiCustomDomain(this, 'domain', {
@@ -63,6 +69,7 @@ export class McpApi extends Construct {
     new ApiMapping(this, 'mapping', {
       api,
       domainName: domain,
+      stage:      defaultStage,
     });
 
     const handlerLambda = new McpApiLambda(this, 'handler', {

@@ -139,6 +139,54 @@ describe('MailboxUi', () => {
     });
   });
 
+  describe('security headers and TLS', () => {
+    it('attaches one response-headers policy with HSTS, nosniff and frame-ancestors to every behavior', () => {
+      new MailboxUi(stack, 'admin-ui', propsWith());
+
+      const template  = Template.fromStack(stack);
+      const policyIds = Object.keys(template.findResources('AWS::CloudFront::ResponseHeadersPolicy'));
+      expect(policyIds).toHaveLength(1);
+      template.hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
+        ResponseHeadersPolicyConfig: {
+          SecurityHeadersConfig: {
+            StrictTransportSecurity: { AccessControlMaxAgeSec: 31536000, IncludeSubdomains: false, Override: true },
+            ContentTypeOptions:      { Override: true },
+            ContentSecurityPolicy:   { ContentSecurityPolicy: "frame-ancestors 'none'", Override: true },
+          },
+        },
+      });
+
+      const config    = distributionConfig();
+      const behaviors = [
+        config.DefaultCacheBehavior as Record<string, unknown>,
+        ...(config.CacheBehaviors as Array<Record<string, unknown>>),
+      ];
+      expect(behaviors).toHaveLength(3);
+      for (const behavior of behaviors) {
+        expect(behavior.ResponseHeadersPolicyId).toEqual({ Ref: policyIds[0] });
+      }
+    });
+
+    it('requires TLS 1.2 2021 as the minimum viewer protocol when a certificate is given', () => {
+      // The feature flag is off, so CDK's own default is TLS 1.2 2019 and only the explicit setting yields 2021.
+      stack             = new cdk.Stack(new App({ context: { '@aws-cdk/aws-cloudfront:defaultSecurityPolicyTLSv1.2_2021': false } }), 'TestStack', {
+        env:         { account: '123456789012', region: 'us-west-2' },
+        synthesizer: new BootstraplessSynthesizer(),
+      });
+      const certificate =acm.Certificate.fromCertificateArn(stack, 'certificate', 'arn:aws:acm:us-east-1:123456789012:certificate/abc');
+
+      new MailboxUi(stack, 'admin-ui', propsWith({ certificate }));
+
+      expect(distributionConfig().ViewerCertificate).toMatchObject({ MinimumProtocolVersion: 'TLSv1.2_2021' });
+    });
+
+    it('sets no viewer certificate, and so no minimum protocol version, without a certificate', () => {
+      new MailboxUi(stack, 'admin-ui', propsWith());
+
+      expect(distributionConfig().ViewerCertificate).toBeUndefined();
+    });
+  });
+
   describe('bucket', () => {
     it('reads the bucket through its own distribution', () => {
       new MailboxUi(stack, 'admin-ui', propsWith());

@@ -50,8 +50,13 @@ export class IdpTokenExchangeApi extends Construct {
     super(scope, id);
 
     this.api = new HttpApi(this, 'idp-token-exchange-api', {
-      apiName:     `Mailbox ${Aws.STACK_NAME} IDP Token Exchange API`,
-      description: 'This service serves IDP token exchange endpoints.',
+      apiName:            `Mailbox ${Aws.STACK_NAME} IDP Token Exchange API`,
+      createDefaultStage: false,
+      description:        'This service serves IDP token exchange endpoints.',
+    });
+    this.api.addStage('DefaultStage', {
+      autoDeploy: true,
+      throttle:   { rateLimit: 100, burstLimit: 200 },
     });
 
     const apiHandlerLambda = new IdpTokenExchangeLambda(this, 'idp-token-exchange-lambda', {

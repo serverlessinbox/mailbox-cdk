@@ -61,6 +61,20 @@ describe('IdpTokenExchangeApi', () => {
     });
   });
 
+  it('keeps the default endpoint enabled, since CloudFront routes /auth/* through it', () => {
+    createApi([]);
+
+    Template.fromStack(stack).resourcePropertiesCountIs('AWS::ApiGatewayV2::Api', { DisableExecuteApiEndpoint: true }, 0);
+  });
+
+  it('throttles its default stage', () => {
+    createApi([]);
+
+    Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Stage', {
+      DefaultRouteSettings: { ThrottlingBurstLimit: 200, ThrottlingRateLimit: 100 },
+    });
+  });
+
   it('makes the token-exchange function depend on the given resources', () => {
     const prerequisite = new cdk.CfnResource(stack, 'prerequisite', { type: 'Custom::Prerequisite' });
     createApi([prerequisite]);

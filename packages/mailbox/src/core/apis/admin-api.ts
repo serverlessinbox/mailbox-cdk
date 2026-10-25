@@ -8,6 +8,7 @@ import {
   CorsHttpMethod,
   HttpApi,
   HttpMethod,
+  IHttpStage,
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import type { CorsPreflightOptions }                                  from 'aws-cdk-lib/aws-apigatewayv2';
 import { Duration, Aws }                                              from 'aws-cdk-lib';
@@ -78,15 +79,21 @@ export class AdminApi extends Construct {
   /** Fixes the logical id of the custom domain name. Present only when a custom domain is set. */
   public readonly domainLogicalIdPin?: ILogicalIdPin;
   private readonly apiHandlerLambda: IWebSocketPushTarget;
+  private readonly defaultStage: IHttpStage;
 
   constructor(scope: Construct, id: string, props: AdminApiProps) {
     super(scope, id);
     ComponentDescription.describe(this, 'Administrative API for managing domains, users, configuration and audit.');
 
-    const api = new HttpApi(this, 'admin-api', {
-      apiName:       `Mailbox ${Aws.STACK_NAME} Admin API`,
-      description:   'This service serves mailbox admin api endpoints.',
-      corsPreflight: this.corsPreflight(props.allowedOrigins),
+    const api         = new HttpApi(this, 'admin-api', {
+      apiName:            `Mailbox ${Aws.STACK_NAME} Admin API`,
+      createDefaultStage: false,
+      description:        'This service serves mailbox admin api endpoints.',
+      corsPreflight:      this.corsPreflight(props.allowedOrigins),
+    });
+    this.defaultStage = api.addStage('DefaultStage', {
+      autoDeploy: true,
+      throttle:   { rateLimit: 100, burstLimit: 200 },
     });
 
     if (props.customDomain) {
@@ -140,6 +147,7 @@ export class AdminApi extends Construct {
     new ApiMapping(this, 'mapping', {
       api,
       domainName: domain,
+      stage:      this.defaultStage,
     });
 
     return domain;
