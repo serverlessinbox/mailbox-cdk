@@ -1,5 +1,8 @@
 version: '3'
 
+vars:
+  AWS_PROFILE: ''
+
 tasks:
   build:edge-stack:
     desc: Synthesize CloudFormation template for edge stack
@@ -100,8 +103,11 @@ tasks:
 
   publish:dev:
     desc: Publish all artifacts (edge + regional + data) to dev channel
+    preconditions:
+      - sh: test -n "{{.AWS_PROFILE}}"
+        msg: "AWS_PROFILE is not set. Pass the profile as a parameter: task publish:dev AWS_PROFILE=<profile>"
     env:
-      AWS_PROFILE: serverlessinbox-dev
+      AWS_PROFILE: '{{.AWS_PROFILE}}'
     cmds:
       - task: build:edge-stack
       - task: build:data-stack

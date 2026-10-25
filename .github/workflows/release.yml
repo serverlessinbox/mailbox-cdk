@@ -26,7 +26,7 @@ jobs:
       - run: yarn test
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::416716292717:role/github-actions-deploy-role
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: eu-west-1
       - name: Refresh registry record
         run: |
