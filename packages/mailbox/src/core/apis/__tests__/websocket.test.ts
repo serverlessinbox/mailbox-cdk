@@ -54,7 +54,7 @@ function buildWebSocketPush(stack: cdk.Stack, overrides: Partial<WebSocketPushPr
 }
 
 describe('WebSocketPush.grantManageConnections', () => {
-  it('grants exactly one Allow statement for execute-api:ManageConnections scoped to <apiId>/*', () => {
+  it('grants exactly one Allow statement for execute-api:ManageConnections scoped to the prod stage and the POST @connections path', () => {
     const stack = newApiStack();
 
     const sut  = buildWebSocketPush(stack);
@@ -77,7 +77,7 @@ describe('WebSocketPush.grantManageConnections', () => {
             Resource: {
               'Fn::Join': ['', [
                 'arn:', { Ref: 'AWS::Partition' }, ':execute-api:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':',
-                { Ref: apiId }, '/*',
+                { Ref: apiId }, '/prod/POST/@connections/*',
               ]],
             },
           }),

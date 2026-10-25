@@ -44,7 +44,8 @@ function buildWorker(props: Partial<MailboxEdgeDeployerWorkerLambdaProps> = {}):
   const edgeArtifact: IArtifactObject = { grantRead: jest.fn() };
   const worker                        = new MailboxEdgeDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
-    edgeStackNamePattern: 'test-stack-edge*',
+    edgeStackNamePattern: 'test-stack-edge-*',
+    legacyEdgeStackName:  'test-stack-edge',
     edgeStack,
     rootStack:            ROOT_STACK,
     rootStackId:          ROOT_STACK_ID,
@@ -141,10 +142,10 @@ describe('MailboxEdgeDeployerWorkerLambda', () => {
 
       expect(statements).toHaveLength(2);
       expect(resourceOf(template, 'lambda:CreateFunction', 0)).toBe(
-        `arn:<token>:lambda:${EDGE_REGION}:${TEST_ACCOUNT}:function:test-stack-edge*`,
+        `arn:<token>:lambda:${EDGE_REGION}:${TEST_ACCOUNT}:function:test-stack-edge-*`,
       );
       expect(statements[1].Resource).toBe('*');
-      expect(statements[1].Condition).toEqual({ StringLike: { 'lambda:FunctionName': 'test-stack-edge*' } });
+      expect(statements[1].Condition).toEqual({ StringLike: { 'lambda:FunctionName': 'test-stack-edge-*' } });
     });
 
     it('also manages existing functions the root stack owns, which survives name truncation', () => {
@@ -171,10 +172,13 @@ describe('MailboxEdgeDeployerWorkerLambda', () => {
       expect(statementsForAction(template, 'resource-groups:CreateGroup')[0].Resource).toBe('*');
     });
 
-    it('changes only the groups named after the edge stack name pattern', () => {
-      expect(resourceOf(template, 'resource-groups:DeleteGroup')).toBe(
-        `arn:<token>:resource-groups:${EDGE_REGION}:${TEST_ACCOUNT}:group/test-stack-edge*-serverless-inbox`,
-      );
+    it('changes only the group of the unhashed legacy edge stack and the groups named after the edge stack name pattern', () => {
+      const resources = [statementsForAction(template, 'resource-groups:DeleteGroup')[0].Resource].flat();
+
+      expect(resources.map(renderWithTokens)).toEqual([
+        `arn:<token>:resource-groups:${EDGE_REGION}:${TEST_ACCOUNT}:group/test-stack-edge-serverless-inbox`,
+        `arn:<token>:resource-groups:${EDGE_REGION}:${TEST_ACCOUNT}:group/test-stack-edge-*-serverless-inbox`,
+      ]);
     });
   });
 

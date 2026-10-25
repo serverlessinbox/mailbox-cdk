@@ -19,11 +19,13 @@ import { Construct }                                       from 'constructs';
 export interface MailboxEdgeDeployerWorkerLambdaProps {
   readonly artifactResolver: IArtifactResolver;
   /**
-   * Wildcard over the names the edge stack has had (`${AWS::StackName}-edge*`). Scopes the grants on the
+   * Wildcard over the hashed edge stack names (`${AWS::StackName}-edge-*`). Scopes the grants on the
    * stack's Lambda functions and resource group, which are named after the stack.
    */
   readonly edgeStackNamePattern: string;
-  /** The edge stack, named by the same `edgeStackNamePattern`. */
+  /** The unhashed name earlier installs gave the edge stack (`${AWS::StackName}-edge`); its resource group is named after it, which the pattern does not match. */
+  readonly legacyEdgeStackName: string;
+  /** The edge stack the worker deploys. */
   readonly edgeStack: IDeployedStack;
   readonly rootStack: string;
   /** The guid of the root stack, tagged as `serverless-inbox:root-stack-id`. */
@@ -70,7 +72,7 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
     this.grantCertificateLifecycle(rootStack);
     this.grantLambdaFunctionLifecycle(props.edgeStackNamePattern, rootStack);
     this.grantExecutionRolePassage(props.jmapBlobDownloadRole);
-    this.grantResourceGroupLifecycle(props.edgeStackNamePattern);
+    this.grantResourceGroupLifecycle([props.legacyEdgeStackName, props.edgeStackNamePattern]);
 
     if (props.hostedZoneId !== undefined) {
       this.grantDnsValidationAccess(props.hostedZoneId);
@@ -239,13 +241,13 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
    * is scoped to it. CreateGroup stays on `*`: group-ARN scoping for it is unverified, and a wrongly scoped
    * create fails the whole edge deployment.
    */
-  private grantResourceGroupLifecycle(edgeStackNamePattern: string): void {
-    const edgeResourceGroupArn = Stack.of(this).formatArn({
+  private grantResourceGroupLifecycle(edgeStackNames: string[]): void {
+    const edgeResourceGroupArns = edgeStackNames.map((edgeStackName) => Stack.of(this).formatArn({
       service:      'resource-groups',
       region:       'us-east-1',
       resource:     'group',
-      resourceName: `${edgeStackNamePattern}-serverless-inbox`,
-    });
+      resourceName: `${edgeStackName}-serverless-inbox`,
+    }));
     this.addToRolePolicy(
       new PolicyStatement({
         actions:   ['resource-groups:CreateGroup'],
@@ -265,7 +267,7 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
           'resource-groups:Untag',
           'resource-groups:GetTags',
         ],
-        resources: [edgeResourceGroupArn],
+        resources: edgeResourceGroupArns,
       })
     );
   }

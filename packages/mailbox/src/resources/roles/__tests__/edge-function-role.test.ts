@@ -13,7 +13,7 @@ import { Stack }               from 'aws-cdk-lib';
 import { AuthKeyStoreTable }   from '../../tables/auth-key-store-table';
 import { EdgeFunctionRole }    from '../edge-function-role';
 
-const EDGE_STACK_NAME_PATTERN = 'my-stack-edge*';
+const EDGE_STACK_NAME_PATTERN = 'my-stack-edge-*';
 const REPLICA_LOG_GROUP_ARN   = {
   'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':logs:*:', { Ref: 'AWS::AccountId' }, `:log-group:/aws/lambda/us-east-1.${EDGE_STACK_NAME_PATTERN}`]],
 };

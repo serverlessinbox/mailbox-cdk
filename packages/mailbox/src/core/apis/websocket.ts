@@ -7,21 +7,21 @@ import {
   WebSocketApi,
   WebSocketStage,
 } from 'aws-cdk-lib/aws-apigatewayv2';
-import { Effect, IGrantable, PolicyStatement }                  from 'aws-cdk-lib/aws-iam';
-import type { IFunction }                                       from 'aws-cdk-lib/aws-lambda';
-import { Aws }                                                  from 'aws-cdk-lib';
-import { Construct }                                            from 'constructs';
+import { Effect, IGrantable, PolicyStatement }                             from 'aws-cdk-lib/aws-iam';
+import type { IFunction }                                                  from 'aws-cdk-lib/aws-lambda';
+import { ArnFormat, Aws, Stack }                                           from 'aws-cdk-lib';
+import { Construct }                                                       from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushApi } from '../../contracts/websocket-push';
-import { WebSocketBroadcastLambda }                             from '../../resources/lambdas/websocket-broadcast-lambda';
-import { WebSocketConnectLambda }                               from '../../resources/lambdas/websocket-connect-lambda';
-import { WebSocketDisconnectLambda }                            from '../../resources/lambdas/websocket-disconnect-lambda';
-import { WebSocketMessageLambda }                               from '../../resources/lambdas/websocket-message-lambda';
-import type { IDataTable }                                      from '../../resources/tables/data-tables';
-import { WebSocketTable, IWebSocketTable }                      from '../../resources/tables/websocket-table';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushApi }            from '../../contracts/websocket-push';
+import { WebSocketBroadcastLambda }                                        from '../../resources/lambdas/websocket-broadcast-lambda';
+import { WebSocketConnectLambda }                                          from '../../resources/lambdas/websocket-connect-lambda';
+import { WebSocketDisconnectLambda }                                       from '../../resources/lambdas/websocket-disconnect-lambda';
+import { WebSocketMessageLambda }                                          from '../../resources/lambdas/websocket-message-lambda';
+import type { IDataTable }                                                 from '../../resources/tables/data-tables';
+import { WebSocketTable, IWebSocketTable }                                 from '../../resources/tables/websocket-table';
 
-import { ApiCustomDomain }                                      from './api-custom-domain';
-import type { ApiCustomDomainProps, ILogicalIdPin }             from './api-custom-domain';
+import { ApiCustomDomain }                                                 from './api-custom-domain';
+import type { ApiCustomDomainProps, ILogicalIdPin }                        from './api-custom-domain';
 
 /** Inputs of {@link WebSocketPush}: the tables and authorizer its route handlers use, and the optional custom domain. */
 export interface WebSocketPushProps {
@@ -60,6 +60,7 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
   public readonly webSocketTable: IWebSocketTable;
   public readonly broadcaster: IWebSocketBroadcastPublisher;
   private readonly api: WebSocketApi;
+  private readonly stage: WebSocketStage;
 
   constructor(scope: Construct, id: string, props: WebSocketPushProps) {
     super(scope, id);
@@ -72,7 +73,7 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
       description: 'WebSocket API for JMAP Push State notifications',
     });
 
-    const stage = new WebSocketStage(this, 'websocket-stage', {
+    this.stage = new WebSocketStage(this, 'websocket-stage', {
       webSocketApi: this.api,
       stageName:    WebSocketPush.STAGE_NAME,
       autoDeploy:   true,
@@ -81,25 +82,37 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
     this.managementEndpoint = `https://${this.api.apiId}.execute-api.${Aws.REGION}.amazonaws.com/${WebSocketPush.STAGE_NAME}`;
 
     if (props.customDomain) {
-      const domain = this.addCustomDomain(stage, props.customDomain);
+      const domain = this.addCustomDomain(this.stage, props.customDomain);
 
       this.domainTarget       = domain.regionalDomainName;
       this.domainLogicalIdPin = domain.logicalIdPin;
       this.webSocketUrl       = `wss://${props.customDomain.domainName}`;
     } else {
-      this.webSocketUrl = stage.url;
+      this.webSocketUrl = this.stage.url;
     }
 
     this.broadcaster = this.addRouteHandlers(props);
   }
 
-  /** Allows `execute-api:ManageConnections` on every connection of this API (`<apiId>/*`). */
+  /** Allows `execute-api:ManageConnections` on the POST `@connections` path of this API's stage. */
   public grantManageConnections(grantee: IGrantable): void {
     grantee.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       effect:    Effect.ALLOW,
       actions:   ['execute-api:ManageConnections'],
-      resources: [`arn:${Aws.PARTITION}:execute-api:${Aws.REGION}:${Aws.ACCOUNT_ID}:${this.api.apiId}/*`],
+      resources: [this.manageConnectionsArn()],
     }));
+  }
+
+  /** Built from `Aws.*` tokens: the API's own `arnForExecuteApiV2` renders the stack's literal region and account when the stack has an `env`. */
+  private manageConnectionsArn(): string {
+    return Stack.of(this).formatArn({
+      service:      'execute-api',
+      region:       Aws.REGION,
+      account:      Aws.ACCOUNT_ID,
+      resource:     this.api.apiId,
+      arnFormat:    ArnFormat.SLASH_RESOURCE_NAME,
+      resourceName: `${this.stage.stageName}/POST/@connections/*`,
+    });
   }
 
   private addCustomDomain(stage: WebSocketStage, customDomain: ApiCustomDomainProps): ApiCustomDomain {

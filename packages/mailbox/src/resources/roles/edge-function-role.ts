@@ -9,7 +9,7 @@ export interface EdgeFunctionRoleProps {
   /** Auth key store the function reads with `GetItem`; no other table is granted. */
   readonly authKeyStoreTable: IAuthKeyStoreTable;
 
-  /** Name pattern of the edge stack (`<root stack>-edge*`); the function name is generated from it. */
+  /** Name pattern of the edge stack (`<root stack>-edge-*`); the function name is generated from it. */
   readonly edgeStackNamePattern: string;
 }
 
