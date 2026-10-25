@@ -1,19 +1,20 @@
-import type { IArtifactResolver, ResolvedArtifact }                                                                                     from '@serverlessinbox/artifact-registry-cdk';
-import type { ServerlessInboxDeployerType }                                                                                             from '@serverlessinbox/mailbox-cdk-shared';
-import { ArtifactObject, ComponentDescription, DeployedStack, DeployerInfra, PositionHash, StackIdentity, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
-import * as acm                                                                                                                         from 'aws-cdk-lib/aws-certificatemanager';
-import * as iam                                                                                                                         from 'aws-cdk-lib/aws-iam';
-import * as lambda                                                                                                                      from 'aws-cdk-lib/aws-lambda';
-import * as route53                                                                                                                     from 'aws-cdk-lib/aws-route53';
-import { Aws, CustomResource, Stack, Token }                                                                                            from 'aws-cdk-lib';
-import { Construct }                                                                                                                    from 'constructs';
+import type { IArtifactResolver, ResolvedArtifact }                                                                                        from '@serverlessinbox/artifact-registry-cdk';
+import type { ServerlessInboxDeployerType }                                                                                                from '@serverlessinbox/mailbox-cdk-shared';
+import { ArtifactObject, ComponentDescription, DeployedStack, DeployerInfra, PositionHash, StackIdentity, serverlessInboxSubStackTags }    from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                                                                                                                            from 'aws-cdk-lib/aws-certificatemanager';
+import * as iam                                                                                                                            from 'aws-cdk-lib/aws-iam';
+import * as lambda                                                                                                                         from 'aws-cdk-lib/aws-lambda';
+import * as route53                                                                                                                        from 'aws-cdk-lib/aws-route53';
+import { Aws, CustomResource, Stack, Token }                                                                                               from 'aws-cdk-lib';
+import { Construct }                                                                                                                       from 'constructs';
 
-import { JmapBlobDownloadLambda }                                                                                                       from '../../resources/lambdas/jmap-blob-download-lambda';
-import { MailboxEdgeDeployerWorkerLambda }                                                                                              from '../../resources/lambdas/mailbox-edge-deployer-worker-lambda';
-import type { IAuthKeyStoreTable }                                                                                                      from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                                                                                                              from '../../resources/tables/data-tables';
+import { JmapBlobDownloadLambda }                                                                                                          from '../../resources/lambdas/jmap-blob-download-lambda';
+import { MailboxEdgeDeployerWorkerLambda }                                                                                                 from '../../resources/lambdas/mailbox-edge-deployer-worker-lambda';
+import { EdgeFunctionRole }                                                                                                                from '../../resources/roles/edge-function-role';
+import type { IAuthKeyStoreTable }                                                                                                         from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                                                                                                                 from '../../resources/tables/data-tables';
 
-import type { MailboxEdgeStackParameters }                                                                                              from './mailbox-edge-stack';
+import type { MailboxEdgeStackParameters }                                                                                                 from './mailbox-edge-stack';
 
 /** Inputs of `MailboxEdgeDeployer`: the domain, the regional tables the edge stack is pointed at, and the tagging values. */
 export interface MailboxEdgeDeployerProps {
@@ -76,8 +77,6 @@ export class MailboxEdgeDeployer extends Construct {
 
     const stack = Stack.of(this);
 
-    this.jmapBlobDownloadRole = this.createJmapBlobDownloadRole(props.authKeyStoreTable);
-
     // The deployed CloudFormation stack name, not the CDK logical stack id, so the template also
     // behaves correctly when deployed through plain CloudFormation. The position hash makes a moved
     // deployer deploy a new stack, so the delete of the old resource removes only the old stack.
@@ -86,6 +85,7 @@ export class MailboxEdgeDeployer extends Construct {
     // Matches the name above and the unhashed `${Aws.STACK_NAME}-edge` that earlier installs deployed,
     // whose resource is deleted with this policy in force.
     const edgeStackNamePattern = `${Aws.STACK_NAME}-edge*`;
+    this.jmapBlobDownloadRole  = new EdgeFunctionRole(this, 'jmap-blob-download-role', { authKeyStoreTable: props.authKeyStoreTable, edgeStackNamePattern });
     const edgeStack            = new DeployedStack(stack.formatArn({
       service:      'cloudformation',
       region:       MailboxEdgeDeployer.EDGE_REGION,
@@ -146,30 +146,6 @@ export class MailboxEdgeDeployer extends Construct {
   /** Read a specific CloudFormation output (OutputKey) from the deployed edge stack. */
   public getOutput(outputKey: string): string {
     return this.resource.getAttString(outputKey);
-  }
-
-  /**
-   * Lambda@Edge execution role. Replicas keep running for about four hours after the function is
-   * deleted, but on cached credentials, so they do not need the role to outlive the stack. On a
-   * replacement CloudFormation creates the new role before deleting the old one, and updates the
-   * edge function with the new ARN in the same operation.
-   */
-  private createJmapBlobDownloadRole(authKeyStoreTable: IAuthKeyStoreTable): iam.Role {
-    const role = new iam.Role(this, 'jmap-blob-download-role', {
-      assumedBy:       new iam.CompositePrincipal(
-        new iam.ServicePrincipal('lambda.amazonaws.com'),
-        new iam.ServicePrincipal('edgelambda.amazonaws.com'),
-      ),
-      description:     `Serverless Inbox Mailbox: jmap-blob-download Lambda@Edge role (${Aws.STACK_NAME})`,
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
-      ],
-    });
-
-    // Only the auth key store is granted; the item and config table ARNs reach the edge stack as template parameters.
-    authKeyStoreTable.grantRead(role);
-
-    return role;
   }
 
   private templateParameters(props: MailboxEdgeDeployerProps, jmapBlobDownload: ResolvedArtifact): MailboxEdgeStackParameters {

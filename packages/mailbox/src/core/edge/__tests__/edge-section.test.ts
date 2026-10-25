@@ -16,6 +16,7 @@ import { CfnResource, TagManager }                           from 'aws-cdk-lib';
 import type { Stack }                                        from 'aws-cdk-lib';
 
 import { newDeployerTestStack }                              from '../../../__tests__/deployer-test-helpers';
+import { AuthKeyStoreTable }                                 from '../../../resources/tables/auth-key-store-table';
 import { DataTable }                                         from '../../../resources/tables/data-tables';
 import { MailboxDomains }                                    from '../../domains/mailbox-domains';
 import { EdgeSection }                                       from '../edge-section';
@@ -36,7 +37,7 @@ function newSection(overrides: Partial<EdgeSectionProps> = {}): { stack: Stack; 
       itemTable:       dataTable(stack, 'item-table'),
       blobStoreBucket: new Bucket(stack, 'blob-store'),
     },
-    auth:           { authKeyStoreTable: dataTable(stack, 'auth-key-store-table') },
+    auth:           { authKeyStoreTable: new AuthKeyStoreTable(stack, 'auth-key-store-table') },
     addressing:     { domains: new MailboxDomains({ domainName: 'example.com' }), edgePrefix: 'mail' },
     hostedZone:     route53.HostedZone.fromHostedZoneAttributes(stack, 'zone', { hostedZoneId: 'Z0TESTZONE', zoneName: 'example.com' }),
     ...overrides,

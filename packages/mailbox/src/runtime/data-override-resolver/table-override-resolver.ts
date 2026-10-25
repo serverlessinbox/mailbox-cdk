@@ -61,9 +61,23 @@ export class TableOverrideResolver {
       return incomingArn;
     }
 
+    this.assertOwnPlacement(role, incomingArn, overrideArn);
     await this.assertOverrideTableActive(role, overrideArn);
     this.logger.info(`${role}: using override table ${overrideArn}`);
     return overrideArn;
+  }
+
+  /**
+   * The incoming ARN names this stack's own table, so its partition, region and account are this stack's.
+   * An override outside them is refused before DynamoDB is called.
+   */
+  private assertOwnPlacement(role: TableRole, incomingArn: string, overrideArn: string): void {
+    const own      = parseArn(incomingArn);
+    const override = this.parseTableArn(role, overrideArn);
+
+    if (override.partition !== own.partition || override.region !== own.region || override.account !== own.account) {
+      throw new ExpectedFailure(`${role}: override ${overrideArn} is not in this stack's partition, region and account`);
+    }
   }
 
   private async assertOverrideTableActive(role: TableRole, overrideArn: string): Promise<void> {

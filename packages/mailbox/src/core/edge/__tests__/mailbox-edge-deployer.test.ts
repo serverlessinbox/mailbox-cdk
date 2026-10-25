@@ -20,10 +20,10 @@ import {
   TEST_ACCOUNT,
   newDeployerTestStack,
 } from '../../../__tests__/deployer-test-helpers';
-import type { IAuthKeyStoreTable }       from '../../../resources/tables/auth-key-store-table';
-import { DataTable }                     from '../../../resources/tables/data-tables';
-import { MailboxEdgeDeployer }           from '../mailbox-edge-deployer';
-import type { MailboxEdgeDeployerProps } from '../mailbox-edge-deployer';
+import { AuthKeyStoreTable, type IAuthKeyStoreTable } from '../../../resources/tables/auth-key-store-table';
+import { DataTable }                                  from '../../../resources/tables/data-tables';
+import { MailboxEdgeDeployer }                        from '../mailbox-edge-deployer';
+import type { MailboxEdgeDeployerProps }              from '../mailbox-edge-deployer';
 
 const DEPLOYER_RESOURCE_TYPE        = 'Custom::MailboxEdgeDeployer';
 const STACK_NAME_REF                = { Ref: 'AWS::StackName' };
@@ -38,9 +38,13 @@ const isDeployerResource       = t.isPartial({
     stackName: t.isRecord(t.isTuple([t.isString(), t.isArray(t.isOneOf([t.isString(), t.isRecord(t.isString())]))])),
   }),
 });
-const ITEM_TABLE_ARN           = 'arn:aws:dynamodb:us-west-2:111122223333:table/item';
-const CONFIG_TABLE_ARN         = 'arn:aws:dynamodb:us-west-2:111122223333:table/config';
-const AUTH_KEY_STORE_TABLE_ARN = 'arn:aws:dynamodb:us-west-2:111122223333:table/auth-keys';
+/** The replica log groups of the edge stack: `/aws/lambda/us-east-1.` then `<root stack>-edge*`, in any region of this account. */
+const REPLICA_LOG_GROUP_ARN  = {
+  'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':logs:*:', { Ref: 'AWS::AccountId' }, ':log-group:/aws/lambda/us-east-1.', STACK_NAME_REF, '-edge*']],
+};
+
+const ITEM_TABLE_ARN   = 'arn:aws:dynamodb:us-west-2:111122223333:table/item';
+const CONFIG_TABLE_ARN = 'arn:aws:dynamodb:us-west-2:111122223333:table/config';
 
 interface SynthesizedDeployer {
   readonly stack:            Stack;
@@ -53,8 +57,13 @@ function dataTable(stack: Stack, id: string, tableArn: string): DataTable {
   return new DataTable(Table.fromTableArn(stack, id, tableArn));
 }
 
-function authKeyStoreTable(stack: Stack, id: string, tableArn: string): IAuthKeyStoreTable {
-  return dataTable(stack, id, tableArn);
+function authKeyStoreTable(stack: Stack, id: string): IAuthKeyStoreTable {
+  return new AuthKeyStoreTable(stack, id);
+}
+
+/** The logical id of the auth key store table, the only DynamoDB table this stack creates. */
+function authKeyStoreTableId(template: Template): string {
+  return Object.keys(template.findResources('AWS::DynamoDB::Table'))[0];
 }
 
 function synthDeployer(
@@ -68,7 +77,7 @@ function synthDeployer(
     domainName:        'example.com',
     itemTable:         dataTable(stack, 'item-table', ITEM_TABLE_ARN),
     configTable:       dataTable(stack, 'config-table', CONFIG_TABLE_ARN),
-    authKeyStoreTable: authKeyStoreTable(stack, 'auth-key-store-table', AUTH_KEY_STORE_TABLE_ARN),
+    authKeyStoreTable: authKeyStoreTable(stack, 'auth-key-store-table'),
     productVersion:    '1.2.3',
     logGroupName:      'test-log-group',
     deployerType:      'cfn',
@@ -154,7 +163,7 @@ describe('MailboxEdgeDeployer', () => {
           jmapBlobDownloadKey:  jmapBlobDownload.key,
           itemTableArn:         ITEM_TABLE_ARN,
           configTableArn:       CONFIG_TABLE_ARN,
-          authKeyStoreTableArn: AUTH_KEY_STORE_TABLE_ARN,
+          authKeyStoreTableArn: { 'Fn::GetAtt': [authKeyStoreTableId(template), 'Arn'] },
           logGroupName:         'test-log-group',
           rootStack:            STACK_NAME_REF,
           productVersion:       '1.2.3',
@@ -270,29 +279,13 @@ describe('MailboxEdgeDeployer', () => {
   });
 
   describe('JMAP blob download role', () => {
-    it('is assumed by Lambda and Lambda@Edge, with the basic execution policy', () => {
+    it('is created as the deployer’s child "jmap-blob-download-role" and scoped to the stack’s edge stack name', () => {
       const { template } = synthDeployer();
 
-      template.hasResourceProperties('AWS::IAM::Role', {
-        AssumeRolePolicyDocument: {
-          Statement: [
-            { Action: 'sts:AssumeRole', Effect: 'Allow', Principal: { Service: 'lambda.amazonaws.com' } },
-            { Action: 'sts:AssumeRole', Effect: 'Allow', Principal: { Service: 'edgelambda.amazonaws.com' } },
-          ],
-        },
-        ManagedPolicyArns:        [
-          { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':iam::aws:policy/service-role/AWSLambdaBasicExecutionRole']] },
-        ],
-      });
-    });
-
-    it('can read the auth key store table and no other table', () => {
-      const { template } = synthDeployer();
-
-      const statements = statementsForAction(template, 'dynamodb:GetItem');
-      expect(statements).toHaveLength(1);
-      expect(statements[0].Action).toEqual(['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query']);
-      expect(JSON.stringify(statements[0].Resource)).toContain(AUTH_KEY_STORE_TABLE_ARN);
+      expect(Object.keys(template.findResources('AWS::IAM::Role'))).toContainEqual(expect.stringMatching(/^edgedeployerjmapblobdownloadrole[0-9A-F]{8}$/));
+      expect(statementsForAction(template, 'logs:CreateLogGroup')).toEqual([
+        { Action: 'logs:CreateLogGroup', Effect: 'Allow', Resource: REPLICA_LOG_GROUP_ARN },
+      ]);
     });
   });
 

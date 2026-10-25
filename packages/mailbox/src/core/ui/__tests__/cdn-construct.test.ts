@@ -22,7 +22,7 @@ const CERTIFICATE_ARN  = 'arn:aws:acm:us-east-1:123456789012:certificate/1111111
 
 /** Stands in for the auth key store table; the CDN reads only its name. */
 function fakeAuthKeyStoreTable(tableName: string): IAuthKeyStoreTable {
-  return { tableName, tableArn: `arn:aws:dynamodb:eu-west-1:123456789012:table/${tableName}`, grantRead: jest.fn(), grantReadWrite: jest.fn() };
+  return { tableName, tableArn: `arn:aws:dynamodb:eu-west-1:123456789012:table/${tableName}`, grantGetItem: jest.fn(), grantRead: jest.fn(), grantReadWrite: jest.fn() };
 }
 
 function importedCertificate(): acm.ICertificate {

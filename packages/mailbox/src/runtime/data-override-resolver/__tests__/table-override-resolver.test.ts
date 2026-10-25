@@ -121,6 +121,18 @@ describe('TableOverrideResolver', () => {
       expect(dynamodbMock.calls()).toHaveLength(0);
     });
 
+    it.each([
+      { placement: 'another account', overrideArn: 'arn:aws:dynamodb:eu-west-1:999999999999:table/override-item' },
+      { placement: 'another region', overrideArn: 'arn:aws:dynamodb:us-east-1:123456789012:table/override-item' },
+      { placement: 'another partition', overrideArn: 'arn:aws-cn:dynamodb:eu-west-1:123456789012:table/override-item' },
+    ])('rejects with an ExpectedFailure, without calling DynamoDB, when the override is in $placement', async ({ overrideArn }) => {
+      const rejection = resolver.resolve({ ...PROPERTIES_WITHOUT_OVERRIDES, itemTableOverrideArn: overrideArn });
+
+      await expect(rejection).rejects.toBeInstanceOf(ExpectedFailure);
+      await expect(rejection).rejects.toThrow(`itemTable: override ${overrideArn} is not in this stack's partition, region and account`);
+      expect(dynamodbMock.calls()).toHaveLength(0);
+    });
+
     it('passes any other DynamoDB failure through unchanged as an unexpected error', async () => {
       const accessDenied = new Error('not authorized to perform dynamodb:DescribeTable');
       dynamodbMock.on(DescribeTableCommand).rejects(accessDenied);

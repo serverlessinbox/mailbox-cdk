@@ -27,6 +27,7 @@ import { newRemovals, resolveStatements }                                     fr
 const RETAINED = { deletionPolicy: 'RetainExceptOnCreate', updateReplacePolicy: 'Retain' };
 
 const isRoleProperties          = t.isPartial({ RoleName: t.isOptional(isTemplateValue) });
+const isLogGroupProperties      = t.isPartial({ LogGroupName: isTemplateValue });
 const isPolicyProperties        = t.isPartial({
   PolicyName:     t.isString(),
   Roles:          t.isArray(t.isPartial({ Ref: t.isString() })),
@@ -139,7 +140,7 @@ describe('SweeperInfra', () => {
   });
 
   describe('worker role', () => {
-    it('holds the grants of every registered removal in order, its own worker role removal last, then the worker\'s write-only log grants in the stack\'s partition', () => {
+    it('holds the grants of every registered removal in order, its own worker role removal last, then the worker\'s log grants on its own log group', () => {
       const { template, removals, opsGroup } = synthesize('WorkerPolicyStack');
 
       const statements = statementsOfNamedPolicy(template, SweeperPolicyNames.workerPolicy);
@@ -152,19 +153,23 @@ describe('SweeperInfra', () => {
         ...removals.flatMap((removal) => removal.grantStatements()),
         ...workerRoleRemoval.grantStatements(),
       ]);
-      const logArn            = (resource: string): unknown => ({
+      const [workerLogGroup]  = resourcesOfType(template, 'AWS::Logs::LogGroup', isLogGroupProperties).filter((group) =>
+        renderLiteralText(group.properties.LogGroupName).includes('/infra-'),
+      );
+      const workerLogGroupId  = workerLogGroup.logicalId;
+      const createLogGroupArn = {
         'Fn::Join': [
           '',
-          ['arn:', { Ref: 'AWS::Partition' }, ':logs:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, `:${resource}`],
+          ['arn:', { Ref: 'AWS::Partition' }, ':logs:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':log-group:', { Ref: workerLogGroupId }],
         ],
-      });
+      };
       expect(statements.slice(0, removalStatements.length)).toEqual(removalStatements);
       expect(statements.slice(removalStatements.length)).toEqual([
-        { Action: 'logs:CreateLogGroup', Effect: 'Allow', Resource: logArn('*') },
+        { Action: 'logs:CreateLogGroup', Effect: 'Allow', Resource: createLogGroupArn },
         {
           Action:   ['logs:CreateLogStream', 'logs:PutLogEvents'],
           Effect:   'Allow',
-          Resource: [logArn('log-group:*'), logArn('log-group:*:*')],
+          Resource: { 'Fn::GetAtt': [workerLogGroupId, 'Arn'] },
         },
       ]);
     });

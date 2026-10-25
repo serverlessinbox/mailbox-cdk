@@ -1,7 +1,8 @@
 import type { IArtifactResolver }                                    from '@serverlessinbox/artifact-registry-cdk';
-import { PositionHash, StackIdentity }                               from '@serverlessinbox/mailbox-cdk-shared';
+import { PipelineLogGroup, PositionHash, StackIdentity }             from '@serverlessinbox/mailbox-cdk-shared';
 import * as iam                                                      from 'aws-cdk-lib/aws-iam';
 import { IFunction }                                                 from 'aws-cdk-lib/aws-lambda';
+import type { ILogGroup }                                            from 'aws-cdk-lib/aws-logs';
 import { ArnFormat, Aws, Fn, Stack }                                 from 'aws-cdk-lib';
 import { Construct }                                                 from 'constructs';
 
@@ -106,7 +107,9 @@ export class SweeperInfra extends Construct {
     // The starter receives the state machine ARN as a plain string, so only this edge makes a replaced state machine exist before the starter, and the custom resources it serves, update.
     this.starter.node.addDependency(workflow);
 
-    this.attachWorkerPolicy(workerRole, removals);
+    // The worker writes to the infra pipeline's group, the same group its wrapper resolves for this stack.
+    const workerLogGroup = PipelineLogGroup.getOrCreate(this, 'infra');
+    this.attachWorkerPolicy(workerRole, removals, workerLogGroup);
 
     workflow.grantStartExecutionByArn(this.starter);
     workflow.grantExecutionReaping(this.starter);
@@ -202,35 +205,32 @@ export class SweeperInfra extends Construct {
    * then the worker's log grants. It sits on a RETAIN'd role and is needed while the stack is torn
    * down, so it is retained too; the self-cleanup tail deletes it.
    */
-  private attachWorkerPolicy(workerRole: iam.IRole, removals: IResourceRemoval[]): void {
+  private attachWorkerPolicy(workerRole: iam.IRole, removals: IResourceRemoval[], workerLogGroup: ILogGroup): void {
     const workerPolicy = new iam.Policy(this, 'worker-policy', {
       policyName: SweeperPolicyNames.workerPolicy,
       statements: [
         ...removals.flatMap((removal) => removal.grantStatements()),
-        this.grantLogGroupCreation(),
-        this.grantLogStreamWriting(),
+        this.grantLogGroupCreation(workerLogGroup),
+        this.grantLogStreamWriting(workerLogGroup),
       ],
     });
     workerPolicy.attachToRole(workerRole);
     retainOnUpdateOrDelete(workerPolicy);
   }
 
-  /** The worker's role exists before its function, whose log group name is generated, so the grants cannot name the group. */
-  private grantLogGroupCreation(): iam.PolicyStatement {
+  /** Creates the worker's log group only if it is missing, so the grant names that group alone. */
+  private grantLogGroupCreation(workerLogGroup: ILogGroup): iam.PolicyStatement {
     return new iam.PolicyStatement({
       actions:   ['logs:CreateLogGroup'],
-      resources: [`arn:${Aws.PARTITION}:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:*`],
+      resources: [`arn:${Aws.PARTITION}:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:${workerLogGroup.logGroupName}`],
     });
   }
 
-  /** Write-only, with the same effective scope as AWSLambdaBasicExecutionRole. */
-  private grantLogStreamWriting(): iam.PolicyStatement {
+  /** Write-only, on the worker's log group and its streams. */
+  private grantLogStreamWriting(workerLogGroup: ILogGroup): iam.PolicyStatement {
     return new iam.PolicyStatement({
       actions:   ['logs:CreateLogStream', 'logs:PutLogEvents'],
-      resources: [
-        `arn:${Aws.PARTITION}:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:*`,
-        `arn:${Aws.PARTITION}:logs:${Aws.REGION}:${Aws.ACCOUNT_ID}:log-group:*:*`,
-      ],
+      resources: [workerLogGroup.logGroupArn],
     });
   }
 }
