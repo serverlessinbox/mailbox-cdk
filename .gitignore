@@ -4,6 +4,7 @@
 !.yarn/sdks
 !.yarn/versions
 
+.env
 cdk.out
 lib
 dist

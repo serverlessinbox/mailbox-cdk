@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['.env']
+
 vars:
   REGISTRY_FLAGS: --bucket-base mailbox-artifacts --project serverlessinbox --region eu-west-1
 

@@ -1,7 +1,6 @@
 version: '3'
 
-vars:
-  AWS_PROFILE: ''
+dotenv: ['.env', '../../.env']
 
 tasks:
   build:cognito-data-stack:
@@ -74,11 +73,6 @@ tasks:
 
   publish:dev:
     desc: Bundle and publish the cognito lambdas (idp-users-api, bootstrap-user, jmap-oauth-dcr) and the cognito data stack template to the dev channel
-    preconditions:
-      - sh: test -n "{{.AWS_PROFILE}}"
-        msg: "AWS_PROFILE is not set. Pass the profile as a parameter: task publish:dev AWS_PROFILE=<profile>"
-    env:
-      AWS_PROFILE: '{{.AWS_PROFILE}}'
     cmds:
       - task: bundle:idp-users-api
       - task: bundle:bootstrap-user
