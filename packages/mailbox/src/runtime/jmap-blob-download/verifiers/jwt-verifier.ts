@@ -1,12 +1,12 @@
-import { DynamoDBClient, GetItemCommand }                                                  from '@aws-sdk/client-dynamodb';
-import { toIssuer, type Issuer, type TableName }                                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { createLocalJWKSet, decodeJwt, decodeProtectedHeader, jwtVerify, type JWTPayload } from 'jose';
-import * as t                                                                              from 'typanion';
+import { DynamoDBClient, GetItemCommand }                                                          from '@aws-sdk/client-dynamodb';
+import { toIssuer, type Issuer, type TableName }                                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { createLocalJWKSet, decodeJwt, decodeProtectedHeader, errors, jwtVerify, type JWTPayload } from 'jose';
+import * as t                                                                                      from 'typanion';
 
-import { toAudience, type Audience }                                                       from '../auth-identifiers';
-import type { SupportedAlgorithm }                                                         from '../cloudfront/origin-headers';
+import { toAudience, type Audience }                                                               from '../auth-identifiers';
+import type { SupportedAlgorithm }                                                                 from '../cloudfront/origin-headers';
 
-import type { VerifiedJwt }                                                                from './auth-tokens';
+import type { VerifiedJwt }                                                                        from './auth-tokens';
 
 const isKeySetDocument = t.isPartial({ keys: t.isArray(t.isUnknown()) });
 const isJwkMember      = t.isPartial({ kty: t.isString() });
@@ -23,7 +23,8 @@ const CLOCK_TOLERANCE_SECONDS                                   = 300;
  * Verifies JWTs against the issuers' public keys held in the auth key store. It checks the signature and the
  * time claims only; which tenant or account the token speaks for comes from the HMAC session token, so no
  * identity provider or account lookup happens here. The key set built from the JWKS of an issuer is cached for
- * the lifetime of the instance, which spans the warm invocations of one Lambda container.
+ * the lifetime of the instance, which spans the warm invocations of one Lambda container; a token naming a key
+ * the cached set lacks makes the verifier re-read the key set once, so a rotated signing key is picked up.
  */
 export class JwtVerifier {
   private readonly dynamodb: DynamoDBClient;
@@ -50,22 +51,46 @@ export class JwtVerifier {
       return null;
     }
 
-    const keySet = await this.keySetOf(issuer, authKeyStoreTable);
+    const cached = this.keySetsByIssuer.get(issuer);
+    const keySet = cached ?? await this.loadKeySet(issuer, authKeyStoreTable);
     if (keySet === null) {
       return null;
     }
 
     try {
-      const { payload } = await jwtVerify(token, keySet, {
-        clockTolerance: CLOCK_TOLERANCE_SECONDS,
-        algorithms:     [...this.algorithmsOf(allowedAlgorithms)],
-        requiredClaims: ['exp'],
-      });
+      return await this.verifyWith(token, keySet, issuer, allowedAlgorithms);
+    } catch (error) {
+      if (cached === undefined || !(error instanceof errors.JWKSNoMatchingKey)) {
+        return null;
+      }
+    }
 
-      return this.verifiedJwtOf(payload, issuer);
+    const refreshed = await this.loadKeySet(issuer, authKeyStoreTable);
+    if (refreshed === null) {
+      return null;
+    }
+
+    try {
+      return await this.verifyWith(token, refreshed, issuer, allowedAlgorithms);
     } catch {
       return null;
     }
+  }
+
+  /** The identity of a token verified against the key set; throws when the signature or a claim fails, or no key of the set matches. */
+  private async verifyWith(
+    token: string,
+    keySet: KeySet,
+    issuer: Issuer,
+    allowedAlgorithms: readonly SupportedAlgorithm[] | undefined,
+  ): Promise<VerifiedJwt | null> {
+    const { payload } = await jwtVerify(token, keySet, {
+      clockTolerance: CLOCK_TOLERANCE_SECONDS,
+      algorithms:     [...this.algorithmsOf(allowedAlgorithms)],
+      requiredClaims: ['exp'],
+    });
+
+    return this.verifiedJwtOf(payload, issuer);
   }
 
   /** The normalized issuer of a token that decodes, names a `kid` and an allowed `alg`; otherwise null. */
@@ -95,12 +120,8 @@ export class JwtVerifier {
     return toIssuer(issuer.trim().replace(/\/+$/, ''));
   }
 
-  private async keySetOf(issuer: Issuer, authKeyStoreTable: TableName): Promise<KeySet | null> {
-    const cached = this.keySetsByIssuer.get(issuer);
-    if (cached) {
-      return cached;
-    }
-
+  /** Reads the key set of the issuer from the store and caches it, replacing an earlier one; null, with the cache untouched, when the store holds none or a malformed one. */
+  private async loadKeySet(issuer: Issuer, authKeyStoreTable: TableName): Promise<KeySet | null> {
     const jwksJson = await this.loadJwksJson(issuer, authKeyStoreTable);
     if (jwksJson === null) {
       return null;

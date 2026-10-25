@@ -306,6 +306,52 @@ describe('JwtVerifier', () => {
       });
     });
 
+    describe('rotated signing keys', () => {
+      const ROTATED_KID = 'kid-2';
+
+      function jwksItem(keys: unknown[]): { Item: { jwks: { S: string } } } {
+        return { Item: { jwks: { S: JSON.stringify({ keys }) } } };
+      }
+
+      it('verifies a token signed with a key added to the store after the first read, with one extra store read', async () => {
+        dynamodb.on(GetItemCommand)
+          .resolvesOnce(jwksItem([{ ...RSA_KEY.jwk, kid: KID }]))
+          .resolves(jwksItem([{ ...RSA_KEY.jwk, kid: KID }, { ...OTHER_RSA_KEY.jwk, kid: ROTATED_KID }]));
+        const rotatedToken = jwtOf({ header: { kid: ROTATED_KID }, signWith: OTHER_RSA_KEY });
+
+        await verify(jwtOf());
+        await expect(verify(rotatedToken)).resolves.toMatchObject({ sub: 'user-1' });
+        await expect(verify(rotatedToken)).resolves.toMatchObject({ sub: 'user-1' });
+
+        expect(dynamodb.commandCalls(GetItemCommand)).toHaveLength(2);
+      });
+
+      it('gives a token whose kid is in neither key set no identity, after exactly one re-read', async () => {
+        await verify(jwtOf());
+
+        await expect(verify(jwtOf({ header: { kid: 'unknown-kid' } }))).resolves.toBeNull();
+
+        expect(dynamodb.commandCalls(GetItemCommand)).toHaveLength(2);
+      });
+
+      it('does not re-read the key set for a token whose kid the cached set contains', async () => {
+        await verify(jwtOf());
+
+        await expect(verify(jwtOf({ signWith: OTHER_RSA_KEY }))).resolves.toBeNull();
+
+        expect(dynamodb.commandCalls(GetItemCommand)).toHaveLength(1);
+      });
+
+      it('propagates a failure of the re-read instead of answering that the token has no identity', async () => {
+        dynamodb.on(GetItemCommand)
+          .resolvesOnce(jwksItem([{ ...RSA_KEY.jwk, kid: KID }]))
+          .rejects(new Error('AccessDeniedException'));
+        await verify(jwtOf());
+
+        await expect(verify(jwtOf({ header: { kid: ROTATED_KID } }))).rejects.toThrow('AccessDeniedException');
+      });
+    });
+
     it('keeps no key set that was missing, so keys the issuer publishes later are used', async () => {
       dynamodb.on(GetItemCommand).resolvesOnce({}).resolves({ Item: { jwks: { S: JSON.stringify({ keys: [{ ...RSA_KEY.jwk, kid: KID }] }) } } });
 
