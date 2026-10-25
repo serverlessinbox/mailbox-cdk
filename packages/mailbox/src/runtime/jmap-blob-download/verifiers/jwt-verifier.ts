@@ -36,7 +36,7 @@ export class JwtVerifier {
   /**
    * The identity of a token whose signature verifies against the key its issuer published under the token's
    * `kid`, signed with an algorithm in `allowedAlgorithms` (RS256 when the list is absent or empty), within
-   * `exp` and `nbf` plus a clock tolerance, with a `sub`. A token that fails any of these, an unknown issuer or
+   * an `exp` (required) and `nbf` plus a clock tolerance, with a `sub`. A token that fails any of these, an unknown issuer or
    * key, or a key set that is missing or malformed has no identity. A failure to read the auth key store is not
    * a verification result and propagates to the caller.
    */
@@ -59,6 +59,7 @@ export class JwtVerifier {
       const { payload } = await jwtVerify(token, keySet, {
         clockTolerance: CLOCK_TOLERANCE_SECONDS,
         algorithms:     [...this.algorithmsOf(allowedAlgorithms)],
+        requiredClaims: ['exp'],
       });
 
       return this.verifiedJwtOf(payload, issuer);

@@ -113,10 +113,8 @@ describe('JwtVerifier', () => {
       await expect(verify(token)).resolves.toMatchObject({ issuer: ISSUER });
     });
 
-    it('accepts a token that has no exp or nbf', async () => {
-      const token = jwtOf({ payload: { exp: undefined } });
-
-      await expect(verify(token)).resolves.toMatchObject({ sub: 'user-1' });
+    it('accepts a token that has no nbf', async () => {
+      await expect(verify(jwtOf({ payload: { nbf: undefined } }))).resolves.toMatchObject({ sub: 'user-1' });
     });
 
     it('accepts a token that expired within the five minute clock tolerance', async () => {
@@ -256,6 +254,10 @@ describe('JwtVerifier', () => {
       dynamodb.on(GetItemCommand).resolves({ Item: { jwks: { S: jwks } } });
 
       await expect(verify(jwtOf())).resolves.toBeNull();
+    });
+
+    it('rejects a token without an exp, so a token can never be valid forever', async () => {
+      await expect(verify(jwtOf({ payload: { exp: undefined } }))).resolves.toBeNull();
     });
 
     it('rejects a token that expired beyond the five minute clock tolerance', async () => {
