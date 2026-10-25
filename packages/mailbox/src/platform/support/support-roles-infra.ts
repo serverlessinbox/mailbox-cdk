@@ -1,10 +1,10 @@
-import { rootStackResourceTagConditions, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack }                                from '@serverlessinbox/mailbox-cdk-shared';
-import * as iam                                          from 'aws-cdk-lib/aws-iam';
-import { Fn, Aws, Stack, Duration }                      from 'aws-cdk-lib';
-import { Construct }                                     from 'constructs';
+import { PositionHash, rootStackResourceTagConditions, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack }                                              from '@serverlessinbox/mailbox-cdk-shared';
+import * as iam                                                        from 'aws-cdk-lib/aws-iam';
+import { Fn, Aws, Stack, Duration }                                    from 'aws-cdk-lib';
+import { Construct }                                                   from 'constructs';
 
-import type { ISupportRoles }                            from '../../contracts/support-roles';
+import type { ISupportRoles }                                          from '../../contracts/support-roles';
 
 import {
   ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS,
@@ -15,6 +15,7 @@ import {
 import type { SupportTier } from './support-tiers';
 
 const SUPPORT_ROLE_MAX_SESSION_DURATION = Duration.seconds(3600);
+const HOP_ROLE_SLUG                     = 'hop';
 
 /** Inputs of the support IAM roles. */
 export interface SupportRolesInfraProps {
@@ -41,22 +42,16 @@ export class SupportRolesInfra extends Construct implements ISupportRoles {
   constructor(scope: Construct, id: string, props: SupportRolesInfraProps) {
     super(scope, id);
 
-    // Fixed for a stack's lifetime, differs after destroy+redeploy. Only the first 8-character segment
-    // (UUID format: 8-4-4-4-12) is used, to stay within the 64-char IAM role-name limit.
-    const stackGuidSegment = StackIdentity.guidPrefix;
-
-    // The name carries no parent group id, so its length is fixed and independent of construct position.
-    const hopRoleName = Fn.join('', ['support-', stackGuidSegment, '-hop']);
-
     // Role ARNs are formatted from the names rather than read from the roles: the roles reference these
     // ARNs in their own policies, and a GetAtt would make that a dependency cycle.
+    const hopRoleName      = this.roleName(HOP_ROLE_SLUG);
     this.hopRoleArn        = this.formatRoleArn(hopRoleName);
-    this.diagRoleArn       = this.formatRoleArn(this.tierRoleName(stackGuidSegment, SUPPORT_DIAG_TIER));
-    this.configReadRoleArn = this.formatRoleArn(this.tierRoleName(stackGuidSegment, SUPPORT_CONFIG_READ_TIER));
+    this.diagRoleArn       = this.formatRoleArn(this.roleName(SUPPORT_DIAG_TIER.roleNameSlug));
+    this.configReadRoleArn = this.formatRoleArn(this.roleName(SUPPORT_CONFIG_READ_TIER.roleNameSlug));
 
     const hopRole = this.createHopRole(hopRoleName, props.vendorAccountIds);
     for (const tier of SUPPORT_TIERS) {
-      this.createTierRole(tier, this.tierRoleName(stackGuidSegment, tier), hopRole);
+      this.createTierRole(tier, this.roleName(tier.roleNameSlug), hopRole);
     }
   }
 
@@ -94,8 +89,12 @@ export class SupportRolesInfra extends Construct implements ISupportRoles {
     });
   }
 
-  private tierRoleName(stackGuidSegment: string, tier: SupportTier): string {
-    return Fn.join('', ['support-', stackGuidSegment, `-${tier.roleNameSlug}`]);
+  /**
+   * `support-<readable part>-<position hash>-<install guid prefix>`: the position hash changes when this
+   * construct moves, so a moved set of roles never reuses a retained name, and the guid prefix differs per install.
+   */
+  private roleName(readablePart: string): string {
+    return Fn.join('', ['support-', readablePart, '-', PositionHash.of(this), '-', StackIdentity.guidPrefix]);
   }
 
   private formatRoleArn(roleName: string): string {

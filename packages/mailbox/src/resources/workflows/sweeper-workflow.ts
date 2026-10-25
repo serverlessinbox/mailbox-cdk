@@ -51,7 +51,7 @@ interface StepSuccessors {
 type Step = (successors: StepSuccessors) => sfn.IChainable;
 
 /**
- * CDK Construct wrapper for the resource sweeper Step Functions workflow.
+ * The resource sweeper's Step Functions workflow.
  *
  * The definition is composed, not shared: each registered removal contributes its own chain
  * (waiting, invoke, retry loop) via `IRemovalChain.buildChain` — the workflow just wires them in
@@ -62,55 +62,34 @@ type Step = (successors: StepSuccessors) => sfn.IChainable;
  * removal has succeeded.
  *
  * The state machine is retained on update and delete, so the sweep can finish after the stack is gone.
+ *
+ * A state machine is built from its states, so they exist before the state machine does; they are
+ * created under a construct of their own, `<id>-states`, beside it.
  */
-export class SweeperWorkflow extends Construct {
+export class SweeperWorkflow extends sfn.StateMachine {
   private static readonly defaultRetryInterval = Duration.minutes(5);
   private static readonly defaultTimeout = Duration.hours(4);
 
-  private readonly stateMachine: sfn.StateMachine;
-
   // A pre-built ARN string with no GetAtt: the grants below scope to it directly instead of going
-  // through CDK's stateMachine.grantStartExecution, which resolves via Ref.
-  private readonly stateMachineArn: string;
+  // through CDK's grantStartExecution, which resolves via Ref.
+  private readonly ownArn: string;
 
   constructor(scope: Construct, id: string, props: SweeperWorkflowProps) {
-    super(scope, id);
-
-    if (props.removals.length === 0) {
-      throw new Error('SweeperWorkflow requires at least one registered removal');
-    }
-
-    this.stateMachineArn = props.stateMachineArn;
-    this.stateMachine    = new sfn.StateMachine(this, 'StateMachine', {
-      definition:       this.inOrder([
-        ...props.removals.map((removal) => this.sweepRemoval(removal, props)),
-        ({ next }) => this.describeOwnResource()
-          .addCatch(this.captureOwnResourceGone().next(next), { errors: ['cloudformation.ValidationError'], resultPath: sfn.JsonPath.DISCARD })
-          .next(next),
-        ({ next, end }) => this.enterDeletionsWhenOwnResourceGone(next, end),
-        ({ next }) => this.deleteWorker(props)
-          .addCatch(next, { errors: ['lambda.ResourceNotFoundException'], resultPath: sfn.JsonPath.DISCARD })
-          .next(next),
-        ({ next }) => this.deleteWorkerRolePolicy(props)
-          .addCatch(next, { errors: ['iam.NoSuchEntityException'], resultPath: sfn.JsonPath.DISCARD })
-          .next(next),
-        ({ next }) => this.deleteWorkerRole(props)
-          .addCatch(next, { errors: ['iam.NoSuchEntityException', 'iam.DeleteConflictException'], resultPath: sfn.JsonPath.DISCARD })
-          .next(next),
-        ({ end }) => this.deleteStateMachine(props)
-          .addCatch(end, { errors: ['States.ALL'], resultPath: sfn.JsonPath.DISCARD }),
-      ], () => this.succeed()),
+    super(scope, id, {
+      definition:       SweeperWorkflow.definition(new Construct(scope, `${id}-states`), scope, id, props),
       role:             props.executionRole,
       timeout:          props.timeout ?? SweeperWorkflow.defaultTimeout,
       stateMachineName: props.stateMachineName,
     });
-    retainOnUpdateOrDelete(this.stateMachine);
+    this.ownArn = props.stateMachineArn;
+    retainOnUpdateOrDelete(this);
   }
 
-  public grantStartExecution(grantee: IGrantable): void {
+  /** Grants the given principal permission to start executions of this state machine, by its ARN string. */
+  public grantStartExecutionByArn(grantee: IGrantable): void {
     grantee.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions:   ['states:StartExecution'],
-      resources: [this.stateMachineArn],
+      resources: [this.ownArn],
     }));
   }
 
@@ -120,8 +99,33 @@ export class SweeperWorkflow extends Construct {
   public grantExecutionReaping(grantee: IGrantable): void {
     grantee.grantPrincipal.addToPrincipalPolicy(new PolicyStatement({
       actions:   ['states:ListExecutions', 'states:StopExecution'],
-      resources: [this.stateMachineArn],
+      resources: [this.ownArn],
     }));
+  }
+
+  private static definition(states: Construct, scope: Construct, id: string, props: SweeperWorkflowProps): sfn.IChainable {
+    if (props.removals.length === 0) {
+      throw new Error('SweeperWorkflow requires at least one registered removal');
+    }
+
+    return SweeperWorkflow.inOrder([
+      ...props.removals.map((removal) => SweeperWorkflow.sweepRemoval(removal, props)),
+      ({ next }) => SweeperWorkflow.describeOwnResource(states, scope, id)
+        .addCatch(SweeperWorkflow.captureOwnResourceGone(states).next(next), { errors: ['cloudformation.ValidationError'], resultPath: sfn.JsonPath.DISCARD })
+        .next(next),
+      ({ next, end }) => SweeperWorkflow.enterDeletionsWhenOwnResourceGone(states, next, end),
+      ({ next }) => SweeperWorkflow.deleteWorker(states, props)
+        .addCatch(next, { errors: ['lambda.ResourceNotFoundException'], resultPath: sfn.JsonPath.DISCARD })
+        .next(next),
+      ({ next }) => SweeperWorkflow.deleteWorkerRolePolicy(states, props)
+        .addCatch(next, { errors: ['iam.NoSuchEntityException'], resultPath: sfn.JsonPath.DISCARD })
+        .next(next),
+      ({ next }) => SweeperWorkflow.deleteWorkerRole(states, props)
+        .addCatch(next, { errors: ['iam.NoSuchEntityException', 'iam.DeleteConflictException'], resultPath: sfn.JsonPath.DISCARD })
+        .next(next),
+      ({ end }) => SweeperWorkflow.deleteStateMachine(states, props)
+        .addCatch(end, { errors: ['States.ALL'], resultPath: sfn.JsonPath.DISCARD }),
+    ], () => SweeperWorkflow.succeed(states));
   }
 
   /**
@@ -129,7 +133,7 @@ export class SweeperWorkflow extends Construct {
    * state. Steps are built from the last to the first, because a state names its successor when it
    * is built.
    */
-  private inOrder(steps: Step[], finalStep: () => sfn.State): sfn.IChainable {
+  private static inOrder(steps: Step[], finalStep: () => sfn.State): sfn.IChainable {
     const end = finalStep();
 
     let next: sfn.IChainable = end;
@@ -140,7 +144,7 @@ export class SweeperWorkflow extends Construct {
   }
 
   /** One registered removal: its own chain, whose success continues into the step after it. */
-  private sweepRemoval(removal: IRemovalChain, props: SweeperWorkflowProps): Step {
+  private static sweepRemoval(removal: IRemovalChain, props: SweeperWorkflowProps): Step {
     const retryInterval = props.retryInterval ?? SweeperWorkflow.defaultRetryInterval;
 
     return ({ next }) => removal.buildChain(props.worker, retryInterval, next);
@@ -148,15 +152,16 @@ export class SweeperWorkflow extends Construct {
 
   /**
    * Looks the state machine up in the stack's own template, so an ordinary deploy where every
-   * removal had nothing to do deletes nothing CloudFormation still owns.
+   * removal had nothing to do deletes nothing CloudFormation still owns. The state machine is the
+   * construct `id` under `scope`; its logical id is only known once it is built, so it is resolved at synth.
    */
-  private describeOwnResource(): tasks.CallAwsService {
-    return new tasks.CallAwsService(this, 'SelfCleanupDescribeOwnResource', {
+  private static describeOwnResource(states: Construct, scope: Construct, id: string): tasks.CallAwsService {
+    return new tasks.CallAwsService(states, 'self-cleanup-describe-own-resource', {
       service:      'cloudformation',
       action:       'describeStackResource',
       parameters:   {
         StackName:         Aws.STACK_NAME,
-        LogicalResourceId: Lazy.string({ produce: () => defaultCfnResource(this.stateMachine).logicalId }),
+        LogicalResourceId: Lazy.string({ produce: () => defaultCfnResource(scope.node.findChild(id)).logicalId }),
       },
       resultPath:   '$.selfCheck',
       iamResources: [Aws.STACK_ID],
@@ -166,22 +171,22 @@ export class SweeperWorkflow extends Construct {
   // CFN signals a removed logical id by throwing ValidationError rather than returning an empty
   // result — capture that as data so the Choice after it can read it, mirroring
   // withTargetPresenceGuard's isPresent check rather than branching on task success/failure.
-  private captureOwnResourceGone(): sfn.Pass {
-    return new sfn.Pass(this, 'SelfCleanupCaptureNotFound', {
+  private static captureOwnResourceGone(states: Construct): sfn.Pass {
+    return new sfn.Pass(states, 'self-cleanup-capture-not-found', {
       resultPath: '$.selfCheck',
       parameters: { notFound: true },
     });
   }
 
   /** Enters the deletions only when the own-resource lookup found the state machine gone from the template. */
-  private enterDeletionsWhenOwnResourceGone(deletions: sfn.IChainable, otherwise: sfn.IChainable): sfn.Choice {
-    return new sfn.Choice(this, 'SelfCleanupGuard')
+  private static enterDeletionsWhenOwnResourceGone(states: Construct, deletions: sfn.IChainable, otherwise: sfn.IChainable): sfn.Choice {
+    return new sfn.Choice(states, 'self-cleanup-guard')
       .when(sfn.Condition.isPresent('$.selfCheck.notFound'), deletions)
       .otherwise(otherwise);
   }
 
-  private deleteWorker(props: SweeperWorkflowProps): tasks.CallAwsService {
-    return new tasks.CallAwsService(this, 'SelfCleanupDeleteWorker', {
+  private static deleteWorker(states: Construct, props: SweeperWorkflowProps): tasks.CallAwsService {
+    return new tasks.CallAwsService(states, 'self-cleanup-delete-worker', {
       service:      'lambda',
       action:       'deleteFunction',
       parameters:   {
@@ -192,8 +197,8 @@ export class SweeperWorkflow extends Construct {
     });
   }
 
-  private deleteWorkerRolePolicy(props: SweeperWorkflowProps): tasks.CallAwsService {
-    return new tasks.CallAwsService(this, 'SelfCleanupDeleteWorkerRolePolicy', {
+  private static deleteWorkerRolePolicy(states: Construct, props: SweeperWorkflowProps): tasks.CallAwsService {
+    return new tasks.CallAwsService(states, 'self-cleanup-delete-worker-role-policy', {
       service:      'iam',
       action:       'deleteRolePolicy',
       parameters:   {
@@ -205,8 +210,8 @@ export class SweeperWorkflow extends Construct {
     });
   }
 
-  private deleteWorkerRole(props: SweeperWorkflowProps): tasks.CallAwsService {
-    return new tasks.CallAwsService(this, 'SelfCleanupDeleteWorkerRole', {
+  private static deleteWorkerRole(states: Construct, props: SweeperWorkflowProps): tasks.CallAwsService {
+    return new tasks.CallAwsService(states, 'self-cleanup-delete-worker-role', {
       service:      'iam',
       action:       'deleteRole',
       parameters:   {
@@ -217,8 +222,8 @@ export class SweeperWorkflow extends Construct {
     });
   }
 
-  private deleteStateMachine(props: SweeperWorkflowProps): tasks.CallAwsService {
-    return new tasks.CallAwsService(this, 'SelfCleanupDeleteStateMachine', {
+  private static deleteStateMachine(states: Construct, props: SweeperWorkflowProps): tasks.CallAwsService {
+    return new tasks.CallAwsService(states, 'self-cleanup-delete-state-machine', {
       service:      'sfn',
       action:       'deleteStateMachine',
       parameters:   {
@@ -229,7 +234,7 @@ export class SweeperWorkflow extends Construct {
     });
   }
 
-  private succeed(): sfn.Succeed {
-    return new sfn.Succeed(this, 'Succeed');
+  private static succeed(states: Construct): sfn.Succeed {
+    return new sfn.Succeed(states, 'succeed');
   }
 }

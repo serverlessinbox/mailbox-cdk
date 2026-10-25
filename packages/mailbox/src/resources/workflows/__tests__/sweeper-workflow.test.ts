@@ -73,7 +73,7 @@ describe('SweeperWorkflow', () => {
       ...overrides,
     });
     const grantee  = new iam.Role(stack, 'grantee', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
-    workflow.grantStartExecution(grantee);
+    workflow.grantStartExecutionByArn(grantee);
     workflow.grantExecutionReaping(grantee);
 
     const template       = Template.fromStack(stack);
@@ -97,7 +97,7 @@ describe('SweeperWorkflow', () => {
 
       expect(definition).toContain('"StartAt":"FirstRemoval"');
       expect(stateBodyOf(definition, 'FirstRemoval')).toContain('"Next":"SecondRemoval"');
-      expect(stateBodyOf(definition, 'SecondRemoval')).toContain('"Next":"SelfCleanupDescribeOwnResource"');
+      expect(stateBodyOf(definition, 'SecondRemoval')).toContain('"Next":"self-cleanup-describe-own-resource"');
     });
 
     it('hands every removal the worker and a retry interval of 5 minutes by default, and times out after 4 hours', () => {
@@ -122,29 +122,29 @@ describe('SweeperWorkflow', () => {
     it('describes the state machine\'s own resource in the stack, by its own logical id', () => {
       const { definition, stateMachineLogicalId } = synthesize('GuardDescribeStack');
 
-      const describeOwn = stateBodyOf(definition, 'SelfCleanupDescribeOwnResource');
+      const describeOwn = stateBodyOf(definition, 'self-cleanup-describe-own-resource');
 
       expect(describeOwn).toContain('aws-sdk:cloudformation:describeStackResource');
       expect(describeOwn).toContain(`"LogicalResourceId":"${stateMachineLogicalId}"`);
-      expect(describeOwn).toContain('"Next":"SelfCleanupGuard"');
+      expect(describeOwn).toContain('"Next":"self-cleanup-guard"');
     });
 
     it('ends in Succeed without deleting anything when the resource is still in the template', () => {
       const { definition } = synthesize('GuardPresentStack');
 
-      expect(stateBodyOf(definition, 'SelfCleanupGuard')).toContain('"Default":"Succeed"');
-      expect(definition).toContain('"Succeed":{"Type":"Succeed"');
+      expect(stateBodyOf(definition, 'self-cleanup-guard')).toContain('"Default":"succeed"');
+      expect(definition).toContain('"succeed":{"Type":"Succeed"');
     });
 
     it('starts the deletions when the describe call answers ValidationError, which CloudFormation raises for a removed logical id', () => {
       const { definition } = synthesize('GuardAbsentStack');
 
-      expect(stateBodyOf(definition, 'SelfCleanupDescribeOwnResource')).toContain('cloudformation.ValidationError');
-      expect(stateBodyOf(definition, 'SelfCleanupCaptureNotFound')).toContain('"notFound":true');
-      expect(stateBodyOf(definition, 'SelfCleanupCaptureNotFound')).toContain('"Next":"SelfCleanupGuard"');
-      const guard = stateBodyOf(definition, 'SelfCleanupGuard');
+      expect(stateBodyOf(definition, 'self-cleanup-describe-own-resource')).toContain('cloudformation.ValidationError');
+      expect(stateBodyOf(definition, 'self-cleanup-capture-not-found')).toContain('"notFound":true');
+      expect(stateBodyOf(definition, 'self-cleanup-capture-not-found')).toContain('"Next":"self-cleanup-guard"');
+      const guard = stateBodyOf(definition, 'self-cleanup-guard');
       expect(guard).toContain('"Variable":"$.selfCheck.notFound"');
-      expect(guard).toContain('"Next":"SelfCleanupDeleteWorker"');
+      expect(guard).toContain('"Next":"self-cleanup-delete-worker"');
     });
   });
 
@@ -152,29 +152,29 @@ describe('SweeperWorkflow', () => {
     it('deletes the worker, its role policy and role, then the state machine, skipping what is already gone', () => {
       const { definition } = synthesize('DeletionsStack');
 
-      const deleteWorker = stateBodyOf(definition, 'SelfCleanupDeleteWorker');
-      expect(deleteWorker).toContain('"Next":"SelfCleanupDeleteWorkerRolePolicy"');
+      const deleteWorker = stateBodyOf(definition, 'self-cleanup-delete-worker');
+      expect(deleteWorker).toContain('"Next":"self-cleanup-delete-worker-role-policy"');
       expect(deleteWorker).toContain('lambda.ResourceNotFoundException');
 
-      const deleteRolePolicy = stateBodyOf(definition, 'SelfCleanupDeleteWorkerRolePolicy');
+      const deleteRolePolicy = stateBodyOf(definition, 'self-cleanup-delete-worker-role-policy');
       expect(deleteRolePolicy).toContain('"RoleName":"worker-role"');
       expect(deleteRolePolicy).toContain('"PolicyName":"sweeper-worker-policy"');
-      expect(deleteRolePolicy).toContain('"Next":"SelfCleanupDeleteWorkerRole"');
+      expect(deleteRolePolicy).toContain('"Next":"self-cleanup-delete-worker-role"');
       expect(deleteRolePolicy).toContain('iam.NoSuchEntityException');
 
-      const deleteRole = stateBodyOf(definition, 'SelfCleanupDeleteWorkerRole');
-      expect(deleteRole).toContain('"Next":"SelfCleanupDeleteStateMachine"');
+      const deleteRole = stateBodyOf(definition, 'self-cleanup-delete-worker-role');
+      expect(deleteRole).toContain('"Next":"self-cleanup-delete-state-machine"');
       expect(deleteRole).toContain('iam.DeleteConflictException');
     });
 
     it('ends with the deletion of the state machine, which no state follows and whose failure still succeeds', () => {
       const { definition } = synthesize('TerminalDeletionStack');
 
-      const deleteStateMachine = stateBodyOf(definition, 'SelfCleanupDeleteStateMachine');
+      const deleteStateMachine = stateBodyOf(definition, 'self-cleanup-delete-state-machine');
 
       expect(deleteStateMachine).toContain(`"StateMachineArn":"${STATE_MACHINE_ARN}"`);
       expect(deleteStateMachine).toContain('"ErrorEquals":["States.ALL"]');
-      expect(deleteStateMachine).toContain('"Next":"Succeed"');
+      expect(deleteStateMachine).toContain('"Next":"succeed"');
       expect(deleteStateMachine).toContain('"End":true');
     });
   });

@@ -170,8 +170,8 @@ describe('Mailbox: sweeper removal wiring', () => {
     // Detector contributes its own Invoke/retry-loop states too (enabled by default).
     expect(parseMachine(definition).States[retryWaitOf(definition, invokeOf(definition, 'detector'))].Type).toBe('Wait');
     // Self-cleanup tail still present after every removal succeeds.
-    expect(definition).toContain('"SelfCleanupDeleteWorker"');
-    expect(definition).toContain('"SelfCleanupDeleteStateMachine"');
+    expect(definition).toContain('"self-cleanup-delete-worker"');
+    expect(definition).toContain('"self-cleanup-delete-state-machine"');
   });
 
   it('the detector\'s grace-period Wait state comes from its own removal, not shared retry logic', () => {

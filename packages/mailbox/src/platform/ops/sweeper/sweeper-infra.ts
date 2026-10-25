@@ -108,7 +108,7 @@ export class SweeperInfra extends Construct {
 
     this.attachWorkerPolicy(workerRole, removals);
 
-    workflow.grantStartExecution(this.starter);
+    workflow.grantStartExecutionByArn(this.starter);
     workflow.grantExecutionReaping(this.starter);
   }
 
@@ -116,14 +116,15 @@ export class SweeperInfra extends Construct {
    * The names are deterministic so ARNs can be plain strings. They carry a hash of this construct's
    * position in the stack, so moving it changes them and the retained resources of the old position
    * never collide with the new ones, and the first 8 characters of the stack's GUID, which differ per
-   * install and after destroy+redeploy.
+   * install and after destroy+redeploy. The state machine's name carries the position of its workflow
+   * construct, which is the position the workflow is built at.
    */
   private resourceNames(): SweeperResourceNames {
     const positionHash = PositionHash.of(this);
     const guidPrefix   = StackIdentity.guidPrefix;
 
     return {
-      stateMachine:  Fn.join('', ['mailbox-sweeper-', positionHash, '-', guidPrefix]),
+      stateMachine:  Fn.join('', ['mailbox-sweeper-', PositionHash.ofChild(this, 'workflow'), '-', guidPrefix]),
       executionRole: Fn.join('', ['mailbox-sweeper-exec-', positionHash, '-', guidPrefix]),
       workerRole:    Fn.join('', [SWEEPER_WORKER_ROLE_NAME_PREFIX, positionHash, '-', guidPrefix]),
     };

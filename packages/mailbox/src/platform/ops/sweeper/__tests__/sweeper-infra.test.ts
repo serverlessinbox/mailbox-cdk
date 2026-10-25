@@ -107,7 +107,7 @@ describe('SweeperInfra', () => {
   });
 
   describe('physical names', () => {
-    it('start with the sweeper position hash, so moving the sweeper never reuses a retained name', () => {
+    it('start with a position hash, so moving the sweeper never reuses a retained name', () => {
       const { template, infra } = synthesize('PhysicalNamesStack');
       const hash                = PositionHash.of(infra);
 
@@ -120,7 +120,8 @@ describe('SweeperInfra', () => {
           expect.stringMatching(new RegExp(`^mailbox-sweeper-worker-${hash}-`)),
         ]),
       );
-      expect(renderLiteralText(stateMachine.properties.StateMachineName)).toMatch(new RegExp(`^mailbox-sweeper-${hash}-`));
+      // The state machine is named by the position of its workflow construct, not of the sweeper.
+      expect(renderLiteralText(stateMachine.properties.StateMachineName)).toMatch(new RegExp(`^mailbox-sweeper-${PositionHash.ofChild(infra, 'workflow')}-`));
     });
   });
 

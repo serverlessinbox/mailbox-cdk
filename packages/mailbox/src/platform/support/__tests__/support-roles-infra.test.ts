@@ -6,10 +6,14 @@
  * account, let a tier role be assumed without a case, or let a Lambda tag keys outside the tier tags.
  */
 
+import { renderLiteralText }                    from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { PositionHash }                         from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                             from 'aws-cdk-lib/assertions';
 import * as iam                                 from 'aws-cdk-lib/aws-iam';
 import type { Stack }                           from 'aws-cdk-lib';
+import * as t                                   from 'typanion';
 
+import { isTemplateValue, resourcesOfType }     from '../../../__tests__/template-resources';
 import { newTestStack }                         from '../../__tests__/platform-helpers';
 import { SupportRolesInfra }                    from '../support-roles-infra';
 
@@ -18,6 +22,8 @@ const CONFIG_READ_TAG_KEY = 'serverless-inbox:support:config-read';
 const DIAG_POLICY         = 'support-diag-access';
 const CONFIG_READ_POLICY  = 'support-config-read-access';
 const HOP_POLICY          = 'support-hop-assume';
+
+const isRoleProperties = t.isPartial({ RoleName: isTemplateValue });
 
 interface StatementJson {
   readonly Effect:     string;
@@ -243,6 +249,17 @@ describe('SupportRolesInfra', () => {
         expect(rendered).toContain('"Ref":"AWS::Partition"');
         expect(rendered).toContain('"Ref":"AWS::AccountId"');
         expect(rendered).not.toContain('111122223333');
+      }
+    });
+
+    it('name each role with the position hash of the roles construct, so a moved set never reuses a retained name', () => {
+      const { template, infra } = synthesize(['999988887777']);
+
+      const roleNames = resourcesOfType(template, 'AWS::IAM::Role', isRoleProperties).map((role) => renderLiteralText(role.properties.RoleName));
+
+      expect(roleNames).toHaveLength(3);
+      for (const roleName of roleNames) {
+        expect(roleName).toContain(PositionHash.of(infra));
       }
     });
   });
