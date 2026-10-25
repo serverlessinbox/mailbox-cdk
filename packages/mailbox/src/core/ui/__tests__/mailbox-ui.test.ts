@@ -149,6 +149,11 @@ describe('MailboxUi', () => {
         PolicyDocument: {
           Statement: [
             Match.objectLike({
+              Effect:    'Deny',
+              Action:    's3:*',
+              Condition: { Bool: { 'aws:SecureTransport': 'false' } },
+            }),
+            Match.objectLike({
               Condition: { StringEquals: { 'AWS:SourceArn': { 'Fn::Join': ['', Match.arrayWith([{ Ref: distributionId }])] } } },
             }),
           ],

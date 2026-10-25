@@ -29,6 +29,7 @@ export class PublicStaticAssetsBucket extends StackNamedBucket implements IPubli
   private constructor(sharedGroup: Construct, artifactResolver: IArtifactResolver) {
     super(sharedGroup, PublicStaticAssetsBucket.BUCKET_ID, {
       blockPublicAccess: BlockPublicAccess.BLOCK_ACLS_ONLY,
+      enforceSSL:        true,
       removalPolicy:     RemovalPolicy.DESTROY,
     });
 

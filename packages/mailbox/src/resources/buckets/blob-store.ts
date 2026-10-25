@@ -66,6 +66,7 @@ export class BlobStore extends StackNamedBucket {
     super(scope, 'blob-store', {
       versioned:         !props.developmentMode,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      enforceSSL:        true,
       encryption:        props.encryptionKey ? BucketEncryption.KMS : BucketEncryption.S3_MANAGED,
       encryptionKey:     props.encryptionKey,
       nameBase:          props.nameBase,

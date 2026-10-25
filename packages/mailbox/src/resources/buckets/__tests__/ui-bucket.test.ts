@@ -47,6 +47,27 @@ describe('UiBucket', () => {
   it('deletes the bucket with the stack', () => {
     template.hasResource('AWS::S3::Bucket', { DeletionPolicy: 'Delete', UpdateReplacePolicy: 'Delete' });
   });
+
+  it('denies every S3 action on requests that are not sent over TLS', () => {
+    const bucketId = Object.keys(template.findResources('AWS::S3::Bucket'))[0];
+
+    template.hasResourceProperties('AWS::S3::BucketPolicy', {
+      PolicyDocument: {
+        Statement: [
+          {
+            Action:    's3:*',
+            Condition: { Bool: { 'aws:SecureTransport': 'false' } },
+            Effect:    'Deny',
+            Principal: { AWS: '*' },
+            Resource:  [
+              { 'Fn::GetAtt': [bucketId, 'Arn'] },
+              { 'Fn::Join': ['', [{ 'Fn::GetAtt': [bucketId, 'Arn'] }, '/*']] },
+            ],
+          },
+        ],
+      },
+    });
+  });
 });
 
 describe('UiBucket origins', () => {
@@ -93,6 +114,16 @@ describe('UiBucket origins', () => {
     template.hasResourceProperties('AWS::S3::BucketPolicy', {
       PolicyDocument: {
         Statement: Match.arrayEquals([
+          Match.objectEquals({
+            Action:    's3:*',
+            Condition: { Bool: { 'aws:SecureTransport': 'false' } },
+            Effect:    'Deny',
+            Principal: { AWS: '*' },
+            Resource:  [
+              { 'Fn::GetAtt': [bucketId, 'Arn'] },
+              { 'Fn::Join': ['', [{ 'Fn::GetAtt': [bucketId, 'Arn'] }, '/*']] },
+            ],
+          }),
           Match.objectEquals({
             Action:    's3:GetObject',
             Effect:    'Allow',

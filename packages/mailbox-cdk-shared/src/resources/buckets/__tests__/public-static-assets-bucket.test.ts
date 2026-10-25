@@ -51,12 +51,45 @@ describe('PublicStaticAssetsBucket.getOrCreate', () => {
       PolicyDocument: {
         Statement: [
           {
+            Action:    's3:*',
+            Condition: { Bool: { 'aws:SecureTransport': 'false' } },
+            Effect:    'Deny',
+            Principal: { AWS: '*' },
+            Resource:  [
+              { 'Fn::GetAtt': [bucketId, 'Arn'] },
+              { 'Fn::Join': ['', [{ 'Fn::GetAtt': [bucketId, 'Arn'] }, '/*']] },
+            ],
+          },
+          {
             Action:    's3:GetObject',
             Effect:    'Allow',
             Principal: { AWS: '*' },
             Resource:  { 'Fn::Join': ['', [{ 'Fn::GetAtt': [bucketId, 'Arn'] }, '/*']] },
           },
         ],
+      },
+    });
+  });
+
+  it('denies every S3 action on requests that are not sent over TLS', () => {
+    const stack = newStack();
+    PublicStaticAssetsBucket.getOrCreate(stack, fakeResolver);
+
+    const bucketId = onlyBucketLogicalId(stack);
+    Template.fromStack(stack).hasResourceProperties('AWS::S3::BucketPolicy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          {
+            Action:    's3:*',
+            Condition: { Bool: { 'aws:SecureTransport': 'false' } },
+            Effect:    'Deny',
+            Principal: { AWS: '*' },
+            Resource:  [
+              { 'Fn::GetAtt': [bucketId, 'Arn'] },
+              { 'Fn::Join': ['', [{ 'Fn::GetAtt': [bucketId, 'Arn'] }, '/*']] },
+            ],
+          },
+        ]),
       },
     });
   });

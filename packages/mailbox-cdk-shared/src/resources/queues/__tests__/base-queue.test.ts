@@ -114,6 +114,26 @@ describe('BaseQueue', () => {
     });
   });
 
+  it('denies every SQS action on requests that are not sent over TLS', () => {
+    const template  = queueTemplate();
+    const [queueId] = Object.keys(template.findResources('AWS::SQS::Queue'));
+
+    template.hasResourceProperties('AWS::SQS::QueuePolicy', {
+      PolicyDocument: {
+        Statement: [
+          {
+            Action:    'sqs:*',
+            Condition: { Bool: { 'aws:SecureTransport': 'false' } },
+            Effect:    'Deny',
+            Principal: { AWS: '*' },
+            Resource:  { 'Fn::GetAtt': [queueId, 'Arn'] },
+          },
+        ],
+      },
+      Queues:         [{ Ref: queueId }],
+    });
+  });
+
   describe('grants', () => {
     it('grantSend grants exactly sqs:SendMessage on the queue ARN, with no KMS statement on a queue without a key', () => {
       const { template, queueId } = grantOnQueue('grantSend', false);

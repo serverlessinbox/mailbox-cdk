@@ -23,7 +23,8 @@ export interface BaseQueueProps extends Omit<QueueProps, 'visibilityTimeout' | '
 
 /**
  * An SQS queue with a 6-minute visibility timeout, 20-second long polling and SQS-managed (or, with an
- * `encryptionMasterKey`, KMS) encryption.
+ * `encryptionMasterKey`, KMS) encryption. Every request that is not sent over TLS is denied: the queue
+ * is created with `enforceSSL` set, and that is not overridable through the props.
  *
  * The default visibility timeout suits a Lambda consumer with a ~5-minute timeout and up to 60 seconds
  * of batching. For a consumer with other characteristics, override `visibilityTimeout` with a value
@@ -52,6 +53,7 @@ export class BaseQueue extends Queue {
       ...rest,
       encryption,
       queueName,
+      enforceSSL: true,
     });
   }
 

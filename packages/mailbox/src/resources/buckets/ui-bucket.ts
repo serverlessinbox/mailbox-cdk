@@ -27,6 +27,7 @@ export class UiBucket extends StackNamedBucket {
   constructor(scope: Construct, id: string) {
     super(scope, id, {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      enforceSSL:        true,
       removalPolicy:     RemovalPolicy.DESTROY,
       abacStatus:        true,
     });

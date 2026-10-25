@@ -132,6 +132,22 @@ describe('BlobStore', () => {
       });
     });
 
+    it('denies every S3 action on requests that are not sent over TLS', () => {
+      template.hasResourceProperties('AWS::S3::BucketPolicy', {
+        PolicyDocument: {
+          Statement: Match.arrayWith([
+            Match.objectEquals({
+              Action:    's3:*',
+              Condition: { Bool: { 'aws:SecureTransport': 'false' } },
+              Effect:    'Deny',
+              Principal: { AWS: '*' },
+              Resource:  Match.anyValue(),
+            }),
+          ]),
+        },
+      });
+    });
+
     it('lets CloudFront of this account read tenants/ only', () => {
       template.hasResourceProperties('AWS::S3::BucketPolicy', {
         PolicyDocument: {
