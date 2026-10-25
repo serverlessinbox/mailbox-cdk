@@ -1,112 +1,95 @@
 # S3 artifact naming structure
 
-This project publishes deployable assets into **regional publication buckets**.
+The Lambda zips, frontend bundles and CloudFormation templates that the constructs deploy are
+published ahead of time into **regional registry buckets**, so a synthesized template references them
+directly and needs no `cdk bootstrap`.
 
 Goals:
 - No rewriting of synthesized CloudFormation templates.
 - Immutable releases addressed by SemVer.
 - A low-storage channel workflow that still works well with `cdk watch`.
 
-## Buckets
+## Buckets and project prefix
 
-Bucket name is derived from a base name + AWS region:
+A registry is described by its record (`registry-record.json` in a package): a `bucketBase`, a
+`project` and the `regions` it is published to.
 
-- Bucket base: `mailbox-artifacts`
-- Region: `eu-west-1`
+- The bucket of a region is `<bucketBase>-<region>`, unless the record overrides the bucket name of
+  that region.
+- Every object key starts with `<project>/`.
 
-Bucket:
+You have one bucket per region you deploy into. Edge artifacts (CloudFront and Lambda@Edge resources)
+always live in the `us-east-1` bucket.
 
-- `mailbox-artifacts-eu-west-1`
+## Keys
 
-You will have one bucket per region you deploy into (including `us-east-1` for edge resources).
+An artifact key is:
 
-## Top-level prefix: packages
+- `<project>/packages/<packageName>/<scope>/<objectName>`
 
-All published artifacts live under a single root:
-
-- `packages/<packageName>/...`
-
-Where `<packageName>` is a releaseable unit (often mapping to a repo/component), for example:
+`<packageName>` is a releasable unit, for example:
 
 - `mailbox-cdk` (this repo)
-- `mailbox-go` (precompiled Go lambdas)
-- `mailbox-admin-ui` (single zipped admin UI)
-- `mailbox-webmail-ui` (single zipped webmail UI)
+- `mailbox-cdk-edge` (this repo, the edge resources)
+- `mailbox-go` (precompiled Go Lambdas)
+- `mailbox-admin-ui` (the zipped admin UI)
+- `mailbox-webmail-ui` (the zipped webmail UI)
 
-This keeps the layout consistent.
-
-## Versions and channels
+`<scope>` is one of the three forms below.
 
 ### Immutable releases (SemVer)
 
-All immutable builds (including prereleases) are stored under:
+- `<project>/packages/<packageName>/releases/vX.Y.Z/<objectName>`
+- `<project>/packages/<packageName>/releases/vX.Y.Z-<pre>/<objectName>` (e.g. `v1.4.0-beta.1`)
 
-- `packages/<packageName>/vX.Y.Z/...`
-- `packages/<packageName>/vX.Y.Z-<pre>/...` (e.g. `v1.4.0-alpha.2`, `v1.4.0-beta.1`)
+These keys are never overwritten.
 
-These keys should never be overwritten.
+### Release pointers
+
+A pointer names the version a consumer follows. It is scoped by the version line a consumer pins to
+(a track, `vMAJOR` or `vMAJOR.MINOR`) and by a release line (`stable` unless a prerelease label such
+as `beta` is used):
+
+- `<project>/packages/<packageName>/releases/<track>/<releaseLine>.json`
+- `<project>/packages/<packageName>/releases/<releaseLine>.json` (without a track)
 
 ### Mutable channels (overwrite-friendly)
 
 For fast iteration (low storage), publish to a channel path that is expected to be overwritten:
-For fast iteration (low storage), publish to a channel path that is expected to be overwritten:
 
-- `packages/<packageName>/channels/<channel>/...`
+- `<project>/packages/<packageName>/channels/<channel>/<objectName>`
 
-Example:
-
-- `packages/mailbox-cdk/channels/main/...`
-
-This is useful when you want “save → build → publish → `cdk watch` redeploy” without leaving many old objects around.
+This is useful for a "save, build, publish, `cdk watch` redeploy" loop that leaves no trail of old
+objects.
 
 ## Package-specific layouts
 
 ### `mailbox-cdk` (this repo)
 
-Within a `mailbox-cdk` version or channel prefix we keep the following structure:
+Object names within a `mailbox-cdk` release or channel:
 
-- `manifest.json`
-- `edge/edge-stack-template.json` (us-east-1 only)
-- `edge/lambdas/<name>.zip` (us-east-1 only)
-- `regional/lambdas/<name>.zip` (per deploy region)
+- `data-stack-template.json`
+- `lambdas/<name>.zip`
 
-The `manifest.json` is the release entrypoint. It pins other package versions (e.g. `mailbox-go`) and lists the S3 locations of published artifacts.
+### `mailbox-cdk-edge` (this repo, `us-east-1` only)
 
-### `mailbox-go` (Go lambdas)
+- `edge-stack-template.json`
+- `lambdas/<name>.zip`
 
-If Go lambdas are released as a group (one version for all), publish them under one package version:
+### `mailbox-go` (Go Lambdas)
 
-- `packages/mailbox-go/vA.B.C/lambdas/<name>.zip`
+The Go Lambdas are released as a group under one package version:
+
+- `lambdas/<name>.zip`
 
 ### UI packages
 
-UI bundles are single zips per UI package:
+Each UI bundle is a single zip:
 
-- `packages/mailbox-admin-ui/vM.N.P/admin-ui.zip`
-- `packages/mailbox-webmail-ui/vQ.R.S/webmail-ui.zip`
+- `mailbox-admin-ui`: `admin-ui.zip`
 
-## Examples
-
-### Edge template URL (CloudFormation TemplateURL)
-
-Release `mailbox-cdk v1.4.0` (in bucket `mailbox-artifacts-us-east-1`):
-
-- Key: `packages/mailbox-cdk/v1.4.0/edge/edge-stack-template.json`
-
-HTTPS URL form:
-
-- `https://mailbox-artifacts-us-east-1.s3.us-east-1.amazonaws.com/packages/mailbox-cdk/v1.4.0/edge/edge-stack-template.json`
-
-### Channel publish location
-
-Channel `main`:
-
-- `packages/mailbox-cdk/channels/main/edge/edge-stack-template.json`
-- `packages/mailbox-cdk/channels/main/edge/lambdas/jmap-blob-download.zip`
-- `packages/mailbox-cdk-shared/channels/main/regional/lambdas/stack-deployer.zip`
-
-## Notes on CloudFormation/Lambda constraints
+## Constraints
 
 - Lambda code must be in an S3 bucket in the same region as the Lambda.
-- Edge artifacts always live in the `us-east-1` publication bucket.
-- Regional artifacts live in the publication bucket for the region being deployed.
+- Edge artifacts always live in the `us-east-1` bucket.
+- Regional artifacts live in the bucket of the region being deployed.
