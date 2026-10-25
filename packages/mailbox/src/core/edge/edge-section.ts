@@ -227,7 +227,7 @@ export class EdgeSection extends Construct {
   /** One SAN certificate for the api, jmap, ws and mcp names; it must live in this stack's region, unlike the CloudFront certificate in us-east-1. */
   private createRegionalCertificate(hostedZone: route53.IHostedZone): acm.ICertificate {
     const { domains } = this.props.addressing;
-    const mcpName     = `mcp.${domains.domainName}`;
+    const mcpName     = domains.mcp;
     const names       = [domains.api, domains.jmap, domains.ws, mcpName];
 
     const certificate = new acm.CfnCertificate(this, 'regional-api-certificate', {

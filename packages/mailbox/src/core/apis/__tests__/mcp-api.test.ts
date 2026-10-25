@@ -3,7 +3,7 @@
 /**
  * McpApi tests: what the construct itself decides.
  *
- * Pins that the API is served on `mcp.<domainName>` with the given certificate and mapped onto
+ * Pins that the API is served on the host it is given with the given certificate and mapped onto
  * that domain, and that all four proxied methods go through the given authorizer. A method that
  * loses its authorizer stays green in tsc and synth, so these assertions are the only guard.
  */
@@ -36,7 +36,7 @@ describe('McpApi', () => {
       jmapApiGateway,
       authorizerLambda,
       certificate:      certificate(stack, 'mcp.example.com'),
-      domainName:       'example.com',
+      host:             'mcp.example.com',
       scopeMap:         { 'mail.read': [Permission.MAIL_READ] },
       artifactResolver: new PinnedArtifactResolver({
         packages:         {
@@ -49,7 +49,7 @@ describe('McpApi', () => {
     });
   });
 
-  it('serves on mcp.<domainName>, maps the API onto the domain and publishes its target', () => {
+  it('serves on the given host, maps the API onto the domain and publishes its target', () => {
     const template = Template.fromStack(stack);
 
     expect(sut.domainTarget).toBeDefined();

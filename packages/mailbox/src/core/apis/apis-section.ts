@@ -270,7 +270,7 @@ export class ApisSection extends Construct {
       jmapApiGateway:   jmapApi.httpApi,
       authorizerLambda: jmapApi.authorizerLambda,
       certificate:      props.edge.regionalCertificate,
-      domainName:       props.mailboxDomains.domainName,
+      host:             props.mailboxDomains.mcp,
       scopeMap:         this.props.authProvider.scopeMap,
       artifactResolver: this.props.artifactResolver,
     });

@@ -154,6 +154,18 @@ describe('ApisSection', () => {
     Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::DomainName', { DomainName: 'mcp.example.com' });
   });
 
+  it('addEndpoints serves the MCP API on the namespaced MCP host of the mailbox domains', () => {
+    const section = newSection();
+
+    section.addEndpoints(endpointsProps({
+      enableMcp:      true,
+      mailboxDomains: new MailboxDomains({ domainName: 'example.com', prefix: 'mail' }),
+      edge:           { regionalCertificate: acm.Certificate.fromCertificateArn(stack, 'regional-certificate', 'arn:aws:acm:us-west-2:123456789012:certificate/regional') },
+    }));
+
+    Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::DomainName', { DomainName: 'mcp.mail.example.com' });
+  });
+
   it('addEndpoints sends system mail from the domain of the mailbox domains', () => {
     const section = newSection();
 

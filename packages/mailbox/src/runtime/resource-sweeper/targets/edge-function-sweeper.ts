@@ -1,5 +1,5 @@
 import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand }    from '@aws-sdk/client-lambda';
-import { parseArn, type LoggerBuffer }                                from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { CaughtError, parseArn, type LoggerBuffer }                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import { OwnershipCheckedDelete }                                     from '../ownership-checked-delete';
 import type { EdgeFunctionRemovalInput, TargetResult, TargetSweeper } from '../removal';
@@ -25,15 +25,14 @@ export class EdgeFunctionSweeper implements TargetSweeper<EdgeFunctionRemovalInp
 
   /**
    * Deletes the function when it belongs to the root stack. Resolves to `SUCCESS` once the function is gone
-   * (deleted now, or already absent), `FAILED` on a root stack mismatch, and `RETRY` on any other
-   * error. Never rejects.
+   * (deleted now, or already absent), `RETRY` while CloudFront replicas of it are still draining, and
+   * `FAILED` on a root stack mismatch or any other error. Never rejects.
    */
   public async sweep(input: EdgeFunctionRemovalInput): Promise<TargetResult> {
     return this.ownershipCheckedDelete.sweep({
-      label:         'Lambda function',
-      goneErrorName: 'ResourceNotFoundException',
-      // Any other error is retried, because it may be transient, e.g. CloudFront replicas of the function still draining.
-      otherErrors:           'retry',
+      label:                 'Lambda function',
+      goneErrorName:         'ResourceNotFoundException',
+      otherErrors:           'failed',
       findRootStackMismatch: () => this.findRootStackMismatch(input),
       deleteResource:        () => this.deleteFunction(input),
     });
@@ -47,9 +46,27 @@ export class EdgeFunctionSweeper implements TargetSweeper<EdgeFunctionRemovalInp
 
   private async deleteFunction(input: EdgeFunctionRemovalInput): Promise<TargetResult> {
     this.logger.info('Lambda function belongs to the root stack; attempting delete');
-    await this.lambdaClient.send(new DeleteFunctionCommand({ FunctionName: this.functionNameOf(input) }));
+    try {
+      await this.lambdaClient.send(new DeleteFunctionCommand({ FunctionName: this.functionNameOf(input) }));
+    } catch (thrown) {
+      return this.resultOfDeleteFailure(thrown);
+    }
     this.logger.info('Lambda function deleted successfully');
     return this.results.done();
+  }
+
+  /** A delete refused because CloudFront replicas still hold the function is retried; any other failure is rethrown for the shared answer. */
+  private resultOfDeleteFailure(thrown: unknown): TargetResult {
+    const error = new CaughtError(thrown);
+    if (!this.isReplicaInUse(error)) {
+      throw thrown;
+    }
+    this.logger.warn('Lambda function still replicated; will retry', { errorName: error.name, errorMessage: error.message });
+    return this.results.retry(error.describe());
+  }
+
+  private isReplicaInUse(error: CaughtError): boolean {
+    return error.is('InvalidParameterValueException') && error.messageIncludes('replicated');
   }
 
   private functionNameOf(input: EdgeFunctionRemovalInput): string {

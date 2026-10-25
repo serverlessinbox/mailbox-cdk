@@ -24,24 +24,24 @@ export interface McpApiProps {
   readonly jmapApiGateway: IHttpApi;
   /** Authorizer Lambda that protects every MCP route. */
   readonly authorizerLambda: lambda.IFunction;
-  /** Regional ACM certificate that covers `mcp.<domainName>`, in the same region as the API. */
+  /** Regional ACM certificate that covers the MCP host, in the same region as the API. */
   readonly certificate: acm.ICertificate;
-  /** Base domain; the API is served on `mcp.<domainName>`. */
-  readonly domainName: string;
-  readonly scopeMap:   ScopeMap;
+  /** The MCP host the API is served on, e.g. mcp.example.com or, with a namespace, mcp.mail.example.com. */
+  readonly host:     string;
+  readonly scopeMap: ScopeMap;
   /** Artifact resolver for Lambda code resolution. */
   readonly artifactResolver: IArtifactResolver;
 }
 
 /**
  * The MCP (Model Context Protocol) HTTP API: one proxy route to the MCP handler Lambda behind a
- * Lambda authorizer, served on a custom domain `mcp.<domainName>`.
+ * Lambda authorizer, served on the custom domain it is given as `host`.
  *
  * It does not create the DNS record for that domain (it exposes `domainTarget` for that), and it
  * does not create the authorizer or the certificate it is given.
  */
 export class McpApi extends Construct {
-  /** CNAME target to publish (API Gateway regional domain) for `mcp.<domainName>`. */
+  /** CNAME target to publish (API Gateway regional domain) for the MCP host. */
   public readonly domainTarget: string;
 
   constructor(scope: Construct, id: string, props: McpApiProps) {
@@ -54,7 +54,7 @@ export class McpApi extends Construct {
     });
 
     const domain = new ApiCustomDomain(this, 'domain', {
-      domainName:  `mcp.${props.domainName}`,
+      domainName:  props.host,
       certificate: props.certificate,
     });
 

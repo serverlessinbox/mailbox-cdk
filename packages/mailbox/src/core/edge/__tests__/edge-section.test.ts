@@ -96,6 +96,17 @@ describe('EdgeSection', () => {
     });
   });
 
+  it('names the MCP host with the subdomain namespace in the certificate, as its API and DNS record do', () => {
+    const { stack } = newSection({
+      addressing: { domains: new MailboxDomains({ domainName: 'example.com', prefix: 'mail' }), edgePrefix: 'mail' },
+    });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::CertificateManager::Certificate', {
+      DomainName:              'api.mail.example.com',
+      SubjectAlternativeNames: ['jmap.mail.example.com', 'ws.mail.example.com', 'mcp.mail.example.com'],
+    });
+  });
+
   it('builds no regional certificate when the operator provides both API certificates', () => {
     const provided         = (stack: Stack, id: string): acm.ICertificate => acm.Certificate.fromCertificateArn(stack, id, 'arn:aws:acm:us-west-2:111122223333:certificate/provided');
     const { stack: probe } = newDeployerTestStack();
