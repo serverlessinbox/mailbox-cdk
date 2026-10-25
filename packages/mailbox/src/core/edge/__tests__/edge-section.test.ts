@@ -7,7 +7,7 @@
  * request because their inputs exist only after the UIs and the APIs.
  */
 import { ServerlessInboxTagKeys }                            from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                          from 'aws-cdk-lib/assertions';
+import { Match, Template }                                   from 'aws-cdk-lib/assertions';
 import * as acm                                              from 'aws-cdk-lib/aws-certificatemanager';
 import { Table }                                             from 'aws-cdk-lib/aws-dynamodb';
 import * as route53                                          from 'aws-cdk-lib/aws-route53';
@@ -38,7 +38,7 @@ function newSection(overrides: Partial<EdgeSectionProps> = {}): { stack: Stack; 
       blobStoreBucket: new Bucket(stack, 'blob-store'),
     },
     auth:           { authKeyStoreTable: new AuthKeyStoreTable(stack, 'auth-key-store-table') },
-    addressing:     { domains: new MailboxDomains({ domainName: 'example.com' }), edgePrefix: 'mail' },
+    addressing:     { domains: new MailboxDomains({ domainName: 'example.com' }) },
     hostedZone:     route53.HostedZone.fromHostedZoneAttributes(stack, 'zone', { hostedZoneId: 'Z0TESTZONE', zoneName: 'example.com' }),
     ...overrides,
   });
@@ -99,12 +99,46 @@ describe('EdgeSection', () => {
 
   it('names the MCP host with the subdomain namespace in the certificate, as its API and DNS record do', () => {
     const { stack } = newSection({
-      addressing: { domains: new MailboxDomains({ domainName: 'example.com', prefix: 'mail' }), edgePrefix: 'mail' },
+      addressing: { domains: new MailboxDomains({ domainName: 'example.com', prefix: 'mail' }) },
     });
 
     Template.fromStack(stack).hasResourceProperties('AWS::CertificateManager::Certificate', {
       DomainName:              'api.mail.example.com',
       SubjectAlternativeNames: ['jmap.mail.example.com', 'ws.mail.example.com', 'mcp.mail.example.com'],
+    });
+  });
+
+  it('hands the edge deployer the webmail, admin and cdn hosts of its domains', () => {
+    const { stack } = newSection();
+
+    Template.fromStack(stack).hasResourceProperties('Custom::MailboxEdgeDeployer', {
+      parameters: Match.objectLike({
+        webmailHost: 'webmail.example.com',
+        adminHost:   'admin.example.com',
+        cdnHost:     'cdn.example.com',
+      }),
+    });
+  });
+
+  it('hands the edge deployer the overridden and namespaced hosts, and no base domain or prefix', () => {
+    const { stack } = newSection({
+      addressing: {
+        domains: new MailboxDomains({
+          domainName:         'example.com',
+          prefix:             'mail',
+          subdomainOverrides: { webmail: 'inbox', admin: 'console', cdn: 'files' },
+        }),
+      },
+    });
+
+    Template.fromStack(stack).hasResourceProperties('Custom::MailboxEdgeDeployer', {
+      parameters: Match.objectLike({
+        webmailHost: 'inbox.mail.example.com',
+        adminHost:   'console.mail.example.com',
+        cdnHost:     'files.mail.example.com',
+        domainName:  Match.absent(),
+        prefix:      Match.absent(),
+      }),
     });
   });
 

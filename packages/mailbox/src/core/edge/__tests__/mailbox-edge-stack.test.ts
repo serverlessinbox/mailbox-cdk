@@ -8,13 +8,15 @@
 
 import { Template }                      from 'aws-cdk-lib/assertions';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
+import * as t                            from 'typanion';
 
 import {
   CloudFormationResource,
   isResourceOfType,
   readTags,
 } from '../../../__tests__/iam-test-helpers';
-import { MailboxEdgeStack }              from '../mailbox-edge-stack';
+import { MailboxEdgeStack }                from '../mailbox-edge-stack';
+import type { MailboxEdgeStackParameters } from '../mailbox-edge-stack';
 
 function synthEdgeStack(): Template {
   const app   = new App();
@@ -23,6 +25,37 @@ function synthEdgeStack(): Template {
     synthesizer: new BootstraplessSynthesizer(),
   });
   return Template.fromStack(stack);
+}
+
+const HOST_PARAMETERS: Array<keyof MailboxEdgeStackParameters> = ['webmailHost', 'adminHost', 'cdnHost'];
+
+const UNDECLARED_PARAMETERS = ['domainName', 'prefix'];
+
+const isParameterTable = t.isRecord(t.isPartial({
+  Type:           t.isOptional(t.isString()),
+  Default:        t.isOptional(t.isString()),
+  AllowedPattern: t.isOptional(t.isString()),
+}));
+const isHostParameter  = t.isPartial({
+  Type:           t.isLiteral('String'),
+  Default:        t.isLiteral(''),
+  AllowedPattern: t.isString(),
+});
+
+function hostParameterOf(template: Template, name: keyof MailboxEdgeStackParameters): t.InferType<typeof isHostParameter> {
+  const table: unknown   = template.toJSON().Parameters ?? {};
+  const errors: string[] = [];
+
+  if (!isParameterTable(table, { errors })) {
+    throw new Error(`The template parameters are malformed: ${errors.join('; ')}`);
+  }
+
+  const parameter: unknown = table[name];
+  if (!isHostParameter(parameter, { errors })) {
+    throw new Error(`Parameter ${name} is not an empty-by-default String with an AllowedPattern: ${errors.join('; ')}`);
+  }
+
+  return parameter;
 }
 
 function resourcesOfTemplate(template: Template): Record<string, CloudFormationResource> {
@@ -95,8 +128,6 @@ describe('MailboxEdgeStack template synthesis', () => {
     it('exposes the parameter schema the root stack passes in', () => {
       const parameters: unknown = synthEdgeStack().toJSON().Parameters ?? {};
 
-      expect(parameters).toHaveProperty('domainName');
-      expect(parameters).toHaveProperty('prefix');
       expect(parameters).toHaveProperty('hostedZoneId');
       expect(parameters).toHaveProperty('rootStack');
       expect(parameters).toHaveProperty('artifactBucket');
@@ -104,6 +135,29 @@ describe('MailboxEdgeStack template synthesis', () => {
       expect(parameters).toHaveProperty('jmapBlobDownloadKey');
       expect(parameters).toHaveProperty('jmapBlobDownloadS3VersionId');
       expect(parameters).toHaveProperty('jmapBlobDownloadRoleArn');
+    });
+
+    describe('host parameters', () => {
+      it.each(HOST_PARAMETERS)('declares %s as an empty-by-default parameter that accepts only an empty value or a DNS name', (name) => {
+        const parameter = hostParameterOf(synthEdgeStack(), name);
+        const pattern   = new RegExp(parameter.AllowedPattern);
+
+        expect(pattern.test('')).toBe(true);
+        expect(pattern.test('inbox.mail.example.com')).toBe(true);
+        expect(pattern.test('a..b')).toBe(false);
+        expect(pattern.test('-x.example.com')).toBe(false);
+      });
+
+      it.each(UNDECLARED_PARAMETERS)('does not declare %s', (name) => {
+        expect(synthEdgeStack().toJSON().Parameters).not.toHaveProperty(name);
+      });
+
+      it('names the certificate after the webmail host and adds the admin and cdn hosts in that order', () => {
+        synthEdgeStack().hasResourceProperties('AWS::CertificateManager::Certificate', {
+          DomainName:              { Ref: 'webmailHost' },
+          SubjectAlternativeNames: [{ Ref: 'adminHost' }, { Ref: 'cdnHost' }],
+        });
+      });
     });
 
     it('names the Lambda@Edge function, its version and the version output jmap-blob-download', () => {

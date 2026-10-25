@@ -2,10 +2,9 @@
 
 /**
  * Pins the branches of the addressing a Mailbox resolves: the given domain, an empty domain when
- * none is given, the namespace condition and edge prefix with and without a subdomain namespace,
- * and the optional UI URLs. A domain that is dropped points every endpoint at the wrong host; a
- * wrong edge prefix points the edge stack at the wrong host names; a URL present for a disabled UI
- * leaks an endpoint that does not exist.
+ * none is given, the namespace condition with and without a subdomain namespace, and the optional
+ * UI URLs. A domain that is dropped points every endpoint at the wrong host; a URL present for a
+ * disabled UI leaks an endpoint that does not exist.
  */
 
 import { Template }                             from 'aws-cdk-lib/assertions';
@@ -44,17 +43,16 @@ describe('MailboxAddressing', () => {
     expect(addressing.urls.adminApi).toBe('https://api.');
   });
 
-  it('creates no namespace condition and uses the bare edge prefix without a subdomain namespace', () => {
+  it('creates no namespace condition without a subdomain namespace', () => {
     const stack = newStack();
 
     const addressing = MailboxAddressing.resolve(stack, { domainName: DOMAIN_NAME }, BOTH_UIS);
 
     expect(addressing.subdomainNamespaceCondition).toBeUndefined();
-    expect(addressing.edgePrefix).toBe('.');
     expect(Template.fromStack(stack).toJSON().Conditions).toBeUndefined();
   });
 
-  it('creates the namespace condition under the given scope and wraps the edge prefix in it', () => {
+  it('creates the namespace condition under the given scope', () => {
     const stack = newStack();
 
     const addressing = MailboxAddressing.resolve(stack, { domainName: DOMAIN_NAME, subdomainNamespace: 'team' }, BOTH_UIS);
@@ -62,9 +60,6 @@ describe('MailboxAddressing', () => {
     const conditionId = String(stack.resolve(addressing.subdomainNamespaceCondition?.logicalId));
 
     expect(Object.keys(Template.fromStack(stack).findConditions(conditionId))).toEqual([conditionId]);
-    expect(stack.resolve(addressing.edgePrefix)).toEqual({
-      'Fn::If': [conditionId, '.team.', '.'],
-    });
   });
 
   it('includes the url of each enabled UI', () => {

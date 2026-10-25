@@ -20,8 +20,7 @@ export interface MailboxEnabledUis {
 
 /**
  * Where a `Mailbox` is reachable: the condition that tells whether a subdomain namespace is set,
- * the endpoint domain names, the public URLs and the prefix the edge stack expects. Knows the
- * domain only as a name: it holds no hosted zone, no endpoint construct and creates no DNS record.
+ * the endpoint domain names and the public URLs. Knows the domain only as a name: it holds no hosted zone, no endpoint construct and creates no DNS record.
  *
  * Creates the namespace condition directly under the scope it receives, so its id and path are
  * those of the `Mailbox` itself.
@@ -31,10 +30,9 @@ export class MailboxAddressing {
     public readonly subdomainNamespaceCondition: cdk.CfnCondition | undefined,
     public readonly domains: MailboxDomains,
     public readonly urls: MailboxUrls,
-    public readonly edgePrefix: string,
   ) {}
 
-  /** Resolves the names, URLs and edge prefix of the domain in `props`. */
+  /** Resolves the names and URLs of the domain in `props`. */
   public static resolve(
     scope: Construct,
     props: MailboxAddressingProps,
@@ -53,7 +51,6 @@ export class MailboxAddressing {
       subdomainNamespaceCondition,
       domains,
       MailboxAddressing.urlsOf(domains, enabledUis),
-      MailboxAddressing.edgePrefixOf(domains, subdomainNamespaceCondition, props.subdomainNamespace),
     );
   }
 
@@ -74,22 +71,5 @@ export class MailboxAddressing {
       jmapApi:  `https://${domains.jmap}`,
       adminApi: `https://${domains.api}`,
     };
-  }
-
-  /** The edge stack expects "." for no namespace, or ".{label}." for a namespace. */
-  private static edgePrefixOf(
-    domains: MailboxDomains,
-    namespaceCondition: cdk.CfnCondition | undefined,
-    subdomainNamespace: string | undefined,
-  ): string {
-    if (namespaceCondition) {
-      return cdk.Token.asString(cdk.Fn.conditionIf(
-        namespaceCondition.logicalId,
-        cdk.Fn.join('', ['.', subdomainNamespace ?? '', '.']),
-        '.',
-      ));
-    }
-
-    return domains.prefix ? `.${domains.prefix}.` : '.';
   }
 }

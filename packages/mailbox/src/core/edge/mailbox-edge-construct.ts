@@ -14,11 +14,14 @@ import { JmapBlobDownloadLambda } from '../../resources/lambdas/jmap-blob-downlo
  * stack, so none of them can steer a decision at synth time.
  */
 export interface MailboxEdgeConstructProps {
-  /** Base domain name, e.g. example.com */
-  readonly domainName: string;
+  /** Finished host name of the Webmail UI, from `MailboxDomains`. The primary name of the edge certificate. */
+  readonly webmailHost: string;
 
-  /** Dot-wrapped prefix between endpoint and base domain: "." for none, or ".{label}.". */
-  readonly prefix: string;
+  /** Finished host name of the Admin UI, from `MailboxDomains`. */
+  readonly adminHost: string;
+
+  /** Finished host name of the blob CDN, from `MailboxDomains`. */
+  readonly cdnHost: string;
 
   /** Hosted zone the edge certificate is DNS-validated in. */
   readonly hostedZoneId: string;
@@ -76,21 +79,16 @@ export class MailboxEdgeConstruct extends Construct {
 
   /** An L1 certificate with native DNS validation: CloudFormation creates the Route53 records itself, without a CDK bootstrap custom resource. */
   private createCertificate(props: MailboxEdgeConstructProps): acm.CfnCertificate {
-    const admin   = `admin${props.prefix}${props.domainName}`;
-    const webmail = `webmail${props.prefix}${props.domainName}`;
-    const auth    = `auth${props.prefix}${props.domainName}`;
-    const cdn     = `cdn${props.prefix}${props.domainName}`;
-
     const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'hosted-zone', {
       hostedZoneId: props.hostedZoneId,
       zoneName:     props.hostedZoneName,
     });
 
     return new acm.CfnCertificate(this, 'edge-certificate', {
-      domainName:              webmail,
-      subjectAlternativeNames: [admin, auth, cdn],
+      domainName:              props.webmailHost,
+      subjectAlternativeNames: [props.adminHost, props.cdnHost],
       validationMethod:        'DNS',
-      domainValidationOptions: [webmail, admin, auth, cdn].map((domainName) => ({ domainName, hostedZoneId: hostedZone.hostedZoneId })),
+      domainValidationOptions: [props.webmailHost, props.adminHost, props.cdnHost].map((domainName) => ({ domainName, hostedZoneId: hostedZone.hostedZoneId })),
     });
   }
 

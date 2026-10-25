@@ -37,7 +37,6 @@ export interface MailboxDomainNamesProps {
 /** The base domain of a Mailbox and the name of each endpoint under it. */
 export interface IMailboxDomainNames {
   readonly domainName: string;
-  readonly prefix?:    string;
   /** The namespace suffix for relative labels: either ".{prefix}" or "", resolved once at construction. */
   readonly relativeNamespaceSuffix: string;
 
@@ -63,7 +62,6 @@ export class MailboxDomains implements IMailboxDomainNames {
   private static readonly DNS_LABEL_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
   public readonly domainName: string;
-  public readonly prefix?: string;
   public readonly relativeNamespaceSuffix: string;
 
   public readonly ws: string;
@@ -80,33 +78,34 @@ export class MailboxDomains implements IMailboxDomainNames {
 
   constructor(props: MailboxDomainNamesProps) {
     this.domainName = props.domainName === undefined ? '' : this.normalizeDomainName(props.domainName);
-    this.prefix     = this.normalizePrefix(props.prefix);
+
+    const prefix = this.normalizePrefix(props.prefix);
 
     const base = this.namespaced(
-      this.prefix,
+      prefix,
       props.prefixConditionName,
-      (prefix) => `${prefix}.${this.domainName}`,
+      (namespace) => `${namespace}.${this.domainName}`,
       this.domainName,
     );
 
     this.relativeNamespaceSuffix = this.namespaced(
-      this.prefix,
+      prefix,
       props.prefixConditionName,
-      (prefix) => `.${prefix}`,
+      (namespace) => `.${namespace}`,
       '',
     );
 
     const { subdomainOverrides } = props;
 
     this.labels = {
-      ws:      subdomainOverrides?.ws ?? 'ws',
-      api:     subdomainOverrides?.api ?? 'api',
-      jmap:    subdomainOverrides?.jmap ?? 'jmap',
-      webmail: subdomainOverrides?.webmail ?? 'webmail',
-      admin:   subdomainOverrides?.admin ?? 'admin',
-      cdn:     'cdn',
+      ws:      this.resolveLabel('ws', subdomainOverrides?.ws),
+      api:     this.resolveLabel('api', subdomainOverrides?.api),
+      jmap:    this.resolveLabel('jmap', subdomainOverrides?.jmap),
+      webmail: this.resolveLabel('webmail', subdomainOverrides?.webmail),
+      admin:   this.resolveLabel('admin', subdomainOverrides?.admin),
+      cdn:     this.resolveLabel('cdn', subdomainOverrides?.cdn),
       auth:    'auth',
-      mcp:     'mcp',
+      mcp:     this.resolveLabel('mcp', subdomainOverrides?.mcp),
     };
 
     this.ws      = `${this.labels.ws}.${base}`;
@@ -125,6 +124,27 @@ export class MailboxDomains implements IMailboxDomainNames {
 
   public relativeLabel(endpoint: MailboxEndpoint): string {
     return `${this.labels[endpoint]}${this.relativeNamespaceSuffix}`;
+  }
+
+  /**
+   * The endpoint's override, else its own name. A token is known only at deploy time, so it is
+   * passed through unchecked; any other override is lower-cased and must be a single DNS label.
+   */
+  private resolveLabel(endpoint: MailboxEndpoint, override: string | undefined): string {
+    if (override === undefined) {
+      return endpoint;
+    }
+
+    if (Token.isUnresolved(override)) {
+      return override;
+    }
+
+    const normalized = override.trim().toLowerCase();
+    if (!MailboxDomains.DNS_LABEL_RE.test(normalized)) {
+      throw new Error(`subdomain override "${endpoint}" must be a single valid DNS label, got: "${override}"`);
+    }
+
+    return normalized;
   }
 
   private normalizeDomainName(domainName: string): string {

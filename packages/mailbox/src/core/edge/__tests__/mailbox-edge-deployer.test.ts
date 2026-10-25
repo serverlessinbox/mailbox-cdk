@@ -2,8 +2,8 @@
 
 /**
  * Pins what the edge deployer hands CloudFormation and its worker. The custom resource's parameters are
- * the edge stack's inputs: a wrong prefix form breaks every edge hostname, a missing hosted zone
- * silently drops the certificate, and a table grant on the Lambda@Edge role widens what the public
+ * the edge stack's inputs: a wrong host name leaves a UI or the CDN out of the edge certificate, a
+ * missing hosted zone silently drops the certificate, and a table grant on the Lambda@Edge role widens what the public
  * blob endpoint can read.
  */
 
@@ -12,7 +12,7 @@ import { renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-
 import { Match, Template }                       from 'aws-cdk-lib/assertions';
 import { Table }                                 from 'aws-cdk-lib/aws-dynamodb';
 import * as route53                              from 'aws-cdk-lib/aws-route53';
-import { Stack, Token }                          from 'aws-cdk-lib';
+import type { Stack }                            from 'aws-cdk-lib';
 import { Construct }                             from 'constructs';
 import * as t                                    from 'typanion';
 
@@ -22,8 +22,10 @@ import {
 } from '../../../__tests__/deployer-test-helpers';
 import { AuthKeyStoreTable, type IAuthKeyStoreTable } from '../../../resources/tables/auth-key-store-table';
 import { DataTable }                                  from '../../../resources/tables/data-tables';
+import { MailboxDomains }                             from '../../domains/mailbox-domains';
 import { MailboxEdgeDeployer }                        from '../mailbox-edge-deployer';
 import type { MailboxEdgeDeployerProps }              from '../mailbox-edge-deployer';
+import type { MailboxEdgeStackParameters }            from '../mailbox-edge-stack';
 
 const DEPLOYER_RESOURCE_TYPE        = 'Custom::MailboxEdgeDeployer';
 const STACK_NAME_REF                = { Ref: 'AWS::StackName' };
@@ -62,7 +64,9 @@ function matchesAnyPattern(patterns: string[], value: string): boolean {
   return patterns.some((pattern) => new RegExp(`^${pattern.split('*').map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`).test(value));
 }
 
-const ITEM_TABLE_ARN   = 'arn:aws:dynamodb:us-west-2:111122223333:table/item';
+const ZONE_ONLY_PARAMETERS: Array<keyof MailboxEdgeStackParameters> = ['hostedZoneId', 'hostedZoneName', 'webmailHost', 'adminHost', 'cdnHost'];
+
+const ITEM_TABLE_ARN   ='arn:aws:dynamodb:us-west-2:111122223333:table/item';
 const CONFIG_TABLE_ARN = 'arn:aws:dynamodb:us-west-2:111122223333:table/config';
 
 interface SynthesizedDeployer {
@@ -93,7 +97,7 @@ function synthDeployer(
   const parent                      = parentId === undefined ? stack : new Construct(stack, parentId);
   const deployer                    = new MailboxEdgeDeployer(parent, 'edge-deployer', {
     artifactResolver,
-    domainName:        'example.com',
+    domains:           new MailboxDomains({ domainName: 'example.com' }),
     itemTable:         dataTable(stack, 'item-table', ITEM_TABLE_ARN),
     configTable:       dataTable(stack, 'config-table', CONFIG_TABLE_ARN),
     authKeyStoreTable: authKeyStoreTable(stack, 'auth-key-store-table'),
@@ -171,13 +175,12 @@ describe('MailboxEdgeDeployer', () => {
       });
     });
 
-    it('passes the domain, the JMAP blob download artifact, the tables, the log group and the tagging values as template parameters', () => {
+    it('passes the JMAP blob download artifact, the tables, the log group and the tagging values as template parameters', () => {
       const { artifactResolver, template } = synthDeployer();
       const jmapBlobDownload               = artifactResolver.resolve('mailbox-cdk-edge', 'lambdas/jmap-blob-download.zip');
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
         parameters: Match.objectLike({
-          domainName:           'example.com',
           artifactBucket:       jmapBlobDownload.bucket,
           jmapBlobDownloadKey:  jmapBlobDownload.key,
           itemTableArn:         ITEM_TABLE_ARN,
@@ -199,36 +202,31 @@ describe('MailboxEdgeDeployer', () => {
       });
     });
 
-    describe('prefix parameter', () => {
-      it.each([
-        { name: 'no prefix', prefix: undefined, expected: '.' },
-        { name: 'a bare label', prefix: 'mailbox', expected: '.mailbox.' },
-        { name: 'an already dot-wrapped label', prefix: '.mailbox.', expected: '.mailbox.' },
-        { name: 'a padded label with extra dots', prefix: '  ..mailbox..  ', expected: '.mailbox.' },
-        { name: 'a blank prefix', prefix: '   ', expected: '.' },
-      ])('wraps $name for the edge template', ({ prefix, expected }) => {
-        const { template } = synthDeployer(() => ({ prefix }));
-
-        template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
-          parameters: Match.objectLike({ prefix: expected }),
-        });
-      });
-
-      it('passes an unresolved token through untouched', () => {
-        const { template } = synthDeployer(() => ({ prefix: Token.asString({ Ref: 'PrefixParameter' }) }));
-
-        template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
-          parameters: Match.objectLike({ prefix: { Ref: 'PrefixParameter' } }),
-        });
-      });
-    });
-
     describe('hosted zone', () => {
       it('passes the zone to the edge stack', () => {
         const { template } = synthDeployer(withHostedZone);
 
         template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
           parameters: Match.objectLike({ hostedZoneId: 'Z0TESTZONE', hostedZoneName: 'example.com' }),
+        });
+      });
+
+      it('passes the webmail, admin and cdn hosts of its domains to the edge stack', () => {
+        const { template } = synthDeployer((stack) => ({
+          ...withHostedZone(stack),
+          domains: new MailboxDomains({
+            domainName:         'example.com',
+            prefix:             'team',
+            subdomainOverrides: { webmail: 'inbox', admin: 'console', cdn: 'files' },
+          }),
+        }));
+
+        template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
+          parameters: Match.objectLike({
+            webmailHost: 'inbox.team.example.com',
+            adminHost:   'console.team.example.com',
+            cdnHost:     'files.team.example.com',
+          }),
         });
       });
 
@@ -248,12 +246,17 @@ describe('MailboxEdgeDeployer', () => {
         expect(renderWithTokens(statements[0].Resource)).toBe('arn:<token>:route53:::hostedzone/Z0TESTZONE');
       });
 
-      it('leaves the zone parameters and the certificate out without a zone', () => {
-        const { deployer, template } = synthDeployer();
+      it.each(ZONE_ONLY_PARAMETERS)('leaves the %s parameter out without a zone', (parameter) => {
+        const { template } = synthDeployer();
 
         template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
-          parameters: Match.not(Match.objectLike({ hostedZoneId: Match.anyValue() })),
+          parameters: Match.not(Match.objectLike({ [parameter]: Match.anyValue() })),
         });
+      });
+
+      it('leaves the certificate out without a zone', () => {
+        const { deployer } = synthDeployer();
+
         expect(deployer.edgeCertificate).toBeUndefined();
       });
     });

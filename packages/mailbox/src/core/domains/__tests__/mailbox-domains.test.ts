@@ -9,7 +9,10 @@
 
 import { App, BootstraplessSynthesizer, CfnParameter, Stack } from 'aws-cdk-lib';
 
+import type { MailboxSubdomainOverrides }                     from '../../../mailbox-props';
 import { MailboxDomains }                                     from '../mailbox-domains';
+
+const OVERRIDABLE_ENDPOINTS: Array<keyof MailboxSubdomainOverrides> = ['ws', 'api', 'jmap', 'webmail', 'admin', 'cdn', 'mcp'];
 
 function newStack(): Stack {
   return new Stack(new App(), 'test-stack', { synthesizer: new BootstraplessSynthesizer() });
@@ -34,6 +37,27 @@ describe('MailboxDomains', () => {
       expect(domains.relativeLabel('admin')).toBe('console');
       expect(domains.jmap).toBe('mail-api.example.com');
       expect(domains.api).toBe('api.example.com');
+    });
+
+    it.each(OVERRIDABLE_ENDPOINTS)('lets the %s endpoint be overridden, in both the full and the relative name', (endpoint) => {
+      const domains = new MailboxDomains({ domainName: 'example.com', subdomainOverrides: { [endpoint]: 'custom' } });
+
+      expect(domains.fqdn(endpoint)).toBe('custom.example.com');
+      expect(domains.relativeLabel(endpoint)).toBe('custom');
+    });
+
+    it('lower-cases and trims an override label', () => {
+      const domains = new MailboxDomains({ domainName: 'example.com', subdomainOverrides: { admin: ' Console ' } });
+
+      expect(domains.admin).toBe('console.example.com');
+    });
+
+    it('keeps an override label that is only known at deploy time as a token', () => {
+      const stack   = newStack();
+      const label   = new CfnParameter(stack, 'cdnLabel').valueAsString;
+      const domains = new MailboxDomains({ domainName: 'example.com', subdomainOverrides: { cdn: label } });
+
+      expect(stack.resolve(domains.cdn)).toEqual({ 'Fn::Join': ['', [{ Ref: 'cdnLabel' }, '.example.com']] });
     });
 
     it('normalizes the domain to lower case without surrounding blanks or trailing dots', () => {
@@ -68,11 +92,21 @@ describe('MailboxDomains', () => {
     });
   });
 
+  describe('override validation', () => {
+    it.each([
+      ['a label with a dot', 'a.b'],
+      ['a label with a leading hyphen', '-x'],
+      ['a blank label', '  '],
+    ])('rejects %s, naming the endpoint and the value', (_description, label) => {
+      expect(() => new MailboxDomains({ domainName: 'example.com', subdomainOverrides: { cdn: label } }))
+        .toThrow(`subdomain override "cdn" must be a single valid DNS label, got: "${label}"`);
+    });
+  });
+
   describe('namespace', () => {
     it('puts the endpoints under the namespace label and adds it to the relative labels', () => {
       const domains = new MailboxDomains({ domainName: 'example.com', prefix: 'Team' });
 
-      expect(domains.prefix).toBe('team');
       expect(domains.api).toBe('api.team.example.com');
       expect(domains.relativeNamespaceSuffix).toBe('.team');
       expect(domains.relativeLabel('api')).toBe('api.team');
@@ -81,7 +115,6 @@ describe('MailboxDomains', () => {
     it.each(['', '.', ' '])('treats the blank namespace %j as none', (prefix) => {
       const domains = new MailboxDomains({ domainName: 'example.com', prefix });
 
-      expect(domains.prefix).toBeUndefined();
       expect(domains.api).toBe('api.example.com');
       expect(domains.relativeNamespaceSuffix).toBe('');
     });

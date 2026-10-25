@@ -5,7 +5,7 @@ import * as acm                                                                 
 import * as iam                                                                                                                            from 'aws-cdk-lib/aws-iam';
 import * as lambda                                                                                                                         from 'aws-cdk-lib/aws-lambda';
 import * as route53                                                                                                                        from 'aws-cdk-lib/aws-route53';
-import { Aws, CustomResource, Stack, Token }                                                                                               from 'aws-cdk-lib';
+import { Aws, CustomResource, Stack }                                                                                                      from 'aws-cdk-lib';
 import { Construct }                                                                                                                       from 'constructs';
 
 import { JmapBlobDownloadLambda }                                                                                                          from '../../resources/lambdas/jmap-blob-download-lambda';
@@ -13,6 +13,7 @@ import { MailboxEdgeDeployerWorkerLambda }                                      
 import { EdgeFunctionRole }                                                                                                                from '../../resources/roles/edge-function-role';
 import type { IAuthKeyStoreTable }                                                                                                         from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }                                                                                                                 from '../../resources/tables/data-tables';
+import type { IMailboxDomainNames }                                                                                                        from '../domains/mailbox-domains';
 
 import type { MailboxEdgeStackParameters }                                                                                                 from './mailbox-edge-stack';
 
@@ -20,11 +21,8 @@ import type { MailboxEdgeStackParameters }                                      
 export interface MailboxEdgeDeployerProps {
   readonly artifactResolver: IArtifactResolver;
 
-  /** Base domain name (e.g. example.com) */
-  readonly domainName: string;
-
-  /** Optional prefix between endpoint and base domain (e.g. "mailbox" -> admin.mailbox.example.com) */
-  readonly prefix?: string;
+  /** The endpoint names; the edge certificate covers the webmail, admin, auth and cdn names. */
+  readonly domains: IMailboxDomainNames;
 
   /** Route53 hosted zone for DNS validation and certificate creation (optional) */
   readonly hostedZone?: route53.IHostedZone;
@@ -147,7 +145,6 @@ export class MailboxEdgeDeployer extends Construct {
 
   private templateParameters(props: MailboxEdgeDeployerProps, jmapBlobDownload: ResolvedArtifact): MailboxEdgeStackParameters {
     return {
-      domainName:                  props.domainName,
       artifactBucket:              jmapBlobDownload.bucket,
       jmapBlobDownloadKey:         jmapBlobDownload.key,
       jmapBlobDownloadRoleArn:     this.jmapBlobDownloadRole.roleArn,
@@ -161,24 +158,15 @@ export class MailboxEdgeDeployer extends Construct {
       productVersion:              props.productVersion,
       deployerType:                props.deployerType,
       jmapBlobDownloadS3VersionId: jmapBlobDownload.versionId ?? '',
-      prefix:                      this.dotWrappedPrefix(props.prefix),
       ...(props.hostedZone
-        ? { hostedZoneId: props.hostedZone.hostedZoneId, hostedZoneName: props.hostedZone.zoneName }
+        ? {
+          hostedZoneId:   props.hostedZone.hostedZoneId,
+          hostedZoneName: props.hostedZone.zoneName,
+          webmailHost:    props.domains.webmail,
+          adminHost:      props.domains.admin,
+          cdnHost:        props.domains.cdn,
+        }
         : {}),
     };
-  }
-
-  /**
-   * The edge template expects a dot-wrapped prefix: "." for none, or ".{label}.". A bare label is
-   * wrapped, an unresolved token (e.g. from Fn.conditionIf) is passed through untouched, since
-   * trimming it would resolve it, and so is a prefix already wrapped.
-   */
-  private dotWrappedPrefix(prefix: string | undefined): string {
-    if (prefix !== undefined && Token.isUnresolved(prefix)) {
-      return prefix;
-    }
-
-    const label = (prefix ?? '').trim().replace(/^\.+/, '').replace(/\.+$/, '');
-    return label ? `.${label}.` : '.';
   }
 }

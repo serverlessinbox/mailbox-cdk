@@ -15,8 +15,8 @@ import { MailboxEdgeConstruct }             from './mailbox-edge-construct';
 
 /**
  * The values of the edge stack's CloudFormation parameters, one key per parameter. The stack declares
- * exactly these parameters and the deployer supplies a value for each; the hosted zone pair is
- * left out when the mailbox has no hosted zone.
+ * exactly these parameters and the deployer supplies a value for each; the hosted zone pair and the
+ * four host names are left out when the mailbox has no hosted zone.
  */
 export interface MailboxEdgeStackParameters {
   readonly rootStack:                   string;
@@ -24,8 +24,9 @@ export interface MailboxEdgeStackParameters {
   readonly rootRegion:                  string;
   readonly productVersion:              string;
   readonly deployerType:                ServerlessInboxDeployerType;
-  readonly domainName:                  string;
-  readonly prefix:                      string;
+  readonly webmailHost?:                string;
+  readonly adminHost?:                  string;
+  readonly cdnHost?:                    string;
   readonly hostedZoneId?:               string;
   readonly hostedZoneName?:             string;
   readonly artifactBucket:              string;
@@ -43,6 +44,15 @@ export interface MailboxEdgeStackParameters {
  * artifact locations, and the {@link MailboxEdgeConstruct} built from them.
  */
 export class MailboxEdgeStack extends cdk.Stack {
+  /** The shape shared by the four host parameters: empty (no hosted zone) or a DNS name ACM accepts. */
+  private static readonly HOST_PARAMETER: cdk.CfnParameterProps = {
+    type:    'String',
+    default: '',
+    // Match ACM domain validation (no trailing dot, no underscores, etc.).
+    allowedPattern:        '^$|^(((?!-)[A-Za-z0-9-]{0,62}[A-Za-z0-9])\\.)+((?!-)[A-Za-z0-9-]{1,62}[A-Za-z0-9])$',
+    constraintDescription: 'Must be empty or a valid DNS name like inbox.example.com (no trailing dot).',
+  };
+
   private static readonly PARAMETERS: Record<keyof MailboxEdgeStackParameters, cdk.CfnParameterProps> = {
     rootStack:                   {
       type:        'String',
@@ -67,19 +77,17 @@ export class MailboxEdgeStack extends cdk.Stack {
       default:       'cfn',
       allowedValues: ['cdk', 'cfn', 'marketplace'],
     },
-    domainName:                  {
-      type:        'String',
-      description: 'Base domain name (e.g. example.com)',
-      // Match ACM domain validation (no trailing dot, no underscores, etc.).
-      allowedPattern:        '^(\\*\\.)?(((?!-)[A-Za-z0-9-]{0,62}[A-Za-z0-9])\\.)+((?!-)[A-Za-z0-9-]{1,62}[A-Za-z0-9])$',
-      constraintDescription: 'Must be a valid DNS name like example.com (no trailing dot).',
+    webmailHost:                 {
+      ...MailboxEdgeStack.HOST_PARAMETER,
+      description: 'Finished host name of the Webmail UI; the primary name of the edge certificate',
     },
-    prefix:                      {
-      type:                  'String',
-      description:           'Prefix with dots: "." for no prefix, or ".{prefix}." for a prefix',
-      default:               '.',
-      allowedPattern:        '^\\.$|^\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.$',
-      constraintDescription: 'Use "." for no namespace, or use a dot-wrapped DNS label like ".mailbox."',
+    adminHost:                   {
+      ...MailboxEdgeStack.HOST_PARAMETER,
+      description: 'Finished host name of the Admin UI; a subject alternative name of the edge certificate',
+    },
+    cdnHost:                     {
+      ...MailboxEdgeStack.HOST_PARAMETER,
+      description: 'Finished host name of the blob CDN; a subject alternative name of the edge certificate',
     },
     hostedZoneId:                {
       type:        'String',
@@ -159,8 +167,9 @@ export class MailboxEdgeStack extends cdk.Stack {
       rootRegion:                  this.declareParameter('rootRegion'),
       productVersion:              this.declareParameter('productVersion'),
       deployerType:                this.declareParameter('deployerType') as ServerlessInboxDeployerType, // cast: the parameter's allowedValues are the deployer types
-      domainName:                  this.declareParameter('domainName'),
-      prefix:                      this.declareParameter('prefix'),
+      webmailHost:                 this.declareParameter('webmailHost'),
+      adminHost:                   this.declareParameter('adminHost'),
+      cdnHost:                     this.declareParameter('cdnHost'),
       hostedZoneId:                this.declareParameter('hostedZoneId'),
       hostedZoneName:              this.declareParameter('hostedZoneName'),
       artifactBucket:              this.declareParameter('artifactBucket'),
@@ -207,8 +216,9 @@ export class MailboxEdgeStack extends cdk.Stack {
 
   private createEdgeConstruct(parameters: Required<MailboxEdgeStackParameters>): MailboxEdgeConstruct {
     return new MailboxEdgeConstruct(this, 'edge', {
-      domainName:                parameters.domainName,
-      prefix:                    parameters.prefix,
+      webmailHost:               parameters.webmailHost,
+      adminHost:                 parameters.adminHost,
+      cdnHost:                   parameters.cdnHost,
       hostedZoneId:              parameters.hostedZoneId,
       hostedZoneName:            parameters.hostedZoneName,
       artifactBucket:            parameters.artifactBucket,

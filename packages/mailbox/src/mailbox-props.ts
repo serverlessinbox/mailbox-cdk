@@ -100,6 +100,16 @@ export interface MailboxSubdomainOverrides {
    * @default "ws"
    */
   readonly ws?: string;
+  /**
+   * Label for the blob CDN: `<label>.<domain>`.
+   * @default "cdn"
+   */
+  readonly cdn?: string;
+  /**
+   * Label for the MCP endpoint: `<label>.<domain>`.
+   * @default "mcp"
+   */
+  readonly mcp?: string;
 }
 
 /**

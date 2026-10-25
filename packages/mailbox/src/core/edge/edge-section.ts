@@ -36,8 +36,7 @@ export interface IEdgeAuthInputs {
 /** Where the mailbox is reachable, as {@link EdgeSection} uses it. */
 export interface IEdgeAddressing {
   /** The endpoint names; the regional certificate covers the api, jmap and ws names. */
-  readonly domains:    IMailboxDomainNames;
-  readonly edgePrefix: string;
+  readonly domains: IMailboxDomainNames;
 }
 
 /** What {@link EdgeSection.addBlobCdn} uses of the ui section. */
@@ -139,13 +138,11 @@ export class EdgeSection extends Construct {
     this.hostedZone = props.hostedZone;
     this.dnsZone    = props.hostedZone ? new DnsZone(props.hostedZone) : undefined;
 
-    const provided   = props.certificateOverrides;
-    const domainName = props.addressing.domains.domainName;
+    const provided = props.certificateOverrides;
 
     this.edgeStack = new MailboxEdgeDeployer(this, 'stack-deployer', {
-      domainName,
       artifactResolver:  props.artifactResolver,
-      prefix:            props.addressing.edgePrefix,
+      domains:           props.addressing.domains,
       hostedZone:        this.hostedZone,
       itemTable:         props.data.itemTable,
       configTable:       props.data.configTable,
