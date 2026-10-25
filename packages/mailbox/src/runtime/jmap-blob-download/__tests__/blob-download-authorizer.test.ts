@@ -98,8 +98,10 @@ describe('BlobDownloadAuthorizer', () => {
   });
 
   describe('a CORS preflight', () => {
-    it('is answered with the request origin, before any configuration or credential is looked at', async () => {
-      const request = originRequestOf({ method: 'OPTIONS', origin: 'https://webmail.example.com', customHeaders: null, authorization: null });
+    const ALLOWED_ORIGINS_HEADERS = { 'x-allowed-origins': 'https://webmail.example.com,https://admin.example.com' };
+
+    it('echoes an allowlisted origin, before any credential is looked at', async () => {
+      const request = originRequestOf({ method: 'OPTIONS', origin: 'https://webmail.example.com', customHeaders: ALLOWED_ORIGINS_HEADERS, authorization: null });
 
       const answer = await authorizer.authorize(request) as CloudFrontResponse;
 
@@ -107,13 +109,32 @@ describe('BlobDownloadAuthorizer', () => {
       expect(answer.headers['access-control-allow-origin']).toEqual([
         { key: 'Access-Control-Allow-Origin', value: 'https://webmail.example.com' },
       ]);
+      expect(answer.headers['access-control-allow-credentials']).toEqual([
+        { key: 'Access-Control-Allow-Credentials', value: 'true' },
+      ]);
       expect(verifiersFor).not.toHaveBeenCalled();
     });
 
-    it('allows any origin when the request names none', async () => {
-      const answer = await authorizer.authorize(originRequestOf({ method: 'OPTIONS' })) as CloudFrontResponse;
+    it('answers a foreign origin with no CORS headers', async () => {
+      const request = originRequestOf({ method: 'OPTIONS', origin: 'https://evil.example.org', customHeaders: ALLOWED_ORIGINS_HEADERS });
 
-      expect(answer.headers['access-control-allow-origin']).toEqual([{ key: 'Access-Control-Allow-Origin', value: '*' }]);
+      const answer = await authorizer.authorize(request) as CloudFrontResponse;
+
+      expect(answer.headers).toEqual({});
+    });
+
+    it('answers a request that names no origin with no CORS headers', async () => {
+      const answer = await authorizer.authorize(originRequestOf({ method: 'OPTIONS', customHeaders: ALLOWED_ORIGINS_HEADERS })) as CloudFrontResponse;
+
+      expect(answer.headers).toEqual({});
+    });
+
+    it('answers an allowlisted origin with no CORS headers when the allowlist header is absent', async () => {
+      const request = originRequestOf({ method: 'OPTIONS', origin: 'https://webmail.example.com', customHeaders: {} });
+
+      const answer = await authorizer.authorize(request) as CloudFrontResponse;
+
+      expect(answer.headers).toEqual({});
     });
   });
 

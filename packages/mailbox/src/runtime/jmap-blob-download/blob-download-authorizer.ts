@@ -5,7 +5,7 @@ import { toEncodedBlobId, type EncodedBlobId, type ParsedBlobId }               
 import { BlobRequestRejected }                                                                     from './blob-id/blob-request-rejected';
 import { firstHeaderValue, type CloudFrontRequest }                                                from './cloudfront/cloudfront-event';
 import { corsPreflightResponse, errorResponse, type CloudFrontResponse }                           from './cloudfront/cloudfront-responses';
-import { extractConfig, type Config }                                                              from './config';
+import { extractAllowedOrigins, extractConfig, type Config }                                       from './config';
 import type { HmacTokenPayload, VerifiedJwt }                                                      from './verifiers/auth-tokens';
 import type { Verifiers }                                                                          from './verifiers/region-bound-verifiers';
 
@@ -45,7 +45,7 @@ export class BlobDownloadAuthorizer {
    */
   public async authorize(request: CloudFrontRequest): Promise<CloudFrontRequest | CloudFrontResponse> {
     if (request.method === 'OPTIONS') {
-      return corsPreflightResponse(firstHeaderValue(request.headers, 'origin'));
+      return corsPreflightResponse(firstHeaderValue(request.headers, 'origin'), extractAllowedOrigins(request));
     }
 
     const config        = this.readConfig(request);

@@ -24,8 +24,10 @@ describe('corsPreflightResponse', () => {
     'access-control-max-age':           [{ key: 'Access-Control-Max-Age', value: '3600' }],
   };
 
-  it('echoes the request origin', () => {
-    expect(corsPreflightResponse('https://webmail.example.com')).toEqual({
+  const allowedOrigins = ['https://webmail.example.com'];
+
+  it('echoes an allowlisted origin with credentialed CORS', () => {
+    expect(corsPreflightResponse('https://webmail.example.com', allowedOrigins)).toEqual({
       status:            '200',
       statusDescription: 'OK',
       headers:           {
@@ -35,9 +37,15 @@ describe('corsPreflightResponse', () => {
     });
   });
 
-  it('allows any origin when the request names none', () => {
-    expect(corsPreflightResponse(undefined).headers['access-control-allow-origin']).toEqual([
-      { key: 'Access-Control-Allow-Origin', value: '*' },
-    ]);
+  it('answers a foreign origin with no CORS headers', () => {
+    expect(corsPreflightResponse('https://evil.example.org', allowedOrigins)).toEqual({
+      status:            '200',
+      statusDescription: 'OK',
+      headers:           {},
+    });
+  });
+
+  it('answers a request that names no origin with no CORS headers', () => {
+    expect(corsPreflightResponse(undefined, allowedOrigins).headers).toEqual({});
   });
 });

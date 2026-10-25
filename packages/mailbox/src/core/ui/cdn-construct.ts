@@ -24,7 +24,7 @@ export interface CdnProps {
   readonly blobStore:         IBucket;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
 
-  /** Origins allowed to download cross-origin. Unset or empty adds no CORS response headers policy. */
+  /** Origins allowed to download cross-origin with credentials. Unset or empty allows none: no CORS headers are answered. */
   readonly allowedOrigins?: string[];
 
   /** Pre-deployed Lambda@Edge version (us-east-1). */
@@ -96,14 +96,17 @@ export class Cdn extends Construct {
       'x-auth-key-store-table': props.authKeyStoreTable.tableName,
       'x-region':               cdk.Aws.REGION,
       'x-jwt-algorithms':       'RS256',
+      ...(props.allowedOrigins && props.allowedOrigins.length > 0
+        ? { 'x-allowed-origins': props.allowedOrigins.join(',') }
+        : {}),
     };
   }
 
   private createCachePolicy(): cloudfront.CachePolicy {
     return new cloudfront.CachePolicy(this, 'blob-cache-policy', {
       comment:                    'Cache policy for email blobs with auth',
-      defaultTtl:                 cdk.Duration.hours(24),
-      maxTtl:                     cdk.Duration.days(365),
+      defaultTtl:                 cdk.Duration.hours(1),
+      maxTtl:                     cdk.Duration.hours(1),
       minTtl:                     cdk.Duration.seconds(0),
       headerBehavior:             cloudfront.CacheHeaderBehavior.allowList('Authorization'),
       queryStringBehavior:        cloudfront.CacheQueryStringBehavior.all(),
@@ -113,20 +116,25 @@ export class Cdn extends Construct {
     });
   }
 
-  private createResponseHeadersPolicy(allowedOrigins: string[] | undefined): cloudfront.ResponseHeadersPolicy | undefined {
-    if (!allowedOrigins || allowedOrigins.length === 0) {
-      return undefined;
-    }
+  private createResponseHeadersPolicy(allowedOrigins: string[] | undefined): cloudfront.ResponseHeadersPolicy {
     return new cloudfront.ResponseHeadersPolicy(this, 'blob-response-headers-policy', {
-      comment:      'CORS policy for email blob downloads',
-      corsBehavior: {
-        accessControlAllowOrigins:     allowedOrigins,
-        accessControlAllowMethods:     ['GET', 'HEAD', 'OPTIONS'],
-        accessControlAllowHeaders:     ['Authorization', 'Content-Type'],
-        accessControlAllowCredentials: true,
-        accessControlMaxAge:           cdk.Duration.hours(1),
-        originOverride:                true,
+      comment:                 'Security and CORS headers for email blob downloads',
+      securityHeadersBehavior: {
+        contentTypeOptions:    { override: true },
+        contentSecurityPolicy: { contentSecurityPolicy: 'sandbox', override: true },
       },
+      ...(allowedOrigins && allowedOrigins.length > 0
+        ? {
+          corsBehavior: {
+            accessControlAllowOrigins:     allowedOrigins,
+            accessControlAllowMethods:     ['GET', 'HEAD', 'OPTIONS'],
+            accessControlAllowHeaders:     ['Authorization', 'Content-Type'],
+            accessControlAllowCredentials: true,
+            accessControlMaxAge:           cdk.Duration.hours(1),
+            originOverride:                true,
+          },
+        }
+        : {}),
     });
   }
 }

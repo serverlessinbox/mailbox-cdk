@@ -15,6 +15,8 @@ export type BlobDownloadOriginHeaders = {
   'x-auth-key-store-table': string;
   'x-region':               string;
   'x-jwt-algorithms':       SupportedAlgorithm;
+  /** The origins allowed to download cross-origin, comma-separated; absent when no origin is allowed. */
+  'x-allowed-origins'?:     string;
 };
 
 /** Narrows a value to one of the `SUPPORTED_ALGORITHMS`. */

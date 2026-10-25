@@ -71,6 +71,24 @@ describe('Cdn', () => {
 
       template.hasResourceProperties('AWS::CloudFront::Distribution', hasOriginHeader(headerName, headerValue));
     });
+
+    it('sets x-allowed-origins to the comma-joined allowed origins', () => {
+      const { template } = synthesizeCdn({ allowedOrigins: ['https://mail.example.com', 'https://admin.example.com'] });
+
+      template.hasResourceProperties(
+        'AWS::CloudFront::Distribution',
+        hasOriginHeader('x-allowed-origins', 'https://mail.example.com,https://admin.example.com'),
+      );
+    });
+
+    it.each([
+      ['unset', undefined],
+      ['empty', []],
+    ])('omits x-allowed-origins when the allowed origins are %s', (_label, allowedOrigins) => {
+      const { template } = synthesizeCdn({ allowedOrigins });
+
+      expect(JSON.stringify(template.toJSON())).not.toContain('x-allowed-origins');
+    });
   });
 
   describe('CORS response headers policy', () => {
@@ -89,10 +107,40 @@ describe('Cdn', () => {
     it.each([
       ['unset', undefined],
       ['empty', []],
-    ])('is not created when the allowed origins are %s', (_label, allowedOrigins) => {
+    ])('carries no CORS config when the allowed origins are %s', (_label, allowedOrigins) => {
       const { template } = synthesizeCdn({ allowedOrigins });
 
-      template.resourceCountIs('AWS::CloudFront::ResponseHeadersPolicy', 0);
+      template.hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
+        ResponseHeadersPolicyConfig: Match.objectLike({ CorsConfig: Match.absent() }),
+      });
+    });
+  });
+
+  describe('security response headers policy', () => {
+    it.each([
+      ['with', { allowedOrigins: ['https://mail.example.com'] }],
+      ['without', {}],
+    ])('sets nosniff and a sandboxing CSP %s allowed origins', (_label, overrides) => {
+      const { template } = synthesizeCdn(overrides);
+
+      template.hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
+        ResponseHeadersPolicyConfig: Match.objectLike({
+          SecurityHeadersConfig: Match.objectLike({
+            ContentTypeOptions:    { Override: true },
+            ContentSecurityPolicy: { ContentSecurityPolicy: 'sandbox', Override: true },
+          }),
+        }),
+      });
+    });
+  });
+
+  describe('cache policy', () => {
+    it('caches authorized blobs for at most one hour', () => {
+      const { template } = synthesizeCdn();
+
+      template.hasResourceProperties('AWS::CloudFront::CachePolicy', {
+        CachePolicyConfig: Match.objectLike({ DefaultTTL: 3600, MaxTTL: 3600 }),
+      });
     });
   });
 

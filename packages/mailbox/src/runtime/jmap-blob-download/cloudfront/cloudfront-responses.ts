@@ -27,15 +27,22 @@ export function errorResponse(status: number, message: string): CloudFrontRespon
   };
 }
 
-/** The answer to a CORS preflight: any origin is echoed back, or `*` when the request names none. */
-export function corsPreflightResponse(requestOrigin: string | undefined): CloudFrontResponse {
+/**
+ * The answer to a CORS preflight. An origin on the allowlist is echoed back with credentialed CORS; any other
+ * origin, or none, gets a 200 with no CORS headers, so the browser refuses the cross-origin request.
+ */
+export function corsPreflightResponse(requestOrigin: string | undefined, allowedOrigins: readonly string[]): CloudFrontResponse {
+  if (!requestOrigin || !allowedOrigins.includes(requestOrigin)) {
+    return { status: '200', statusDescription: 'OK', headers: {} };
+  }
+
   return {
     status:            '200',
     statusDescription: 'OK',
     headers:           {
       'access-control-allow-origin':      [{
         key:   'Access-Control-Allow-Origin',
-        value: requestOrigin || '*',
+        value: requestOrigin,
       }],
       'access-control-allow-methods':     [{
         key:   'Access-Control-Allow-Methods',

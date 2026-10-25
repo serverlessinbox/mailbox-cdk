@@ -32,6 +32,7 @@ export type ConfigReading = ConfigRead | ConfigRejected;
 const AUTH_KEY_STORE_TABLE_HEADER = 'x-auth-key-store-table' satisfies keyof BlobDownloadOriginHeaders;
 const REGION_HEADER               = 'x-region' satisfies keyof BlobDownloadOriginHeaders;
 const JWT_ALGORITHMS_HEADER       = 'x-jwt-algorithms' satisfies keyof BlobDownloadOriginHeaders;
+const ALLOWED_ORIGINS_HEADER      = 'x-allowed-origins' satisfies keyof BlobDownloadOriginHeaders;
 
 // An AWS region code: a two-letter geography, one or more direction words and a number, such as `eu-west-1` or `us-gov-east-1`.
 const isRegionCode = t.cascade(t.isString(), [t.matchesRegExp(/^[a-z]{2}(-[a-z]+)+-\d$/)]);
@@ -80,4 +81,16 @@ export function extractConfig(request: CloudFrontRequest): ConfigReading {
       jwtAlgorithms,
     },
   };
+}
+
+/**
+ * The origins allowed to download cross-origin, from the `x-allowed-origins` header. An absent or empty header
+ * allows none, so a request is never answered with credentialed CORS by default.
+ */
+export function extractAllowedOrigins(request: CloudFrontRequest): readonly string[] {
+  const allowedOrigins = firstHeaderValue(request.origin?.s3?.customHeaders, ALLOWED_ORIGINS_HEADER);
+  if (!allowedOrigins) {
+    return [];
+  }
+  return allowedOrigins.split(',').map((origin) => origin.trim()).filter(Boolean);
 }

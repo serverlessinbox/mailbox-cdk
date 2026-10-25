@@ -6,7 +6,7 @@
  * is what an operator reads to find the broken distribution setting; a default for the region would hide it.
  */
 
-import { extractConfig }                         from '../config';
+import { extractAllowedOrigins, extractConfig }  from '../config';
 
 import { AUTH_KEY_STORE_TABLE, originRequestOf } from './jmap-blob-download-helpers';
 
@@ -89,5 +89,26 @@ describe('extractConfig', () => {
       kind:    'rejected',
       problem: 'header x-jwt-algorithms is not a comma-separated list of supported algorithms',
     });
+  });
+});
+
+describe('extractAllowedOrigins', () => {
+  it('splits the allowed-origins header into its origins, dropping blank entries', () => {
+    const request = originRequestOf({
+      customHeaders: { 'x-allowed-origins': 'https://webmail.example.com, https://admin.example.com,,' },
+    });
+
+    expect(extractAllowedOrigins(request)).toEqual(['https://webmail.example.com', 'https://admin.example.com']);
+  });
+
+  it.each<HeaderStateCase>([
+    { state: 'absent', customHeaders: { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE } },
+    { state: 'empty', customHeaders: { 'x-allowed-origins': '' } },
+  ])('allows no origin when the allowed-origins header is $state', ({ customHeaders }) => {
+    expect(extractAllowedOrigins(originRequestOf({ customHeaders }))).toEqual([]);
+  });
+
+  it('allows no origin when the custom origin headers are missing', () => {
+    expect(extractAllowedOrigins(originRequestOf({ customHeaders: null }))).toEqual([]);
   });
 });
