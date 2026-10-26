@@ -1,10 +1,10 @@
 export * from './audit/index';
 export * from './caller/index';
 export * from './errors/index';
-export * from './runtime/index';
+export * from './handler/index';
 export type { JsonValue }                                                from './json/index';
 
-// Legacy admin pipeline, kept only for the IdP users API until it moves onto `ServiceRuntime`.
+// Legacy admin pipeline.
 export type { ApiGatewayV2EventLike, ApiGatewayV2ResultLike }            from './api-gateway';
 export type { HandlerContext as LegacyHandlerContext, MethodSpec, ServiceSpec } from './service-spec';
 export { ServiceRegistry }                                               from './service-registry';

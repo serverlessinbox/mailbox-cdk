@@ -265,11 +265,40 @@ export declare class ConflictError extends Error {
 // errors/index.d.ts
 export { AlreadyExistsError, ConflictError, ForbiddenError, InvalidInputError, NotFoundError, UnauthenticatedError, } from './errors';
 
+// handler/addon-handler.d.ts
+import type { APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
+import type { AuthorizedEvent } from '../caller/authorized-event';
+import type { HandlerContext } from '../caller/handler-context';
+import type { JsonValue } from '../json/index';
+export type AddonHandler = (event: AuthorizedEvent) => Promise<APIGatewayProxyStructuredResultV2>;
+export interface Endpoint {
+    readonly entityType: string;
+    readonly action: string;
+}
+export type RequestWork = (context: HandlerContext, body: JsonValue) => Promise<JsonValue>;
+export interface Dispatch {
+    readonly endpoint: Endpoint;
+    readonly work: RequestWork;
+}
+
+// handler/index.d.ts
+export type { AddonHandler } from './addon-handler';
+export type { LogFields, RequestLogger } from './request-logger';
+
+// handler/request-logger.d.ts
+export type LogFields = Record<string, unknown>;
+export interface RequestLogger {
+    debug(message: string, fields?: LogFields): void;
+    warn(message: string, fields?: LogFields): void;
+    error(message: string, fields?: LogFields): void;
+    flush(): void;
+}
+
 // index.d.ts
 export * from './audit/index';
 export * from './caller/index';
 export * from './errors/index';
-export * from './runtime/index';
+export * from './handler/index';
 export type { JsonValue } from './json/index';
 export type { ApiGatewayV2EventLike, ApiGatewayV2ResultLike } from './api-gateway';
 export type { HandlerContext as LegacyHandlerContext, MethodSpec, ServiceSpec } from './service-spec';
@@ -301,60 +330,6 @@ export declare class JsonBodyReader {
 export type JsonValue = null | boolean | number | string | JsonValue[] | {
     [key: string]: JsonValue;
 };
-
-// runtime/index.d.ts
-export type { LogFields, RequestLogger } from './request-logger';
-export type { ServiceMethod } from './service-method';
-export { ServiceRuntime } from './service-runtime';
-
-// runtime/request-logger.d.ts
-export type LogFields = Record<string, unknown>;
-export interface RequestLogger {
-    debug(message: string, fields?: LogFields): void;
-    warn(message: string, fields?: LogFields): void;
-    error(message: string, fields?: LogFields): void;
-    flush(): void;
-}
-
-// runtime/service-method.d.ts
-import type { HandlerContext } from '../caller/handler-context';
-import type { JsonValue } from '../json/index';
-export interface ServiceMethod {
-    readonly admin?: boolean;
-    invoke(context: HandlerContext, body: JsonValue): Promise<unknown>;
-}
-
-// runtime/service-runtime.d.ts
-import type { APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
-import type { AuditSink } from '../audit/index';
-import type { AuthorizedEvent } from '../caller/authorized-event';
-import type { CallerContextReader } from '../caller/caller-context-reader';
-import type { RequestLogger } from './request-logger';
-import type { ServiceMethod } from './service-method';
-export declare class ServiceRuntime {
-    private readonly serviceName;
-    private readonly methods;
-    private readonly adminGroups;
-    private readonly callerReader;
-    private readonly auditSink;
-    private readonly logger;
-    readonly basePath: string;
-    private readonly entityType;
-    private readonly bodyReader;
-    constructor(basePath: string, serviceName: string, methods: ReadonlyMap<string, ServiceMethod>, adminGroups: readonly string[], callerReader: CallerContextReader, auditSink: AuditSink, logger: RequestLogger);
-    handle(event: AuthorizedEvent): Promise<APIGatewayProxyStructuredResultV2>;
-    private serve;
-    private methodOf;
-    private contextOf;
-    private recordAudit;
-    private redacted;
-    private authorize;
-    private answerFailure;
-    private statusOf;
-    private causeOf;
-    private textResponse;
-    private jsonResponse;
-}
 
 // service-registry.d.ts
 import type { ServiceSpec } from './service-spec';
