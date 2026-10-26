@@ -25,4 +25,6 @@ jobs:
       - uses: arduino/setup-task@b91d5d2c96a56797b48ac1e0e89220bf64044611 # v2.0.0
       - run: yarn install
       - run: yarn lint
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
       - run: yarn test
