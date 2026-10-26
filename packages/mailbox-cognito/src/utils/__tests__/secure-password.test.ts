@@ -2,76 +2,61 @@
 
 /**
  * Pins the password the bootstrap user Lambda generates for the initial admin credential: it meets the Cognito
- * policy, differs per call, and comes from the CSPRNG. A password from Math.random would be recoverable from
- * observed outputs.
+ * policy, differs per call, and every choice in it comes from the CSPRNG. A password from Math.random would be
+ * recoverable from observed outputs.
  */
 
 import type * as Crypto           from 'crypto';
 
 import { generateSecurePassword } from '../secure-password';
 
-describe('secure-password module', () => {
-  describe('generateSecurePassword', () => {
-    function validatePassword(password: string): { isValid: boolean; reason?: string } {
-      // Policy: minimum length 8, requires lowercase, uppercase, and digits
-      if (!password || password.length < 8) {
-        return { isValid: false, reason: `Password too short: ${password.length} chars` };
-      }
-      if (!/[a-z]/.test(password)) {
-        return { isValid: false, reason: 'Missing lowercase letter' };
-      }
-      if (!/[A-Z]/.test(password)) {
-        return { isValid: false, reason: 'Missing uppercase letter' };
-      }
-      if (!/[0-9]/.test(password)) {
-        return { isValid: false, reason: 'Missing digit' };
-      }
-      return { isValid: true };
+const MINIMUM_LENGTH_WITH_ONE_OF_EACH = 3;
+
+/** The Cognito policy the bootstrap user pool enforces: lowercase, uppercase and a digit. */
+function expectMeetsCognitoPolicy(password: string): void {
+  expect(password).toMatch(/[a-z]/);
+  expect(password).toMatch(/[A-Z]/);
+  expect(password).toMatch(/[0-9]/);
+}
+
+describe('generateSecurePassword', () => {
+  it('generates a password of the requested length', () => {
+    expect(generateSecurePassword(16)).toHaveLength(16);
+    expect(generateSecurePassword(99)).toHaveLength(99);
+  });
+
+  it('generates passwords that meet the Cognito policy', () => {
+    for (let i = 0; i < 10; i++) {
+      expectMeetsCognitoPolicy(generateSecurePassword(16));
     }
+  });
 
-    it('generates a password of the requested length', () => {
-      expect(generateSecurePassword(16)).toHaveLength(16);
-      expect(generateSecurePassword(99)).toHaveLength(99);
-    });
+  it('pads a requested length below 3 to the three characters that hold one of each kind', () => {
+    const password = generateSecurePassword(1);
 
-    it('generates passwords that meet Cognito policy requirements', () => {
-      const password   = generateSecurePassword(16);
-      const validation = validatePassword(password);
-      expect(validation.isValid).toBe(true);
-    });
+    expect(password).toHaveLength(MINIMUM_LENGTH_WITH_ONE_OF_EACH);
+    expectMeetsCognitoPolicy(password);
+  });
 
-    it('generates different passwords on successive invocations', () => {
-      const password1 = generateSecurePassword(16);
-      const password2 = generateSecurePassword(16);
+  it('generates different passwords on successive invocations', () => {
+    expect(generateSecurePassword(16)).not.toBe(generateSecurePassword(16));
+  });
 
-      expect(password1).not.toBe(password2);
-    });
+  it('takes every choice from crypto.randomInt and none from Math.random', () => {
+    const length     = 16;
+    const randomInt  = jest.spyOn(jest.requireActual<typeof Crypto>('crypto'), 'randomInt');
+    const mathRandom = jest.spyOn(Math, 'random');
+    // One pick per required kind, one per remaining character, one per swap of the shuffle.
+    const expectedPicks = MINIMUM_LENGTH_WITH_ONE_OF_EACH + (length - MINIMUM_LENGTH_WITH_ONE_OF_EACH) + (length - 1);
 
-    it('generates multiple passwords all meeting policy requirements', () => {
-      for (let i = 0; i < 10; i++) {
-        const password   = generateSecurePassword(16);
-        const validation = validatePassword(password);
-        if (!validation.isValid) {
-          throw new Error(
-            `Password ${i}: "${password}" failed validation: ${validation.reason}`
-          );
-        }
-        expect(validation.isValid).toBe(true);
-      }
-    });
+    try {
+      generateSecurePassword(length);
 
-    it('uses crypto.randomInt (CSPRNG) and never Math.random', () => {
-      // Regression test: ensure the implementation uses crypto.randomInt for all randomness.
-      const randomInt = jest.spyOn(jest.requireActual<typeof Crypto>('crypto'), 'randomInt');
-
-      try {
-        const password = generateSecurePassword(16);
-
-        expect(validatePassword(password).isValid).toBe(true);
-        expect(randomInt.mock.calls.length).toBeGreaterThan(15);
-      } finally {
-        randomInt.mockRestore();
-      }
-    });
+      expect(randomInt).toHaveBeenCalledTimes(expectedPicks);
+      expect(mathRandom).not.toHaveBeenCalled();
+    } finally {
+      randomInt.mockRestore();
+      mathRandom.mockRestore();
+    }
   });
 });

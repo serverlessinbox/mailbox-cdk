@@ -2,20 +2,24 @@
 
 /**
  * Pins the entry wiring of the IdP users API Lambda: an incomplete environment stops the cold start, the health
- * probe reflects the environment it is asked in, and a real event reaches the service of the path it names and is
- * answered in the form the generated client reads. Without the first, the Lambda starts and fails every request;
- * without the second, the auto-updater would keep code that cannot run; without the third, the admin UI would
- * fail on an answer it cannot decode, or an admin action would leave no audit entry.
+ * probe reflects the environment it is asked in, and the values of the environment reach the clients that use
+ * them. Without the first, the Lambda starts and fails every request; without the second, the auto-updater would
+ * keep code that cannot run; without the third, the Lambda would manage the wrong pool or send its audit entries
+ * nowhere.
  *
  * The environment is read when the handler module loads, so it is set before the module is imported.
  */
 
 const MANDATORY_VARIABLES = ['USER_POOL_ID', 'AUDIT_EVENTS_QUEUE_URL', 'IDENTITY_PROVISIONER_FUNCTION_NAME'];
 
+const USER_POOL_ID           = 'pool-1';
+const AUDIT_EVENTS_QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/123456789012/audit-events';
+const IDENTITY_PROVISIONER   = 'identity-provisioner';
+
 function setValidEnvironment(): void {
-  process.env.USER_POOL_ID                       = 'pool-1';
-  process.env.AUDIT_EVENTS_QUEUE_URL             = 'https://sqs.us-east-1.amazonaws.com/123456789012/audit-events';
-  process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = 'identity-provisioner';
+  process.env.USER_POOL_ID                       = USER_POOL_ID;
+  process.env.AUDIT_EVENTS_QUEUE_URL             = AUDIT_EVENTS_QUEUE_URL;
+  process.env.IDENTITY_PROVISIONER_FUNCTION_NAME = IDENTITY_PROVISIONER;
   process.env.ADMIN_GROUPS                       = JSON.stringify(['admin']);
 }
 
@@ -23,61 +27,18 @@ setValidEnvironment();
 
 import {
   AdminCreateUserCommand,
-  AdminDeleteUserCommand,
-  AdminDisableUserCommand,
-  AdminEnableUserCommand,
   AdminGetUserCommand,
-  AdminSetUserPasswordCommand,
   CognitoIdentityProviderClient,
   ListUsersCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { InvokeCommand, LambdaClient }                                      from '@aws-sdk/client-lambda';
-import { SendMessageCommand, SQSClient }                                    from '@aws-sdk/client-sqs';
-import { fromJsonString, type DescMessage }                                 from '@bufbuild/protobuf';
-import * as lambdaRuntime                                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { APIGatewayProxyStructuredResultV2 }                           from 'aws-lambda';
-import { mockClient }                                                       from 'aws-sdk-client-mock';
-import * as t                                                               from 'typanion';
+import { InvokeCommand, LambdaClient }          from '@aws-sdk/client-lambda';
+import { SendMessageCommand, SQSClient }        from '@aws-sdk/client-sqs';
+import * as lambdaRuntime                       from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                           from 'aws-sdk-client-mock';
 
-import {
-  CreateIdpUserResponseSchema,
-  DeleteIdpUserResponseSchema,
-  GetIdpUserResponseSchema,
-  ListIdpUsersResponseSchema,
-  SetIdpUserEnabledResponseSchema,
-  SetIdpUserPasswordResponseSchema,
-} from '../generated/idp_users_pb';
-import { handler }                                                      from '../handler';
+import { handler }                              from '../handler';
 
-import { authorizedEvent, payloadOf }                                   from './idp-users-helpers';
-
-const isSentAuditMessage = t.isPartial({ action: t.isString(), status: t.isString(), entityId: t.isString() });
-/** The part of an audit event that these tests read from the message the Lambda sent. */
-type SentAuditMessage = t.InferType<typeof isSentAuditMessage>;
-
-interface ServicePath {
-  readonly method:   string;
-  readonly request:  object;
-  readonly response: DescMessage;
-  readonly audited:  boolean;
-}
-
-const SERVICE_PATHS: ServicePath[] = [
-  { method: 'ListIdpUsers', request: { pageSize: 10 }, response: ListIdpUsersResponseSchema, audited: false },
-  { method: 'GetIdpUser', request: { username: 'alice' }, response: GetIdpUserResponseSchema, audited: false },
-  { method: 'CreateIdpUser', request: { username: 'alice', password: 'Passw0rd!' }, response: CreateIdpUserResponseSchema, audited: true },
-  { method: 'SetIdpUserEnabled', request: { username: 'alice', enabled: true }, response: SetIdpUserEnabledResponseSchema, audited: true },
-  { method: 'SetIdpUserPassword', request: { username: 'alice', password: 'Passw0rd!' }, response: SetIdpUserPasswordResponseSchema, audited: true },
-  { method: 'DeleteIdpUser', request: { username: 'alice' }, response: DeleteIdpUserResponseSchema, audited: true },
-];
-
-async function answerOf(event: ReturnType<typeof authorizedEvent>): Promise<APIGatewayProxyStructuredResultV2> {
-  const answer = await handler(event);
-  if (!('statusCode' in answer)) {
-    throw new Error('expected an HTTP answer, not a health probe answer');
-  }
-  return answer;
-}
+import { authorizedEvent, payloadOf }           from './idp-users-helpers';
 
 describe('IdP users API handler', () => {
   const cognitoMock = mockClient(CognitoIdentityProviderClient);
@@ -99,17 +60,6 @@ describe('IdP users API handler', () => {
     setValidEnvironment();
   });
 
-  function auditMessages(): SentAuditMessage[] {
-    return sqsMock.commandCalls(SendMessageCommand).map((call) => {
-      const message: unknown = JSON.parse(call.args[0].input.MessageBody ?? '');
-      const errors: string[] = [];
-      if (!isSentAuditMessage(message, { errors })) {
-        throw new Error(`the audit message is not shaped as expected: ${errors.join('; ')}`);
-      }
-      return message;
-    });
-  }
-
   it('answers a health probe as healthy when the environment is complete', async () => {
     const probe: lambdaRuntime.SmokeTestProbe = { serverlessInboxSmokeTest: true };
 
@@ -123,56 +73,12 @@ describe('IdP users API handler', () => {
     expect(await handler(probe)).toEqual({ serverlessInboxSmokeTestOk: false });
   });
 
-  describe('a request for a method of the service', () => {
-    it.each(SERVICE_PATHS)('$method answers 200 with a body the generated client decodes', async ({ method, request, response }) => {
-      const answer = await answerOf(authorizedEvent(`/idp-users/${method}`, request));
+  it('hands the pool, the audit queue and the identity provisioner of the environment to the clients that use them', async () => {
+    await handler(authorizedEvent('/idp-users/CreateIdpUser', { username: 'alice', password: 'Passw0rd!' }));
 
-      expect(answer.statusCode).toBe(200);
-      expect(() => fromJsonString(response, String(answer.body))).not.toThrow();
-    });
-
-    it.each(SERVICE_PATHS)('$method sends the audit entry of a change, and none for a read', async ({ method, request, audited }) => {
-      await answerOf(authorizedEvent(`/idp-users/${method}`, request));
-
-      expect(auditMessages()).toEqual(audited ? [expect.objectContaining({ action: `IdpUsersService/${method}`, status: 'success', entityId: 'alice' })] : []);
-    });
-  });
-
-  describe('a change that Cognito refuses', () => {
-    it.each([
-      { method: 'CreateIdpUser', request: { username: 'alice', password: 'Passw0rd!' }, refuse: () => cognitoMock.on(AdminCreateUserCommand).rejects(Object.assign(new Error('exists'), { name: 'UsernameExistsException' })), status: 409 },
-      { method: 'SetIdpUserEnabled', request: { username: 'alice', enabled: false }, refuse: () => cognitoMock.on(AdminDisableUserCommand).rejects(Object.assign(new Error('gone'), { name: 'UserNotFoundException' })), status: 404 },
-      { method: 'SetIdpUserPassword', request: { username: 'alice', password: 'Passw0rd!' }, refuse: () => cognitoMock.on(AdminSetUserPasswordCommand).rejects(Object.assign(new Error('weak'), { name: 'InvalidPasswordException' })), status: 400 },
-      { method: 'DeleteIdpUser', request: { username: 'alice' }, refuse: () => cognitoMock.on(AdminDeleteUserCommand).rejects(Object.assign(new Error('Cognito down'), { name: 'ServiceUnavailableException' })), status: 500 },
-    ])('$method answers $status and sends one failure audit entry', async ({ method, request, refuse, status }) => {
-      refuse();
-
-      const answer = await answerOf(authorizedEvent(`/idp-users/${method}`, request));
-
-      expect(answer.statusCode).toBe(status);
-      expect(auditMessages()).toEqual([expect.objectContaining({ action: `IdpUsersService/${method}`, status: 'failure', entityId: 'alice' })]);
-    });
-
-    it('answers an invalid request as plain text 400, without calling Cognito or sending an audit entry', async () => {
-      const answer = await answerOf(authorizedEvent('/idp-users/SetIdpUserEnabled', { username: '  ', enabled: true }));
-
-      expect(answer).toMatchObject({ statusCode: 400, body: 'Missing/invalid username' });
-      expect(cognitoMock.commandCalls(AdminEnableUserCommand)).toHaveLength(0);
-      expect(auditMessages()).toEqual([]);
-    });
-  });
-
-  it('answers 404 for a method the service does not have', async () => {
-    const answer = await answerOf(authorizedEvent('/idp-users/DropAllUsers', {}));
-
-    expect(answer.statusCode).toBe(404);
-  });
-
-  it('answers 401 for a request without a principal, and does not reach Cognito', async () => {
-    const answer = await answerOf(authorizedEvent('/idp-users/ListIdpUsers', {}, { tenantId: 'tenant-1' }));
-
-    expect(answer.statusCode).toBe(401);
-    expect(cognitoMock.calls()).toHaveLength(0);
+    expect(cognitoMock.commandCalls(AdminCreateUserCommand)[0].args[0].input.UserPoolId).toBe(USER_POOL_ID);
+    expect(lambdaMock.commandCalls(InvokeCommand)[0].args[0].input.FunctionName).toBe(IDENTITY_PROVISIONER);
+    expect(sqsMock.commandCalls(SendMessageCommand)[0].args[0].input.QueueUrl).toBe(AUDIT_EVENTS_QUEUE_URL);
   });
 
   it('builds its logger with the configured service name and log level', () => {

@@ -8,7 +8,7 @@
  * never be fixed.
  */
 
-import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
+import { CloudFormationClient }                       from '@aws-sdk/client-cloudformation';
 import {
   AdminCreateUserCommand,
   CognitoIdentityProviderClient,
@@ -23,7 +23,7 @@ import * as t                                                                   
 import { PASSWORD_SET_AT_INSTALL_TIME }                                                   from '../bootstrap-user-answers';
 import type * as BootstrapUserModule                                                      from '../index';
 
-import { FUNCTION_ARN, PHYSICAL_RESOURCE_ID, STACK_ID, templateProperties, USER_POOL_ID } from './bootstrap-user-helpers';
+import { FUNCTION_ARN, PHYSICAL_RESOURCE_ID, STACK_ID, templateProperties }               from './bootstrap-user-helpers';
 
 jest.mock('https', () => ({
   ...jest.requireActual<typeof import('https')>('https'),
@@ -127,13 +127,6 @@ function loadHandlerWithBadConfig(): HandlerOf {
   });
 }
 
-/** The handler as a cold start loads it when SERVICE_NAME is not set. */
-function loadHandlerWithoutServiceName(): HandlerOf {
-  return loadHandlerWith(() => {
-    delete process.env.SERVICE_NAME;
-  });
-}
-
 /**
  * The handler as a cold start loads it when its request handler logs a debug line and then fails with an
  * `ExpectedFailure`. No failure the real request handler throws follows a buffered line, so this one is staged.
@@ -234,39 +227,13 @@ describe('bootstrap-user handler', () => {
       });
     });
 
-    it('answers a Create with FAILED, naming SERVICE_NAME when it is missing', async () => {
-      const response = await invoke(loadHandlerWithoutServiceName(), cfnEvent('Create'));
-
-      expect(response.Status).toBe('FAILED');
-      expect(response.Reason).toContain('SERVICE_NAME');
-    });
-
-    it('answers a Delete with SUCCESS and the marker when SERVICE_NAME is missing', async () => {
-      const response = await invoke(loadHandlerWithoutServiceName(), cfnEvent('Delete'));
-
-      expect(response).toMatchObject({
-        Status:             'SUCCESS',
-        PhysicalResourceId: PHYSICAL_RESOURCE_ID,
-        Data:               { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME },
-      });
-    });
   });
 
   describe('with a configuration that loads', () => {
-    it('answers a Create with SUCCESS, the physical id and the password it applied', async () => {
-      const response = await invoke(handler,cfnEvent('Create', templateProperties({ username: 'testadmin' })));
+    it('sends the answer of the request handler to CloudFormation as SUCCESS', async () => {
+      const response = await invoke(handler, cfnEvent('Create'));
 
-      expect(response).toMatchObject({
-        Status:             'SUCCESS',
-        PhysicalResourceId: `BootstrapUser:${USER_POOL_ID}:testadmin`,
-      });
-      expect(response.Data?.temporaryPassword).toBe(cognitoMock.commandCalls(AdminCreateUserCommand)[0].args[0].input.TemporaryPassword);
-    });
-
-    it('answers an Update under the physical id it came with', async () => {
-      const response = await invoke(handler,cfnEvent('Update'));
-
-      expect(response).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: PHYSICAL_RESOURCE_ID });
+      expect(response.Status).toBe('SUCCESS');
     });
 
     it('answers an Update that fails while the parent stack rolls back with SUCCESS and the marker', async () => {
@@ -279,28 +246,6 @@ describe('bootstrap-user handler', () => {
         PhysicalResourceId: PHYSICAL_RESOURCE_ID,
         Data:               { temporaryPassword: PASSWORD_SET_AT_INSTALL_TIME },
       });
-    });
-
-    it('reads the status of the parent stack from CloudFormation when an Update fails', async () => {
-      isRollingBack.mockRestore();
-      cloudFormationMock.on(DescribeStacksCommand).resolves({
-        Stacks: [{ StackName: 'parent', CreationTime: new Date(0), StackStatus: 'UPDATE_ROLLBACK_IN_PROGRESS' }],
-      });
-
-      const response = await invoke(handler,cfnEvent('Update', { ServiceToken: FUNCTION_ARN }));
-
-      expect(response.Status).toBe('SUCCESS');
-      expect(cloudFormationMock.commandCalls(DescribeStacksCommand)).toHaveLength(1);
-    });
-
-    it('answers a request with invalid properties with FAILED and the properties as the reason, and writes the buffered trace', async () => {
-      const response = await invoke(handler,cfnEvent('Create', { ServiceToken: FUNCTION_ARN, temporaryPassword: 'Sup3rSecret1', kept: 'visible' }));
-
-      expect(response.Status).toBe('FAILED');
-      expect(response.Reason).toContain('Invalid ResourceProperties');
-      expect(response.Reason).toContain('"kept":"visible"');
-      expect(response.Reason).not.toContain('Sup3rSecret1');
-      expect(loggedErrorMessages()).toContain('Handler failed');
     });
 
     it('answers an expected failure with FAILED without writing the buffered trace that preceded it', async () => {

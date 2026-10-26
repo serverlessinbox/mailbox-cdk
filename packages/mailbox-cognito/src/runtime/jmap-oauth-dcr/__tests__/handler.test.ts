@@ -1,10 +1,13 @@
 /// <reference types="jest" />
 
 /**
- * Pins the wiring of the DCR handler: that a registration runs against the user pool and the identity
- * provisioner function of its configuration, and what an unexpected failure answers. A failure nobody recognised
- * must answer 500 and write the buffered trace that led to it; without the trace, the log of the failing
- * invocation holds no more than the failure itself.
+ * Pins the wiring of the DCR handler: that the handler cannot be loaded without its mandatory configuration, that
+ * a registration runs against the user pool and the identity provisioner function of its configuration, and what
+ * an unexpected failure answers. The tenant's registration cap counter is incremented on every request that is not
+ * a duplicate and is never decremented, so a Lambda that started with a missing user pool or identity provisioner
+ * would burn the cap on every request; failing the load fails the container before any request. A failure nobody
+ * recognised must answer 500 and write the buffered trace that led to it; without the trace, the log of the
+ * failing invocation holds no more than the failure itself.
  */
 
 import { CognitoIdentityProviderClient, CreateUserPoolClientCommand }  from '@aws-sdk/client-cognito-identity-provider';
@@ -28,8 +31,6 @@ const MANDATORY_ENVIRONMENT = {
   SERVICE_NAME:                       'jmap-oauth-dcr',
   USER_POOL_ID:                       'pool-1',
 };
-
-const UNEXPECTED_SHAPE_ERROR: unknown = expect.stringContaining('identity-provisioner returned an unexpected shape');
 
 /**
  * The handler as a cold start loads it: the handler reads its configuration when it is loaded, so the mandatory
@@ -116,17 +117,12 @@ describe('jmap-oauth-dcr handler', () => {
     expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)[0].args[0].input.UserPoolId).toBe('pool-1');
   });
 
-  it('answers 500 server_error, never a registration, when identity-provisioner reports a duplicate without a client', async () => {
-    mockIdentityProvisioner(lambdaMock, { dcrCheck: { status: 'dedup_hit', scope: 'openid email' } });
-
-    const answer = await handler(requestEvent({ redirect_uris: ['http://127.0.0.1/cb'] }));
-
-    expect(answer).toMatchObject({ statusCode: 500 });
-    expect(errorLog).toHaveBeenCalledWith('jmap_oauth_dcr_unhandled_error', {
-      error:   UNEXPECTED_SHAPE_ERROR,
-      service: 'jmap-oauth-dcr',
-    });
-    expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(0);
+  it.each(['USER_POOL_ID', 'IDENTITY_PROVISIONER_FUNCTION_NAME'])('stops the cold start, naming %s, before any AWS call when it is missing', (variable) => {
+    expect(() => loadHandler(() => {
+      delete process.env[variable];
+    })).toThrow(variable);
+    expect(lambdaMock.calls()).toHaveLength(0);
+    expect(cognitoMock.calls()).toHaveLength(0);
   });
 
   it('answers an unexpected failure with 500 server_error and writes the buffered trace that led to it', async () => {

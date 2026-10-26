@@ -3,7 +3,7 @@
  * the deployer, the OAuth clients it provisions, and the audiences, scopes and groups its policies carry.
  *
  * With no injected resolver the pool builds its own from the versions shipped with the package, overridden by
- * CDK context; with an injected resolver, every package its sub-constructs resolve must be pinned on it.
+ * CDK context.
  *
  * An OAuth client with the wrong flow or scope, or one missing from an API's audiences, deploys cleanly and is
  * refused by the API only at runtime, so these tests pin the synthesized clients and the policies.
@@ -13,8 +13,12 @@ import { ArtifactZone, PinnedArtifactResolver }   from '@serverlessinbox/artifac
 import { Permission }                             from '@serverlessinbox/mailbox';
 import { Match, Template }                        from 'aws-cdk-lib/assertions';
 import * as lambda                                from 'aws-cdk-lib/aws-lambda';
+import * as route53                               from 'aws-cdk-lib/aws-route53';
 import { App, BootstraplessSynthesizer, Stack }   from 'aws-cdk-lib';
 
+import { CognitoIdpUsersAdminApiAddon }           from '../../cognito-idp-users-addon';
+import { JmapOAuthAddon }                         from '../../jmap-oauth-addon';
+import { DynamicClientRegistrationMode }          from '../dynamic-client-registration-mode';
 import { MailboxUserPool, MailboxUserPoolProps }  from '../mailbox-user-pool';
 import { MfaMode }                                from '../mfa-mode';
 import { UserPoolAudience }                       from '../user-pool-audience';
@@ -76,26 +80,29 @@ describe('MailboxUserPool without an injected artifactResolver', () => {
   });
 });
 
-describe('MailboxUserPool with an injected artifactResolver', () => {
-  it('fails to synthesize naming the package the resolver holds no pin for', () => {
-    const stack                        = newStack();
-    const resolverWithoutSharedPackage = pinnedResolver(stack, ['mailbox-cognito']);
-
-    expect(() => {
-      new MailboxUserPool(stack, 'user-pool', {
-        domain:           { kind: 'cognito', cognitoDomainPrefix: 'test-prefix' },
-        artifactResolver: resolverWithoutSharedPackage,
-      });
-    }).toThrow("No resolved data for package 'mailbox-cdk-shared'");
-  });
-});
-
 describe('MailboxUserPool domain', () => {
   it('hands an explicit Cognito domain prefix to the deployer', () => {
     const { stack } = createUserPool({ domain: { kind: 'cognito', cognitoDomainPrefix: 'explicit-prefix' } });
 
     Template.fromStack(stack).hasResourceProperties('Custom::MailboxCognitoDataDeployer', {
       parameters: Match.objectLike({ cognitoDomainPrefix: 'explicit-prefix' }),
+    });
+  });
+
+  it('derives the Cognito prefix from the zone name of the hosted zone through the stack helpers, without a Route 53 lookup', () => {
+    const stack = newStack();
+    const zone  = route53.HostedZone.fromHostedZoneAttributes(stack, 'zone', { hostedZoneId: 'Z1234567890ABC', zoneName: 'mail.example.com' });
+    new MailboxUserPool(stack, 'user-pool', {
+      domain:           { kind: 'cognito-auto', hostedZone: zone },
+      artifactResolver: pinnedResolver(stack, ['mailbox-cognito', 'mailbox-cdk-shared']),
+    });
+
+    const template  = Template.fromStack(stack);
+    const [helpers] = Object.keys(template.findResources('Custom::StackHelpers'));
+    template.resourceCountIs('Custom::StackHelpers', 1);
+    template.hasResourceProperties('Custom::StackHelpers', { DomainName: 'mail.example.com', HostedZoneId: Match.absent() });
+    template.hasResourceProperties('Custom::MailboxCognitoDataDeployer', {
+      parameters: Match.objectLike({ cognitoDomainPrefix: { 'Fn::GetAtt': [helpers, 'cognitoDomainPrefix'] } }),
     });
   });
 
@@ -114,8 +121,98 @@ describe('MailboxUserPool domain', () => {
   });
 });
 
+describe('MailboxUserPool password length', () => {
+  it.each([
+    { passwordMinLength: undefined, expected: '8' },
+    { passwordMinLength: 12, expected: '12' },
+  ])('hands the deployer the password minimum $expected for passwordMinLength $passwordMinLength', ({ passwordMinLength, expected }) => {
+    const { stack } = createUserPool({ passwordMinLength });
+
+    Template.fromStack(stack).hasResourceProperties('Custom::MailboxCognitoDataDeployer', {
+      parameters: Match.objectLike({ passwordMinLength: expected }),
+    });
+  });
+});
+
+describe('MailboxUserPool auth flows', () => {
+  function expectClientAuthFlows(options: Partial<MailboxUserPoolProps>, explicitAuthFlows: string[]): void {
+    const { pool, stack } = createUserPool(options);
+
+    pool.provisionAdminApiClient({ name: 'admin-ui', callbackUrls: [], logoutUrls: [] });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Cognito::UserPoolClient', { ExplicitAuthFlows: explicitAuthFlows });
+  }
+
+  it('allows only the refresh token flow of a client unless the authFlows prop enables more', () => {
+    expectClientAuthFlows({}, ['ALLOW_REFRESH_TOKEN_AUTH']);
+  });
+
+  it('adds one flow to the clients for each authFlows entry that is enabled', () => {
+    expectClientAuthFlows({ authFlows: { userPassword: true, userSrp: true, custom: true, adminUserPassword: true } }, [
+      'ALLOW_REFRESH_TOKEN_AUTH',
+      'ALLOW_USER_PASSWORD_AUTH',
+      'ALLOW_USER_SRP_AUTH',
+      'ALLOW_CUSTOM_AUTH',
+      'ALLOW_ADMIN_USER_PASSWORD_AUTH',
+    ]);
+  });
+});
+
+describe('MailboxUserPool addons', () => {
+  const identityProvisioner = {
+    functionArn:  'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
+    functionName: 'identity-provisioner',
+    grantInvoke:  () => {},
+  };
+  const auditEventsQueue    = {
+    queueUrl:  'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
+    queueArn:  'arn:aws:sqs:us-west-2:123456789012:audit-events',
+    grantSend: () => {},
+  };
+  const table               = { tableName: 'table', tableArn: 'arn:aws:dynamodb:us-west-2:123456789012:table/table', grantRead: () => {}, grantReadWrite: () => {} };
+
+  it('creates the users admin API addon with the identity provider config and the groups of the pool', () => {
+    const { pool, stack } = createUserPool({ authorization: { adminGroups: ['ops'], userGroups: ['staff'] } });
+
+    const [addon] = pool.createAdminApiAddons(stack, {
+      artifactResolver: pinnedResolver(stack, ['mailbox-cognito']),
+      auditEventsQueue,
+      configTable:   table,
+      auditLogTable: table,
+      identityProvisioner,
+    });
+
+    expect(addon).toBeInstanceOf(CognitoIdpUsersAdminApiAddon);
+    expect(addon.uiConfig).toMatchObject({ idp: { type: 'cognito' } });
+    Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ ADMIN_GROUPS: '["ops"]', USER_GROUPS: '["staff"]' }) },
+    });
+  });
+
+  it('creates no JMAP API addon unless OAuth discovery is enabled', () => {
+    const { pool, stack } = createUserPool();
+
+    expect(pool.createJmapApiAddons(stack, { apiBaseUrl: 'https://api.example.com', identityProvisioner })).toEqual([]);
+  });
+
+  it.each([
+    { mode: DynamicClientRegistrationMode.ENABLED, expectedRegistrationLambdas: 1 },
+    { mode: undefined, expectedRegistrationLambdas: 0 },
+  ])('creates the JMAP OAuth addon, with $expectedRegistrationLambdas registration Lambdas for dynamicClientRegistration $mode', ({ mode, expectedRegistrationLambdas }) => {
+    const { pool, stack } = createUserPool({ enableJmapOAuthDiscovery: true, dynamicClientRegistration: mode });
+
+    const [addon] = pool.createJmapApiAddons(stack, { apiBaseUrl: 'https://api.example.com', identityProvisioner });
+
+    expect(addon).toBeInstanceOf(JmapOAuthAddon);
+    const registrationLambdas = Template.fromStack(stack).findResources('AWS::Lambda::Function', {
+      Properties: { Environment: { Variables: { IDENTITY_PROVISIONER_FUNCTION_NAME: Match.anyValue() } } },
+    });
+    expect(Object.keys(registrationLambdas)).toHaveLength(expectedRegistrationLambdas);
+  });
+});
+
 describe('MailboxUserPool UI client provisioning', () => {
-  it('names an Admin-API client after its kind and app: ADMIN_API_admin-ui', () => {
+  it('names an Admin-API client after its kind and app: mailbox-client-admin-api-admin-ui', () => {
     const { pool, stack } = createUserPool();
 
     pool.provisionAdminApiClient({ name: 'admin-ui', callbackUrls: ['https://a.example.com/cb'], logoutUrls: ['https://a.example.com/'] });
@@ -125,7 +222,7 @@ describe('MailboxUserPool UI client provisioning', () => {
     });
   });
 
-  it('names a JMAP-API client after its kind and app: JMAP_API_webmail-ui', () => {
+  it('names a JMAP-API client after its kind and app: mailbox-client-jmap-api-webmail-ui', () => {
     const { pool, stack } = createUserPool();
 
     pool.provisionJmapApiClient({

@@ -3,9 +3,8 @@
 /**
  * CDK synth tests of JmapOAuthAddon: the gating of Dynamic Client Registration by `dynamicClientRegistration`.
  *
- * The addon is the one `MailboxUserPool.createJmapApiAddons()` returns, the wiring `mailbox.ts` uses, so the tests
- * also cover how `MailboxUserPoolProps.dynamicClientRegistration` reaches it. A CFN-parameter token is supported
- * by casting the parameter's `valueAsString` through the enum; its value is only known at deploy time.
+ * A CFN-parameter token is supported by casting the parameter's `valueAsString` through the enum; its value is only
+ * known at deploy time.
  * - Literal `DISABLED` (or omitted) turns DCR off at synth: no DCR Lambda, no route, no `CfnCondition`, and a
  *   plain discovery body without `registration_endpoint`.
  * - Literal `ENABLED` or a token take the gated path: a `CfnCondition` on `Fn::Equals`, the DCR Lambda and its
@@ -15,14 +14,14 @@
  *
  * A route setting that API Gateway rejects fails the deploy and cannot be seen in a unit test of the construct,
  * so the template is asserted: the throttle keys are the PascalCase keys CloudFormation reads, and the stage
- * depends on every route it has settings for.
+ * depends on every route it has settings for, and the settings the stage already carries are kept.
  */
 
 import { renderLiteralText }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { MailboxArtifactResolverFactory }     from '@serverlessinbox/mailbox-cdk-shared';
-import { Mailbox }                            from '@serverlessinbox/mailbox';
 import { Template, Match }                    from 'aws-cdk-lib/assertions';
-import { HttpApi }                            from 'aws-cdk-lib/aws-apigatewayv2';
+import { CfnStage, HttpApi }                  from 'aws-cdk-lib/aws-apigatewayv2';
+import { UserPool }                           from 'aws-cdk-lib/aws-cognito';
 import * as lambda                            from 'aws-cdk-lib/aws-lambda';
 import * as cdk                               from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }      from 'aws-cdk-lib';
@@ -34,7 +33,6 @@ import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-
 import { loadMailboxCognitoRegistryRecord }   from '../mailbox-cognito-registry-record';
 import { SUPPORTED_SCOPES }                   from '../runtime/jmap-oauth-dcr/supported-scopes';
 import { DynamicClientRegistrationMode }      from '../user-pool/dynamic-client-registration-mode';
-import { MailboxUserPool }                    from '../user-pool/mailbox-user-pool';
 
 const API_BASE_URL           = 'https://api.example.com';
 const REGISTRATION_ROUTE_KEY = 'POST /oauth/register';
@@ -101,10 +99,9 @@ function conditionsOf(template: Template): t.InferType<typeof isConditions> {
 }
 
 /**
- * Builds a stack with a real MailboxUserPool and the JmapOAuthAddon it produces. Discovery is always enabled, as
- * the addon is only constructed then; `dynamicClientRegistration` is what is under test. It is omitted (the
- * `@default DISABLED`), an enum member, an arbitrary string cast through the enum (the invalid-value path), or a
- * factory that builds the value from the stack, such as a `CfnParameter`'s `valueAsString`.
+ * Builds a stack with the JmapOAuthAddon under test. `dynamicClientRegistration` is omitted (the `@default
+ * DISABLED`), an enum member, an arbitrary string cast through the enum (the invalid-value path), or a factory that
+ * builds the value from the stack, such as a `CfnParameter`'s `valueAsString`.
  */
 function buildHarness(
   dynamicClientRegistration?: DynamicClientRegistrationMode | ((stack: cdk.Stack) => DynamicClientRegistrationMode),
@@ -122,26 +119,24 @@ function buildHarness(
     ? dynamicClientRegistration(stack)
     : dynamicClientRegistration;
 
-  const pool = new MailboxUserPool(stack, 'user-pool', {
-    domain:                   { kind: 'cognito', cognitoDomainPrefix: 'test-oauth' },
-    artifactResolver:         resolver,
-    enableJmapOAuthDiscovery: true,
-    ...(mode !== undefined ? { dynamicClientRegistration: mode } : {}),
-  });
-
   const identityProvisionerFn = new lambda.Function(stack, 'identity-provisioner-stub', {
     runtime: lambda.Runtime.NODEJS_24_X,
     handler: 'index.handler',
     code:    lambda.Code.fromInline('exports.handler = async () => {};'),
   });
 
-  const [addon] = pool.createJmapApiAddons(stack, {
+  const addon = new JmapOAuthAddon(stack, 'jmap-oauth', {
+    pool:                {
+      userPool:              new UserPool(stack, 'user-pool'),
+      issuer:                'https://cognito-idp.us-west-2.amazonaws.com/us-west-2_abcdefgh',
+      authorizationEndpoint: 'https://test-oauth.auth.us-west-2.amazoncognito.com/oauth2/authorize',
+      tokenEndpoint:         'https://test-oauth.auth.us-west-2.amazoncognito.com/oauth2/token',
+    },
+    artifactResolver:    resolver,
     apiBaseUrl:          API_BASE_URL,
     identityProvisioner: identityProvisionerFn,
+    ...(mode !== undefined ? { dynamicClientRegistration: mode } : {}),
   });
-  if (!(addon instanceof JmapOAuthAddon)) {
-    throw new Error('the user pool did not create a JmapOAuthAddon');
-  }
 
   return { stack, addon, api: new HttpApi(stack, 'test-api') };
 }
@@ -367,36 +362,47 @@ describe('JmapOAuthAddon: dynamicClientRegistration gating', () => {
 
   // Regression: the JMAP API builds its throttled stage with `addStage` and `createDefaultStage: false`, so the addon
   // read an undefined `api.defaultStage` and `Mailbox` failed to synthesize with "no default stage".
-  it('a Mailbox whose JMAP API has a throttled stage carries the OAuth route settings on that stage', () => {
-    const app = new App();
-    app.node.setContext('serverlessinbox:artifact_versions', {});
-    app.node.setContext('serverlessinbox:artifacts', {
-      bucketBase: 'test-artifacts',
-      packages:   Object.fromEntries(
-        ['mailbox-go', 'mailbox-cdk', 'mailbox-cdk-shared', 'mailbox-admin-ui', 'mailbox-webmail-ui', 'mailbox-cognito', 'mailbox']
-          .map((name) => [name, { zone: 'regional', version: '1.0.0' }]),
-      ),
-    });
-    const stack    = new cdk.Stack(app, 'TestMailboxWithOAuthStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
-    const resolver = MailboxArtifactResolverFactory.fromContext(stack, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions());
-    const pool     = new MailboxUserPool(stack, 'user-pool', {
-      domain:                   { kind: 'cognito', cognitoDomainPrefix: 'test-oauth' },
-      artifactResolver:         resolver,
-      enableJmapOAuthDiscovery: true,
-    });
-    new Mailbox(stack, 'mailbox', { authProvider: pool });
+  it('puts the OAuth route settings on a $default stage added with addStage', () => {
+    const { stack, addon } = buildHarness(DynamicClientRegistrationMode.DISABLED);
+    const api              = new HttpApi(stack, 'api-with-added-stage', { createDefaultStage: false });
+    api.addStage('added-stage', { stageName: '$default' });
 
-    const stages = Object.values(Template.fromStack(stack).findResources('AWS::ApiGatewayV2::Stage', {
-      Properties: Match.objectLike({
-        DefaultRouteSettings: { ThrottlingBurstLimit: 200, ThrottlingRateLimit: 100 },
-        RouteSettings:        Match.objectLike({ 'GET /.well-known/openid-configuration': { ThrottlingBurstLimit: 20, ThrottlingRateLimit: 10 } }),
-      }),
-    }));
+    addon.addRoutes(api);
 
-    expect(stages).toHaveLength(1);
+    Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Stage', {
+      StageName:     '$default',
+      RouteSettings: { 'GET /.well-known/openid-configuration': { ThrottlingBurstLimit: 20, ThrottlingRateLimit: 10 } },
+    });
+  });
+
+  it('keeps the route settings the stage already carries', () => {
+    const { stack, addon, api } = buildHarness(DynamicClientRegistrationMode.DISABLED);
+    const existingThrottle      = { ThrottlingBurstLimit: 7, ThrottlingRateLimit: 3 };
+    const stage                 = api.defaultStage?.node.defaultChild;
+    if (!(stage instanceof CfnStage)) {
+      throw new Error('the harness API has no default stage');
+    }
+    stage.routeSettings = { 'GET /existing': existingThrottle };
+
+    addon.addRoutes(api);
+
+    const [synthesized] = Object.values(resourcesOfType(Template.fromStack(stack), 'AWS::ApiGatewayV2::Stage', isStage));
+    expect(synthesized.Properties.RouteSettings).toEqual({
+      'GET /existing':                         existingThrottle,
+      'GET /.well-known/openid-configuration': { ThrottlingBurstLimit: 20, ThrottlingRateLimit: 10 },
+    });
+  });
+
+  it('throws, naming the route, when a route has no CloudFormation resource for the stage to depend on', () => {
+    const { addon, api } = buildHarness(DynamicClientRegistrationMode.DISABLED);
+    const addRoutes      = api.addRoutes.bind(api);
+    jest.spyOn(api, 'addRoutes').mockImplementation((options) => {
+      const routes = addRoutes(options);
+      routes.forEach((route) => route.node.tryRemoveChild('Resource'));
+      return routes;
+    });
+
+    expect(() => addon.addRoutes(api)).toThrow(/has no CloudFormation resource for the stage to depend on/);
   });
 
   it('adding routes to an HTTP API without a default stage throws, naming the missing stage', () => {

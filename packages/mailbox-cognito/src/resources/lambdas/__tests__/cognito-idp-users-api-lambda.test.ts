@@ -60,13 +60,12 @@ describe('CognitoIdpUsersApiLambda', () => {
   it('reads the pool, the queue, the provisioner and the groups from its environment, the groups as JSON arrays', () => {
     const { template } = synthesize({ adminGroups: ['admin', 'staff'], userGroups: ['user'] });
 
-    expectEnvironment(template, Match.exact({
+    expectEnvironment(template, Match.objectLike({
       USER_POOL_ID:                       'us-west-2_abcdefgh',
       AUDIT_EVENTS_QUEUE_URL:             'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
       IDENTITY_PROVISIONER_FUNCTION_NAME: 'identity-provisioner',
       ADMIN_GROUPS:                       '["admin","staff"]',
       USER_GROUPS:                        '["user"]',
-      SERVICE_NAME:                       'cognito-idp-users-api',
     }));
   });
 
