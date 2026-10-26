@@ -1,5 +1,7 @@
 # @serverlessinbox/mailbox-cognito
 
+> **Beta.** Use at your own risk; no warranty. Breaking changes are possible before 1.0.
+
 Amazon Cognito as the authentication provider of a [`@serverlessinbox/mailbox`](../mailbox/) email
 server. `MailboxUserPool` creates the user pool and its OAuth endpoint, issues one OAuth client per
 application that calls the Admin API or the JMAP API, and contributes the Admin API addon that manages
@@ -64,6 +66,8 @@ Folders of `src/`:
 | `src/data-stack/` | The sub-stack that owns the user pool, and the deployer that creates it |
 | `src/resources/lambdas/` | One wrapper class per Lambda, with its environment and grants |
 | `src/runtime/` | Code that runs inside the bootstrap-user, user-management API and OAuth registration Lambdas, one folder per Lambda |
+| `src/utils/` | Helpers shared by the Lambdas, such as the generator of temporary passwords |
+| `src/__tests__/` | Tests. Not published. |
 
 ## Where to find things
 

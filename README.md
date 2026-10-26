@@ -100,7 +100,6 @@ The app looks up your hosted zone, creates a `MailboxUserPool` in it and passes 
 | Where is a feature such as email, auth or the APIs assembled? | [`packages/mailbox/src/core/`](packages/mailbox/src/core/) |
 | How does the mailbox update itself? | [`packages/mailbox/src/platform/`](packages/mailbox/src/platform/) |
 | Where is the code that runs inside the TypeScript Lambdas? | `src/runtime/` of [`mailbox`](packages/mailbox/src/runtime/), `src/runtime/` of [`mailbox-cognito`](packages/mailbox-cognito/src/runtime/) |
-| How are deployable artifacts laid out in S3? | [`packages/mailbox/docs/artifacts.md`](packages/mailbox/docs/artifacts.md) |
 | Where are the architecture and the contribution rules? | [`docs/architecture.md`](docs/architecture.md), [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | What changed between releases? | [`CHANGELOG.md`](CHANGELOG.md) |
 

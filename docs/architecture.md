@@ -135,7 +135,7 @@ flowchart LR
 ## Artifacts
 
 The Lambda code, the front-end bundles and the stack templates are not CDK assets. They are published
-ahead of time into the artifact registry (see [the artifact layout](../packages/mailbox/docs/artifacts.md)),
+ahead of time into the artifact registry,
 and a synthesized template points at them directly, so the stack needs no `cdk bootstrap`.
 
 - `GoLambda` and `TypeScriptLambda` extend `ArtifactLambda`, which resolves the code from
