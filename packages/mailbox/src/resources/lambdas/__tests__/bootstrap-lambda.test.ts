@@ -13,24 +13,22 @@ import type { IArtifactResolver }                                               
 import { statementsForAction }                                                       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { VENDOR_ACCOUNT_ID, ServerlessInboxTagKeys, StackIdentity }                  from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                                                           from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                                                      from 'aws-cdk-lib/aws-dynamodb';
 import { ReceiptRuleSet }                                                            from 'aws-cdk-lib/aws-ses';
 import * as cdk                                                                      from 'aws-cdk-lib';
 
 import { SesReceivingMode }                                                          from '../../../contracts/ses-receiving-mode';
 import type { IDnsZone }                                                             from '../../../core/edge/dns-zone';
-import { AuthKeyStoreTable }                                                         from '../../tables/auth-key-store-table';
-import { DataTable }                                                                 from '../../tables/data-tables';
 import { BootstrapLambda }                                                           from '../bootstrap-lambda';
 import type { BootstrapLambdaProps }                                                 from '../bootstrap-lambda';
 
+import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataTable }                 from './lambda-wrapper-fakes';
 import { arrangeWrapperStack }                                                       from './lambda-wrapper-helpers';
 
 describe('BootstrapLambda', () => {
   let stack: cdk.Stack;
   let artifactResolver: IArtifactResolver;
-  let configTable: DataTable;
-  let authKeyStoreTable: AuthKeyStoreTable;
+  let configTable: ReturnType<typeof fakeDataTable>;
+  let authKeyStoreTable: ReturnType<typeof fakeAuthKeyStoreTable>;
   let sesRuleSet: ReceiptRuleSet;
 
   beforeEach(() => {
@@ -38,10 +36,8 @@ describe('BootstrapLambda', () => {
     stack             = arrangement.stack;
     artifactResolver  = arrangement.artifactResolver;
 
-    configTable       = new DataTable(new Table(stack, 'config-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store');
+    configTable       = fakeDataTable('config-table');
+    authKeyStoreTable = fakeAuthKeyStoreTable('auth-key-store');
     sesRuleSet        = new ReceiptRuleSet(stack, 'ses-rule-set', {});
   });
 
@@ -86,10 +82,6 @@ describe('BootstrapLambda', () => {
     return { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, `:execute-api:*:${VENDOR_ACCOUNT_ID}:${path}`]] };
   }
 
-  function authKeyStoreResources(): unknown {
-    return stack.resolve([authKeyStoreTable.tableArn, `${authKeyStoreTable.tableArn}/index/*`]);
-  }
-
   function rootStackId(): unknown {
     return stack.resolve(StackIdentity.guid);
   }
@@ -105,11 +97,11 @@ describe('BootstrapLambda', () => {
       const template = synthBootstrap();
 
       hasEnvironment(template, {
-        CONFIG_TABLE_NAME:         Match.anyValue(),
-        AUTH_KEY_STORE_TABLE_NAME: Match.anyValue(),
+        CONFIG_TABLE_NAME:         'config-table',
+        AUTH_KEY_STORE_TABLE_NAME: 'auth-key-store',
         STACK_IDENTITY_TAG_VALUE:  { Ref: 'AWS::StackName' },
         STACK_IDENTITY_TAG_KEY:    ServerlessInboxTagKeys.rootStack,
-        SES_RULE_SET_NAME:         Match.anyValue(),
+        SES_RULE_SET_NAME:         stack.resolve(sesRuleSet.receiptRuleSetName),
       });
     });
 
@@ -146,20 +138,16 @@ describe('BootstrapLambda', () => {
   });
 
   describe('grants', () => {
-    it('grants exactly the read-write actions, Allow, on the auth-key-store table and its indexes', () => {
-      const template = synthBootstrap();
+    it('requests read-write on the auth-key-store table for itself', () => {
+      const bootstrap = newBootstrap();
 
-      template.hasResourceProperties('AWS::IAM::Policy', {
-        PolicyDocument: {
-          Statement: Match.arrayWith([
-            Match.objectEquals({
-              Action:   Match.arrayEquals(['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem']),
-              Effect:   'Allow',
-              Resource: Match.exact(authKeyStoreResources()),
-            }),
-          ]),
-        },
-      });
+      expectGrantedOnceTo(authKeyStoreTable.grantReadWrite, bootstrap);
+    });
+
+    it('requests read-write on the config table for itself', () => {
+      const bootstrap = newBootstrap();
+
+      expectGrantedOnceTo(configTable.grantReadWrite, bootstrap);
     });
 
     it('allows creating only the Service Quotas service-linked role', () => {

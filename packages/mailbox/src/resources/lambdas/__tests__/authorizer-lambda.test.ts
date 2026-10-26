@@ -1,119 +1,74 @@
 /// <reference types="jest" />
 
 /**
- * AuthorizerLambda: the read-only grant on the auth-key-store table, the auth policy and anonymous routes it is
- * configured with, and the table-name environment variable.
+ * AuthorizerLambda: the environment it hands the Go handler (tables, auth policy, anonymous routes,
+ * principal lookup) and the read grants it requests on the key store and config tables. The
+ * statement each grant renders is pinned by the table that owns it.
  */
 
-import { Match, Template }                      from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
-import type * as cdk                            from 'aws-cdk-lib';
+import { Template }                                                  from 'aws-cdk-lib/assertions';
 
-import { AuthPolicyName }                       from '../../../contracts/auth-names';
-import { AuthKeyStoreTable }                    from '../../tables/auth-key-store-table';
-import { DataTable }                            from '../../tables/data-tables';
-import { AuthorizerLambda }                     from '../authorizer-lambda';
+import { AuthPolicyName }                                            from '../../../contracts/auth-names';
+import { AuthorizerLambda }                                          from '../authorizer-lambda';
+import type { AuthorizerLambdaProps }                                from '../authorizer-lambda';
 
-import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataTable } from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                         from './lambda-wrapper-helpers';
 
-describe('AuthorizerLambda auth-key-store grant', () => {
-  let stack: cdk.Stack;
-  let template: Template;
-  let authKeyStoreTable: AuthKeyStoreTable;
+type OptionalProps = Pick<AuthorizerLambdaProps, 'anonymousRoutes' | 'principalLookup'>;
 
-  beforeEach(() => {
-    const arrangement = arrangeWrapperStack();
-    stack             = arrangement.stack;
-
-    const configTable = new Table(stack, 'config-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    });
-    authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store');
-
-    new AuthorizerLambda(stack, 'authorizer', {
-      authKeyStoreTable,
-      configTable:      new DataTable(configTable),
-      artifactResolver: arrangement.artifactResolver,
-      authPolicyName:   AuthPolicyName.ADMIN_API,
-      anonymousRoutes:  ['GET /first', 'GET /second'],
-      serviceName:      'jmap',
-      pipeline:         'jmap',
-    });
-
-    template = Template.fromStack(stack);
+function synthesize(optional: OptionalProps = {}) {
+  const { stack, artifactResolver } = arrangeWrapperStack();
+  const authKeyStoreTable           = fakeAuthKeyStoreTable('auth-key-store');
+  const configTable                 = fakeDataTable('config-table');
+  const lambda                      = new AuthorizerLambda(stack, 'authorizer', {
+    authKeyStoreTable,
+    configTable,
+    artifactResolver,
+    authPolicyName: AuthPolicyName.ADMIN_API,
+    serviceName:    'jmap',
+    pipeline:       'jmap',
+    ...optional,
   });
 
-  function authKeyStoreResources(): unknown {
-    return stack.resolve([
-      authKeyStoreTable.tableArn,
-      `${authKeyStoreTable.tableArn}/index/*`,
-    ]);
-  }
+  return { lambda, authKeyStoreTable, configTable, ...onlyLambdaOf(Template.fromStack(stack)) };
+}
 
-  it('grants exactly the read actions, Allow, on the table + index resources', () => {
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: {
-        Statement: Match.arrayWith([
-          Match.objectEquals({
-            Action:   Match.arrayEquals(['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query']),
-            Effect:   'Allow',
-            Resource: Match.exact(authKeyStoreResources()),
-          }),
-        ]),
-      },
+describe('AuthorizerLambda', () => {
+  it('passes the table names, the auth policy and the anonymous routes comma-separated to the handler', () => {
+    const { environment } = synthesize({ anonymousRoutes: ['GET /first', 'GET /second'] });
+
+    expect(environment).toMatchObject({
+      AUTH_KEY_STORE_TABLE_NAME: 'auth-key-store',
+      CONFIG_TABLE_NAME:         'config-table',
+      AUTH_POLICY_NAME:          'ADMIN_API',
+      ALLOW_ANONYMOUS_ROUTES:    'GET /first,GET /second',
     });
   });
 
-  it('passes the auth policy name and the anonymous routes on as given', () => {
-    template.hasResourceProperties('AWS::Lambda::Function', {
-      Environment: {
-        Variables: Match.objectLike({
-          AUTH_POLICY_NAME:       'ADMIN_API',
-          ALLOW_ANONYMOUS_ROUTES: 'GET /first,GET /second',
-        }),
-      },
-    });
+  it('passes an empty anonymous route list when none is given', () => {
+    expect(synthesize().environment).toMatchObject({ ALLOW_ANONYMOUS_ROUTES: '' });
   });
 
-  it('sets AUTH_KEY_STORE_TABLE_NAME on the function environment', () => {
-    template.hasResourceProperties('AWS::Lambda::Function', {
-      Environment: {
-        Variables: Match.objectLike({
-          AUTH_KEY_STORE_TABLE_NAME: Match.anyValue(),
-        }),
-      },
-    });
-  });
-});
+  it('requests read on the key store table for itself', () => {
+    const { lambda, authKeyStoreTable } = synthesize();
 
-describe('AuthorizerLambda principal lookup', () => {
-  function templateWith(principalLookup: boolean | undefined): Template {
-    const arrangement = arrangeWrapperStack();
-
-    new AuthorizerLambda(arrangement.stack, 'authorizer', {
-      authKeyStoreTable: new AuthKeyStoreTable(arrangement.stack, 'auth-key-store'),
-      configTable:       new DataTable(new Table(arrangement.stack, 'config-table', {
-        partitionKey: { name: 'pk', type: AttributeType.STRING },
-      })),
-      artifactResolver:  arrangement.artifactResolver,
-      authPolicyName:    AuthPolicyName.ADMIN_API,
-      serviceName:       'admin',
-      pipeline:          'admin',
-      principalLookup,
-    });
-
-    return Template.fromStack(arrangement.stack);
-  }
-
-  it('sets PRINCIPAL_LOOKUP to on when the lookup is enabled', () => {
-    templateWith(true).hasResourceProperties('AWS::Lambda::Function', {
-      Environment: { Variables: Match.objectLike({ PRINCIPAL_LOOKUP: 'on' }) },
-    });
+    expectGrantedOnceTo(authKeyStoreTable.grantRead, lambda);
   });
 
-  it.each([[undefined], [false]])('sets PRINCIPAL_LOOKUP to off when principalLookup is %p', (principalLookup) => {
-    templateWith(principalLookup).hasResourceProperties('AWS::Lambda::Function', {
-      Environment: { Variables: Match.objectLike({ PRINCIPAL_LOOKUP: 'off' }) },
+  it('requests read on the config table for itself', () => {
+    const { lambda, configTable } = synthesize();
+
+    expectGrantedOnceTo(configTable.grantRead, lambda);
+  });
+
+  describe('principal lookup', () => {
+    it('sets PRINCIPAL_LOOKUP to on when the lookup is enabled', () => {
+      expect(synthesize({ principalLookup: true }).environment).toMatchObject({ PRINCIPAL_LOOKUP: 'on' });
+    });
+
+    it.each([[undefined], [false]])('sets PRINCIPAL_LOOKUP to off when principalLookup is %p', (principalLookup) => {
+      expect(synthesize({ principalLookup }).environment).toMatchObject({ PRINCIPAL_LOOKUP: 'off' });
     });
   });
 });

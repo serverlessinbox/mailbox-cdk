@@ -1,75 +1,66 @@
 /// <reference types="jest" />
 
 /**
- * AuthKeyStoreUpdaterLambda: the read-write grant on the auth-key-store table, its invocation by the refresh schedule
- * and the stack-deployed event, and the table-name environment variable.
+ * AuthKeyStoreUpdaterLambda: the issuers and table name it hands the Go handler, the read-write
+ * grant it requests on the key store, and the two triggers it registers for itself: the refresh
+ * schedule and the stack-deployed event. The statement the grant renders and the rule each trigger
+ * renders are pinned by the table and the triggers, not here.
  */
 
-import { Match, Template }                      from 'aws-cdk-lib/assertions';
-import type * as cdk                            from 'aws-cdk-lib';
+import { Template }                                         from 'aws-cdk-lib/assertions';
 
-import { AuthKeyStoreTable }                    from '../../tables/auth-key-store-table';
-import { AuthKeyStoreUpdaterLambda }            from '../auth-key-store-updater-lambda';
+import { AuthKeyRefreshSchedule }                           from '../../events/auth-key-refresh-schedule';
+import { AuthKeyStoreUpdaterLambda }                        from '../auth-key-store-updater-lambda';
 
-import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeAuthKeyStoreTable }       from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                from './lambda-wrapper-helpers';
 
-describe('AuthKeyStoreUpdaterLambda auth-key-store grant', () => {
-  let stack: cdk.Stack;
-  let template: Template;
-  let authKeyStoreTable: AuthKeyStoreTable;
+jest.mock('../../events/auth-key-refresh-schedule');
 
+function synthesize() {
+  const { stack, artifactResolver } = arrangeWrapperStack();
+  const authKeyStoreTable           = fakeAuthKeyStoreTable('auth-key-store');
+  const lambda                      = new AuthKeyStoreUpdaterLambda(stack, 'auth-key-store-updater', {
+    issuers: ['https://issuer-a.example.com', 'https://issuer-b.example.com'],
+    authKeyStoreTable,
+    artifactResolver,
+  });
+  const template                    = Template.fromStack(stack);
+
+  return { lambda, authKeyStoreTable, template, ...onlyLambdaOf(template) };
+}
+
+describe('AuthKeyStoreUpdaterLambda', () => {
   beforeEach(() => {
-    const arrangement = arrangeWrapperStack();
-    stack             = arrangement.stack;
-
-    authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store');
-
-    new AuthKeyStoreUpdaterLambda(stack, 'auth-key-store-updater', {
-      issuers: ['https://issuer.example.com'],
-      authKeyStoreTable,
-      artifactResolver: arrangement.artifactResolver,
-    });
-
-    template = Template.fromStack(stack);
+    jest.mocked(AuthKeyRefreshSchedule).mockClear();
   });
 
-  it('grants exactly the read-write actions, Allow, on the table + index resources', () => {
-    const expectedResource: unknown = stack.resolve([
-      authKeyStoreTable.tableArn,
-      `${authKeyStoreTable.tableArn}/index/*`,
-    ]);
-
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: {
-        Statement: Match.arrayWith([
-          Match.objectEquals({
-            Action:   Match.arrayEquals(['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem']),
-            Effect:   'Allow',
-            Resource: expectedResource,
-          }),
-        ]),
-      },
+  it('passes the issuers comma-separated and the key store table name to the handler', () => {
+    expect(synthesize().environment).toMatchObject({
+      ISSUERS:                   'https://issuer-a.example.com,https://issuer-b.example.com',
+      AUTH_KEY_STORE_TABLE_NAME: 'auth-key-store',
     });
   });
 
-  it('is invoked by the 6-hourly refresh and by the stack-deployed event', () => {
-    const targets = [{ Arn: { 'Fn::GetAtt': [Match.stringLikeRegexp('^authkeystoreupdater'), 'Arn'] }, Id: 'Target0' }];
+  it('requests read-write on the key store table for itself', () => {
+    const { lambda, authKeyStoreTable } = synthesize();
 
-    template.resourceCountIs('AWS::Events::Rule', 2);
-    template.hasResourceProperties('AWS::Events::Rule', { ScheduleExpression: 'rate(6 hours)', Targets: targets });
+    expectGrantedOnceTo(authKeyStoreTable.grantReadWrite, lambda);
+  });
+
+  it('registers the refresh schedule with itself as the target', () => {
+    const { lambda } = synthesize();
+
+    expect(AuthKeyRefreshSchedule).toHaveBeenCalledTimes(1);
+    expect(AuthKeyRefreshSchedule).toHaveBeenCalledWith(lambda, 'refresh-schedule', { target: lambda });
+  });
+
+  it('registers a stack-deployed event that invokes itself', () => {
+    const { template, logicalId } = synthesize();
+
+    template.resourceCountIs('AWS::Events::Rule', 1);
     template.hasResourceProperties('AWS::Events::Rule', {
-      EventPattern: Match.objectLike({ source: ['aws.cloudformation'] }),
-      Targets:      targets,
-    });
-  });
-
-  it('sets AUTH_KEY_STORE_TABLE_NAME on the function environment', () => {
-    template.hasResourceProperties('AWS::Lambda::Function', {
-      Environment: {
-        Variables: Match.objectLike({
-          AUTH_KEY_STORE_TABLE_NAME: Match.anyValue(),
-        }),
-      },
+      Targets: [{ Arn: { 'Fn::GetAtt': [logicalId, 'Arn'] }, Id: 'Target0' }],
     });
   });
 });

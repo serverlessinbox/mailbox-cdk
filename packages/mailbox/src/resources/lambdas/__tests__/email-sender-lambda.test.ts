@@ -1,98 +1,113 @@
 /// <reference types="jest" />
 
 /**
- * EmailSenderLambda IAM scoping and queue wiring: ses:SendRawEmail is scoped to the identity and configuration-set
- * ARNs with no condition, and the Lambda's SQS event source mapping and consume grant on the submissions queue.
+ * EmailSenderLambda: the names and SES configuration set it hands the Go handler, the grants it
+ * requests for itself on its tables, blob store and queue, the queue event it registers, the
+ * websocket push wiring, and the one statement it adds itself: ses:SendRawEmail, scoped to the
+ * identity and configuration-set ARNs with no condition because SES ignores resource-tag conditions
+ * for SendRawEmail. The statement each requested grant renders is pinned by the resource that owns it.
  */
 
-import { resourcesOf, statementsForAction }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Match, Template }                      from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket }                               from 'aws-cdk-lib/aws-s3';
-import type * as cdk                            from 'aws-cdk-lib';
+import { statementsForAction }                                                              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                                                                         from 'aws-cdk-lib/assertions';
 
-import { DataBlobStore }                        from '../../buckets/data-blob-store';
-import { EmailSendingQueue }                    from '../../queues/email-sending-queue';
-import { DataTable }                            from '../../tables/data-tables';
-import { EmailSenderLambda }                    from '../email-sender-lambda';
+import type { IWebSocketBroadcastPublisher }                                                from '../../../contracts/websocket-push';
+import { EmailSubmissionsQueueEvent }                                                       from '../../events/email-submissions-queue-event';
+import { EmailSenderLambda }                                                                from '../email-sender-lambda';
 
-import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataBlobStore, fakeDataTable, fakeQueue }                 from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                                                from './lambda-wrapper-helpers';
 
-describe('EmailSenderLambda IAM scoping', () => {
-  let stack: cdk.Stack;
-  let template: Template;
-  let submissionQueue: EmailSendingQueue;
+jest.mock('../../events/email-submissions-queue-event');
 
+function synthesize() {
+  const { stack, artifactResolver } = arrangeWrapperStack();
+  const configTable                 = fakeDataTable('config-table');
+  const itemTable                   = fakeDataTable('item-table');
+  const changelogTable              = fakeDataTable('changelog-table');
+  const blobStore                   = fakeDataBlobStore('blob-store');
+  const submissionQueue             = fakeQueue('email-submissions');
+  const lambda                      = new EmailSenderLambda(stack, 'email-sender', {
+    configTable,
+    itemTable,
+    changelogTable,
+    blobStore,
+    sesConfigSetName: 'test-config-set',
+    submissionQueue,
+    artifactResolver,
+  });
+
+  return { lambda, stack, configTable, itemTable, changelogTable, blobStore, submissionQueue };
+}
+
+describe('EmailSenderLambda', () => {
   beforeEach(() => {
-    const arrangement = arrangeWrapperStack();
-    stack             = arrangement.stack;
-
-    const configTable    = new DataTable(new Table(stack, 'config-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    const itemTable      = new DataTable(new Table(stack, 'item-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    const blobStore      = new DataBlobStore(new Bucket(stack, 'blob-store'));
-    submissionQueue      = new EmailSendingQueue(stack, 'email-submissions-queue');
-
-    new EmailSenderLambda(stack, 'email-sender', {
-      configTable,
-      itemTable,
-      changelogTable,
-      blobStore,
-      sesConfigSetName: 'test-config-set',
-      submissionQueue,
-      artifactResolver: arrangement.artifactResolver,
-    });
-
-    template = Template.fromStack(stack);
+    jest.mocked(EmailSubmissionsQueueEvent).mockClear();
   });
 
-  it('scopes ses:SendRawEmail to identity and configuration-set ARNs without condition', () => {
-    const sendRawEmailStatements = statementsForAction(template, 'ses:SendRawEmail');
-    expect(sendRawEmailStatements).toHaveLength(1);
-    const [statement] = sendRawEmailStatements;
+  it('passes the blob store, table and SES configuration set names to the handler', () => {
+    const { stack } = synthesize();
 
-    expect(statement.Condition).toBeUndefined();
-    expect(Array.isArray(statement.Resource)).toBe(true);
-    expect(statement.Resource).toHaveLength(2);
-
-    const [identityArn, configSetArn] = resourcesOf(statement);
-
-    expect(JSON.stringify(identityArn)).toContain('AWS::Partition');
-    expect(JSON.stringify(identityArn)).toContain('AWS::Region');
-    expect(JSON.stringify(identityArn)).toContain('AWS::AccountId');
-    expect(JSON.stringify(identityArn)).toContain('identity/*');
-
-    expect(JSON.stringify(configSetArn)).toContain('AWS::Partition');
-    expect(JSON.stringify(configSetArn)).toContain('AWS::Region');
-    expect(JSON.stringify(configSetArn)).toContain('AWS::AccountId');
-    expect(JSON.stringify(configSetArn)).toContain('test-config-set');
-  });
-
-  it('instantiates exactly one queue event, sourced from the email-submissions queue', () => {
-    const queueArn: unknown = stack.resolve(submissionQueue.queueArn);
-    template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
-
-    template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
-      EventSourceArn: queueArn,
+    expect(onlyLambdaOf(Template.fromStack(stack)).environment).toMatchObject({
+      BLOB_STORE_NAME:      'blob-store',
+      CONFIG_TABLE_NAME:    'config-table',
+      ITEM_TABLE_NAME:      'item-table',
+      CHANGELOG_TABLE_NAME: 'changelog-table',
+      SES_CONFIG_SET_NAME:  'test-config-set',
     });
   });
 
-  it('grants the role exactly the SQS consume statement on the email-submissions queue', () => {
-    const consumeStatements = statementsForAction(template, 'sqs:ReceiveMessage');
+  it('requests read on the config table and read-write on the item and changelog tables for itself', () => {
+    const { lambda, configTable, itemTable, changelogTable } = synthesize();
 
-    expect(consumeStatements).toHaveLength(1);
-    const [statement] = consumeStatements;
+    expectGrantedOnceTo(configTable.grantRead, lambda);
+    expectGrantedOnceTo(itemTable.grantReadWrite, lambda);
+    expectGrantedOnceTo(changelogTable.grantReadWrite, lambda);
+  });
 
-    expect(statement.Effect).toBe('Allow');
-    const actionMatch = Match.arrayEquals(['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes']).test(statement.Action);
-    expect(actionMatch.hasFailed()).toBe(false);
-    const resourceMatch = Match.exact(stack.resolve(submissionQueue.queueArn)).test(statement.Resource);
-    expect(resourceMatch.hasFailed()).toBe(false);
+  it('requests email-blob read on the blob store for itself', () => {
+    const { lambda, blobStore } = synthesize();
+
+    expectGrantedOnceTo(blobStore.grantEmailBlobRead, lambda);
+  });
+
+  it('requests consume on the submissions queue for itself', () => {
+    const { lambda, submissionQueue } = synthesize();
+
+    expectGrantedOnceTo(submissionQueue.grantConsume, lambda);
+  });
+
+  it('registers one queue event that delivers the submissions queue to itself', () => {
+    const { lambda, submissionQueue } = synthesize();
+
+    expect(EmailSubmissionsQueueEvent).toHaveBeenCalledTimes(1);
+    expect(EmailSubmissionsQueueEvent).toHaveBeenCalledWith(lambda, 'email-submissions-queue', { target: lambda, queue: submissionQueue });
+  });
+
+  it('scopes ses:SendRawEmail to the identity and the configuration-set ARNs without condition', () => {
+    const { stack } = synthesize();
+
+    const statements = statementsForAction(Template.fromStack(stack), 'ses:SendRawEmail');
+
+    expect(statements).toEqual([
+      {
+        Action:   'ses:SendRawEmail',
+        Effect:   'Allow',
+        Resource: [
+          { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*']] },
+          { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':configuration-set/test-config-set']] },
+        ],
+      },
+    ]);
+  });
+
+  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the broadcaster grant itself invokable', () => {
+    const { lambda, stack }                         = synthesize();
+    const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
+
+    lambda.enableWebSocketPush(broadcaster);
+
+    expect(onlyLambdaOf(Template.fromStack(stack)).environment).toMatchObject({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcast-fn' });
+    expect(broadcaster.grantInvoke).toHaveBeenCalledWith(lambda);
   });
 });

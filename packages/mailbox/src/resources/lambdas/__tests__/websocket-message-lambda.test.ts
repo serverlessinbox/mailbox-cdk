@@ -1,99 +1,70 @@
 /// <reference types="jest" />
 
 /**
- * WebSocketMessageLambda wiring: the GetItem and PutItem grant on the connections table, the endpoint it reads from the
- * push API, and the grantManageConnections call with the function itself as grantee. The push API is a jest fake,
- * so this suite pins only what the message Lambda passes to it.
+ * WebSocketMessageLambda: the environment it hands the Go handler, including the subscription limit
+ * as a string and the endpoint it reads from the push API, and the grants it requests for itself
+ * on the connections, config and item tables and on the push API. The statement each grant renders
+ * is pinned by the resource that owns it. The push API is a fake, so this suite pins only what the
+ * message Lambda passes to it.
  */
 
-import { Match, Template }                      from 'aws-cdk-lib/assertions';
-import { AttributeType, Table }                 from 'aws-cdk-lib/aws-dynamodb';
-import type { IGrantable }                      from 'aws-cdk-lib/aws-iam';
-import type * as cdk                            from 'aws-cdk-lib';
+import { Template }                                                                  from 'aws-cdk-lib/assertions';
 
-import type { IWebSocketPushApi }               from '../../../contracts/websocket-push';
-import { defaultCfnResource }                   from '../../../utils/cfn-resource';
-import { DataTable }                            from '../../tables/data-tables';
-import { WebSocketTable }                       from '../../tables/websocket-table';
-import { WebSocketMessageLambda }               from '../websocket-message-lambda';
+import type { IWebSocketPushApi }                                                    from '../../../contracts/websocket-push';
+import { WebSocketMessageLambda }                                                    from '../websocket-message-lambda';
 
-import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataTable, fakeWebSocketTable }                    from './lambda-wrapper-fakes';
+import type { GrantSpy }                                                             from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                                         from './lambda-wrapper-helpers';
 
 const FAKE_MANAGEMENT_ENDPOINT = 'https://fake.execute-api.us-west-2.amazonaws.com/prod';
 
-interface PolicyResource {
-  readonly Type:        string;
-  readonly Properties?: { readonly PolicyDocument?: { readonly Statement?: unknown[] } };
+function synthesize() {
+  const { stack, artifactResolver }         = arrangeWrapperStack();
+  const connectionsTable                    = fakeWebSocketTable('connections-table');
+  const configTable                         = fakeDataTable('config-table');
+  const itemTable                           = fakeDataTable('item-table');
+  const grantManageConnections              = jest.fn<void, Parameters<GrantSpy>>();
+  const webSocketPushApi: IWebSocketPushApi = { managementEndpoint: FAKE_MANAGEMENT_ENDPOINT, grantManageConnections };
+  const lambda                              = new WebSocketMessageLambda(stack, 'websocket-message', {
+    connectionsTable,
+    configTable,
+    itemTable,
+    maxSubscriptions: 17,
+    webSocketPushApi,
+    artifactResolver,
+  });
+
+  return { lambda, connectionsTable, configTable, itemTable, grantManageConnections, ...onlyLambdaOf(Template.fromStack(stack)) };
 }
 
-function statementsOnTable(template: Template, tableId: string): unknown[] {
-  const resources = template.toJSON().Resources as Record<string, PolicyResource>;
-  return Object.values(resources)
-    .filter((resource) => resource.Type === 'AWS::IAM::Policy')
-    .flatMap((resource) => resource.Properties?.PolicyDocument?.Statement ?? [])
-    .filter((statement) => JSON.stringify(statement).includes(tableId));
-}
-
-describe('WebSocketMessageLambda connections-table and push-API wiring', () => {
-  let stack: cdk.Stack;
-  let template: Template;
-  let tableId: string;
-  let grantManageConnections: jest.Mock<void, [IGrantable]>;
-  let messageLambda: WebSocketMessageLambda;
-
-  beforeEach(() => {
-    const arrangement = arrangeWrapperStack();
-    stack             = arrangement.stack;
-
-    const configTable      = new DataTable(new Table(stack, 'config-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    const itemTable        = new DataTable(new Table(stack, 'item-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    const connectionsTable = new WebSocketTable(stack, 'websocket-table');
-    tableId                = stack.getLogicalId(defaultCfnResource(connectionsTable));
-
-    grantManageConnections                    = jest.fn<void, [IGrantable]>();
-    const webSocketPushApi: IWebSocketPushApi = {
-      managementEndpoint: FAKE_MANAGEMENT_ENDPOINT,
-      grantManageConnections,
-    };
-
-    messageLambda = new WebSocketMessageLambda(stack, 'websocket-message', {
-      connectionsTable,
-      configTable,
-      itemTable,
-      maxSubscriptions: 10,
-      webSocketPushApi,
-      artifactResolver: arrangement.artifactResolver,
+describe('WebSocketMessageLambda', () => {
+  it('passes the table names, the subscription limit and the push API management endpoint to the handler', () => {
+    expect(synthesize().environment).toMatchObject({
+      CONNECTIONS_TABLE_NAME: 'connections-table',
+      CONFIG_TABLE_NAME:      'config-table',
+      ITEM_TABLE_NAME:        'item-table',
+      MAX_SUBSCRIPTIONS:      '17',
+      WEBSOCKET_API_ENDPOINT: FAKE_MANAGEMENT_ENDPOINT,
     });
-
-    template = Template.fromStack(stack);
   });
 
-  it('grants exactly one statement on the connections table: GetItem and PutItem on the table, no index', () => {
-    expect(statementsOnTable(template, tableId)).toEqual([
-      {
-        Action:   ['dynamodb:GetItem', 'dynamodb:PutItem'],
-        Effect:   'Allow',
-        Resource: { 'Fn::GetAtt': [tableId, 'Arn'] },
-      },
-    ]);
+  it('requests store-connection on the connections table for itself', () => {
+    const { lambda, connectionsTable } = synthesize();
+
+    expectGrantedOnceTo(connectionsTable.grantStoreConnection, lambda);
   });
 
-  it('calls grantManageConnections on the push API once, with the function itself as the grantee', () => {
-    expect(grantManageConnections).toHaveBeenCalledTimes(1);
-    expect(grantManageConnections).toHaveBeenCalledWith(messageLambda);
+  it('requests read on the config and item tables for itself', () => {
+    const { lambda, configTable, itemTable } = synthesize();
+
+    expectGrantedOnceTo(configTable.grantRead, lambda);
+    expectGrantedOnceTo(itemTable.grantRead, lambda);
   });
 
-  it('sets WEBSOCKET_API_ENDPOINT from the push API managementEndpoint', () => {
-    template.hasResourceProperties('AWS::Lambda::Function', {
-      Environment: {
-        Variables: Match.objectLike({
-          WEBSOCKET_API_ENDPOINT: FAKE_MANAGEMENT_ENDPOINT,
-        }),
-      },
-    });
+  it('requests manage-connections on the push API for itself', () => {
+    const { lambda, grantManageConnections } = synthesize();
+
+    expectGrantedOnceTo(grantManageConnections, lambda);
   });
 });

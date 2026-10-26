@@ -1,85 +1,100 @@
 /// <reference types="jest" />
 
 /**
- * SesEventProcessorLambda event-source wiring: its SQS event source mapping on the SES-event queue, and the SQS
- * consume statement its role is granted on that queue.
+ * SesEventProcessorLambda: the names it hands the Go handler, the grants it requests for itself on
+ * its tables, blob store and queues, the queue event it registers, and the websocket push wiring.
+ * The statement each grant renders and the mapping the event renders are pinned by the resource and
+ * the event that own them, not here.
  */
 
-import { statementsForAction }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Match, Template }                      from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket }                               from 'aws-cdk-lib/aws-s3';
-import { Topic }                                from 'aws-cdk-lib/aws-sns';
-import type * as cdk                            from 'aws-cdk-lib';
+import { Template }                                                                         from 'aws-cdk-lib/assertions';
 
-import { DataBlobStore }                        from '../../buckets/data-blob-store';
-import { AuditEventsQueue }                     from '../../queues/audit-events-queue';
-import { SesEventQueue }                        from '../../queues/ses-event-queue';
-import { DataTable }                            from '../../tables/data-tables';
-import { SesEventProcessorLambda }              from '../ses-event-processor-lambda';
+import type { IWebSocketBroadcastPublisher }                                                from '../../../contracts/websocket-push';
+import { SesNotificationsQueueEvent }                                                       from '../../events/ses-notifications-queue-event';
+import { SesEventProcessorLambda }                                                          from '../ses-event-processor-lambda';
 
-import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataBlobStore, fakeDataTable, fakeQueue }                 from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                                                from './lambda-wrapper-helpers';
 
-describe('SesEventProcessorLambda event-source wiring', () => {
-  let stack: cdk.Stack;
-  let template: Template;
-  let sesEventQueue: SesEventQueue;
+jest.mock('../../events/ses-notifications-queue-event');
 
+function synthesize() {
+  const { stack, artifactResolver } = arrangeWrapperStack();
+  const itemTable                   = fakeDataTable('item-table');
+  const changelogTable              = fakeDataTable('changelog-table');
+  const mailFeedbackTable           = fakeDataTable('mail-feedback-table');
+  const configTable                 = fakeDataTable('config-table');
+  const blobStore                   = fakeDataBlobStore('blob-store');
+  const auditEventsQueue            = fakeQueue('audit-events');
+  const sesEventQueue               = fakeQueue('ses-events');
+  const lambda                      = new SesEventProcessorLambda(stack, 'ses-event-processor', {
+    itemTable,
+    changelogTable,
+    mailFeedbackTable,
+    configTable,
+    blobStore,
+    auditEventsQueue,
+    sesEventQueue,
+    artifactResolver,
+  });
+
+  return { lambda, stack, itemTable, changelogTable, mailFeedbackTable, configTable, blobStore, auditEventsQueue, sesEventQueue };
+}
+
+describe('SesEventProcessorLambda', () => {
   beforeEach(() => {
-    const arrangement = arrangeWrapperStack();
-    stack             = arrangement.stack;
-
-    const itemTable         = new DataTable(new Table(stack, 'item-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    const changelogTable    = new DataTable(new Table(stack, 'changelog-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    const mailFeedbackTable = new DataTable(new Table(stack, 'mail-feedback-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    const configTable       = new DataTable(new Table(stack, 'config-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    const blobStore         = new DataBlobStore(new Bucket(stack, 'blob-store'));
-    const auditEventsQueue  = new AuditEventsQueue(stack, 'audit-events-queue');
-    const topic             = new Topic(stack, 'ses-notifications-topic');
-    sesEventQueue           = new SesEventQueue(stack, 'ses-event-queue', { topic });
-
-    new SesEventProcessorLambda(stack, 'ses-event-processor', {
-      itemTable,
-      changelogTable,
-      mailFeedbackTable,
-      configTable,
-      blobStore,
-      auditEventsQueue,
-      sesEventQueue,
-      artifactResolver: arrangement.artifactResolver,
-    });
-
-    template = Template.fromStack(stack);
+    jest.mocked(SesNotificationsQueueEvent).mockClear();
   });
 
-  it('instantiates exactly one queue event, sourced from the SES-event queue', () => {
-    const queueArn: unknown = stack.resolve(sesEventQueue.queueArn);
+  it('passes the table names, the blob store name and the audit queue URL to the handler', () => {
+    const { stack } = synthesize();
 
-    template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
-
-    template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
-      EventSourceArn: Match.exact(queueArn),
+    expect(onlyLambdaOf(Template.fromStack(stack)).environment).toMatchObject({
+      ITEM_TABLE_NAME:          'item-table',
+      CHANGELOG_TABLE_NAME:     'changelog-table',
+      MAIL_FEEDBACK_TABLE_NAME: 'mail-feedback-table',
+      CONFIG_TABLE_NAME:        'config-table',
+      BLOB_STORE_NAME:          'blob-store',
+      AUDIT_EVENTS_QUEUE_URL:   'https://sqs.fake/audit-events',
     });
   });
 
-  it('grants the role exactly the SQS consume statement on the SES-event queue', () => {
-    const consumeStatements = statementsForAction(template, 'sqs:ReceiveMessage');
+  it('requests read-write on the item, changelog, mail-feedback and config tables for itself', () => {
+    const { lambda, itemTable, changelogTable, mailFeedbackTable, configTable } = synthesize();
 
-    expect(consumeStatements).toHaveLength(1);
-    const [statement] = consumeStatements;
+    expectGrantedOnceTo(itemTable.grantReadWrite, lambda);
+    expectGrantedOnceTo(changelogTable.grantReadWrite, lambda);
+    expectGrantedOnceTo(mailFeedbackTable.grantReadWrite, lambda);
+    expectGrantedOnceTo(configTable.grantReadWrite, lambda);
+  });
 
-    expect(statement.Effect).toBe('Allow');
-    const actionMatch = Match.arrayEquals(['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes']).test(statement.Action);
-    expect(actionMatch.hasFailed()).toBe(false);
-    const resourceMatch = Match.exact(stack.resolve(sesEventQueue.queueArn)).test(statement.Resource);
-    expect(resourceMatch.hasFailed()).toBe(false);
+  it('requests email-blob write on the blob store for itself', () => {
+    const { lambda, blobStore } = synthesize();
+
+    expectGrantedOnceTo(blobStore.grantEmailBlobWrite, lambda);
+  });
+
+  it('requests send on the audit-events queue and consume on the SES-event queue for itself', () => {
+    const { lambda, auditEventsQueue, sesEventQueue } = synthesize();
+
+    expectGrantedOnceTo(auditEventsQueue.grantSend, lambda);
+    expectGrantedOnceTo(sesEventQueue.grantConsume, lambda);
+  });
+
+  it('registers one queue event that delivers the SES-event queue to itself', () => {
+    const { lambda, sesEventQueue } = synthesize();
+
+    expect(SesNotificationsQueueEvent).toHaveBeenCalledTimes(1);
+    expect(SesNotificationsQueueEvent).toHaveBeenCalledWith(lambda, 'ses-notifications-queue', { target: lambda, queue: sesEventQueue });
+  });
+
+  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the broadcaster grant itself invokable', () => {
+    const { lambda, stack }                         = synthesize();
+    const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
+
+    lambda.enableWebSocketPush(broadcaster);
+
+    expect(onlyLambdaOf(Template.fromStack(stack)).environment).toMatchObject({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcast-fn' });
+    expect(broadcaster.grantInvoke).toHaveBeenCalledWith(lambda);
   });
 });

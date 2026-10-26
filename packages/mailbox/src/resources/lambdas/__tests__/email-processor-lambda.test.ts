@@ -1,86 +1,93 @@
 /// <reference types="jest" />
 
 /**
- * EmailProcessorLambda: its SQS event source mapping on the email-processing queue, the SQS consume statement its
- * role is granted on that queue, and the websocket push wiring it takes through enableWebSocketPush.
+ * EmailProcessorLambda: the table, blob store names it hands the Go handler, the grants it requests
+ * for itself on its tables, blob store and queue, the queue event it registers, and the websocket
+ * push wiring it takes through enableWebSocketPush. The statement each grant renders and the mapping
+ * the event renders are pinned by the resource and the event that own them, not here.
  */
 
-import { statementsForAction }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Match, Template }                      from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket }                               from 'aws-cdk-lib/aws-s3';
-import type * as cdk                            from 'aws-cdk-lib';
+import { Template }                                                                         from 'aws-cdk-lib/assertions';
 
-import type { IWebSocketBroadcastPublisher }    from '../../../contracts/websocket-push';
-import { DataBlobStore }                        from '../../buckets/data-blob-store';
-import { EmailProcessingQueue }                 from '../../queues/email-processing-queue';
-import { DataTable }                            from '../../tables/data-tables';
-import { EmailProcessorLambda }                 from '../email-processor-lambda';
+import type { IWebSocketBroadcastPublisher }                                                from '../../../contracts/websocket-push';
+import { EmailProcessingQueueEvent }                                                        from '../../events/email-processing-queue-event';
+import { EmailProcessorLambda }                                                             from '../email-processor-lambda';
 
-import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataBlobStore, fakeDataTable, fakeQueue }                 from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                                                from './lambda-wrapper-helpers';
 
-describe('EmailProcessorLambda event-source wiring', () => {
-  let stack: cdk.Stack;
-  let emailProcessingQueue: EmailProcessingQueue;
-  let processor: EmailProcessorLambda;
+jest.mock('../../events/email-processing-queue-event');
 
+function synthesize() {
+  const { stack, artifactResolver } = arrangeWrapperStack();
+  const configTable                 = fakeDataTable('config-table');
+  const itemTable                   = fakeDataTable('item-table');
+  const changelogTable              = fakeDataTable('changelog-table');
+  const blobStore                   = fakeDataBlobStore('blob-store');
+  const emailProcessingQueue        = fakeQueue('email-processing');
+  const lambda                      = new EmailProcessorLambda(stack, 'email-processor', {
+    configTable,
+    itemTable,
+    changelogTable,
+    blobStore,
+    emailProcessingQueue,
+    artifactResolver,
+  });
+
+  return { lambda, stack, configTable, itemTable, changelogTable, blobStore, emailProcessingQueue };
+}
+
+describe('EmailProcessorLambda', () => {
   beforeEach(() => {
-    const arrangement = arrangeWrapperStack();
-    stack             = arrangement.stack;
+    jest.mocked(EmailProcessingQueueEvent).mockClear();
+  });
 
-    const configTable    = new DataTable(new Table(stack, 'config-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    const itemTable      = new DataTable(new Table(stack, 'item-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    const blobStore      = new DataBlobStore(new Bucket(stack, 'blob-store'));
-    emailProcessingQueue = new EmailProcessingQueue(stack, 'email-processing-queue');
+  it('passes the blob store and table names to the handler', () => {
+    const { stack } = synthesize();
 
-    processor = new EmailProcessorLambda(stack, 'email-processor', {
-      configTable,
-      itemTable,
-      changelogTable,
-      blobStore,
-      emailProcessingQueue,
-      artifactResolver: arrangement.artifactResolver,
+    expect(onlyLambdaOf(Template.fromStack(stack)).environment).toMatchObject({
+      BLOB_STORE_NAME:      'blob-store',
+      CONFIG_TABLE_NAME:    'config-table',
+      ITEM_TABLE_NAME:      'item-table',
+      CHANGELOG_TABLE_NAME: 'changelog-table',
     });
   });
 
-  it('instantiates exactly one queue event, sourced from the email-processing queue', () => {
-    const template          = Template.fromStack(stack);
-    const queueArn: unknown = stack.resolve(emailProcessingQueue.queueArn);
-    template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
+  it('requests read-write on the config, item and changelog tables for itself', () => {
+    const { lambda, configTable, itemTable, changelogTable } = synthesize();
 
-    template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
-      EventSourceArn: queueArn,
-    });
+    expectGrantedOnceTo(configTable.grantReadWrite, lambda);
+    expectGrantedOnceTo(itemTable.grantReadWrite, lambda);
+    expectGrantedOnceTo(changelogTable.grantReadWrite, lambda);
   });
 
-  it('grants the role exactly the SQS consume statement on the email-processing queue', () => {
-    const consumeStatements = statementsForAction(Template.fromStack(stack), 'sqs:ReceiveMessage');
+  it('requests incoming-email consume and email-blob write on the blob store for itself', () => {
+    const { lambda, blobStore } = synthesize();
 
-    expect(consumeStatements).toHaveLength(1);
-    const [statement] = consumeStatements;
+    expectGrantedOnceTo(blobStore.grantIncomingEmailConsume, lambda);
+    expectGrantedOnceTo(blobStore.grantEmailBlobWrite, lambda);
+  });
 
-    expect(statement.Effect).toBe('Allow');
-    const actionMatch = Match.arrayEquals(['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes']).test(statement.Action);
-    expect(actionMatch.hasFailed()).toBe(false);
-    const resourceMatch = Match.exact(stack.resolve(emailProcessingQueue.queueArn)).test(statement.Resource);
-    expect(resourceMatch.hasFailed()).toBe(false);
+  it('requests consume on the email-processing queue for itself', () => {
+    const { lambda, emailProcessingQueue } = synthesize();
+
+    expectGrantedOnceTo(emailProcessingQueue.grantConsume, lambda);
+  });
+
+  it('registers one queue event that delivers the email-processing queue to itself', () => {
+    const { lambda, emailProcessingQueue } = synthesize();
+
+    expect(EmailProcessingQueueEvent).toHaveBeenCalledTimes(1);
+    expect(EmailProcessingQueueEvent).toHaveBeenCalledWith(lambda, 'email-processing-queue', { target: lambda, queue: emailProcessingQueue });
   });
 
   it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the broadcaster grant itself invokable', () => {
+    const { lambda, stack }                         = synthesize();
     const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
 
-    processor.enableWebSocketPush(broadcaster);
+    lambda.enableWebSocketPush(broadcaster);
 
-    Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
-      Environment: { Variables: Match.objectLike({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcast-fn' }) },
-    });
-    expect(broadcaster.grantInvoke).toHaveBeenCalledWith(processor);
+    expect(onlyLambdaOf(Template.fromStack(stack)).environment).toMatchObject({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcast-fn' });
+    expect(broadcaster.grantInvoke).toHaveBeenCalledWith(lambda);
   });
 });

@@ -1,65 +1,44 @@
 /// <reference types="jest" />
 
 /**
- * WebSocketConnectLambda stores connections: its only policy statement that touches the connections table
- * grants GetItem and PutItem on the table itself, with no index.
+ * WebSocketConnectLambda: the table names it hands the Go handler and the grants it requests for
+ * itself on the connections and config tables. The statement each grant renders is pinned by the
+ * table that owns it.
  */
 
-import { Template }                             from 'aws-cdk-lib/assertions';
-import { AttributeType, Table }                 from 'aws-cdk-lib/aws-dynamodb';
-import type * as cdk                            from 'aws-cdk-lib';
+import { Template }                                                from 'aws-cdk-lib/assertions';
 
-import { defaultCfnResource }                   from '../../../utils/cfn-resource';
-import { DataTable }                            from '../../tables/data-tables';
-import { WebSocketTable }                       from '../../tables/websocket-table';
-import { WebSocketConnectLambda }               from '../websocket-connect-lambda';
+import { WebSocketConnectLambda }                                  from '../websocket-connect-lambda';
 
-import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataTable, fakeWebSocketTable }  from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                       from './lambda-wrapper-helpers';
 
-interface PolicyResource {
-  readonly Type:        string;
-  readonly Properties?: { readonly PolicyDocument?: { readonly Statement?: unknown[] } };
+function synthesize() {
+  const { stack, artifactResolver } = arrangeWrapperStack();
+  const connectionsTable            = fakeWebSocketTable('connections-table');
+  const configTable                 = fakeDataTable('config-table');
+  const lambda                      = new WebSocketConnectLambda(stack, 'websocket-connect', { connectionsTable, configTable, artifactResolver });
+
+  return { lambda, connectionsTable, configTable, ...onlyLambdaOf(Template.fromStack(stack)) };
 }
 
-function statementsOnTable(template: Template, tableId: string): unknown[] {
-  const resources = template.toJSON().Resources as Record<string, PolicyResource>;
-  return Object.values(resources)
-    .filter((resource) => resource.Type === 'AWS::IAM::Policy')
-    .flatMap((resource) => resource.Properties?.PolicyDocument?.Statement ?? [])
-    .filter((statement) => JSON.stringify(statement).includes(tableId));
-}
-
-describe('WebSocketConnectLambda connections-table grant', () => {
-  let stack: cdk.Stack;
-  let template: Template;
-  let tableId: string;
-
-  beforeEach(() => {
-    const arrangement = arrangeWrapperStack();
-    stack             = arrangement.stack;
-
-    const configTable      = new DataTable(new Table(stack, 'config-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    const connectionsTable = new WebSocketTable(stack, 'websocket-table');
-    tableId                = stack.getLogicalId(defaultCfnResource(connectionsTable));
-
-    new WebSocketConnectLambda(stack, 'websocket-connect', {
-      connectionsTable,
-      configTable,
-      artifactResolver: arrangement.artifactResolver,
+describe('WebSocketConnectLambda', () => {
+  it('passes the connections and config table names to the handler', () => {
+    expect(synthesize().environment).toMatchObject({
+      CONNECTIONS_TABLE_NAME: 'connections-table',
+      CONFIG_TABLE_NAME:      'config-table',
     });
-
-    template = Template.fromStack(stack);
   });
 
-  it('grants exactly one statement on the connections table: GetItem and PutItem on the table, no index', () => {
-    expect(statementsOnTable(template, tableId)).toEqual([
-      {
-        Action:   ['dynamodb:GetItem', 'dynamodb:PutItem'],
-        Effect:   'Allow',
-        Resource: { 'Fn::GetAtt': [tableId, 'Arn'] },
-      },
-    ]);
+  it('requests store-connection on the connections table for itself', () => {
+    const { lambda, connectionsTable } = synthesize();
+
+    expectGrantedOnceTo(connectionsTable.grantStoreConnection, lambda);
+  });
+
+  it('requests read on the config table for itself', () => {
+    const { lambda, configTable } = synthesize();
+
+    expectGrantedOnceTo(configTable.grantRead, lambda);
   });
 });

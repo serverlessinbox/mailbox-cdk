@@ -1,64 +1,56 @@
 /// <reference types="jest" />
 
 /**
- * AuditWriterLambda event-source wiring: its SQS event source mapping on the audit-events queue, and the SQS consume
- * statement its role is granted on that queue.
+ * AuditWriterLambda: the audit log table name it hands the Go handler, the grants it requests for
+ * itself on the table and the queue, and the queue event it registers for itself. The statement
+ * each grant renders and the mapping the event renders are pinned by the table, the queue and the
+ * event, not here.
  */
 
-import { statementsForAction }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Match, Template }                      from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
-import type * as cdk                            from 'aws-cdk-lib';
+import { Template }                                         from 'aws-cdk-lib/assertions';
 
-import { AuditEventsQueue }                     from '../../queues/audit-events-queue';
-import { DataTable }                            from '../../tables/data-tables';
-import { AuditWriterLambda }                    from '../audit-writer-lambda';
+import { AuditEventsQueueEvent }                            from '../../events/audit-events-queue-event';
+import { AuditWriterLambda }                                from '../audit-writer-lambda';
 
-import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataTable, fakeQueue }    from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                from './lambda-wrapper-helpers';
 
-describe('AuditWriterLambda event-source wiring', () => {
-  let stack: cdk.Stack;
-  let template: Template;
-  let auditEventsQueue: AuditEventsQueue;
+jest.mock('../../events/audit-events-queue-event');
 
+function synthesize() {
+  const { stack, artifactResolver } = arrangeWrapperStack();
+  const auditLogTable               = fakeDataTable('audit-log-table');
+  const auditEventsQueue            = fakeQueue('audit-events');
+  const lambda                      = new AuditWriterLambda(stack, 'audit-writer', { auditLogTable, auditEventsQueue, artifactResolver });
+
+  return { lambda, auditLogTable, auditEventsQueue, ...onlyLambdaOf(Template.fromStack(stack)) };
+}
+
+describe('AuditWriterLambda', () => {
   beforeEach(() => {
-    const arrangement = arrangeWrapperStack();
-    stack             = arrangement.stack;
-
-    const auditLogTable = new DataTable(new Table(stack, 'audit-log-table', {
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-    }));
-    auditEventsQueue    = new AuditEventsQueue(stack, 'audit-events-queue');
-
-    new AuditWriterLambda(stack, 'audit-writer', {
-      auditLogTable,
-      auditEventsQueue,
-      artifactResolver: arrangement.artifactResolver,
-    });
-
-    template = Template.fromStack(stack);
+    jest.mocked(AuditEventsQueueEvent).mockClear();
   });
 
-  it('instantiates exactly one queue event, sourced from the audit-events queue', () => {
-    template.resourceCountIs('AWS::Lambda::EventSourceMapping', 1);
-
-    const queueArn: unknown = stack.resolve(auditEventsQueue.queueArn);
-
-    template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
-      EventSourceArn: queueArn,
-    });
+  it('passes the audit log table name to the handler', () => {
+    expect(synthesize().environment).toMatchObject({ AUDIT_LOG_TABLE_NAME: 'audit-log-table' });
   });
 
-  it('grants the role exactly the SQS consume statement on the audit-events queue', () => {
-    const consumeStatements = statementsForAction(template, 'sqs:ReceiveMessage');
+  it('requests read-write on the audit log table for itself', () => {
+    const { lambda, auditLogTable } = synthesize();
 
-    expect(consumeStatements).toHaveLength(1);
-    const [statement] = consumeStatements;
+    expectGrantedOnceTo(auditLogTable.grantReadWrite, lambda);
+  });
 
-    expect(statement.Effect).toBe('Allow');
-    const actionMatch = Match.arrayEquals(['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes']).test(statement.Action);
-    expect(actionMatch.hasFailed()).toBe(false);
-    const resourceMatch = Match.exact(stack.resolve(auditEventsQueue.queueArn)).test(statement.Resource);
-    expect(resourceMatch.hasFailed()).toBe(false);
+  it('requests consume on the audit-events queue for itself', () => {
+    const { lambda, auditEventsQueue } = synthesize();
+
+    expectGrantedOnceTo(auditEventsQueue.grantConsume, lambda);
+  });
+
+  it('registers one queue event that delivers the audit-events queue to itself', () => {
+    const { lambda, auditEventsQueue } = synthesize();
+
+    expect(AuditEventsQueueEvent).toHaveBeenCalledTimes(1);
+    expect(AuditEventsQueueEvent).toHaveBeenCalledWith(lambda, 'audit-events-queue', { target: lambda, queue: auditEventsQueue });
   });
 });
