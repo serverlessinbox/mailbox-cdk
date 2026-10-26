@@ -106,7 +106,7 @@ export class IdpUsersRequestValidator {
     }
   }
 
-  private assertHasUsername(request: { username?: string }): void {
+  private assertHasUsername(request: UserNamedBody): void {
     if (!request.username || request.username.trim().length === 0) {
       throw new InvalidInputError('Missing/invalid username');
     }

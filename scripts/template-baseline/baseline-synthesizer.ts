@@ -33,9 +33,15 @@ interface ArtifactVersionsContext {
   readonly [objectKey: string]: string;
 }
 
+/** The `serverlessinbox:artifacts` context value: the artifact bucket and the packages in it. */
+interface ArtifactsContext {
+  readonly bucketBase: string;
+  readonly packages:   ArtifactPackagesContext;
+}
+
 /** The app context the baseline stack reads: the artifact bucket and packages, and the pinned versions. */
 type BaselineAppContext = {
-  readonly [ARTIFACTS_CONTEXT_KEY]:         { readonly bucketBase: string; readonly packages: ArtifactPackagesContext };
+  readonly [ARTIFACTS_CONTEXT_KEY]:         ArtifactsContext;
   readonly [ARTIFACT_VERSIONS_CONTEXT_KEY]: ArtifactVersionsContext;
 };
 

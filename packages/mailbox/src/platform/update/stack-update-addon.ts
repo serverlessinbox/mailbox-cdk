@@ -32,7 +32,10 @@ export interface StackUpdateAddonProps {
 }
 
 /** What the stack-update addon contributes to the Admin UI configuration. */
-type StackUpdateUiConfig = { readonly stackUpdate: { readonly available: boolean } };
+type StackUpdateUiConfig = { readonly stackUpdate: StackUpdateAvailability };
+
+/** Whether the stack-update feature is offered in the Admin UI. */
+type StackUpdateAvailability = { readonly available: boolean };
 
 /**
  * Admin API addon for human-gated CloudFormation ChangeSet operations.

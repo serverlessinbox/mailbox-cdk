@@ -1,15 +1,19 @@
-import type { TSESLint }       from '@typescript-eslint/utils';
-import arca                    from 'eslint-plugin-arca';
-import { globSync }            from 'node:fs';
-import tseslint                from 'typescript-eslint';
+import type { TSESLint }          from '@typescript-eslint/utils';
+import arca                       from 'eslint-plugin-arca';
+import { globSync }               from 'node:fs';
+import tseslint                   from 'typescript-eslint';
 
-import { mailboxRules }        from '../rules/mailbox-rules';
-import { sourceRuleScope }     from '../zones/package-roots';
+import { mailboxRules }           from '../rules/mailbox-rules';
+import { sourceRuleScope }        from '../zones/package-roots';
 
-import { classFamilyFiles }    from './class-family-files';
-import { forbiddenGrantRules } from './forbidden-grant-helpers';
-import { styleRules }          from './style-rules';
-import { typeSafetyRules }     from './type-safety-rules';
+import { classFamilyFiles }       from './class-family-files';
+import { forbiddenGrantRules }    from './forbidden-grant-helpers';
+import { restrictedSyntaxRules }  from './restricted-syntax-rules';
+import { styleRules }             from './style-rules';
+import { syncFsRules }            from './sync-fs-rules';
+import { synthTimeReaderFiles }   from './synth-time-reader-files';
+import { testFiles }              from './test-files';
+import { typeSafetyRules }        from './type-safety-rules';
 
 export interface RecommendedConfigOptions {
   readonly tsconfigRootDir: string;
@@ -43,6 +47,8 @@ export function recommendedConfig(options: RecommendedConfigOptions): TSESLint.F
         ...typeSafetyRules,
         ...styleRules,
         ...forbiddenGrantRules,
+        ...restrictedSyntaxRules,
+        ...syncFsRules,
         'mailbox/align':         'error',
         'mailbox/events-import': 'error',
         'mailbox/kit-isolation': 'error',
@@ -57,6 +63,14 @@ export function recommendedConfig(options: RecommendedConfigOptions): TSESLint.F
     {
       files: ['**/__tests__/**', '**/*.test.ts'],
       rules: { 'max-lines-per-function': 'off' },
+    },
+    {
+      files: [...testFiles],
+      rules: { 'no-restricted-imports': 'off', 'no-restricted-syntax': 'off' },
+    },
+    {
+      files: [...synthTimeReaderFiles],
+      rules: { 'no-restricted-imports': 'off' },
     },
     {
       files:   [...sourceRuleScope.files],

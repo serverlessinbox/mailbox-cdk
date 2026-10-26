@@ -79,23 +79,26 @@ export declare class AdminAuthExtractor {
 }
 
 // api-gateway.d.ts
+type ApiGatewayV2Http = {
+    method?: string;
+    path?: string;
+};
+type ApiGatewayV2Authorizer = {
+    lambda?: unknown;
+    jwt?: unknown;
+};
+type ApiGatewayV2RequestContext = {
+    [key: string]: unknown;
+    requestId?: string;
+    http?: ApiGatewayV2Http;
+    authorizer?: ApiGatewayV2Authorizer;
+};
 export type ApiGatewayV2EventLike = {
     [key: string]: unknown;
     rawPath?: string;
     body?: string | null;
     headers?: Record<string, string | undefined>;
-    requestContext: {
-        [key: string]: unknown;
-        requestId?: string;
-        http?: {
-            method?: string;
-            path?: string;
-        };
-        authorizer?: {
-            lambda?: unknown;
-            jwt?: unknown;
-        };
-    };
+    requestContext: ApiGatewayV2RequestContext;
 };
 export type ApiGatewayV2ResultLike = {
     statusCode: number;
@@ -103,6 +106,7 @@ export type ApiGatewayV2ResultLike = {
     body?: string;
     isBase64Encoded?: boolean;
 };
+export {};
 
 // audit.d.ts
 export type AuditEvent = {
