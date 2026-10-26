@@ -2087,7 +2087,7 @@ __metadata:
     esbuild: "npm:^0.27.1"
     jest: "npm:^29.0.0"
     jsii: "npm:^5.9.44"
-    jsii-pacmak: "npm:*"
+    jsii-pacmak: "npm:1.120.0"
     jsii-rosetta: "npm:^5.9.15"
     ts-jest: "npm:^29.0.0"
     typanion: "npm:^3.14.0"
@@ -2133,7 +2133,7 @@ __metadata:
     jest: "npm:^29.0.0"
     jose: "npm:5.10.0"
     jsii: "npm:^5.9.44"
-    jsii-pacmak: "npm:*"
+    jsii-pacmak: "npm:1.120.0"
     jsii-rosetta: "npm:^5.9.15"
     mime-types: "npm:^2.1.35"
     semver: "npm:^7.6.0"
@@ -6527,7 +6527,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jsii-pacmak@npm:*":
+"jsii-pacmak@npm:1.120.0":
   version: 1.120.0
   resolution: "jsii-pacmak@npm:1.120.0"
   dependencies:

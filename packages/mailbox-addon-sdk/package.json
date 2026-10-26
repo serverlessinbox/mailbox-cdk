@@ -22,7 +22,7 @@
     "mailbox",
     "addon"
   ],
-  "packageManager": "yarn@4.12.0",
+  "packageManager": "yarn@4.16.0",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
