@@ -49,7 +49,8 @@ export interface MailboxUserPoolAuthorizationConfig {
 
   /**
    * Names of the Cognito groups whose members are regular mailbox users. They are the groups of the
-   * JMAP API OAuth clients this construct provisions.
+   * JMAP API OAuth clients this construct provisions, and the groups a user created through the IdP users
+   * API joins when the request names no groups. Each of them must exist as a group in the user pool.
    * @default ['user']
    */
   readonly userGroups?: string[];

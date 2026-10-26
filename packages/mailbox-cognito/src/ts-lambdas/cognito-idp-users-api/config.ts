@@ -22,6 +22,7 @@ export interface Config extends BaseConfig {
   readonly auditEventsQueueUrl:             QueueUrl;
   readonly identityProvisionerFunctionName: FunctionName;
   readonly adminGroups?:                    GroupName[];
+  readonly userGroups?:                     GroupName[];
 }
 
 /** Reads `SERVICE_NAME` as optional where `loadBaseConfig` requires it, so an empty service name is accepted. */
@@ -33,5 +34,8 @@ export function load(loader: env.Loader): Config {
     auditEventsQueueUrl:             env.mandatoryAs(loader, 'AUDIT_EVENTS_QUEUE_URL', toQueueUrl, toQueueUrl('')),
     identityProvisionerFunctionName: env.mandatoryAs(loader, 'IDENTITY_PROVISIONER_FUNCTION_NAME', toFunctionName, toFunctionName('')),
     adminGroups:                     env.optionalAs(loader, 'ADMIN_GROUPS', undefined, env.json(isGroupNameArray)),
+    // BWCOMPAT(2026-10-26): USER_GROUPS is absent when the user pool defines no authorization config.
+    // Remove when: every user pool handed to the addon implements authorizationConfig.
+    userGroups:                      env.optionalAs(loader, 'USER_GROUPS', undefined, env.json(isGroupNameArray)),
   };
 }

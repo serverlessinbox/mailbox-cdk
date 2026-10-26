@@ -81,12 +81,13 @@ describe('CognitoIdpUsersService', () => {
   const logWarn             = jest.spyOn(logger, 'warn');
   const flushLogs           = jest.spyOn(logger, 'flush');
 
-  function newService(adminGroups: GroupName[] = [toGroupName('admin')]): CognitoIdpUsersService {
+  function newService(adminGroups: GroupName[] = [toGroupName('admin')], userGroups: GroupName[] = [toGroupName('user')]): CognitoIdpUsersService {
     return new CognitoIdpUsersService(new CognitoIdentityProviderClient({}), toUserPoolId(USER_POOL_ID), {
       identityProvisioner,
       userMapper: new IdpUserMapper(),
       validator:  new IdpUsersRequestValidator(),
       adminGroups,
+      userGroups,
       logger,
     });
   }
@@ -190,13 +191,22 @@ describe('CognitoIdpUsersService', () => {
       expect(cognitoMock.commandCalls(AdminDisableUserCommand)[0].args[0].input).toEqual({ UserPoolId: USER_POOL_ID, Username: 'newuser' });
     });
 
-    it('adds the user to each requested group, and to the group user when none is requested', async () => {
+    it('adds the user to only the requested groups when the request names groups', async () => {
       cognitoReturnsUser({ sub: 'cognito-sub-abc' });
+      const configured = [toGroupName('team'), toGroupName('viewer')];
 
-      await newService().createIdpUser(context(), request({ groups: ['staff', 'finance'] }));
-      await newService().createIdpUser(context(), request({ groups: [] }));
+      await newService(undefined, configured).createIdpUser(context(), request({ groups: ['staff', 'finance'] }));
 
-      expect(cognitoMock.commandCalls(AdminAddUserToGroupCommand).map((call) => call.args[0].input.GroupName)).toEqual(['staff', 'finance', 'user']);
+      expect(cognitoMock.commandCalls(AdminAddUserToGroupCommand).map((call) => call.args[0].input.GroupName)).toEqual(['staff', 'finance']);
+    });
+
+    it('adds the user to every configured user group when the request names none', async () => {
+      cognitoReturnsUser({ sub: 'cognito-sub-abc' });
+      const configured = [toGroupName('team'), toGroupName('viewer')];
+
+      await newService(undefined, configured).createIdpUser(context(), request({ groups: [] }));
+
+      expect(cognitoMock.commandCalls(AdminAddUserToGroupCommand).map((call) => call.args[0].input.GroupName)).toEqual(['team', 'viewer']);
     });
 
     it('creates the user and warns about each group it could not join when it joined at least one group', async () => {

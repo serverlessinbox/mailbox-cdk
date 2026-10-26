@@ -25,6 +25,7 @@ const service = new CognitoIdpUsersService(cognitoClient, config.userPoolId, {
   userMapper:          new IdpUserMapper(),
   validator:           new IdpUsersRequestValidator(),
   adminGroups:         config.adminGroups,
+  userGroups:          config.userGroups,
   logger,
 });
 

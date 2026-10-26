@@ -23,7 +23,10 @@ export interface CognitoIdpUsersApiLambdaProps {
   /** The names of the groups whose members are admins. Left out when the user pool defines none. */
   readonly adminGroups?: string[];
 
-  /** The names of the groups whose members are users. Left out when the user pool defines none. */
+  /**
+   * The names of the groups whose members are users. They are also the groups a user created without
+   * explicit groups joins. Left out when the user pool defines none.
+   */
   readonly userGroups?: string[];
 }
 

@@ -35,8 +35,6 @@ const ADMIN_API_ERROR_FOR: Record<CognitoFailureName, (failure: CaughtError) => 
   UsernameExistsException:   () => new ConflictError('User already exists', 'already exists'),
 };
 
-const DEFAULT_GROUP = 'user';
-
 type AuditChanges = NonNullable<AuditEntry['changes']>;
 
 /** The user an audit entry names: the Cognito username, and what the entry calls the user. */
@@ -52,7 +50,9 @@ export interface CognitoIdpUsersServiceDeps {
   readonly validator:           IdpUsersRequestValidator;
   /** The names of the groups whose members are admins; compared case-insensitively. */
   readonly adminGroups?: GroupName[];
-  readonly logger:       LoggerBuffer;
+  /** The groups a created user joins when the request names none. */
+  readonly userGroups?: GroupName[];
+  readonly logger:      LoggerBuffer;
 }
 
 /**
@@ -65,6 +65,7 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers {
   private readonly userMapper: IdpUserMapper;
   private readonly validator: IdpUsersRequestValidator;
   private readonly adminGroups: GroupName[];
+  private readonly userGroups: GroupName[];
   private readonly logger: LoggerBuffer;
 
   constructor(
@@ -76,6 +77,7 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers {
     this.userMapper          = deps.userMapper;
     this.validator           = deps.validator;
     this.adminGroups         = deps.adminGroups ?? [];
+    this.userGroups          = deps.userGroups ?? [];
     this.logger              = deps.logger;
   }
 
@@ -213,7 +215,7 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers {
   }
 
   private groupsToJoin(req: CreateIdpUserRequest): GroupName[] {
-    const groups = req.groups.length > 0 ? req.groups : [DEFAULT_GROUP];
+    const groups = req.groups.length > 0 ? req.groups : this.userGroups;
     return groups.filter(Boolean).map(toGroupName);
   }
 
