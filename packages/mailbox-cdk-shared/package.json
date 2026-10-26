@@ -1,9 +1,20 @@
 {
   "name": "@serverlessinbox/mailbox-cdk-shared",
   "version": "0.0.0",
-  "private": true,
   "description": "Shared CDK artifact-resolution infrastructure for mailbox packages",
   "license": "Apache-2.0",
+  "homepage": "https://docs.serverlessinbox.com",
+  "bugs": {
+    "url": "https://github.com/serverlessinbox/serverlessinbox/issues"
+  },
+  "keywords": [
+    "aws",
+    "cdk",
+    "serverless",
+    "email",
+    "jmap",
+    "mailbox"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/serverlessinbox/mailbox-cdk",
@@ -55,6 +66,7 @@
     "src",
     "lib",
     "artifact-registry.json",
+    "LICENSE",
     "tsconfig.json",
     "tsconfig.build.json",
     "!src/**/__tests__",
@@ -62,7 +74,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "prepack": "yarn prepare-manifest build && yarn bundle",
+    "prepack": "yarn prepare-manifest build && node -e \"require('fs').copyFileSync('../../LICENSE', 'LICENSE')\" && yarn bundle",
     "bundle": "task bundle",
     "publish:dev": "task publish:dev",
     "test": "tsc -p tsconfig.test.json && jest",

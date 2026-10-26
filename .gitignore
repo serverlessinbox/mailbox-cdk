@@ -26,6 +26,7 @@ build.log
 # LICENSE copied into each published package by its prepack (root LICENSE is the source)
 /packages/mailbox/LICENSE
 /packages/mailbox-cognito/LICENSE
+/packages/mailbox-cdk-shared/LICENSE
 /packages/mailbox-addon-sdk/LICENSE
 
 # Synthesized templates captured by `yarn template-baseline capture`
