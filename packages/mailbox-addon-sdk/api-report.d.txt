@@ -136,16 +136,19 @@ import type { Caller } from './caller';
 export declare class CallerContextReader {
     read(event: AuthorizedEvent): Caller;
     private contextOf;
+    private textOf;
     private groupsOf;
     private parseGroups;
 }
 
 // caller/caller.d.ts
+import type { PrincipalId } from './principal-id';
 import type { TenantId } from './tenant-id';
 export interface Caller {
     readonly tenantId: TenantId;
-    readonly subject: string;
-    readonly username?: string;
+    readonly principalId: PrincipalId;
+    readonly principalName: string;
+    readonly displayName: string;
     readonly groups: readonly string[];
 }
 
@@ -160,7 +163,14 @@ export interface HandlerContext {
 export type { Caller } from './caller';
 export { CallerContextReader } from './caller-context-reader';
 export type { HandlerContext } from './handler-context';
+export { toPrincipalId, type PrincipalId } from './principal-id';
 export { toTenantId, type TenantId } from './tenant-id';
+
+// caller/principal-id.d.ts
+export type PrincipalId = string & {
+    readonly brand: 'PrincipalId';
+};
+export declare function toPrincipalId(value: string): PrincipalId;
 
 // caller/tenant-id.d.ts
 export type TenantId = string & {

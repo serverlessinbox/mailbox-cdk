@@ -76,7 +76,7 @@ export class ServiceRuntime {
     const method = this.methodOf(event.rawPath);
 
     const caller = this.callerReader.read(event);
-    this.logger.debug('caller read', { requestId, tenantId: caller.tenantId, subject: caller.subject });
+    this.logger.debug('caller read', { requestId, tenantId: caller.tenantId, principalId: caller.principalId });
     this.authorize(method, caller);
 
     const body   = this.bodyReader.read(event.body);

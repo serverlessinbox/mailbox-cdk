@@ -1,6 +1,7 @@
 {
   "name": "@serverlessinbox/mailbox-addon-sdk",
   "version": "0.0.0",
+  "private": true,
   "description": "Handler SDK for Lambdas that serve Admin API services of Serverless Inbox addons",
   "author": "Joost van der Waal <joost@jvdwaal.nl>",
   "license": "Apache-2.0",

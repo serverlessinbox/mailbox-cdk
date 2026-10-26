@@ -2,10 +2,11 @@ import type { AuthorizedEvent } from '../caller/authorized-event';
 
 /** The authorizer context of an admin caller, as the authorizer writes it: every value is a string. */
 export const ADMIN_CONTEXT: Readonly<Record<string, string>> = {
-  tenantId: 'tenant-1',
-  sub:      'user-1',
-  username: 'jane',
-  groups:   '["admin"]',
+  tenantId:      'tenant-1',
+  principalId:   'principal-1',
+  principalName: 'jane',
+  displayName:   'Jane Doe',
+  groups:        '["admin"]',
 };
 
 /** What a test sets on the event; everything else is a fixed, valid value. */

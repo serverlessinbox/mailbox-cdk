@@ -90,7 +90,7 @@ describe('ServiceRuntime', () => {
 
       expect(result).toEqual({ statusCode: 200, headers: { 'content-type': 'application/json; charset=utf-8' }, body: '{"users":[]}' });
       expect(method.invoke).toHaveBeenCalledWith(
-        { caller: { tenantId: 'tenant-1', subject: 'user-1', username: 'jane', groups: ['admin'] }, requestId: 'request-1' },
+        { caller: { tenantId: 'tenant-1', principalId: 'principal-1', principalName: 'jane', displayName: 'Jane Doe', groups: ['admin'] }, requestId: 'request-1' },
         { limit: 5 },
       );
     });

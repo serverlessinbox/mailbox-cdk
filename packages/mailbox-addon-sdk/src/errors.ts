@@ -3,7 +3,7 @@ export class InvalidInputError extends Error {
   readonly name = 'InvalidInputError';
 }
 
-/** The request carries no valid identity: the authorizer supplied no tenant or no subject. */
+/** The request carries no valid identity: the authorizer supplied no tenant or no principal. */
 export class UnauthenticatedError extends Error {
   readonly name = 'UnauthenticatedError';
 }
