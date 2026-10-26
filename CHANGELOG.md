@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.1](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.0...v0.5.1) (Mon Oct 26 2026)
+
+### chore
+
+* **shared** release mailbox-cdk-shared like the other packages ([2bdc9c9](https://github.com/serverlessinbox/mailbox-cdk/commit/2bdc9c99727c9770a8f0b73258998c67c82f7809))
+
 ## [0.5.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.4.0...v0.5.0) (Mon Oct 26 2026)
 
 ### refactor
