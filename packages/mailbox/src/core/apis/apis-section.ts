@@ -267,7 +267,7 @@ export class ApisSection extends Construct {
     }
 
     return new McpApi(this, 'mcp-api', {
-      jmapApiGateway:   jmapApi.httpApi,
+      jmapApiUrl:       jmapApi.url,
       authorizerLambda: jmapApi.authorizerLambda,
       certificate:      props.edge.regionalCertificate,
       host:             props.mailboxDomains.mcp,

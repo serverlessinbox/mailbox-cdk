@@ -176,6 +176,22 @@ describe('ApisSection', () => {
     });
   });
 
+  it('addEndpoints points the MCP handler at the JMAP custom-domain URL', () => {
+    const section = newSection();
+
+    section.addEndpoints(endpointsProps({
+      enableMcp: true,
+      edge:      {
+        jmapCertificate:     acm.Certificate.fromCertificateArn(stack, 'jmap-certificate', 'arn:aws:acm:us-west-2:123456789012:certificate/jmap'),
+        regionalCertificate: acm.Certificate.fromCertificateArn(stack, 'regional-certificate', 'arn:aws:acm:us-west-2:123456789012:certificate/regional'),
+      },
+    }));
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ JMAP_API_URL: 'https://jmap.example.com' }) },
+    });
+  });
+
   describe('addEndpoints custom domains', () => {
     function importedCertificate(id: string): acm.ICertificate {
       return acm.Certificate.fromCertificateArn(stack, id, `arn:aws:acm:us-west-2:123456789012:certificate/${id}`);

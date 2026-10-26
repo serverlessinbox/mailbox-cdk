@@ -6,7 +6,6 @@ import {
   ApiMapping,
   HttpApi,
   HttpMethod,
-  IHttpApi,
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import * as acm                          from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda                       from 'aws-cdk-lib/aws-lambda';
@@ -20,8 +19,8 @@ import { ApiCustomDomain }               from './api-custom-domain';
 
 /** Inputs of {@link McpApi}: the JMAP API it fronts, the authorizer and certificate it reuses, and its domain. */
 export interface McpApiProps {
-  /** The JMAP API this MCP API fronts; handed to the MCP handler Lambda. */
-  readonly jmapApiGateway: IHttpApi;
+  /** The JMAP API's custom-domain URL, `https://<domain>`; handed to the MCP handler Lambda. */
+  readonly jmapApiUrl: string;
   /** Authorizer Lambda that protects every MCP route. */
   readonly authorizerLambda: lambda.IFunction;
   /** Regional ACM certificate that covers the MCP host, in the same region as the API. */
@@ -73,7 +72,7 @@ export class McpApi extends Construct {
     });
 
     const handlerLambda = new McpApiLambda(this, 'handler', {
-      jmapApiGateway:   props.jmapApiGateway,
+      jmapApiUrl:       props.jmapApiUrl,
       scopeMap:         props.scopeMap,
       artifactResolver: props.artifactResolver,
     });

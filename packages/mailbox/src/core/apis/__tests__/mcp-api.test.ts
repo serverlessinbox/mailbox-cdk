@@ -10,7 +10,6 @@
 
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
-import { HttpApi }                              from 'aws-cdk-lib/aws-apigatewayv2';
 import * as lambda                              from 'aws-cdk-lib/aws-lambda';
 import * as cdk                                 from 'aws-cdk-lib';
 
@@ -25,7 +24,6 @@ describe('McpApi', () => {
 
   beforeEach(() => {
     stack                  = newApiStack();
-    const jmapApiGateway   = new HttpApi(stack, 'jmap-http-api');
     const authorizerLambda = new lambda.Function(stack, 'authorizer', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
@@ -33,7 +31,7 @@ describe('McpApi', () => {
     });
 
     sut = new McpApi(stack, 'mcp-api', {
-      jmapApiGateway,
+      jmapApiUrl:       'https://jmap.example.com',
       authorizerLambda,
       certificate:      certificate(stack, 'mcp.example.com'),
       host:             'mcp.example.com',

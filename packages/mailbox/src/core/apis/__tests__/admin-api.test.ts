@@ -76,6 +76,12 @@ describe('AdminApi', () => {
   });
 
   describe('with a custom domain', () => {
+    it('disables the default execute-api endpoint', () => {
+      new AdminApi(stack, 'admin-api', propsWith({ customDomain: { domainName: 'api.example.com', certificate: certificate(stack, 'api.example.com') } }));
+
+      Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Api', { DisableExecuteApiEndpoint: true });
+    });
+
     it('serves on the domain, maps the API onto it and publishes its regional target', () => {
       const customDomain = { domainName: 'api.example.com', certificate: certificate(stack, 'api.example.com') };
 

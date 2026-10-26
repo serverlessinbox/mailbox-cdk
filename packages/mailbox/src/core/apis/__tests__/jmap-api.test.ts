@@ -109,6 +109,12 @@ describe('JmapApi', () => {
   });
 
   describe('with a custom domain', () => {
+    it('disables the default execute-api endpoint', () => {
+      new JmapApi(stack, 'jmap-api', propsWith({ customDomain: { domainName: 'jmap.example.com', certificate: certificate(stack, 'jmap.example.com') } }));
+
+      Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Api', { DisableExecuteApiEndpoint: true });
+    });
+
     it('serves on the domain, maps the API onto it and publishes its regional target', () => {
       const customDomain = { domainName: 'jmap.example.com', certificate: certificate(stack, 'jmap.example.com') };
 

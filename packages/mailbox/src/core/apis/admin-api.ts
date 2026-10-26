@@ -90,6 +90,7 @@ export class AdminApi extends Construct {
       createDefaultStage: false,
       description:        'This service serves mailbox admin api endpoints.',
       corsPreflight:      this.corsPreflight(props.allowedOrigins),
+      ...(props.customDomain ? { disableExecuteApiEndpoint: true } : {}),
     });
     this.defaultStage = api.addStage('DefaultStage', {
       autoDeploy: true,
