@@ -4,9 +4,10 @@
  * AdminApi tests: what the construct itself decides.
  *
  * Pins the custom-domain wiring (API mapped onto the domain, the domain's logical id pin handed
- * out), the CORS preflight switch, that every route is behind the Lambda authorizer, and that
- * addons are mounted with that same authorizer. A route that loses its authorizer stays green in
- * tsc and synth, so these assertions are the only guard.
+ * out), the CORS preflight switch, that every route is behind a Lambda authorizer, that the addon
+ * routes get the principal-lookup authorizer and the handler route the plain one. A route that
+ * loses its authorizer, or gets the wrong one, stays green in tsc and synth, so these assertions
+ * are the only guard.
  */
 
 import { Match, Template }                           from 'aws-cdk-lib/assertions';
@@ -20,11 +21,12 @@ import { AdminApi }                                  from '../admin-api';
 import type { AdminApiProps }                        from '../admin-api';
 
 import {
+  authorizerOfRoute,
   certificate,
   inlineFunction,
   newAdminApiProps,
   newApiStack,
-  routeAndAdminHandlerRoute,
+  routeOf,
 } from './apis-helpers';
 
 describe('AdminApi', () => {
@@ -133,22 +135,51 @@ describe('AdminApi', () => {
       });
     });
 
-    it('creates the HTTP Lambda authorizer that its routes reference', () => {
-      new AdminApi(stack, 'admin-api', propsWith());
-
-      Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Authorizer', {
-        AuthorizerType: 'REQUEST',
-      });
-    });
-
-    it.each(['/first', '/second'])('mounts the route of the addon at %s behind the authorizer of the handler route', (basePath) => {
+    it.each(['/first', '/second'])('mounts the route of the addon at %s behind the principal-lookup authorizer', (basePath) => {
       new AdminApi(stack, 'admin-api', propsWith({ addons: [addonAt('/first'), addonAt('/second')] }));
 
-      const { route, handlerRoute } = routeAndAdminHandlerRoute(Template.fromStack(stack), `POST ${basePath}/{proxy+}`);
+      const { functionEnvironment } = authorizerOfRoute(Template.fromStack(stack), `POST ${basePath}/{proxy+}`);
 
-      expect(route.AuthorizationType).toBe('CUSTOM');
-      expect(route.AuthorizerId).toBeDefined();
-      expect(route.AuthorizerId).toEqual(handlerRoute.AuthorizerId);
+      expect(functionEnvironment).toMatchObject({ PRINCIPAL_LOOKUP: 'on' });
+    });
+
+    it('mounts the handler route behind the plain authorizer', () => {
+      new AdminApi(stack, 'admin-api', propsWith({ addons: [addonAt('/first')] }));
+
+      const { functionEnvironment } = authorizerOfRoute(Template.fromStack(stack), 'POST /{proxy+}');
+
+      expect(functionEnvironment).toMatchObject({ AUTH_POLICY_NAME: 'ADMIN_API', PRINCIPAL_LOOKUP: 'off' });
+    });
+
+    it('gives the addon routes and the handler route two distinct authorizers', () => {
+      new AdminApi(stack, 'admin-api', propsWith({ addons: [addonAt('/first')] }));
+
+      const template = Template.fromStack(stack);
+
+      expect(routeOf(template, 'POST /first/{proxy+}').AuthorizerId).not.toEqual(routeOf(template, 'POST /{proxy+}').AuthorizerId);
+      template.resourceCountIs('AWS::ApiGatewayV2::Authorizer', 2);
+    });
+
+    it('caches the answer of the principal-lookup authorizer for 60 seconds', () => {
+      new AdminApi(stack, 'admin-api', propsWith({ addons: [addonAt('/first')] }));
+
+      const { cacheTtlSeconds } = authorizerOfRoute(Template.fromStack(stack), 'POST /first/{proxy+}');
+
+      expect(cacheTtlSeconds).toBe(60);
+    });
+
+    it('turns the lookup on for only one function, under its own service name', () => {
+      new AdminApi(stack, 'admin-api', propsWith({ addons: [addonAt('/first')] }));
+
+      const template        = Template.fromStack(stack);
+      const lookupFunctions = template.findResources('AWS::Lambda::Function', {
+        Properties: { Environment: { Variables: { PRINCIPAL_LOOKUP: 'on' } } },
+      });
+
+      expect(Object.keys(lookupFunctions)).toHaveLength(1);
+      template.hasResourceProperties('AWS::Lambda::Function', {
+        Environment: { Variables: Match.objectLike({ PRINCIPAL_LOOKUP: 'on', SERVICE_NAME: 'authorizer-admin-api-lookup' }) },
+      });
     });
 
     it('mounts the methods the route spec lists and no others', () => {

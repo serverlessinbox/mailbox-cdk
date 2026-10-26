@@ -24,6 +24,9 @@ export interface AuthorizerLambdaProps {
   /** API Gateway route keys (e.g. 'GET /.well-known/jmap') that allow anonymous access; the function receives them comma-separated. */
   readonly anonymousRoutes?: string[];
 
+  /** When true, the function resolves the principal and returns it in the authorizer context; absent or false leaves it off. The function always receives the setting, as `on` or `off`. */
+  readonly principalLookup?: boolean;
+
   /** SERVICE_NAME for this physical function; distinguishes it from other AuthorizerLambda instances sharing the 'authorizer' lambdaId. */
   readonly serviceName: string;
 
@@ -49,6 +52,7 @@ export class AuthorizerLambda extends GoLambda {
         CONFIG_TABLE_NAME:         props.configTable.tableName,
         AUTH_POLICY_NAME:          props.authPolicyName,
         ALLOW_ANONYMOUS_ROUTES:    (props.anonymousRoutes ?? []).join(','),
+        PRINCIPAL_LOOKUP:          props.principalLookup ? 'on' : 'off',
       },
     });
 

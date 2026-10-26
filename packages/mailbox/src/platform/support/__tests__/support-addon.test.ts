@@ -12,7 +12,7 @@ import { VENDOR_ACCOUNT_ID }                     from '@serverlessinbox/mailbox-
 import { Match, Template }                       from 'aws-cdk-lib/assertions';
 import * as cdk                                  from 'aws-cdk-lib';
 
-import { routeAndAdminHandlerRoute }             from '../../../core/apis/__tests__/apis-helpers';
+import { routeOf }                               from '../../../core/apis/__tests__/apis-helpers';
 import { synthesizeOnAdminApi }                  from '../../__tests__/platform-helpers';
 import { SupportAddon, SupportMode }             from '../support-addon';
 
@@ -97,15 +97,14 @@ describe('SupportAddon', () => {
       expect(createAddon(inputs, SupportMode.ENABLED).uiConfig).toEqual({ support: { available: true } });
     });
 
-    it('mounts POST /support/{proxy+} behind the Admin API authorizer', () => {
+    it('mounts POST /support/{proxy+} behind an authorizer', () => {
       const inputs   = createSupportTestStack();
       const template = synthesizeOnAdminApi(inputs.stack, createAddon(inputs, SupportMode.ENABLED));
 
-      const { route, handlerRoute } = routeAndAdminHandlerRoute(template, 'POST /support/{proxy+}');
+      const route = routeOf(template, 'POST /support/{proxy+}');
 
       expect(route.AuthorizationType).toBe('CUSTOM');
       expect(route.AuthorizerId).toBeDefined();
-      expect(route.AuthorizerId).toEqual(handlerRoute.AuthorizerId);
     });
 
     it('provisions the support-api Lambda and the role-assumption collector', () => {

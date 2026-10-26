@@ -12,7 +12,7 @@ import type { Template }                                           from 'aws-cdk
 import * as t                                                      from 'typanion';
 
 import { isTemplateValue, resourcesOfType }                        from '../../../__tests__/template-resources';
-import { routeAndAdminHandlerRoute }                               from '../../../core/apis/__tests__/apis-helpers';
+import { routeOf }                                                 from '../../../core/apis/__tests__/apis-helpers';
 import { newInlineFunction, newTestStack, synthesizeOnAdminApi }   from '../../__tests__/platform-helpers';
 import { ArtifactUpdaterAddon }                                    from '../artifact-updater-addon';
 
@@ -27,12 +27,11 @@ describe('ArtifactUpdaterAddon', () => {
     template = synthesizeOnAdminApi(stack, new ArtifactUpdaterAddon(newInlineFunction(stack, 'updater')));
   });
 
-  it.each(['POST', 'GET'])('routes %s requests under /artifact-updates through the authorizer of the Admin API', (method) => {
-    const { route, handlerRoute } = routeAndAdminHandlerRoute(template, `${method} /artifact-updates/{proxy+}`);
+  it.each(['POST', 'GET'])('routes %s requests under /artifact-updates through an authorizer', (method) => {
+    const route = routeOf(template, `${method} /artifact-updates/{proxy+}`);
 
     expect(route.AuthorizationType).toBe('CUSTOM');
     expect(route.AuthorizerId).toBeDefined();
-    expect(route.AuthorizerId).toEqual(handlerRoute.AuthorizerId);
   });
 
   it('routes to the function it was given', () => {

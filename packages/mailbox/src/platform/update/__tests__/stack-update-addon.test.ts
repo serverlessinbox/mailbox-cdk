@@ -13,7 +13,7 @@ import type { Stack }                                                   from 'aw
 import * as t                                                           from 'typanion';
 
 import { isTemplateValue, resourcesOfType }                             from '../../../__tests__/template-resources';
-import { routeAndAdminHandlerRoute }                                    from '../../../core/apis/__tests__/apis-helpers';
+import { routeOf }                                                      from '../../../core/apis/__tests__/apis-helpers';
 import { AuditEventsQueue }                                             from '../../../resources/queues/audit-events-queue';
 import { DataTable }                                                    from '../../../resources/tables/data-tables';
 import { newArtifactResolver, newTestStack, synthesizeOnAdminApi }      from '../../__tests__/platform-helpers';
@@ -109,12 +109,11 @@ describe('StackUpdateAddon routes', () => {
     template = synthesizeOnAdminApi(stack, newAddon(stack));
   });
 
-  it('serves POST /stack-update/{proxy+} behind the authorizer of the Admin API and no other method', () => {
-    const { route, handlerRoute } = routeAndAdminHandlerRoute(template, 'POST /stack-update/{proxy+}');
+  it('serves POST /stack-update/{proxy+} behind an authorizer and no other method', () => {
+    const route = routeOf(template, 'POST /stack-update/{proxy+}');
 
     expect(route.AuthorizationType).toBe('CUSTOM');
     expect(route.AuthorizerId).toBeDefined();
-    expect(route.AuthorizerId).toEqual(handlerRoute.AuthorizerId);
     template.resourcePropertiesCountIs('AWS::ApiGatewayV2::Route', { RouteKey: Match.stringLikeRegexp('/stack-update/') }, 1);
   });
 

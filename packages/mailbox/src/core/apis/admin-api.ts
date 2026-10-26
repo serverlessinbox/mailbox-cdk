@@ -66,7 +66,7 @@ export interface AdminApiProps {
 
 /**
  * The Admin HTTP API: one proxy route to the admin-api handler Lambda behind a Lambda authorizer,
- * the routes its addons mount, and an optional custom domain.
+ * the routes its addons mount behind a principal-lookup authorizer, and an optional custom domain.
  *
  * It does not create the DNS record for the custom domain (it exposes `domainTarget` for that),
  * and it does not decide who is authorized (the authorizer Lambda does).
@@ -109,8 +109,9 @@ export class AdminApi extends Construct {
     this.apiHandlerLambda = this.createHandlerLambda(props);
 
     const httpLambdaAuthorize = this.createAuthorizer(props);
+    const lookupAuthorize     = this.createLookupAuthorizer(props);
 
-    this.mountAddonRoutes(api, httpLambdaAuthorize, props.addons ?? []);
+    this.mountAddonRoutes(api, lookupAuthorize, props.addons ?? []);
 
     api.addRoutes({
       integration: new HttpLambdaIntegration('handler', this.apiHandlerLambda),
@@ -203,5 +204,21 @@ export class AdminApi extends Construct {
     });
 
     return new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
+  }
+
+  private createLookupAuthorizer(props: AdminApiProps): HttpLambdaAuthorizer {
+    const lookupLambdaAuthorizer = new AuthorizerLambda(this, 'lookup-lambda-authorizer', {
+      authKeyStoreTable: props.authKeyStoreTable,
+      configTable:       props.configTable,
+      artifactResolver:  props.artifactResolver,
+      authPolicyName:    AuthPolicyName.ADMIN_API,
+      principalLookup:   true,
+      serviceName:       'authorizer-admin-api-lookup',
+      pipeline:          'admin',
+    });
+
+    return new HttpLambdaAuthorizer('lookup-authorizer', lookupLambdaAuthorizer, {
+      resultsCacheTtl: Duration.minutes(1),
+    });
   }
 }

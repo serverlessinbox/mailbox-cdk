@@ -107,16 +107,13 @@ describe('CognitoIdpUsersAdminApiAddon', () => {
     expect(addon.routeSpec).toEqual({ basePath: expectedBasePath, methods: [HttpMethod.POST], handler: addon.lambdaFunction });
   });
 
-  it('is routed behind the authorizer of the Admin API when a Mailbox mounts it', () => {
+  it('is routed behind an authorizer when a Mailbox mounts it', () => {
     const template = synthesizeMailboxWithUserPool();
 
-    const routes       = routesOf(template);
-    const route        = routes.find((candidate) => candidate.RouteKey === 'POST /idp-users/{proxy+}');
-    const handlerRoute = routes.find((candidate) => candidate.RouteKey === 'POST /{proxy+}' && JSON.stringify(candidate.ApiId) === JSON.stringify(route?.ApiId));
+    const route = routesOf(template).find((candidate) => candidate.RouteKey === 'POST /idp-users/{proxy+}');
 
     expect(route?.AuthorizationType).toBe('CUSTOM');
     expect(route?.AuthorizerId).toBeDefined();
-    expect(route?.AuthorizerId).toEqual(handlerRoute?.AuthorizerId);
   });
 
   function routesOf(template: Template): RouteProperties[] {

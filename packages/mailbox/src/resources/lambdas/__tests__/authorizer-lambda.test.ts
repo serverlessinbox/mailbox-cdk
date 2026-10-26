@@ -85,3 +85,35 @@ describe('AuthorizerLambda auth-key-store grant', () => {
     });
   });
 });
+
+describe('AuthorizerLambda principal lookup', () => {
+  function templateWith(principalLookup: boolean | undefined): Template {
+    const arrangement = arrangeWrapperStack();
+
+    new AuthorizerLambda(arrangement.stack, 'authorizer', {
+      authKeyStoreTable: new AuthKeyStoreTable(arrangement.stack, 'auth-key-store'),
+      configTable:       new DataTable(new Table(arrangement.stack, 'config-table', {
+        partitionKey: { name: 'pk', type: AttributeType.STRING },
+      })),
+      artifactResolver:  arrangement.artifactResolver,
+      authPolicyName:    AuthPolicyName.ADMIN_API,
+      serviceName:       'admin',
+      pipeline:          'admin',
+      principalLookup,
+    });
+
+    return Template.fromStack(arrangement.stack);
+  }
+
+  it('sets PRINCIPAL_LOOKUP to on when the lookup is enabled', () => {
+    templateWith(true).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ PRINCIPAL_LOOKUP: 'on' }) },
+    });
+  });
+
+  it.each([[undefined], [false]])('sets PRINCIPAL_LOOKUP to off when principalLookup is %p', (principalLookup) => {
+    templateWith(principalLookup).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ PRINCIPAL_LOOKUP: 'off' }) },
+    });
+  });
+});
