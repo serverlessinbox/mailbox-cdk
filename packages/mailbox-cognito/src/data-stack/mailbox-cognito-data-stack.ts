@@ -186,7 +186,7 @@ export class MailboxCognitoDataStack extends cdk.Stack {
       ).toString(),
       customDomainConfig: Fn.conditionIf(
         hasCustomDomain.logicalId,
-        { certificateArn: parameters.customDomainCertArn.valueAsString },
+        { CertificateArn: parameters.customDomainCertArn.valueAsString },
         Aws.NO_VALUE,
       ),
     });

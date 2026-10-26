@@ -6,14 +6,14 @@
  * are pinned by those aspects; here only the values the stack passes to them are.
  */
 
-import { DEVELOPMENT_CONTEXT_KEY }             from '@serverlessinbox/mailbox-cdk-shared';
-import { Permission }                          from '@serverlessinbox/mailbox';
-import { JMAP_SCOPE_DESCRIPTIONS }             from '@serverlessinbox/mailbox';
-import { Match, Template }                     from 'aws-cdk-lib/assertions';
-import { App, BootstraplessSynthesizer }       from 'aws-cdk-lib';
+import { DEVELOPMENT_CONTEXT_KEY }                     from '@serverlessinbox/mailbox-cdk-shared';
+import { Permission }                                  from '@serverlessinbox/mailbox';
+import { JMAP_SCOPE_DESCRIPTIONS }                     from '@serverlessinbox/mailbox';
+import { Match, Template }                             from 'aws-cdk-lib/assertions';
+import { App, BootstraplessSynthesizer, CfnParameter } from 'aws-cdk-lib';
 
-import { CognitoScope }                        from '../../user-pool/cognito-scopemap';
-import { MfaMode }                             from '../../user-pool/mfa-mode';
+import { CognitoScope }                                from '../../user-pool/cognito-scopemap';
+import { MfaMode }                                     from '../../user-pool/mfa-mode';
 import {
   ADMIN_GROUP_NAME,
   DEFAULT_PASSWORD_MIN_LENGTH,
@@ -146,9 +146,21 @@ describe('MailboxCognitoDataStack domain', () => {
     });
   });
 
-  it('leaves the custom domain config out unless there is a custom domain', () => {
-    synthesizeDataStack().hasResourceProperties('AWS::Cognito::UserPoolDomain', {
-      CustomDomainConfig: { 'Fn::If': [HAS_CUSTOM_DOMAIN, Match.anyValue(), { Ref: 'AWS::NoValue' }] },
+  it('passes the certificate ARN as CertificateArn when there is a custom domain and leaves the config out otherwise', () => {
+    const stack         = newDataStack();
+    const certParameter = stack.node.findChild('customDomainCertArn');
+    if (!(certParameter instanceof CfnParameter)) {
+      throw new Error('the stack declares no customDomainCertArn parameter');
+    }
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Cognito::UserPoolDomain', {
+      CustomDomainConfig: {
+        'Fn::If': [
+          HAS_CUSTOM_DOMAIN,
+          { CertificateArn: { Ref: stack.getLogicalId(certParameter) } },
+          { Ref: 'AWS::NoValue' },
+        ],
+      },
     });
   });
 });
