@@ -29,10 +29,22 @@ beforeEach(() => {
 });
 
 describe('CheckDeclarationsCommand', () => {
-  it('exits 0 when the closure has no violation', async () => {
+  it('exits 0 and reports a clean closure when there is no violation', async () => {
     stubChecker([], 0);
 
-    await expect(runCommand('pkg')).resolves.toMatchObject({ exitCode: 0 });
+    await expect(runCommand('pkg')).resolves.toEqual({
+      exitCode: 0,
+      output:   'The declaration closure names only declared packages.\n',
+    });
+  });
+
+  it('omits the outside-the-closure line when no other declaration file is affected', async () => {
+    stubChecker(["lib/a.d.ts imports 'b', which is undeclared"], 0);
+
+    await expect(runCommand('pkg')).resolves.toEqual({
+      exitCode: 1,
+      output:   "lib/a.d.ts imports 'b', which is undeclared\n",
+    });
   });
 
   it('exits 1 and prints every violation, then the count outside the closure', async () => {

@@ -1,18 +1,17 @@
 import { build }                         from 'esbuild';
 import type { BuildResult }              from 'esbuild';
 import { mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
-import { existsSync }                    from 'fs';
 import { tmpdir }                        from 'os';
 import { dirname, join }                 from 'path';
 
-import { runWithInheritedStdio }         from '../../utils/run-process';
 import { bundleJsiiPackage }             from '../bundle-jsii-package';
+import { SharedDeclarationsInliner }     from '../shared-declarations-inliner';
 
-jest.mock('../../utils/run-process');
 jest.mock('esbuild', () => {
   const actual = jest.requireActual<typeof import('esbuild')>('esbuild');
-  return { ...actual, build: jest.fn(actual.build) };
+  return { ...actual, build: jest.fn() };
 });
+jest.mock('../shared-declarations-inliner');
 
 interface FixtureFile {
   readonly path:    string;
@@ -22,7 +21,6 @@ interface FixtureFile {
 const emptyBuildResult: BuildResult = { errors: [], warnings: [], outputFiles: undefined, metafile: undefined, mangleCache: undefined };
 
 const sourceFixtures: FixtureFile[] = [
-  { path: 'index.js',           content: 'module.exports = {};' },
   { path: 'src/a.ts',           content: "export const a = 'A';" },
   { path: 'src/sub/c.ts',       content: "export const c = 'C';" },
   { path: 'src/generated/g.ts', content: "export const g = 'G';" },
@@ -41,9 +39,14 @@ async function writeFixtures(files: FixtureFile[]): Promise<void> {
   }
 }
 
+function buildOptions() {
+  const [options] = jest.mocked(build).mock.calls[0];
+  return options;
+}
+
 beforeEach(async () => {
   jest.clearAllMocks();
-  jest.mocked(runWithInheritedStdio).mockResolvedValue(0);
+  jest.mocked(build).mockResolvedValue(emptyBuildResult);
   packageFolder = await mkdtemp(join(tmpdir(), 'bundle-jsii-test-'));
   await writeFixtures(sourceFixtures);
 });
@@ -53,22 +56,10 @@ afterEach(async () => {
 });
 
 describe('bundleJsiiPackage', () => {
-  it('bundles each source file into lib/ keeping its folder, and emits declarations once', async () => {
-    await bundleJsiiPackage(packageFolder, ['src/generated/**']);
-
-    expect(existsSync(join(packageFolder, 'lib', 'a.js'))).toBe(true);
-    expect(existsSync(join(packageFolder, 'lib', 'sub', 'c.js'))).toBe(true);
-    expect(existsSync(join(packageFolder, 'lib', '__tests__', 'a.test.js'))).toBe(false);
-    expect(existsSync(join(packageFolder, 'lib', 'sub', '__tests__', 'c.test.js'))).toBe(false);
-    expect(runWithInheritedStdio).toHaveBeenCalledTimes(1);
-  });
-
   it('leaves the jsii excludes and test folders out of the entry points', async () => {
-    jest.mocked(build).mockResolvedValueOnce(emptyBuildResult);
-
     await bundleJsiiPackage(packageFolder, ['src/generated/**']);
 
-    const [options] = jest.mocked(build).mock.calls[0];
+    const options = buildOptions();
     expect(options.entryPoints).toHaveLength(2);
     expect(options.entryPoints).toEqual(expect.arrayContaining([
       join(packageFolder, 'src', 'a.ts'),
@@ -77,11 +68,22 @@ describe('bundleJsiiPackage', () => {
   });
 
   it('leaves declaration files out of the entry points', async () => {
-    jest.mocked(build).mockResolvedValueOnce(emptyBuildResult);
-
     await bundleJsiiPackage(packageFolder, []);
 
-    const [options] = jest.mocked(build).mock.calls[0];
-    expect(options.entryPoints).not.toContain(join(packageFolder, 'src', 'types.d.ts'));
+    expect(buildOptions().entryPoints).not.toContain(join(packageFolder, 'src', 'types.d.ts'));
+  });
+
+  it('bundles into lib/ with the jsii-ignore, local-lib-import and declarations plugins, in that order', async () => {
+    await bundleJsiiPackage(packageFolder, []);
+
+    const options = buildOptions();
+    expect(options.outdir).toBe(join(packageFolder, 'lib'));
+    expect(options.plugins?.map(plugin => plugin.name)).toEqual(['jsiiIgnore', 'localLibImport', 'typescriptDeclarations']);
+  });
+
+  it('has the declarations plugin inline the declarations of mailbox-cdk-shared into the package', async () => {
+    await bundleJsiiPackage(packageFolder, []);
+
+    expect(SharedDeclarationsInliner).toHaveBeenCalledWith(packageFolder, '@serverlessinbox/mailbox-cdk-shared');
   });
 });

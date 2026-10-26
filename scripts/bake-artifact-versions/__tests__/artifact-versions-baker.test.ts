@@ -1,12 +1,12 @@
-import { ArtifactZone }                                                    from '@serverlessinbox/artifact-registry-cdk';
-import { mkdirSync, mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
-import { tmpdir }                                                          from 'node:os';
-import * as path                                                           from 'node:path';
+import { ArtifactZone, PinnedArtifactResolver }                                          from '@serverlessinbox/artifact-registry-cdk';
+import { mkdirSync, mkdtempSync, readFileSync, existsSync, rmSync, writeFileSync }       from 'node:fs';
+import { tmpdir }                                                                        from 'node:os';
+import * as path                                                                         from 'node:path';
 
-import { ArtifactVersionsBaker }                                           from '../artifact-versions-baker';
-import type { BakedPackage, PinsByPackage }                                from '../baked-package';
-import { BumpedVersionReader }                                             from '../bumped-version-reader';
-import { ExternalPinsReader }                                              from '../external-pins-reader';
+import { ArtifactVersionsBaker }                                                         from '../artifact-versions-baker';
+import type { BakedPackage, PinsByPackage }                                              from '../baked-package';
+import { BumpedVersionReader }                                                           from '../bumped-version-reader';
+import { ExternalPinsReader }                                                            from '../external-pins-reader';
 
 /**
  * Pins the file a published package ships: its own packages carry the version the bump wrote into
@@ -15,8 +15,17 @@ import { ExternalPinsReader }                                              from 
  * the package they installed.
  */
 describe('ArtifactVersionsBaker', () => {
-  const workDir = mkdtempSync(path.join(tmpdir(), 'artifact-versions-baker-'));
-  const baker   = new ArtifactVersionsBaker(new BumpedVersionReader(), new ExternalPinsReader());
+  const baker = new ArtifactVersionsBaker(new BumpedVersionReader(), new ExternalPinsReader());
+  let workDir: string;
+
+  beforeEach(() => {
+    workDir = mkdtempSync(path.join(tmpdir(), 'artifact-versions-baker-'));
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    rmSync(workDir, { recursive: true, force: true });
+  });
 
   function bumpedManifestDirectory(name: string, version: string): string {
     const directory = path.join(workDir, name);
@@ -94,18 +103,23 @@ describe('ArtifactVersionsBaker', () => {
     await expect(baker.bake(bakedPackage)).rejects.toThrow(`${bakedPackage.outputFile}: 'mailbox-cdk' is both an external pin and an own package`);
   });
 
-  it('writes nothing when an external pin is not a valid pin', async () => {
-    const pinsFile = path.join(workDir, 'invalid-external.json');
-    writeFileSync(pinsFile, JSON.stringify({ 'mailbox-go': { version: '3.1.4', zone: 'global' } }));
+  it('validates the merged pin set under the output file name and writes nothing when it is rejected', async () => {
+    const parsePins                  = jest.spyOn(PinnedArtifactResolver, 'parsePins').mockImplementation(() => {
+      throw new Error('rejected pin set');
+    });
     const bakedPackage: BakedPackage = {
-      outputFile:       path.join(workDir, 'invalid.json'),
-      externalPinsFile: pinsFile,
-      ownArtifacts:     [
+      outputFile:   path.join(workDir, 'invalid.json'),
+      ownArtifacts: [
         { key: 'mailbox-cdk', zone: ArtifactZone.REGIONAL, manifestDirectory: bumpedManifestDirectory('invalid-app', '0.1.0') },
       ],
     };
 
-    await expect(baker.bake(bakedPackage)).rejects.toThrow(pinsFile);
+    await expect(baker.bake(bakedPackage)).rejects.toThrow('rejected pin set');
+
+    expect(parsePins).toHaveBeenCalledWith(
+      JSON.stringify({ 'mailbox-cdk': { version: '0.1.0', zone: 'regional' } }, null, 2) + '\n',
+      bakedPackage.outputFile,
+    );
     expect(existsSync(bakedPackage.outputFile)).toBe(false);
   });
 });

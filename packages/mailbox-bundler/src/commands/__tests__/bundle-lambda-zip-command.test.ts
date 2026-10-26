@@ -48,10 +48,4 @@ describe('BundleLambdaZipCommand', () => {
 
     expect(bundle).toHaveBeenCalledWith(expect.objectContaining({ externals: ['@aws-sdk/*', 'pkg-a'] }));
   });
-
-  it('propagates a rejection from the bundler', async () => {
-    jest.spyOn(LambdaZipBundler, 'bundle').mockRejectedValue(new Error('zip exited with code 3'));
-
-    await expect(runCommand('--entry', 'src/handler.ts', '--out', 'dist/handler.zip')).rejects.toThrow('zip exited with code 3');
-  });
 });

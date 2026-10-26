@@ -1,74 +1,82 @@
-import { PinnedArtifactResolver }                                           from '@serverlessinbox/artifact-registry-cdk';
-import { Cli }                                                              from 'clipanion';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir }                                                           from 'node:os';
-import * as path                                                            from 'node:path';
-import { Writable }                                                         from 'node:stream';
+import { Cli }                                                                     from 'clipanion';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir }                                                                  from 'node:os';
+import * as path                                                                   from 'node:path';
+import { Writable }                                                                from 'node:stream';
 
-import { BakeArtifactVersionsCommand }                                      from '../bake-artifact-versions-command';
+import { BakeArtifactVersionsCommand }                                             from '../bake-artifact-versions-command';
 
 /**
- * Pins that the command bakes both packages from the given root and pins file, and that it does so
- * from the root alone, never from the current directory.
+ * Pins what the command owns: which root it bakes under (`--root`, else the current directory),
+ * that it hands `--mailbox-pins` to the mailbox package, and that it reports every file it wrote.
+ * The content of each baked file belongs to the baker and `BakedPackages`.
  */
 describe('BakeArtifactVersionsCommand', () => {
-  /**
-   * The command runs with an empty directory as its working directory, so a `--root` that is
-   * ignored in favour of the current directory finds no packages to bake and fails the run rather
-   * than overwriting the real `artifact-versions.json` files of this repository's packages.
-   */
+  const createdFolders: string[] = [];
+
+  function newFolder(prefix: string): string {
+    const folder = mkdtempSync(path.join(tmpdir(), prefix));
+    createdFolders.push(folder);
+    return folder;
+  }
+
+  function repositoryRoot(): string {
+    const root = newFolder('bake-artifact-versions-command-');
+    for (const name of ['mailbox', 'mailbox-cognito', 'mailbox-cdk-shared']) {
+      mkdirSync(path.join(root, 'packages', name), { recursive: true });
+      writeFileSync(path.join(root, 'packages', name, 'package.json'), JSON.stringify({ name, version: '4.5.6' }));
+    }
+    return root;
+  }
+
+  function writePins(folder: string): string {
+    const pinsFile = path.join(folder, 'pins.json');
+    writeFileSync(pinsFile, JSON.stringify({ 'mailbox-go': { version: '7.8.9', zone: 'regional' } }));
+    return pinsFile;
+  }
+
+  async function runCommand(...args: string[]): Promise<{ exitCode: number; stdout: string }> {
+    const chunks: string[] = [];
+    const stdout           = new Writable({
+      write(chunk: Buffer, _encoding, callback) {
+        chunks.push(chunk.toString());
+        callback();
+      },
+    });
+    const exitCode         = await Cli.from([BakeArtifactVersionsCommand]).run(args, { stdout });
+    return { exitCode, stdout: chunks.join('') };
+  }
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    for (const folder of createdFolders.splice(0)) {
+      rmSync(folder, { recursive: true, force: true });
+    }
+  });
+
   describe('execute', () => {
-    const originalCwd = process.cwd();
-    let emptyCwd: string;
+    it('bakes both packages under --root, hands --mailbox-pins to the mailbox package and reports each file', async () => {
+      const root         = repositoryRoot();
+      const unrelatedCwd = newFolder('bake-artifact-versions-cwd-');
+      const mailboxFile  = path.join(root, 'packages', 'mailbox', 'artifact-versions.json');
+      const cognitoFile  = path.join(root, 'packages', 'mailbox-cognito', 'artifact-versions.json');
+      jest.spyOn(process, 'cwd').mockReturnValue(unrelatedCwd);
 
-    beforeEach(() => {
-      emptyCwd = mkdtempSync(path.join(tmpdir(), 'bake-artifact-versions-cwd-'));
-      process.chdir(emptyCwd);
+      const run = await runCommand('--mailbox-pins', writePins(root), '--root', root);
+
+      expect(run).toEqual({ exitCode: 0, stdout: `Written: ${mailboxFile}\nWritten: ${cognitoFile}\n` });
+      expect(readFileSync(mailboxFile, 'utf8')).toContain('"mailbox-go"');
+      expect(readFileSync(cognitoFile, 'utf8')).not.toContain('"mailbox-go"');
     });
 
-    afterEach(() => {
-      process.chdir(originalCwd);
-    });
+    it('bakes the packages under the current directory when --root is not given', async () => {
+      const root = repositoryRoot();
+      jest.spyOn(process, 'cwd').mockReturnValue(root);
 
-    it('bakes both packages under --root from --mailbox-pins', async () => {
-      const root = mkdtempSync(path.join(tmpdir(), 'bake-artifact-versions-command-'));
-      for (const name of ['mailbox', 'mailbox-cognito', 'mailbox-cdk-shared']) {
-        mkdirSync(path.join(root, 'packages', name), { recursive: true });
-        writeFileSync(path.join(root, 'packages', name, 'package.json'), JSON.stringify({ name, version: '4.5.6' }));
-      }
-      const pinsFile = path.join(root, 'pins.json');
-      writeFileSync(pinsFile, JSON.stringify({ 'mailbox-go': { version: '7.8.9', zone: 'regional' } }));
-      const stdout: string[] = [];
-      const stdoutStream     = new Writable({
-        write(chunk: Buffer, _encoding, callback) {
-          stdout.push(chunk.toString());
-          callback();
-        },
-      });
+      const run = await runCommand('--mailbox-pins', writePins(root));
 
-      const exitCode = await Cli.from([BakeArtifactVersionsCommand]).run(
-        ['--mailbox-pins', pinsFile, '--root', root],
-        { stdout: stdoutStream },
-      );
-
-      expect(exitCode).toBe(0);
-      expect(readdirSync(emptyCwd)).toEqual([]);
-      expect(readBakedPins(path.join(root, 'packages', 'mailbox', 'artifact-versions.json'))).toEqual({
-        'mailbox-go':         { version: '7.8.9', zone: 'regional' },
-        'mailbox-cdk':        { version: '4.5.6', zone: 'regional' },
-        'mailbox-cdk-edge':   { version: '4.5.6', zone: 'edge' },
-        'mailbox-cdk-shared': { version: '4.5.6', zone: 'regional' },
-      });
-      expect(readBakedPins(path.join(root, 'packages', 'mailbox-cognito', 'artifact-versions.json'))).toEqual({
-        'mailbox-cognito':    { version: '4.5.6', zone: 'regional' },
-        'mailbox-cdk-shared': { version: '4.5.6', zone: 'regional' },
-      });
-      expect(stdout.join('')).toContain(`Written: ${path.join(root, 'packages', 'mailbox', 'artifact-versions.json')}`);
+      expect(run.exitCode).toBe(0);
+      expect(existsSync(path.join(root, 'packages', 'mailbox', 'artifact-versions.json'))).toBe(true);
     });
   });
 });
-
-/** Reads a baked file through PinnedArtifactResolver.parsePins, the validation the baker applies before it writes. */
-function readBakedPins(file: string) {
-  return PinnedArtifactResolver.parsePins(readFileSync(file, 'utf8'), file);
-}

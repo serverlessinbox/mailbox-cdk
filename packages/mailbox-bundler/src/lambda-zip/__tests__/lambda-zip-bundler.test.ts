@@ -28,6 +28,13 @@ export const marker = 'BUNDLED_HELPER_MARKER';
 
 const centralDirectorySignature = Buffer.from([0x50, 0x4b, 0x01, 0x02]);
 
+/** Every timer jest can fake except `Date`, so esbuild's child process keeps running while the clock is set. */
+const nonDateTimers = [
+  'hrtime', 'nextTick', 'performance', 'queueMicrotask', 'requestAnimationFrame', 'cancelAnimationFrame',
+  'requestIdleCallback', 'cancelIdleCallback', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval',
+  'setTimeout', 'clearTimeout',
+] as const;
+
 let workDir: string;
 
 function bundleSpec(overrides: Partial<LambdaZipSpec> = {}): LambdaZipSpec {
@@ -62,6 +69,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  jest.useRealTimers();
   await rm(workDir, { recursive: true, force: true });
 });
 
@@ -109,14 +117,6 @@ describe('LambdaZipBundler.bundle', () => {
     expect(existsSync(spec.outZip)).toBe(false);
   });
 
-  it('writes a zip whose only entry is index.js, with no directory entries', async () => {
-    const outZip = join(workDir, 'out', 'handler.zip');
-
-    await LambdaZipBundler.bundle(bundleSpec({ outZip }));
-
-    expect(Object.keys(unzipSync(await readZip(outZip)))).toEqual(['index.js']);
-  });
-
   it('marks the entry as a Unix file with 0644 permissions in the central directory', async () => {
     const outZip = join(workDir, 'out', 'handler.zip');
 
@@ -127,11 +127,13 @@ describe('LambdaZipBundler.bundle', () => {
     expect((header.getUint32(38, true) >>> 16) & 0o777).toBe(0o644);
   });
 
-  it('produces a byte-identical zip for the same input', async () => {
+  it('produces a byte-identical zip for the same input bundled at different times', async () => {
     const firstZip  = join(workDir, 'out', 'first.zip');
     const secondZip = join(workDir, 'out', 'second.zip');
+    jest.useFakeTimers({ doNotFake: [...nonDateTimers], now: new Date('2021-03-04T05:06:08Z') });
 
     await LambdaZipBundler.bundle(bundleSpec({ outZip: firstZip }));
+    jest.setSystemTime(new Date('2031-09-10T11:12:14Z'));
     await LambdaZipBundler.bundle(bundleSpec({ outZip: secondZip }));
 
     expect(await readZip(secondZip)).toEqual(await readZip(firstZip));

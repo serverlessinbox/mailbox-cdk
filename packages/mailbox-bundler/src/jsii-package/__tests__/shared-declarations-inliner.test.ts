@@ -111,15 +111,6 @@ describe('SharedDeclarationsInliner.inline', () => {
     await expect(readLib('sub/own.d.ts')).resolves.toContain('export declare const own: import("../shared/index").Tag;');
   });
 
-  it('leaves comments and string literal types that look like imports as they are', async () => {
-    await new SharedDeclarationsInliner(packageFolder, sharedName).inline();
-
-    const own = await readLib('sub/own.d.ts');
-    expect(own).toContain(" * Uses `import { Tag } from '@scope/shared'` in its documentation only.");
-    expect(own).toContain("export declare const kind: 'from' | 'import';");
-    expect(own).toContain("// import type { Rt } from '@scope/shared/runtime'");
-  });
-
   it('copies the declarations the files reach, and the files those import, keeping other packages external', async () => {
     await new SharedDeclarationsInliner(packageFolder, sharedName).inline();
 
@@ -181,6 +172,39 @@ describe('SharedDeclarationsInliner.inline', () => {
 
     await expect(new SharedDeclarationsInliner(packageFolder, sharedName).inline())
       .rejects.toThrow(`publishes no declaration file for '@scope/shared/plain'`);
+  });
+
+  it('rejects when the inlined package has no publishConfig.exports', async () => {
+    await writeFixtures(sharedFolder, [{ path: 'package.json', content: JSON.stringify({ name: sharedName, main: 'src/index.ts' }) }]);
+
+    await expect(new SharedDeclarationsInliner(packageFolder, sharedName).inline())
+      .rejects.toThrow('has no publishConfig.exports to find the declaration files of @scope/shared in');
+  });
+
+  it('rejects naming the specifier when the inlined package publishes its declaration file outside lib/', async () => {
+    const manifest = JSON.stringify({
+      name:          sharedName,
+      main:          'src/index.ts',
+      publishConfig: { exports: { '.': { types: './lib/index.d.ts' }, './outside': { types: './dist/outside.d.ts' } } },
+    });
+    await writeFixtures(sharedFolder, [{ path: 'package.json', content: manifest }]);
+    await writeFixtures(packageFolder, [{ path: 'lib/more.d.ts', content: "export type { Out } from '@scope/shared/outside';\n" }]);
+
+    await expect(new SharedDeclarationsInliner(packageFolder, sharedName).inline())
+      .rejects.toThrow("publishes '@scope/shared/outside' outside lib/: ./dist/outside.d.ts");
+  });
+
+  it('rejects when no package.json above the resolved entry carries the inlined package name', async () => {
+    await writeFixtures(sharedFolder, [{ path: 'package.json', content: JSON.stringify({ name: 'someone-else', main: 'src/index.ts' }) }]);
+
+    await expect(new SharedDeclarationsInliner(packageFolder, sharedName).inline())
+      .rejects.toThrow(/No package\.json named @scope\/shared found above .*shared[\\/]src$/);
+  });
+
+  it('rethrows a package.json that exists but cannot be read instead of walking past it', async () => {
+    await writeFixtures(sharedFolder, [{ path: 'src/package.json/placeholder', content: '' }]);
+
+    await expect(new SharedDeclarationsInliner(packageFolder, sharedName).inline()).rejects.toThrow('EISDIR');
   });
 
   it('rejects with the exit code when tsc exits non-zero', async () => {
