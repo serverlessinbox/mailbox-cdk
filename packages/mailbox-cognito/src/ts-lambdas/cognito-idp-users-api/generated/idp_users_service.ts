@@ -30,19 +30,15 @@ import {
   DeleteIdpUserResponseSchema,
 } from './idp_users_pb';
 
-export type HandlerContext<TAuth = unknown, TAudit = unknown> = {
-  auth: TAuth;
-  audit: TAudit;
-  requestId?: string;
-};
+import type { HandlerContext } from '@serverlessinbox/mailbox-addon-sdk';
 
-export interface IdpUsersServiceHandlers<TAuth = unknown, TAudit = unknown> {
-  listIdpUsers(ctx: HandlerContext<TAuth, TAudit>, req: ListIdpUsersRequest): Promise<ListIdpUsersResponse>;
-  getIdpUser(ctx: HandlerContext<TAuth, TAudit>, req: GetIdpUserRequest): Promise<GetIdpUserResponse>;
-  createIdpUser(ctx: HandlerContext<TAuth, TAudit>, req: CreateIdpUserRequest): Promise<CreateIdpUserResponse>;
-  setIdpUserEnabled(ctx: HandlerContext<TAuth, TAudit>, req: SetIdpUserEnabledRequest): Promise<SetIdpUserEnabledResponse>;
-  setIdpUserPassword(ctx: HandlerContext<TAuth, TAudit>, req: SetIdpUserPasswordRequest): Promise<SetIdpUserPasswordResponse>;
-  deleteIdpUser(ctx: HandlerContext<TAuth, TAudit>, req: DeleteIdpUserRequest): Promise<DeleteIdpUserResponse>;
+export interface IdpUsersServiceHandlers {
+  listIdpUsers(ctx: HandlerContext, req: ListIdpUsersRequest): Promise<ListIdpUsersResponse>;
+  getIdpUser(ctx: HandlerContext, req: GetIdpUserRequest): Promise<GetIdpUserResponse>;
+  createIdpUser(ctx: HandlerContext, req: CreateIdpUserRequest): Promise<CreateIdpUserResponse>;
+  setIdpUserEnabled(ctx: HandlerContext, req: SetIdpUserEnabledRequest): Promise<SetIdpUserEnabledResponse>;
+  setIdpUserPassword(ctx: HandlerContext, req: SetIdpUserPasswordRequest): Promise<SetIdpUserPasswordResponse>;
+  deleteIdpUser(ctx: HandlerContext, req: DeleteIdpUserRequest): Promise<DeleteIdpUserResponse>;
 }
 
 export const IdpUsersServiceRuntime = {
