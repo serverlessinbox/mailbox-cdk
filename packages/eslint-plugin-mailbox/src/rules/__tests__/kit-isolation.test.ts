@@ -34,8 +34,25 @@ tester.run('kit-isolation', kitIsolation, {
       filename: 'packages/mailbox/src/core/x.ts',
       code:     "import { value } from '@serverlessinbox/mailbox-cdk-shared/resources/x';",
     },
+    {
+      name:     'the kit exports a local binding without a source',
+      filename: 'packages/mailbox-cdk-shared/src/x.ts',
+      code:     'const value = 1; export { value };',
+    },
   ],
   invalid: [
+    {
+      name:     'the kit re-exports everything from the mailbox',
+      filename: 'packages/mailbox-cdk-shared/src/x.ts',
+      code:     "export * from '@serverlessinbox/mailbox/core/x';",
+      errors:   [{ messageId: 'mailboxImport' }],
+    },
+    {
+      name:     'the kit re-exports a named value from the mailbox',
+      filename: 'packages/mailbox-cdk-shared/src/x.ts',
+      code:     "export { value } from '@serverlessinbox/mailbox/core/x';",
+      errors:   [{ messageId: 'mailboxImport' }],
+    },
     {
       name:     'the kit imports the mailbox root by name',
       filename: 'packages/mailbox-cdk-shared/src/x.ts',

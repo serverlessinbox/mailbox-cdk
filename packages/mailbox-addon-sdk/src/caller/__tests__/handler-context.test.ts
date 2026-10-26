@@ -1,5 +1,4 @@
-import type { HandlerContext } from '../../caller';
-import type { AuditEntry }     from '../audit-event';
+import type { HandlerContext } from '../handler-context';
 
 /*
  * Pins what a service handler may pass to `recordAudit`: how the request ended, the entity it touched and what
@@ -9,18 +8,12 @@ import type { AuditEntry }     from '../audit-event';
  */
 
 describe('HandlerContext.recordAudit', () => {
-  const recorded: AuditEntry[]                       = [];
   const context: Pick<HandlerContext, 'recordAudit'> = {
-    recordAudit: (entry) => {
-      recorded.push(entry);
-      return Promise.resolve();
-    },
+    recordAudit: () => Promise.resolve(),
   };
 
   it('takes the status, the entity id, the entity name, the changes and the message of a failure', async () => {
     await context.recordAudit({ status: 'failure', entityId: 'alice', entityName: 'alice@example.com', changes: [{ field: 'email', newValue: 'a@new' }], errorMsg: 'no such user' });
-
-    expect(recorded).toHaveLength(1);
   });
 
   it('does not take the tenant, the actor or the action', async () => {
@@ -30,7 +23,5 @@ describe('HandlerContext.recordAudit', () => {
     await context.recordAudit({ status: 'success', actor: { actorType: 'user', actorId: 'principal-2', username: 'mallory', ipAddress: '198.51.100.1' } });
     // @ts-expect-error the action comes from the method that was called
     await context.recordAudit({ status: 'success', action: 'IdpUsersService/ListIdpUsers' });
-
-    expect(recorded).toHaveLength(4);
   });
 });

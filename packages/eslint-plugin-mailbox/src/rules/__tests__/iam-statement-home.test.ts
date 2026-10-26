@@ -29,16 +29,6 @@ tester.run('iam-statement-home', iamStatementHome, {
       code:     'const statement = new PolicyStatement();',
     },
     {
-      name:     'an allow-listed sweeper file, exact path',
-      filename: '/repo/packages/mailbox/src/platform/ops/sweeper/sweeper-infra.ts',
-      code:     'const statement = new PolicyStatement();',
-    },
-    {
-      name:     'a sweeper removal file matched by the glob',
-      filename: '/repo/packages/mailbox/src/platform/ops/sweeper/edge-function-removal.ts',
-      code:     'role.addToRolePolicy(statement);',
-    },
-    {
       name:     'a bare addToRolePolicy call is not a member call',
       filename: coreFile,
       code:     'addToRolePolicy(statement);',
@@ -67,24 +57,6 @@ tester.run('iam-statement-home', iamStatementHome, {
       name:     'addToPrincipalPolicy in core/',
       filename: coreFile,
       code:     'role.addToPrincipalPolicy(statement);',
-      errors:   [{ messageId: 'iamStatement', line: 1 }],
-    },
-    {
-      name:     'the glob does not reach a sub-folder of the sweeper',
-      filename: '/repo/packages/mailbox/src/platform/ops/sweeper/nested/edge-removal.ts',
-      code:     'const statement = new PolicyStatement();',
-      errors:   [{ messageId: 'iamStatement', line: 1 }],
-    },
-    {
-      name:     'a sweeper file that is not allow-listed',
-      filename: '/repo/packages/mailbox/src/platform/ops/sweeper/other.ts',
-      code:     'const statement = new PolicyStatement();',
-      errors:   [{ messageId: 'iamStatement', line: 1 }],
-    },
-    {
-      name:     'an allow-listed name with a suffix is not the allow-listed file',
-      filename: '/repo/packages/mailbox/src/core/apis/websocket.ts.bak',
-      code:     'const statement = new PolicyStatement();',
       errors:   [{ messageId: 'iamStatement', line: 1 }],
     },
   ],

@@ -39,6 +39,11 @@ tester.run('removal-home', removalHome, {
       filename: opsFile,
       code:     'class Other implements IOther {}',
     },
+    {
+      name:     'a PolicyStatement name without grantStatements',
+      filename: opsFile,
+      code:     'import { PolicyStatement } from "x"; class Holder { grant() { return []; } }',
+    },
   ],
   invalid: [
     {
@@ -57,6 +62,24 @@ tester.run('removal-home', removalHome, {
       name:     'grantStatements next to PolicyStatement outside the sweeper',
       filename: opsFile,
       code:     'import { PolicyStatement } from "x";\nclass Holder { grantStatements() { return []; } }',
+      errors:   [{ messageId: 'statementHolder', line: 1 }],
+    },
+    {
+      name:     'an abstract grantStatements next to PolicyStatement outside the sweeper',
+      filename: opsFile,
+      code:     'import { PolicyStatement } from "x";\nabstract class Holder { abstract grantStatements(): void; }',
+      errors:   [{ messageId: 'statementHolder', line: 1 }],
+    },
+    {
+      name:     'an interface grantStatements signature next to PolicyStatement outside the sweeper',
+      filename: opsFile,
+      code:     'import { PolicyStatement } from "x";\ninterface Holder { grantStatements(): void; }',
+      errors:   [{ messageId: 'statementHolder', line: 1 }],
+    },
+    {
+      name:     'an object grantStatements property next to PolicyStatement outside the sweeper',
+      filename: opsFile,
+      code:     'import { PolicyStatement } from "x";\nconst holder = { grantStatements: () => [] };',
       errors:   [{ messageId: 'statementHolder', line: 1 }],
     },
   ],

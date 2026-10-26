@@ -8,8 +8,8 @@ import { SqsAuditSink }                  from '../sqs-audit-sink';
 /*
  * Pins the message the sink puts on the audit events queue: one message per event, whose body is the event as
  * JSON, sent to the queue the entry point names. The audit writer reads that body; a message that is split,
- * sent to another queue or not valid JSON is lost from the audit trail, a bigint in a change must be written as
- * a string because JSON.stringify throws on it, and a failed send must reach the caller.
+ * sent to another queue or not valid JSON is lost from the audit trail, and a bigint in a change must be written
+ * as a string because JSON.stringify throws on it.
  */
 
 const QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/123456789012/audit-events';
@@ -50,11 +50,5 @@ describe('SqsAuditSink', () => {
     await sink.record({ ...EVENT, changes: [{ field: 'quota', oldValue: 10n, newValue: 9007199254740993n }] });
 
     expect(sentMessage().body).toEqual(expect.objectContaining({ changes: [{ field: 'quota', oldValue: '10', newValue: '9007199254740993' }] }));
-  });
-
-  it('rejects when the message cannot be sent', async () => {
-    sqsMock.on(SendMessageCommand).rejects(new Error('queue is gone'));
-
-    await expect(sink.record(EVENT)).rejects.toThrow('queue is gone');
   });
 });

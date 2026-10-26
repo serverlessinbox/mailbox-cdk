@@ -28,6 +28,16 @@ tester.run('logical-id-home', logicalIdHome, {
       filename: '/repo/packages/mailbox/src/core/apis/apis-section.ts',
       code:     'construct.overrideLogicalId("a");',
     },
+    {
+      name:     'a bare overrideLogicalId call is not a member call',
+      filename: coreFile,
+      code:     'overrideLogicalId("a");',
+    },
+    {
+      name:     'a member call with another name',
+      filename: coreFile,
+      code:     'construct.addDependency("a");',
+    },
   ],
   invalid: [
     {
@@ -43,9 +53,9 @@ tester.run('logical-id-home', logicalIdHome, {
       errors:   [{ messageId: 'logicalId', line: 1 }],
     },
     {
-      name:     'the allow-listed path with a suffix is not the allow-listed file',
-      filename: '/repo/packages/mailbox/src/core/apis/apis-section.ts.bak',
-      code:     'construct.overrideLogicalId("a");',
+      name:     'inside a class whose superclass is not a Stack',
+      filename: coreFile,
+      code:     'class NotAStack extends Base { pin() { this.overrideLogicalId("a"); } }',
       errors:   [{ messageId: 'logicalId', line: 1 }],
     },
   ],

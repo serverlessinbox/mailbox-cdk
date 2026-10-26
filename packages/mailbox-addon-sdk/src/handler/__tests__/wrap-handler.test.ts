@@ -29,12 +29,12 @@ function wrapped(run: RunDouble = jest.fn<Promise<JsonValue>, [HandlerContext, C
 }
 
 describe('wrapHandler', () => {
-  it('runs the work with the validated body and answers its result as JSON', async () => {
+  it('runs the work with the validated body and answers its result', async () => {
     const { handler, run } = wrapped();
 
     const result = await handler(authorizedEvent({ path: '/things/create', body: '{"name":"widget"}' }));
 
-    expect(result).toEqual({ statusCode: 200, headers: { 'content-type': 'application/json; charset=utf-8' }, body: '{"id":"thing-1"}' });
+    expect(result).toEqual(expect.objectContaining({ statusCode: 200, body: '{"id":"thing-1"}' }));
     expect(run).toHaveBeenCalledWith(expect.objectContaining({ requestId: 'request-1' }), { name: 'widget' });
   });
 

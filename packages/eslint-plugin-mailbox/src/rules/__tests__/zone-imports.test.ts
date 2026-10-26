@@ -1,10 +1,10 @@
-import { RuleTester }                    from '@typescript-eslint/rule-tester';
-import { posix }                         from 'node:path';
-import typescriptEslint                  from 'typescript-eslint';
+import { RuleTester }                             from '@typescript-eslint/rule-tester';
+import { posix }                                  from 'node:path';
+import typescriptEslint                           from 'typescript-eslint';
 
-import { zoneMatrix }                    from '../../zones/mailbox-zones';
-import type { ImporterZone, TargetZone } from '../../zones/mailbox-zones';
-import { zoneImports }                   from '../zone-imports';
+import { zoneMatrix }                             from '../../zones/mailbox-zones';
+import type { ImporterZone, TargetZone, Verdict } from '../../zones/mailbox-zones';
+import { zoneImports }                            from '../zone-imports';
 
 // One importing file per importer zone, one target file per target zone. Each matrix cell becomes one
 // RuleTester case: a value import is invalid for forbid and typeOnly cells and valid for allow cells;
@@ -34,6 +34,13 @@ const targetFiles: Record<TargetZone, string> = {
   foreign:               'packages/mailbox-cognito/src/g4-x.ts',
 };
 
+type CellCase = {
+  readonly importer:  ImporterZone;
+  readonly target:    TargetZone;
+  readonly filename:  string;
+  readonly specifier: string;
+};
+
 const relativeSpecifier = (fromFile: string, toFile: string): string => {
   const specifier = posix.relative(posix.dirname(fromFile), toFile.replace(/\.ts$/, ''));
 
@@ -43,51 +50,43 @@ const relativeSpecifier = (fromFile: string, toFile: string): string => {
 const importCode = (specifier: string, isTypeOnly: boolean): string =>
   `${isTypeOnly ? 'import type' : 'import'} { value } from '${specifier}';`;
 
-const cellValid = zoneMatrix
-  .filter(([, , verdict]) => verdict === 'allow')
-  .map(([importer, target]) => {
-    const filename  = importerFiles[importer];
-    const specifier = relativeSpecifier(filename, targetFiles[target]);
+const cellsWith = (verdict: Verdict): CellCase[] =>
+  zoneMatrix
+    .filter(([, , cellVerdict]) => cellVerdict === verdict)
+    .map(([importer, target]) => {
+      const filename = importerFiles[importer];
 
-    return { name: `${importer} imports ${target}`, filename, code: importCode(specifier, false) };
-  });
+      return { importer, target, filename, specifier: relativeSpecifier(filename, targetFiles[target]) };
+    });
 
-const typeOnlyValid = zoneMatrix
-  .filter(([, , verdict]) => verdict === 'typeOnly')
-  .map(([importer, target]) => {
-    const filename  = importerFiles[importer];
-    const specifier = relativeSpecifier(filename, targetFiles[target]);
+const cellValid = cellsWith('allow').map(({ importer, target, filename, specifier }) => ({
+  name: `${importer} imports ${target}`,
+  filename,
+  code: importCode(specifier, false),
+}));
 
-    return { name: `${importer} imports type ${target}`, filename, code: importCode(specifier, true) };
-  });
+const typeOnlyValid = cellsWith('typeOnly').map(({ importer, target, filename, specifier }) => ({
+  name: `${importer} imports type ${target}`,
+  filename,
+  code: importCode(specifier, true),
+}));
 
-const cellForbidden = zoneMatrix
-  .filter(([, , verdict]) => verdict === 'forbid')
-  .map(([importer, target]) => {
-    const filename  = importerFiles[importer];
-    const specifier = relativeSpecifier(filename, targetFiles[target]);
+const cellForbidden = cellsWith('forbid').map(({ importer, target, filename, specifier }) => ({
+  name:   `${importer} never imports ${target}`,
+  filename,
+  code:   importCode(specifier, false),
+  errors: [{ messageId: 'forbidden' as const }],
+}));
 
-    return {
-      name:   `${importer} never imports ${target}`,
-      filename,
-      code:   importCode(specifier, false),
-      errors: [{ messageId: 'forbidden' as const }],
-    };
-  });
+const cellTypeOnlyViolation = cellsWith('typeOnly').map(({ importer, target, filename, specifier }) => ({
+  name:   `${importer} imports value ${target} only with import type`,
+  filename,
+  code:   importCode(specifier, false),
+  errors: [{ messageId: 'typeOnly' as const }],
+}));
 
-const cellTypeOnlyViolation = zoneMatrix
-  .filter(([, , verdict]) => verdict === 'typeOnly')
-  .map(([importer, target]) => {
-    const filename  = importerFiles[importer];
-    const specifier = relativeSpecifier(filename, targetFiles[target]);
-
-    return {
-      name:   `${importer} imports value ${target} only with import type`,
-      filename,
-      code:   importCode(specifier, false),
-      errors: [{ messageId: 'typeOnly' as const }],
-    };
-  });
+const forbiddenCell = cellsWith('forbid')[0];
+const typeOnlyCell  = cellsWith('typeOnly')[0];
 
 const explicitValid = [
   {
@@ -106,24 +105,14 @@ const explicitValid = [
     code:     "import { value } from '@serverlessinbox/mailbox/platform/x';",
   },
   {
-    name:     'the sweeper workflow imports the data tables contract',
-    filename: importerFiles['platform-list'],
-    code:     "import { value } from '../../resources/tables/data-tables';",
+    name:     `an export type of a typeOnly cell (${typeOnlyCell.importer} to ${typeOnlyCell.target}) is allowed`,
+    filename: typeOnlyCell.filename,
+    code:     `export type { value } from '${typeOnlyCell.specifier}';`,
   },
   {
-    name:     'the sweeper workflow imports the stack-failed event',
-    filename: importerFiles['platform-list'],
-    code:     "import { value } from '../../resources/events/stack-failed-event';",
-  },
-  {
-    name:     'the sweeper workflow imports the identity provisioner contract',
-    filename: importerFiles['platform-list'],
-    code:     "import { value } from '../lambdas/identity-provisioner-lambda';",
-  },
-  {
-    name:     'the sweeper workflow imports the audit events queue contract',
-    filename: importerFiles['platform-list'],
-    code:     "import { value } from '../../resources/queues/audit-events-queue';",
+    name:     'an export without a source is not an import',
+    filename: importerFiles.core,
+    code:     'const value = 1; export { value };',
   },
 ];
 
@@ -139,6 +128,18 @@ const explicitInvalid = [
     filename: importerFiles.resources,
     code:     "export { value } from '../../resources/lambdas/support-api-lambda';",
     errors:   [{ messageId: 'forbidden' as const }],
+  },
+  {
+    name:     `an export * of a forbidden cell (${forbiddenCell.importer} to ${forbiddenCell.target}) is forbidden`,
+    filename: forbiddenCell.filename,
+    code:     `export * from '${forbiddenCell.specifier}';`,
+    errors:   [{ messageId: 'forbidden' as const }],
+  },
+  {
+    name:     `an export of a value of a typeOnly cell (${typeOnlyCell.importer} to ${typeOnlyCell.target}) needs export type`,
+    filename: typeOnlyCell.filename,
+    code:     `export { value } from '${typeOnlyCell.specifier}';`,
+    errors:   [{ messageId: 'typeOnly' as const }],
   },
 ];
 

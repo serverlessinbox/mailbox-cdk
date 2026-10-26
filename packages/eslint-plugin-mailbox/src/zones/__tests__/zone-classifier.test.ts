@@ -1,7 +1,45 @@
+import { importerZones, targetZones, zoneMatrix }     from '../mailbox-zones';
 import { cognitoPackage, kitPackage, mailboxPackage } from '../package-roots';
 import { ZoneClassifier }                             from '../zone-classifier';
 
+let mockMatrixOverride: readonly unknown[] | undefined;
+
+// The matrix is a constant of the module; the override lets one test show the classifier's reaction to a missing cell.
+jest.mock('../mailbox-zones', () => {
+  const actual = jest.requireActual<Record<string, unknown>>('../mailbox-zones');
+
+  return {
+    ...actual,
+    get zoneMatrix() {
+      return mockMatrixOverride ?? actual.zoneMatrix;
+    },
+  };
+});
+
 const classifier = new ZoneClassifier();
+
+describe('ZoneClassifier.verdict', () => {
+  it('has exactly one matrix cell for every importer zone and target zone', () => {
+    const cells = importerZones.flatMap((importer) => targetZones.map((target) => zoneMatrix.filter(([cellImporter, cellTarget]) => cellImporter === importer && cellTarget === target).length));
+
+    expect(cells.every((count) => count === 1)).toBe(true);
+  });
+
+  it('returns the verdict of the matrix cell', () => {
+    expect(classifier.verdict('core', 'platform')).toBe('forbid');
+    expect(classifier.verdict('core', 'core')).toBe('allow');
+  });
+
+  it('throws naming the zones when the matrix has no cell', () => {
+    mockMatrixOverride = [];
+
+    try {
+      expect(() => classifier.verdict('core', 'platform')).toThrow('no zone-matrix cell for core -> platform');
+    } finally {
+      mockMatrixOverride = undefined;
+    }
+  });
+});
 
 describe('ZoneClassifier.locate', () => {
   it('finds the package and the path below its src folder for a repo-relative path', () => {
