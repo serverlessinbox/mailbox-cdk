@@ -123,8 +123,7 @@ export class AuthSection extends Construct {
   public addBootstrap(props: AuthBootstrapProps): void {
     const authProvider = this.props.authProvider;
 
-    const adminRequiredGroups = authProvider.policies.adminApi.requireAnyOfGroups
-      ?? props.ui.adminUi?.oauthClient.groups;
+    const adminRequiredGroups = this.resolveAdminRequiredGroups(props);
 
     const bootstrap = new Bootstrap(this, 'bootstrap', {
       domain:            this.props.domainName,
@@ -159,6 +158,24 @@ export class AuthSection extends Construct {
     });
 
     this.oauthClientsProvisionedGroup.add(bootstrap.oauthClientsProvisioned);
+  }
+
+  /**
+   * The authorizer is the only admin lock, so the Admin API admin policy must name at least one group.
+   * A deploy-time token list has one element at synthesis and passes.
+   */
+  private resolveAdminRequiredGroups(props: AuthBootstrapProps): string[] {
+    const groups = this.props.authProvider.policies.adminApi.requireAnyOfGroups
+      ?? props.ui.adminUi?.oauthClient.groups;
+
+    if (!groups || groups.length === 0) {
+      throw new Error(
+        'The Admin API admin policy has no groups: set authProvider.policies.adminApi.requireAnyOfGroups '
+        + 'or the groups of the Admin UI OAuth client (ui.adminUi.oauthClient.groups).',
+      );
+    }
+
+    return groups;
   }
 
   private bootstrapOAuthClients(props: AuthBootstrapProps): OAuthClientsConfig | undefined {

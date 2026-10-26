@@ -11,7 +11,11 @@ import { OAuthFlow }                                                       from 
 export interface AuthPolicyConfig {
   /** Audiences accepted for requests under this policy. */
   readonly audiences: string[];
-  /** Require membership in ANY of these groups/roles. Empty/undefined means no restriction. */
+  /**
+   * Require membership in ANY of these groups/roles. Empty/undefined means no restriction.
+   * The Admin API policy is the exception: synthesis fails unless it resolves to at least one
+   * group, falling back to the groups of the Admin UI OAuth client when this is undefined.
+   */
   readonly requireAnyOfGroups?: string[];
 
   /** Require ALL of these OAuth scopes. Empty/undefined means no scope restriction. */

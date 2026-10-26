@@ -37,7 +37,7 @@ export function createMockAuthProvider(options: MockAuthProviderOptions = {}): I
       'mail.write': [Permission.MAIL_WRITE],
     },
     policies:                {
-      adminApi: { audiences: ['admin-api'] },
+      adminApi: { audiences: ['admin-api'], requireAnyOfGroups: ['admins'] },
       jmapApi:  { audiences: ['jmap-api'] },
     },
     provisionAdminApiClient: () => ({ clientId: 'test-admin-ui', requestScopeList: [], groups: [] }),
