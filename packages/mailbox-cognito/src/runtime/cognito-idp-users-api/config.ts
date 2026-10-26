@@ -9,7 +9,7 @@ import {
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import * as t                                                         from 'typanion';
 
-import { isGroupName, toUserPoolId, type GroupName, type UserPoolId } from '../../runtime/shared/cognito-identifiers';
+import { isGroupName, toUserPoolId, type GroupName, type UserPoolId } from '../shared/cognito-identifiers';
 
 const isGroupNameArray = t.isArray(isGroupName);
 

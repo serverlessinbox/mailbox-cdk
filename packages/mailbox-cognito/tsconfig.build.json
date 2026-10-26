@@ -3,5 +3,5 @@
   "compilerOptions": {
     "noEmit": false
   },
-  "exclude": ["src/ts-lambdas/**"]
+  "exclude": ["src/runtime/cognito-idp-users-api/**"]
 }

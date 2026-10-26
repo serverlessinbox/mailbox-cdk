@@ -34,9 +34,9 @@ import {
 import { LoggerBuffer, toAccountId, toFunctionName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }                                from 'aws-sdk-client-mock';
 
-import { toGroupName, toUserPoolId, type GroupName } from '../../../runtime/shared/cognito-identifiers';
-import { toPrincipalId }                             from '../../../runtime/shared/identity-identifiers';
-import { IdentityProvisionerClient }                 from '../../../runtime/shared/identity-provisioner-client';
+import { toGroupName, toUserPoolId, type GroupName } from '../../shared/cognito-identifiers';
+import { toPrincipalId }                             from '../../shared/identity-identifiers';
+import { IdentityProvisionerClient }                 from '../../shared/identity-provisioner-client';
 import {
   CreateIdpUserRequestSchema,
   DeleteIdpUserRequestSchema,

@@ -4,7 +4,7 @@ import { SQSClient }                        from '@aws-sdk/client-sqs';
 import { SqsAuditSink, wrapService }        from '@serverlessinbox/mailbox-addon-sdk';
 import { env, LoggerBuffer, withSmokeTest } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { IdentityProvisionerClient }        from '../../runtime/shared/identity-provisioner-client';
+import { IdentityProvisionerClient }        from '../shared/identity-provisioner-client';
 
 import { load }                             from './config';
 import { IdpUsersServiceRuntime }           from './generated/idp_users_service';

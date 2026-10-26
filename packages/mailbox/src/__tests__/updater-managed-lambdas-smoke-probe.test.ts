@@ -41,7 +41,7 @@ const SUITE_TIMEOUT_MILLIS = 30_000;
 const TS_LAMBDA_ROOTS = [
   path.join(__dirname, '..', 'runtime'),
   path.join(__dirname, '..', '..', '..', 'mailbox-cdk-shared', 'src', 'runtime'),
-  path.join(__dirname, '..', '..', '..', 'mailbox-cognito', 'src', 'ts-lambdas'),
+  path.join(__dirname, '..', '..', '..', 'mailbox-cognito', 'src', 'runtime'),
 ];
 
 /** Managed Lambdas written in Go, probed by the Go smoke-test seam in the repository that holds them. */

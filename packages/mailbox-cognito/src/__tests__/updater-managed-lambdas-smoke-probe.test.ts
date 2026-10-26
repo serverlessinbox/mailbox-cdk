@@ -30,7 +30,7 @@ import { loadMailboxCognitoRegistryRecord }   from '../mailbox-cognito-registry-
 import { DynamicClientRegistrationMode }      from '../user-pool/dynamic-client-registration-mode';
 import { MailboxUserPool }                    from '../user-pool/mailbox-user-pool';
 
-const TS_LAMBDA_ROOTS = [path.join(__dirname, '..', 'ts-lambdas'), path.join(__dirname, '..', 'runtime')];
+const TS_LAMBDA_ROOTS = [path.join(__dirname, '..', 'runtime')];
 
 const COGNITO_LAMBDAS = ['cognito-bootstrap-user', 'cognito-idp-users-api', 'jmap-oauth-dcr'];
 

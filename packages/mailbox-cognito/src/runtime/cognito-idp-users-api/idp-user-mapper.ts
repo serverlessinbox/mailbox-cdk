@@ -2,7 +2,7 @@ import type { AdminGetUserCommandOutput, AttributeType, UserStatusType, UserType
 import { timestampFromDate }                                                       from '@bufbuild/protobuf/wkt';
 import { create }                                                                  from '@bufbuild/protobuf';
 
-import { toUsername, type Username }                                               from '../../runtime/shared/cognito-identifiers';
+import { toUsername, type Username }                                               from '../shared/cognito-identifiers';
 
 import { IdpUserSchema, type IdpUser }                                             from './generated/idp_users_pb';
 
