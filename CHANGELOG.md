@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.3](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.2...v0.5.3) (Mon Oct 26 2026)
+
+### docs
+
+* **repo** READMEs for the packages, the scripts and the remote-git folder ([30c80f1](https://github.com/serverlessinbox/mailbox-cdk/commit/30c80f1f7bf8676dfd6d1e0c347b4b233f006c6e))
+
 ## [0.5.2](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.1...v0.5.2) (Mon Oct 26 2026)
 
 ### test
