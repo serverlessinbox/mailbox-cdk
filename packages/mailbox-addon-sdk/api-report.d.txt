@@ -281,9 +281,38 @@ export interface Dispatch {
     readonly work: RequestWork;
 }
 
+// handler/generated-service.d.ts
+import type { DescMessage, Message, MessageShape } from '@bufbuild/protobuf';
+import type { HandlerContext } from '../caller/handler-context';
+export interface GeneratedMethod {
+    readonly name: string;
+    readonly handlerName: string;
+    readonly requestSchema: DescMessage;
+    readonly responseSchema: DescMessage;
+}
+export interface GeneratedMethods {
+    readonly [name: string]: GeneratedMethod;
+}
+export interface GeneratedService {
+    readonly basePath: string;
+    readonly serviceName: string;
+    readonly methods: GeneratedMethods;
+}
+type MethodOf<Service extends GeneratedService> = Service['methods'][keyof Service['methods']];
+export type ServiceHandlersOf<Service extends GeneratedService> = {
+    readonly [Method in MethodOf<Service> as Method['handlerName']]: (context: HandlerContext, request: MessageShape<Method['requestSchema']>) => Promise<MessageShape<Method['responseSchema']>>;
+};
+export type MessageHandler = (context: HandlerContext, request: Message) => Promise<Message>;
+export type MessageHandlers = Readonly<Record<string, MessageHandler>>;
+export {};
+
 // handler/index.d.ts
 export type { AddonHandler } from './addon-handler';
+export type { GeneratedMethod, GeneratedService, ServiceHandlersOf } from './generated-service';
 export type { LogFields, RequestLogger } from './request-logger';
+export type { HandlerRun } from './wrap-handler';
+export { wrapHandler } from './wrap-handler';
+export { wrapService } from './wrap-service';
 
 // handler/request-logger.d.ts
 export type LogFields = Record<string, unknown>;
@@ -293,6 +322,23 @@ export interface RequestLogger {
     error(message: string, fields?: LogFields): void;
     flush(): void;
 }
+
+// handler/wrap-handler.d.ts
+import * as t from 'typanion';
+import type { AuditSink } from '../audit/index';
+import type { HandlerContext } from '../caller/handler-context';
+import type { JsonValue } from '../json/index';
+import type { AddonHandler } from './addon-handler';
+import type { RequestLogger } from './request-logger';
+export type HandlerRun<Body> = (context: HandlerContext, body: Body) => Promise<JsonValue>;
+export declare function wrapHandler<Body>(bodySchema: t.StrictValidator<unknown, Body>, run: HandlerRun<Body>, auditSink: AuditSink, logger: RequestLogger): AddonHandler;
+
+// handler/wrap-service.d.ts
+import type { AuditSink } from '../audit/index';
+import type { AddonHandler } from './addon-handler';
+import type { GeneratedService, ServiceHandlersOf } from './generated-service';
+import type { RequestLogger } from './request-logger';
+export declare function wrapService<Service extends GeneratedService>(runtime: Service, handlers: ServiceHandlersOf<Service>, auditSink: AuditSink, logger: RequestLogger): AddonHandler;
 
 // index.d.ts
 export * from './audit/index';
