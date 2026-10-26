@@ -10,7 +10,7 @@
     "url": "https://github.com/serverlessinbox/mailbox-cdk",
     "directory": "packages/mailbox-addon-sdk"
   },
-  "homepage": "https://github.com/serverlessinbox/mailbox-cdk",
+  "homepage": "https://docs.serverlessinbox.com",
   "bugs": {
     "url": "https://github.com/serverlessinbox/serverlessinbox/issues"
   },

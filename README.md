@@ -1,7 +1,5 @@
 # ServerlessInbox CDK constructs
 
-[![Release](https://github.com/serverlessinbox/mailbox-cdk/actions/workflows/release.yml/badge.svg)](https://github.com/serverlessinbox/mailbox-cdk/actions/workflows/release.yml)
-
 AWS CDK constructs for [ServerlessInbox](https://github.com/serverlessinbox/serverlessinbox), a
 serverless JMAP email server for AWS, built for teams that already run on AWS and want email to
 complete their stack. The constructs provision the whole server in your account: the JMAP, admin and
@@ -60,17 +58,23 @@ export class MyStack extends Stack {
 
 ```mermaid
 flowchart LR
-  app["Your CDK app"] -->|new HostedZoneLookup, new Mailbox| mailbox["@serverlessinbox/mailbox"]
-  app -->|new MailboxUserPool| cognito["@serverlessinbox/mailbox-cognito"]
-  cognito -->|authProvider| mailbox
-  shared["@serverlessinbox/mailbox-cdk-shared"] -. inlined at publish .-> mailbox
-  shared -. inlined at publish .-> cognito
-  adminapi["@serverlessinbox/mailbox-addon-sdk"] -. bundled into Lambda code .-> cognito
+  app["Your CDK app"] -->|new| zone["HostedZoneLookup"]
+  app -->|new| mailbox["Mailbox"]
+  app -->|new| pool["MailboxUserPool"]
+  zone -->|hostedZone| mailbox
+  zone -->|hostedZone| pool
+  pool -->|authProvider| mailbox
+  subgraph pkgM["@serverlessinbox/mailbox"]
+    zone
+    mailbox
+  end
+  subgraph pkgC["@serverlessinbox/mailbox-cognito"]
+    pool
+  end
 ```
 
-The app creates a `MailboxUserPool` and passes it to the `Mailbox` as its `authProvider`. The shared
-artifact-resolution code is inlined into both published packages, and the Admin API handler SDK is
-bundled into the Lambda code that `mailbox-cognito` deploys.
+The app looks up your hosted zone, creates a `MailboxUserPool` in it and passes the pool to the
+`Mailbox` as its `authProvider`.
 
 ## Packages
 
@@ -85,8 +89,6 @@ bundled into the Lambda code that `mailbox-cognito` deploys.
   for common changes and the checks to run.
 - [docs/architecture.md](docs/architecture.md): the construct tree, the stacks, the zones, the request
   paths and how Lambda code is resolved.
-| [`@serverlessinbox/mailbox-cdk-shared`](packages/mailbox-cdk-shared/) | Shared artifact-resolution infrastructure, inlined into the published packages |
-| [`@serverlessinbox/mailbox-addon-sdk`](packages/mailbox-addon-sdk/) | Handler SDK for Lambdas that serve Admin API services: routing, auth context, validation and audit events |
 
 ## Where to look
 
@@ -99,6 +101,7 @@ bundled into the Lambda code that `mailbox-cognito` deploys.
 | How does the mailbox update itself? | [`packages/mailbox/src/platform/`](packages/mailbox/src/platform/) |
 | Where is the code that runs inside the TypeScript Lambdas? | `src/runtime/` of [`mailbox`](packages/mailbox/src/runtime/), `src/runtime/` and `src/ts-lambdas/` of [`mailbox-cognito`](packages/mailbox-cognito/src/ts-lambdas/) |
 | How are deployable artifacts laid out in S3? | [`packages/mailbox/docs/artifacts.md`](packages/mailbox/docs/artifacts.md) |
+| Where are the architecture and the contribution rules? | [`docs/architecture.md`](docs/architecture.md), [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | What changed between releases? | [`CHANGELOG.md`](CHANGELOG.md) |
 
 ## Documentation
