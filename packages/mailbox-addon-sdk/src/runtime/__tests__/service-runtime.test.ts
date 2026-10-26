@@ -1,6 +1,7 @@
 import * as t                                                from 'typanion';
 
 import { ADMIN_CONTEXT, authorizedEvent, type EventOptions } from '../../__tests__/authorized-event-helpers';
+import type { AuditEntry, AuditEvent, AuditSink }            from '../../audit/index';
 import { CallerContextReader, type HandlerContext }          from '../../caller';
 import {
   AlreadyExistsError,
@@ -10,7 +11,7 @@ import {
   NotFoundError,
   UnauthenticatedError,
 }                                                            from '../../errors';
-import type { JsonValue }                                    from '../../json-value';
+import type { JsonValue }                                    from '../../json';
 import type { RequestLogger }                                from '../request-logger';
 import type { ServiceMethod }                                from '../service-method';
 import { ServiceRuntime }                                    from '../service-runtime';
@@ -21,6 +22,8 @@ import errorStatusTable                                      from './fixtures/er
  * Pins the request pipeline of an addon service: who may call a method, in which order a request is checked,
  * and the status every failure answers with. A method that is open by default, a body that is read before the
  * caller is, or a server error that carries its cause in the answer are defects of the published runtime.
+ * What a handler records through its context is completed from the request: a tenant, action or actor taken from
+ * anywhere else would attribute a change to the wrong caller, and a secret that reaches the sink is stored for good.
  * The error table is checked against the golden fixture shared with the Go admin API registry
  * (mailbox-idl: admin-api/fixtures/addon-sdk-parity/error-status-table.json).
  */
@@ -66,14 +69,25 @@ function methodThrowing(thrown: unknown): ServiceMethod {
   return { invoke: () => Promise.reject(thrown) };
 }
 
+function sinkDouble(): jest.Mocked<AuditSink> {
+  return { record: jest.fn<Promise<void>, [AuditEvent]>().mockResolvedValue(undefined) };
+}
+
 interface Fixture {
   readonly runtime: ServiceRuntime;
   readonly logger:  jest.Mocked<RequestLogger>;
+  readonly sink:    jest.Mocked<AuditSink>;
 }
 
-function fixtureWith(methods: Record<string, ServiceMethod>, adminGroups: readonly string[] = ['admin']): Fixture {
-  const logger = loggerDouble();
-  return { runtime: new ServiceRuntime('/idp-users', new Map(Object.entries(methods)), adminGroups, new CallerContextReader(), logger), logger };
+function fixtureWith(methods: Record<string, ServiceMethod>, adminGroups: readonly string[] = ['admin'], sink: jest.Mocked<AuditSink> = sinkDouble()): Fixture {
+  const logger  = loggerDouble();
+  const runtime = new ServiceRuntime('/idp-users', 'IdpUsersService', new Map(Object.entries(methods)), adminGroups, new CallerContextReader(), sink, logger);
+  return { runtime, logger, sink };
+}
+
+function recordedEvent(fixture: Fixture): AuditEvent {
+  expect(fixture.sink.record).toHaveBeenCalledTimes(1);
+  return fixture.sink.record.mock.calls[0][0];
 }
 
 function callWith(fixture: Fixture, options: EventOptions = {}): ReturnType<ServiceRuntime['handle']> {
@@ -89,10 +103,11 @@ describe('ServiceRuntime', () => {
       const result = await callWith(fixture, { body: '{"limit":5}' });
 
       expect(result).toEqual({ statusCode: 200, headers: { 'content-type': 'application/json; charset=utf-8' }, body: '{"users":[]}' });
-      expect(method.invoke).toHaveBeenCalledWith(
-        { caller: { tenantId: 'tenant-1', principalId: 'principal-1', principalName: 'jane', displayName: 'Jane Doe', groups: ['admin'] }, requestId: 'request-1' },
-        { limit: 5 },
-      );
+      const [context, body] = method.invoke.mock.calls[0];
+      expect(context.caller).toEqual({ tenantId: 'tenant-1', principalId: 'principal-1', principalName: 'jane', displayName: 'Jane Doe', groups: ['admin'] });
+      expect(context.requestId).toBe('request-1');
+      expect(typeof context.recordAudit).toBe('function');
+      expect(body).toEqual({ limit: 5 });
     });
 
     it('answers an empty object when the method returns nothing', async () => {
@@ -123,7 +138,7 @@ describe('ServiceRuntime', () => {
     });
 
     it.each(['idp-users', '/idp-users/', 'idp-users//'])('takes the base path %p with or without its slashes', (basePath) => {
-      const runtime = new ServiceRuntime(basePath, new Map(), [], new CallerContextReader(), loggerDouble());
+      const runtime = new ServiceRuntime(basePath, 'IdpUsersService', new Map(), [], new CallerContextReader(), sinkDouble(), loggerDouble());
 
       expect(runtime.basePath).toBe('/idp-users');
     });
@@ -219,6 +234,104 @@ describe('ServiceRuntime', () => {
       const result = await callWith(fixtureWith({ Do: methodThrowing(thrown) }));
 
       expect(result.statusCode).toBe(500);
+    });
+  });
+
+  describe('audit', () => {
+    const SINK_CAUSE = 'queue is gone';
+
+    function failingSink(): jest.Mocked<AuditSink> {
+      return { record: jest.fn<Promise<void>, [AuditEvent]>().mockRejectedValue(new Error(SINK_CAUSE)) };
+    }
+
+    /** A method that records `entry` through its context, and answers `{ recorded: true }`, or the message of the failure when recording rejects. */
+    function methodRecording(entry: AuditEntry): ServiceMethod {
+      return {
+        invoke: async (context) => {
+          try {
+            await context.recordAudit(entry);
+            return { recorded: true };
+          } catch (thrown) {
+            return { rejected: thrown instanceof Error ? thrown.message : String(thrown) };
+          }
+        },
+      };
+    }
+
+    it('completes the entry of a handler into the event: the tenant, the action and the actor come from the request', async () => {
+      const entry   = { status: 'success', entityId: 'alice', entityName: 'alice@example.com', changes: [{ field: 'email', oldValue: 'a@old', newValue: 'a@new' }] } as const;
+      const fixture = fixtureWith({ Do: methodRecording(entry) });
+
+      const result = await callWith(fixture);
+
+      expect(result.body).toBe('{"recorded":true}');
+      expect(recordedEvent(fixture)).toEqual({
+        tenantId:   'tenant-1',
+        entityType: 'idp-users',
+        action:     'IdpUsersService/Do',
+        actor:      { actorType: 'user', actorId: 'principal-1', username: 'jane', ipAddress: '203.0.113.7' },
+        ...entry,
+      });
+    });
+
+    it('carries the status and the message of a failure', async () => {
+      const fixture = fixtureWith({ Do: methodRecording({ status: 'failure', errorMsg: 'no such user' }) });
+
+      await callWith(fixture);
+
+      expect(recordedEvent(fixture)).toEqual(expect.objectContaining({ status: 'failure', errorMsg: 'no such user' }));
+    });
+
+    it('names the entity unknown when the handler gave no id, and names it by its id when it gave no name', async () => {
+      const fixture = fixtureWith({ Do: methodRecording({ status: 'success' }), Named: methodRecording({ status: 'success', entityId: 'alice' }) });
+
+      await callWith(fixture);
+      await callWith(fixture, { path: '/idp-users/Named' });
+
+      expect(fixture.sink.record.mock.calls.map(([event]) => [event.entityId, event.entityName])).toEqual([['unknown', 'unknown'], ['alice', 'alice']]);
+    });
+
+    it('redacts the values of a secret field in the changes and leaves the other fields as they are', async () => {
+      const changes = [
+        { field: 'initialPassword', newValue: 'hunter2' },
+        { field: 'apiKey', oldValue: 'old-key', newValue: 'new-key' },
+        { field: 'email', oldValue: 'a@old', newValue: 'a@new' },
+      ];
+      const fixture = fixtureWith({ Do: methodRecording({ status: 'success', changes }) });
+
+      await callWith(fixture);
+
+      expect(recordedEvent(fixture).changes).toEqual([
+        { field: 'initialPassword', newValue: '[REDACTED]' },
+        { field: 'apiKey', oldValue: '[REDACTED]', newValue: '[REDACTED]' },
+        { field: 'email', oldValue: 'a@old', newValue: 'a@new' },
+      ]);
+    });
+
+    it('rejects the handler call when the sink cannot record the event', async () => {
+      const fixture = fixtureWith({ Do: methodRecording({ status: 'success' }) }, ['admin'], failingSink());
+
+      const result = await callWith(fixture);
+
+      expect(result.body).toBe(`{"rejected":"${SINK_CAUSE}"}`);
+    });
+
+    it('answers a sink rejection the handler does not handle like any other handler error', async () => {
+      const unhandling: ServiceMethod = { invoke: (context) => context.recordAudit({ status: 'success' }) };
+      const fixture                   = fixtureWith({ Do: unhandling }, ['admin'], failingSink());
+
+      const result = await callWith(fixture);
+
+      expect(result).toEqual(expect.objectContaining({ statusCode: 500, body: 'internal server error' }));
+    });
+
+    it('records nothing on its own', async () => {
+      const fixture = fixtureWith({ Do: methodReturning({}), Failing: methodThrowing(new Error(CAUSE)) });
+
+      await callWith(fixture);
+      await callWith(fixture, { path: '/idp-users/Failing' });
+
+      expect(fixture.sink.record).not.toHaveBeenCalled();
     });
   });
 

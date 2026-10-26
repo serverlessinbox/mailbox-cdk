@@ -1,9 +1,9 @@
 import { SendMessageCommand, type SQSClient }       from '@aws-sdk/client-sqs';
-import type { AuditEvent }                          from '@serverlessinbox/mailbox-addon-sdk';
+import type { LegacyAuditEvent }                    from '@serverlessinbox/mailbox-addon-sdk';
 import { toTenantId, type QueueUrl, type TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 /** The message the audit writer reads from the audit events queue: an audit event that always names its tenant and actor. */
-type AuditWriterMessage = Omit<AuditEvent, 'tenantId' | 'actor'> & {
+type AuditWriterMessage = Omit<LegacyAuditEvent,'tenantId' | 'actor'> & {
   readonly tenantId: TenantId;
   readonly actor:    unknown;
 };
@@ -19,13 +19,13 @@ export class SqsAuditEmitter {
   ) {}
 
   /** An event without a tenant is attributed to the tenant `unknown`, and one without an actor to the system actor. */
-  public async emit(event: AuditEvent): Promise<void> {
+  public async emit(event: LegacyAuditEvent): Promise<void> {
     const messageBody = this.serialize(this.toAuditWriterMessage(event));
 
     await this.sqs.send(new SendMessageCommand({ QueueUrl: this.queueUrl, MessageBody: messageBody }));
   }
 
-  private toAuditWriterMessage(event: AuditEvent): AuditWriterMessage {
+  private toAuditWriterMessage(event: LegacyAuditEvent): AuditWriterMessage {
     return {
       tenantId:   event.tenantId === undefined ? UNKNOWN_TENANT : toTenantId(event.tenantId),
       entityType: event.entityType,

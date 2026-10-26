@@ -1,5 +1,5 @@
 import type { HandlerContext } from '../caller/handler-context';
-import type { JsonValue }      from '../json-value';
+import type { JsonValue }      from '../json/index';
 
 /** One method of a service: whether it needs an admin caller, and how a request body becomes a response. */
 export interface ServiceMethod {

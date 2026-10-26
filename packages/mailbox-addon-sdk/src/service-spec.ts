@@ -1,4 +1,4 @@
-import type { JsonValue } from './json-value';
+import type { JsonValue } from './json/index';
 
 /** What a service handler is called with besides the request: the caller's auth, its audit record and the request id. */
 export type HandlerContext<TAuth = unknown, TAudit = unknown> = {

@@ -1,4 +1,4 @@
-import { InvalidInputError } from '../errors';
+import { InvalidInputError } from '../../errors';
 import { JsonBodyReader }    from '../json-body-reader';
 
 /*

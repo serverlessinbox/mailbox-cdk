@@ -1,7 +1,7 @@
 import * as t                         from 'typanion';
 
 import type { ApiGatewayV2EventLike } from './api-gateway';
-import { ForbiddenError }             from './errors';
+import { ForbiddenError }             from './errors/index';
 
 export type AdminAuthType = 'anonymous' | 'authenticated';
 

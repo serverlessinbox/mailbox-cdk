@@ -1,6 +1,6 @@
 import * as t                   from 'typanion';
 
-import { UnauthenticatedError } from '../errors';
+import { UnauthenticatedError } from '../errors/index';
 
 import type { AuthorizedEvent } from './authorized-event';
 import type { Caller }          from './caller';

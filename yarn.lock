@@ -1998,9 +1998,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@serverlessinbox/mailbox-addon-sdk@workspace:packages/mailbox-addon-sdk"
   dependencies:
+    "@aws-sdk/client-sqs": "npm:^3.1132.0"
     "@bufbuild/protobuf": "npm:^2.2.3"
     "@types/aws-lambda": "npm:^8.10.159"
     "@types/jest": "npm:^29.0.0"
+    aws-sdk-client-mock: "npm:^4.1.0"
     jest: "npm:^29.0.0"
     ts-jest: "npm:^29.0.0"
     typanion: "npm:^3.14.0"

@@ -1,6 +1,7 @@
 import * as t                 from 'typanion';
 
-import { InvalidInputError }  from './errors';
+import { InvalidInputError }  from '../errors/index';
+
 import type { JsonValue }     from './json-value';
 
 /**

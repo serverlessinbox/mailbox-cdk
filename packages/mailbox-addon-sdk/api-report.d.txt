@@ -126,6 +126,62 @@ export type AuditContext = {
     action: string;
 };
 
+// audit/audit-event.d.ts
+import type { PrincipalId } from '../caller/principal-id';
+import type { TenantId } from '../caller/tenant-id';
+export type AuditStatus = 'success' | 'failure';
+export interface AuditChange {
+    readonly field: string;
+    readonly oldValue?: unknown;
+    readonly newValue?: unknown;
+}
+export interface AuditActor {
+    readonly actorType: 'user';
+    readonly actorId: PrincipalId;
+    readonly username: string;
+    readonly ipAddress: string;
+}
+export interface AuditEntry {
+    readonly status: AuditStatus;
+    readonly entityId?: string;
+    readonly entityName?: string;
+    readonly changes?: readonly AuditChange[];
+    readonly errorMsg?: string;
+}
+export interface AuditEvent {
+    readonly tenantId: TenantId;
+    readonly entityType: string;
+    readonly entityId: string;
+    readonly entityName: string;
+    readonly action: string;
+    readonly status: AuditStatus;
+    readonly errorMsg?: string;
+    readonly actor: AuditActor;
+    readonly changes?: readonly AuditChange[];
+}
+
+// audit/audit-sink.d.ts
+import type { AuditEvent } from './audit-event';
+export interface AuditSink {
+    record(event: AuditEvent): Promise<void>;
+}
+
+// audit/index.d.ts
+export type { AuditEntry, AuditEvent } from './audit-event';
+export type { AuditSink } from './audit-sink';
+export { SqsAuditSink } from './sqs-audit-sink';
+
+// audit/sqs-audit-sink.d.ts
+import { type SQSClient } from '@aws-sdk/client-sqs';
+import type { AuditEvent } from './audit-event';
+import type { AuditSink } from './audit-sink';
+export declare class SqsAuditSink implements AuditSink {
+    private readonly sqs;
+    private readonly queueUrl;
+    constructor(sqs: SQSClient, queueUrl: string);
+    record(event: AuditEvent): Promise<void>;
+}
+
 // caller/authorized-event.d.ts
 import type { APIGatewayProxyEventV2WithLambdaAuthorizer } from 'aws-lambda';
 export type AuthorizedEvent = APIGatewayProxyEventV2WithLambdaAuthorizer<unknown>;
@@ -153,10 +209,12 @@ export interface Caller {
 }
 
 // caller/handler-context.d.ts
+import type { AuditEntry } from '../audit/index';
 import type { Caller } from './caller';
 export interface HandlerContext {
     readonly caller: Caller;
     readonly requestId: string;
+    recordAudit(entry: AuditEntry): Promise<void>;
 }
 
 // caller/index.d.ts
@@ -178,7 +236,7 @@ export type TenantId = string & {
 };
 export declare function toTenantId(value: string): TenantId;
 
-// errors.d.ts
+// errors/errors.d.ts
 export declare class InvalidInputError extends Error {
     readonly name = "InvalidInputError";
 }
@@ -200,24 +258,42 @@ export declare class ConflictError extends Error {
     constructor(message: string, reason?: string | undefined);
 }
 
-// index.d.ts
-export * from './caller/index';
-export * from './runtime/index';
-export type { JsonValue } from './json-value';
+// errors/index.d.ts
 export { AlreadyExistsError, ConflictError, ForbiddenError, InvalidInputError, NotFoundError, UnauthenticatedError, } from './errors';
+
+// index.d.ts
+export * from './audit/index';
+export * from './caller/index';
+export * from './errors/index';
+export * from './runtime/index';
+export type { JsonValue } from './json/index';
 export type { ApiGatewayV2EventLike, ApiGatewayV2ResultLike } from './api-gateway';
 export type { HandlerContext as LegacyHandlerContext, MethodSpec, ServiceSpec } from './service-spec';
 export { ServiceRegistry } from './service-registry';
 export { AdminAuthExtractor } from './admin-auth-extractor';
 export type { AdminAuthContext, AdminAuthType, ExtractAuthOptions } from './admin-auth-extractor';
-export type { AuditContext, AuditEvent } from './audit';
+export type { AuditContext, AuditEvent as LegacyAuditEvent } from './audit';
 export { AdminApiHandler } from './admin-api-handler';
 export type { AdminApiHandlerOptions } from './admin-api-handler';
 export { createValidator, type Validator } from './validation';
 export { ServiceSpecBuilder } from './service-spec-builder';
 export type { GeneratedMethodRuntime, GeneratedServiceRuntime, ServiceSpecFromRuntimeOptions, } from './service-spec-builder';
 
-// json-value.d.ts
+// json/index.d.ts
+export { JsonBodyReader } from './json-body-reader';
+export type { JsonValue } from './json-value';
+
+// json/json-body-reader.d.ts
+import type { JsonValue } from './json-value';
+export declare class JsonBodyReader {
+    private readonly isJsonValue;
+    private readonly isJsonShape;
+    constructor();
+    read(body: string | null | undefined): JsonValue;
+    private parse;
+}
+
+// json/json-value.d.ts
 export type JsonValue = null | boolean | number | string | JsonValue[] | {
     [key: string]: JsonValue;
 };
@@ -238,7 +314,7 @@ export interface RequestLogger {
 
 // runtime/service-method.d.ts
 import type { HandlerContext } from '../caller/handler-context';
-import type { JsonValue } from '../json-value';
+import type { JsonValue } from '../json/index';
 export interface ServiceMethod {
     readonly admin?: boolean;
     invoke(context: HandlerContext, body: JsonValue): Promise<unknown>;
@@ -246,21 +322,28 @@ export interface ServiceMethod {
 
 // runtime/service-runtime.d.ts
 import type { APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
+import type { AuditSink } from '../audit/index';
 import type { AuthorizedEvent } from '../caller/authorized-event';
 import type { CallerContextReader } from '../caller/caller-context-reader';
 import type { RequestLogger } from './request-logger';
 import type { ServiceMethod } from './service-method';
 export declare class ServiceRuntime {
+    private readonly serviceName;
     private readonly methods;
     private readonly adminGroups;
     private readonly callerReader;
+    private readonly auditSink;
     private readonly logger;
     readonly basePath: string;
+    private readonly entityType;
     private readonly bodyReader;
-    constructor(basePath: string, methods: ReadonlyMap<string, ServiceMethod>, adminGroups: readonly string[], callerReader: CallerContextReader, logger: RequestLogger);
+    constructor(basePath: string, serviceName: string, methods: ReadonlyMap<string, ServiceMethod>, adminGroups: readonly string[], callerReader: CallerContextReader, auditSink: AuditSink, logger: RequestLogger);
     handle(event: AuthorizedEvent): Promise<APIGatewayProxyStructuredResultV2>;
     private serve;
     private methodOf;
+    private contextOf;
+    private recordAudit;
+    private redacted;
     private authorize;
     private answerFailure;
     private statusOf;
@@ -310,7 +393,7 @@ export declare class ServiceSpecBuilder<TAuth = unknown, TAudit = unknown> {
 }
 
 // service-spec.d.ts
-import type { JsonValue } from './json-value';
+import type { JsonValue } from './json/index';
 export type HandlerContext<TAuth = unknown, TAudit = unknown> = {
     auth: TAuth;
     audit: TAudit;
