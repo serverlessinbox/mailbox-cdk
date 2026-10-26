@@ -88,8 +88,8 @@ unreachable for them.
 An Admin API addon adds routes to the Admin API.
 
 1. Implement `IAdminApiAddon` and set `routeSpec` to an `AdminApiRouteSpec` with a `basePath`, the
-   `methods` and the `handler` Lambda. The Admin API mounts `${basePath}/{proxy+}` behind its own
-   authorizer. Two addons with the same `basePath` fail the synthesis.
+   `methods` and the `handler` Lambda. The Admin API mounts `${basePath}/{proxy+}` behind the
+   principal-lookup authorizer. Two addons with the same `basePath` fail the synthesis.
 2. Return the addon from an `IAdminApiAddonProvider.createAdminApiAddons(scope, ctx)`. Create every
    construct of the addon under `scope`. `ctx` carries the shared tables, the audit queue, the
    identity provisioner and the artifact resolver.

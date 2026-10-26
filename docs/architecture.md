@@ -117,15 +117,19 @@ flowchart LR
 
 ### Addon route
 
-An addon declares one `routeSpec`. `AdminApi` mounts `${basePath}/{proxy+}` on the same HTTP API with
-the same authorizer as every other Admin API route, and forwards the request to the addon's
-`handler`. The addon never sees the authorizer, so it cannot mount an unprotected route.
+An addon declares one `routeSpec`. `AdminApi` mounts `${basePath}/{proxy+}` on the same HTTP API behind
+a second authorizer, the `lookup-lambda-authorizer`, and forwards the request to the addon's
+`handler`. It is the same `AuthorizerLambda` with the `ADMIN_API` auth policy and `PRINCIPAL_LOOKUP=on`,
+and its result is cached for 60 seconds. It adds `principalId`, `principalName` and `displayName` to
+the request context, and it blocks a request that has no principal. The Admin API's own `/{proxy+}`
+route keeps the plain `lambda-authorizer`. The addon never sees the authorizer, so it cannot mount an
+unprotected route.
 
 ```mermaid
 flowchart LR
   client["Client"] --> httpapi["HttpApi (admin-api)"]
-  httpapi --> authorizer["lambda-authorizer (AuthorizerLambda)"]
-  authorizer -->|allowed| addon["routeSpec.handler (addon Lambda)"]
+  httpapi --> lookup["lookup-lambda-authorizer (AuthorizerLambda)"]
+  lookup -->|allowed, with principal| addon["routeSpec.handler (addon Lambda)"]
 ```
 
 ## Artifacts
