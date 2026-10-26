@@ -13,31 +13,31 @@ tasks:
   generate:proto:idp-users:
     desc: Generate TypeScript types + client for IdP Users admin API (buf). Generated output is committed.
     cmds:
-      - rm -rf {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/generated
-      - mkdir -p {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/generated
-      - |
-        set -euo pipefail
-        cd {{.TASKFILE_DIR}}/../../remote-git/mailbox-idl/admin-api
-        (cd tools/protoc-gen-ts-client && go build -o protoc-gen-ts-client .)
-        buf generate --template buf.gen.ts.yaml --path proto/idp_users.proto -o {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/generated
+      - rm -rf {{.TASKFILE_DIR}}/src/runtime/cognito-idp-users-api/generated
+      - mkdir -p {{.TASKFILE_DIR}}/src/runtime/cognito-idp-users-api/generated
+      - >-
+        task -d {{.TASKFILE_DIR}}/../../remote-git/mailbox-idl/admin-api generate:ts
+        OUTPUT_DIR={{.TASKFILE_DIR}}/src/runtime/cognito-idp-users-api/generated
+        HANDLER_CONTEXT_MODULE=@serverlessinbox/mailbox-addon-sdk
+        PROTO_PATH=proto/idp_users.proto
 
   verify:proto:idp-users:
     desc: Regenerate and fail if idp-users generated output differs from what is committed
     cmds:
       - task: generate:proto:idp-users
-      - git diff --exit-code -- {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/generated
+      - git diff --exit-code -- {{.TASKFILE_DIR}}/src/runtime/cognito-idp-users-api/generated
 
   # Regional artifact publishing
   bundle:idp-users-api:
     desc: Bundle cognito idp-users API lambda zip to dist/lambdas
     sources:
-      - src/ts-lambdas/cognito-idp-users-api/**/*.ts
+      - src/runtime/cognito-idp-users-api/**/*.ts
       - src/runtime/shared/**/*.ts
       - ../mailbox-cdk-shared/src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/cognito-idp-users-api.zip'
     cmds:
-      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/ts-lambdas/cognito-idp-users-api/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/cognito-idp-users-api.zip
+      - yarn mailbox-bundler lambda-zip --entry {{.TASKFILE_DIR}}/src/runtime/cognito-idp-users-api/index.ts --out {{.TASKFILE_DIR}}/dist/lambdas/cognito-idp-users-api.zip
 
   bundle:bootstrap-user:
     desc: Bundle cognito bootstrap-user custom resource lambda zip to dist/lambdas

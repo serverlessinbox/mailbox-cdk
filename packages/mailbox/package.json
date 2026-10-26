@@ -29,7 +29,7 @@
     "build:watch": "tsc --watch",
     "build:edge-stack": "task build:edge-stack",
     "build:data-stack": "task build:data-stack",
-    "prepack": "yarn prepare-manifest build && node -e \"require('fs').copyFileSync('../../LICENSE', 'LICENSE')\" && yarn build:edge-stack && yarn build:data-stack && yarn bundle && yarn bundle:jsii && yarn check:declarations",
+    "prepack": "node -e \"const fs=require('fs');fs.rmSync('lib',{recursive:true,force:true});for(const f of fs.readdirSync('.'))if(f.endsWith('.tsbuildinfo'))fs.rmSync(f)\" && yarn prepare-manifest build && node -e \"require('fs').copyFileSync('../../LICENSE', 'LICENSE')\" && yarn build:edge-stack && yarn build:data-stack && yarn bundle && yarn bundle:jsii && yarn check:declarations",
     "test": "tsc -p tsconfig.test.json && jest",
     "clean": "rm -rf dist lib *.tsbuildinfo",
     "dev": "task build:watch",
@@ -100,13 +100,12 @@
     "unzipper": "^0.12.3"
   },
   "files": [
-    "src",
     "lib",
     ".jsii",
     "artifact-versions.json",
     "registry-record.json",
     "LICENSE",
-    "!src/**/__tests__",
-    "!lib/**/__tests__"
+    "!lib/**/__tests__",
+    "!lib/runtime/**/*.js"
   ]
 }

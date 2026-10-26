@@ -1,15 +1,14 @@
 import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import { GoLambda }               from '@serverlessinbox/mailbox-cdk-shared';
-import * as apigwv2               from 'aws-cdk-lib/aws-apigatewayv2';
 import { Duration }               from 'aws-cdk-lib';
 import { Construct }              from 'constructs';
 
 /**
- * The JMAP API gateway the MCP Lambda points at, the OAuth scope map it applies and the artifact resolver
- * for its code. The caller creates the gateway.
+ * The JMAP API URL the MCP Lambda points at, the OAuth scope map it applies and the artifact resolver
+ * for its code.
  */
 export interface McpApiLambdaProps {
-  readonly jmapApiGateway:   apigwv2.IHttpApi;
+  readonly jmapApiUrl:       string;
   readonly scopeMap:         Record<string, string[]>;
   readonly artifactResolver: IArtifactResolver;
 }
@@ -24,7 +23,7 @@ export class McpApiLambda extends GoLambda {
       memorySize:       256,
       timeout:          Duration.seconds(29),
       environment:      {
-        JMAP_API_URL:    props.jmapApiGateway.apiEndpoint,
+        JMAP_API_URL:    props.jmapApiUrl,
         OAUTH_SCOPE_MAP: JSON.stringify(props.scopeMap),
       },
     });

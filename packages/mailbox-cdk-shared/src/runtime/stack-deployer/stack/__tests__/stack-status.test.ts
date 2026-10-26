@@ -7,11 +7,11 @@ import { StackStatus } from '../stack-status';
  */
 describe('StackStatus', () => {
   describe('isTerminalSuccess', () => {
-    it.each(['CREATE_COMPLETE', 'UPDATE_COMPLETE'] as const)('is true for %s', (status) => {
+    it.each(['CREATE_COMPLETE', 'UPDATE_COMPLETE', 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS'] as const)('is true for %s', (status) => {
       expect(new StackStatus(status).isTerminalSuccess()).toBe(true);
     });
 
-    it.each(['DELETE_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE', 'ROLLBACK_COMPLETE', 'DELETE_IN_PROGRESS', 'DELETE_FAILED', 'CREATE_IN_PROGRESS', undefined] as const)(
+    it.each(['DELETE_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS', 'ROLLBACK_COMPLETE', 'DELETE_IN_PROGRESS', 'DELETE_FAILED', 'CREATE_IN_PROGRESS', undefined] as const)(
       'is false for %s',
       (status) => {
         expect(new StackStatus(status).isTerminalSuccess()).toBe(false);
@@ -20,7 +20,7 @@ describe('StackStatus', () => {
   });
 
   describe('isDeploymentFailed', () => {
-    it.each(['CREATE_FAILED', 'UPDATE_FAILED', 'UPDATE_ROLLBACK_COMPLETE', 'DELETE_FAILED', 'ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_IN_PROGRESS'] as const)(
+    it.each(['CREATE_FAILED', 'UPDATE_FAILED', 'UPDATE_ROLLBACK_COMPLETE', 'DELETE_FAILED', 'ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS'] as const)(
       'is true for %s',
       (status) => {
         expect(new StackStatus(status).isDeploymentFailed()).toBe(true);

@@ -165,6 +165,17 @@ describe('StackDeployerWorker', () => {
       ]);
     });
 
+    it('answers SUCCESS with the stack outputs while an update is still cleaning up replaced resources', async () => {
+      cfn.on(DescribeStacksCommand).resolves({
+        Stacks: [stack('UPDATE_COMPLETE_CLEANUP_IN_PROGRESS', { Outputs: [{ OutputKey: 'TableName', OutputValue: 'items' }] })],
+      });
+
+      const result = await check();
+
+      expect(result).toEqual({ done: true, deleteRetryCount: 0, createRetryCount: 0 });
+      expect(endpoint.answers()).toEqual([expect.objectContaining({ Status: 'SUCCESS', Data: { TableName: 'items' } })]);
+    });
+
     it('asks the workflow to poll again while the stack is in progress, carrying the counters, without answering', async () => {
       cfn.on(DescribeStacksCommand).resolves({ Stacks: [stack('UPDATE_IN_PROGRESS')] });
 

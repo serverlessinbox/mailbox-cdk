@@ -167,8 +167,11 @@ export interface MailboxProps {
 
   /**
    * Extra origins allowed by CORS on the Admin API, the JMAP API and the CDN, as full origins
-   * including the scheme, for example `http://localhost:5173` during local development. The
-   * origins of the Admin and Webmail UIs are added automatically.
+   * including the scheme, for example `http://localhost:5173` during local development. Each entry
+   * must be an absolute `https://` origin, or `http://localhost` or `http://127.0.0.1` with an
+   * optional port, with no path, query or trailing slash (or a CloudFormation token); any other
+   * entry makes synthesis fail, naming the entry. The origins of the Admin and Webmail UIs are
+   * added automatically.
    *
    * @default - only the UI origins are allowed
    */

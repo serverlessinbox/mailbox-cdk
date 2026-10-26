@@ -2,9 +2,10 @@
 
 /**
  * Pins what the user service asks of Cognito for each request, how it answers a Cognito failure, and what it
- * records on the audit context. The admin API turns the error class the service throws into the HTTP status,
- * so a failure classified as the wrong class answers the caller with the wrong status; the audit fields are all
- * the audit trail knows of a request. Creating a user is all or nothing: a failure after Cognito created the user
+ * records in the audit. The service wrapper turns the error class the service throws into the HTTP status,
+ * so a failure classified as the wrong class answers the caller with the wrong status; the audit entries are all
+ * the audit trail knows of a request, so a password in one is a leak and a failure without one is a gap that
+ * cannot be seen afterwards. Creating a user is all or nothing: a failure after Cognito created the user
  * must delete it again, or the caller sees a failed request while an orphan user, possibly without a mailbox
  * principal or a group, can sign in.
  */
@@ -26,16 +27,16 @@ import {
   ConflictError,
   InvalidInputError,
   NotFoundError,
-  type AdminAuthContext,
-  type AuditContext,
-  type LegacyHandlerContext,
+  toPrincipalId as toCallerPrincipalId,
+  toTenantId as toCallerTenantId,
+  type HandlerContext,
 } from '@serverlessinbox/mailbox-addon-sdk';
 import { LoggerBuffer, toAccountId, toFunctionName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }                                from 'aws-sdk-client-mock';
 
-import { toGroupName, toUserPoolId, type GroupName } from '../../../runtime/shared/cognito-identifiers';
-import { toPrincipalId }                             from '../../../runtime/shared/identity-identifiers';
-import { IdentityProvisionerClient }                 from '../../../runtime/shared/identity-provisioner-client';
+import { toGroupName, toUserPoolId, type GroupName } from '../../shared/cognito-identifiers';
+import { toPrincipalId }                             from '../../shared/identity-identifiers';
+import { IdentityProvisionerClient }                 from '../../shared/identity-provisioner-client';
 import {
   CreateIdpUserRequestSchema,
   DeleteIdpUserRequestSchema,
@@ -44,19 +45,26 @@ import {
   SetIdpUserEnabledRequestSchema,
   SetIdpUserPasswordRequestSchema,
 } from '../generated/idp_users_pb';
-import { IdpUserMapper }          from '../idp-user-mapper';
-import { CognitoIdpUsersService } from '../idp-users.service';
-
-type IdpUsersContext = LegacyHandlerContext<AdminAuthContext, AuditContext>;
+import { IdpUserMapper }            from '../idp-user-mapper';
+import { CognitoIdpUsersService }   from '../idp-users.service';
+import { IdpUsersRequestValidator } from '../idp-users.validation';
 
 const USER_POOL_ID    = 'pool-1';
 const TENANT_ID       = 'tenant-123';
 const COGNITO_MESSAGE = 'Cognito said so';
 
-function context(): IdpUsersContext {
+/** The context of a request from a fixed admin caller, whose audit recording is a spy. */
+function context(): jest.Mocked<HandlerContext> {
   return {
-    auth:  { authType: 'authenticated', sub: 'caller-sub', groups: [], isAdmin: true, roles: ['admin'], scopes: [], tenantId: TENANT_ID, raw: {} },
-    audit: { entityType: 'idp-users', action: 'IdpUsersService/Test' },
+    caller:      {
+      tenantId:      toCallerTenantId(TENANT_ID),
+      principalId:   toCallerPrincipalId('caller-principal'),
+      principalName: 'caller',
+      displayName:   'Caller',
+      groups:        ['admin'],
+    },
+    requestId:   'request-1',
+    recordAudit: jest.fn<Promise<void>, Parameters<HandlerContext['recordAudit']>>().mockResolvedValue(undefined),
   };
 }
 
@@ -73,11 +81,13 @@ describe('CognitoIdpUsersService', () => {
   const logWarn             = jest.spyOn(logger, 'warn');
   const flushLogs           = jest.spyOn(logger, 'flush');
 
-  function newService(adminGroups: GroupName[] = [toGroupName('admin')]): CognitoIdpUsersService {
+  function newService(adminGroups: GroupName[] = [toGroupName('admin')], userGroups: GroupName[] = [toGroupName('user')]): CognitoIdpUsersService {
     return new CognitoIdpUsersService(new CognitoIdentityProviderClient({}), toUserPoolId(USER_POOL_ID), {
       identityProvisioner,
       userMapper: new IdpUserMapper(),
+      validator:  new IdpUsersRequestValidator(),
       adminGroups,
+      userGroups,
       logger,
     });
   }
@@ -118,7 +128,7 @@ describe('CognitoIdpUsersService', () => {
   });
 
   describe('getIdpUser', () => {
-    it('returns the user and records it as the audited entity', async () => {
+    it('returns the user and records nothing in the audit', async () => {
       cognitoMock.on(AdminGetUserCommand).resolves({ Username: 'alice', Enabled: true, UserAttributes: [{ Name: 'email', Value: 'alice@example.com' }] });
       const ctx = context();
 
@@ -126,7 +136,7 @@ describe('CognitoIdpUsersService', () => {
 
       expect(cognitoMock.commandCalls(AdminGetUserCommand)[0].args[0].input).toEqual({ UserPoolId: USER_POOL_ID, Username: 'alice' });
       expect(response.user?.attributes).toEqual({ email: 'alice@example.com' });
-      expect([ctx.audit.entityId, ctx.audit.entityName]).toEqual(['alice', 'alice']);
+      expect(ctx.recordAudit).not.toHaveBeenCalled();
     });
   });
 
@@ -143,7 +153,7 @@ describe('CognitoIdpUsersService', () => {
       });
     }
 
-    it('creates the user without sending a message, then makes its password permanent', async () => {
+    it('creates the user with a temporary password and without sending a message, and sets no other password', async () => {
       cognitoReturnsUser({ sub: 'cognito-sub-abc' });
 
       await newService().createIdpUser(context(), request());
@@ -155,12 +165,7 @@ describe('CognitoIdpUsersService', () => {
         MessageAction:     'SUPPRESS',
         UserAttributes:    [{ Name: 'email', Value: 'newuser@example.com' }],
       });
-      expect(cognitoMock.commandCalls(AdminSetUserPasswordCommand)[0].args[0].input).toEqual({
-        UserPoolId: USER_POOL_ID,
-        Username:   'newuser',
-        Password:   'Passw0rd!',
-        Permanent:  true,
-      });
+      expect(cognitoMock.commandCalls(AdminSetUserPasswordCommand)).toHaveLength(0);
     });
 
     it('creates a user without an email attribute when the request has no email', async () => {
@@ -181,13 +186,22 @@ describe('CognitoIdpUsersService', () => {
       expect(cognitoMock.commandCalls(AdminDisableUserCommand)[0].args[0].input).toEqual({ UserPoolId: USER_POOL_ID, Username: 'newuser' });
     });
 
-    it('adds the user to each requested group, and to the group user when none is requested', async () => {
+    it('adds the user to only the requested groups when the request names groups', async () => {
       cognitoReturnsUser({ sub: 'cognito-sub-abc' });
+      const configured = [toGroupName('team'), toGroupName('viewer')];
 
-      await newService().createIdpUser(context(), request({ groups: ['staff', 'finance'] }));
-      await newService().createIdpUser(context(), request({ groups: [] }));
+      await newService(undefined, configured).createIdpUser(context(), request({ groups: ['staff', 'finance'] }));
 
-      expect(cognitoMock.commandCalls(AdminAddUserToGroupCommand).map((call) => call.args[0].input.GroupName)).toEqual(['staff', 'finance', 'user']);
+      expect(cognitoMock.commandCalls(AdminAddUserToGroupCommand).map((call) => call.args[0].input.GroupName)).toEqual(['staff', 'finance']);
+    });
+
+    it('adds the user to every configured user group when the request names none', async () => {
+      cognitoReturnsUser({ sub: 'cognito-sub-abc' });
+      const configured = [toGroupName('team'), toGroupName('viewer')];
+
+      await newService(undefined, configured).createIdpUser(context(), request({ groups: [] }));
+
+      expect(cognitoMock.commandCalls(AdminAddUserToGroupCommand).map((call) => call.args[0].input.GroupName)).toEqual(['team', 'viewer']);
     });
 
     it('creates the user and warns about each group it could not join when it joined at least one group', async () => {
@@ -232,7 +246,6 @@ describe('CognitoIdpUsersService', () => {
       }
 
       it.each([
-        { step: 'making the password permanent', enabled: true, failStep: () => cognitoMock.on(AdminSetUserPasswordCommand).rejects(serviceUnavailable) },
         { step: 'disabling the user', enabled: false, failStep: () => cognitoMock.on(AdminDisableUserCommand).rejects(serviceUnavailable) },
         { step: 'joining the groups', enabled: true, failStep: () => cognitoMock.on(AdminAddUserToGroupCommand).rejects(serviceUnavailable) },
         { step: 'fetching the user', enabled: true, failStep: () => cognitoMock.on(AdminGetUserCommand).rejects(serviceUnavailable) },
@@ -264,7 +277,7 @@ describe('CognitoIdpUsersService', () => {
       });
 
       it('logs the failed deletion with the username and still answers with the original failure', async () => {
-        cognitoMock.on(AdminSetUserPasswordCommand).rejects(serviceUnavailable);
+        cognitoMock.on(AdminAddUserToGroupCommand).rejects(serviceUnavailable);
         cognitoMock.on(AdminDeleteUserCommand).rejects(cognitoError('InternalErrorException', 'Delete refused'));
 
         expect(await rejectionOfCreate()).toBe(serviceUnavailable);
@@ -287,16 +300,38 @@ describe('CognitoIdpUsersService', () => {
       expect(response.user?.enabled).toBe(true);
     });
 
-    it('records the created user and what was requested on the audit context', async () => {
+    it('records the created user and what was requested as one successful audit entry', async () => {
       cognitoReturnsUser({ sub: 'cognito-sub-abc' });
       const ctx = context();
 
       await newService().createIdpUser(ctx, request({ enabled: false }));
 
-      expect([ctx.audit.entityId, ctx.audit.entityName]).toEqual(['newuser', 'newuser@example.com']);
-      expect(ctx.audit.changes).toEqual([
-        { op: 'create', path: '/user', value: { username: 'newuser', email: 'newuser@example.com', enabled: false, groups: ['user'] } },
-      ]);
+      expect(ctx.recordAudit).toHaveBeenCalledTimes(1);
+      expect(ctx.recordAudit).toHaveBeenCalledWith({
+        status:     'success',
+        entityId:   'newuser',
+        entityName: 'newuser@example.com',
+        changes:    [{ field: 'user', newValue: { username: 'newuser', email: 'newuser@example.com', enabled: false, groups: ['user'] } }],
+      });
+    });
+
+    it('never records the password in the audit', async () => {
+      cognitoReturnsUser({ sub: 'cognito-sub-abc' });
+      const ctx = context();
+
+      await newService().createIdpUser(ctx, request());
+
+      expect(JSON.stringify(jest.mocked(ctx.recordAudit).mock.calls)).not.toContain('Passw0rd!');
+    });
+
+    it('records a failure, with the failure message, when the creation is rolled back', async () => {
+      cognitoMock.on(AdminAddUserToGroupCommand).rejects(cognitoError('ServiceUnavailableException', 'Cognito is down'));
+      const ctx = context();
+
+      await newService().createIdpUser(ctx, request()).catch(() => undefined);
+
+      expect(ctx.recordAudit).toHaveBeenCalledTimes(1);
+      expect(ctx.recordAudit).toHaveBeenCalledWith(expect.objectContaining({ status: 'failure', entityId: 'newuser', errorMsg: 'Cognito is down' }));
     });
 
     it('provisions the mailbox principal under the Cognito sub, never the username', async () => {
@@ -328,63 +363,131 @@ describe('CognitoIdpUsersService', () => {
     it.each([
       { enabled: true, called: AdminEnableUserCommand, notCalled: AdminDisableUserCommand },
       { enabled: false, called: AdminDisableUserCommand, notCalled: AdminEnableUserCommand },
-    ])('sends the command that sets enabled=$enabled and records it on the audit context', async ({ enabled, called, notCalled }) => {
+    ])('sends the command that sets enabled=$enabled and records it in the audit', async ({ enabled, called, notCalled }) => {
       const ctx = context();
 
       await newService().setIdpUserEnabled(ctx, create(SetIdpUserEnabledRequestSchema, { username: 'alice', enabled }));
 
       expect(cognitoMock.commandCalls(called)[0].args[0].input).toEqual({ UserPoolId: USER_POOL_ID, Username: 'alice' });
       expect(cognitoMock.commandCalls(notCalled)).toHaveLength(0);
-      expect([ctx.audit.entityId, ctx.audit.entityName]).toEqual(['alice', 'alice']);
-      expect(ctx.audit.changes).toEqual([{ op: 'replace', path: '/enabled', value: enabled }]);
+      expect(ctx.recordAudit).toHaveBeenCalledWith({ status: 'success', entityId: 'alice', entityName: 'alice', changes: [{ field: 'enabled', newValue: enabled }] });
     });
   });
 
   describe('setIdpUserPassword', () => {
-    it.each([
-      { permanent: undefined, expected: true },
-      { permanent: false, expected: false },
-    ])('sets the password as permanent=$expected when the request says permanent=$permanent', async ({ permanent, expected }) => {
-      await newService().setIdpUserPassword(context(), create(SetIdpUserPasswordRequestSchema, { username: 'alice', password: 'Passw0rd!', permanent }));
+    it('resets the password as a temporary one', async () => {
+      await newService().setIdpUserPassword(context(), create(SetIdpUserPasswordRequestSchema, { username: 'alice', password: 'Passw0rd!' }));
 
       expect(cognitoMock.commandCalls(AdminSetUserPasswordCommand)[0].args[0].input).toEqual({
         UserPoolId: USER_POOL_ID,
         Username:   'alice',
         Password:   'Passw0rd!',
-        Permanent:  expected,
+        Permanent:  false,
       });
     });
 
-    it('never records the password on the audit context', async () => {
+    it('records that the password changed, without its value', async () => {
       const ctx = context();
 
       await newService().setIdpUserPassword(ctx, create(SetIdpUserPasswordRequestSchema, { username: 'alice', password: 'Passw0rd!' }));
 
-      expect(ctx.audit.changes).toEqual([{ op: 'replace', path: '/password', value: '***' }]);
+      expect(ctx.recordAudit).toHaveBeenCalledWith({ status: 'success', entityId: 'alice', entityName: 'alice', changes: [{ field: 'password' }] });
+      expect(JSON.stringify(jest.mocked(ctx.recordAudit).mock.calls)).not.toContain('Passw0rd!');
     });
   });
 
   describe('deleteIdpUser', () => {
     const request = create(DeleteIdpUserRequestSchema, { username: 'alice' });
 
-    it('deletes the user from the pool and records it on the audit context', async () => {
+    it('deletes the user from the pool and records it in the audit', async () => {
       const ctx = context();
 
       await newService().deleteIdpUser(ctx, request);
 
       expect(cognitoMock.commandCalls(AdminDeleteUserCommand)[0].args[0].input).toEqual({ UserPoolId: USER_POOL_ID, Username: 'alice' });
-      expect([ctx.audit.entityId, ctx.audit.entityName]).toEqual(['alice', 'alice']);
-      expect(ctx.audit.changes).toEqual([{ op: 'remove', path: '/user', value: { username: 'alice' } }]);
+      expect(ctx.recordAudit).toHaveBeenCalledWith({ status: 'success', entityId: 'alice', entityName: 'alice', changes: [{ field: 'user', oldValue: { username: 'alice' } }] });
     });
 
-    it('succeeds when the user is already gone, and still records it on the audit context', async () => {
+    it('succeeds when the user is already gone, and still records it in the audit', async () => {
       cognitoMock.on(AdminDeleteUserCommand).rejects(cognitoError('UserNotFoundException'));
       const ctx = context();
 
       const response = await newService().deleteIdpUser(ctx, request);
 
       expect(response).toHaveProperty('$typeName');
-      expect(ctx.audit.entityId).toBe('alice');
+      expect(ctx.recordAudit).toHaveBeenCalledWith(expect.objectContaining({ status: 'success', entityId: 'alice' }));
+    });
+  });
+
+  describe('the audit of a change that fails', () => {
+    const cognitoFailure = cognitoError('ServiceUnavailableException', 'Cognito is down');
+
+    const changes = [
+      {
+        name:    'setIdpUserEnabled',
+        arrange: () => cognitoMock.on(AdminEnableUserCommand).rejects(cognitoFailure),
+        invoke:  (ctx: HandlerContext) => newService().setIdpUserEnabled(ctx, create(SetIdpUserEnabledRequestSchema, { username: 'alice', enabled: true })),
+      },
+      {
+        name:    'setIdpUserPassword',
+        arrange: () => cognitoMock.on(AdminSetUserPasswordCommand).rejects(cognitoFailure),
+        invoke:  (ctx: HandlerContext) => newService().setIdpUserPassword(ctx, create(SetIdpUserPasswordRequestSchema, { username: 'alice', password: 'Passw0rd!' })),
+      },
+      {
+        name:    'deleteIdpUser',
+        arrange: () => cognitoMock.on(AdminDeleteUserCommand).rejects(cognitoFailure),
+        invoke:  (ctx: HandlerContext) => newService().deleteIdpUser(ctx, create(DeleteIdpUserRequestSchema, { username: 'alice' })),
+      },
+    ];
+
+    it.each(changes)('$name records a failure with the message and fails with the original failure', async ({ arrange, invoke }) => {
+      arrange();
+      const ctx = context();
+
+      const rejection = await invoke(ctx).catch((thrown: unknown) => thrown);
+
+      expect(rejection).toBe(cognitoFailure);
+      expect(ctx.recordAudit).toHaveBeenCalledTimes(1);
+      expect(ctx.recordAudit).toHaveBeenCalledWith(expect.objectContaining({ status: 'failure', entityId: 'alice', errorMsg: 'Cognito is down' }));
+    });
+
+    it.each(changes)('$name logs a failed failure record and still fails with the original failure', async ({ arrange, invoke }) => {
+      arrange();
+      const ctx = context();
+      ctx.recordAudit.mockRejectedValue(new Error('queue unreachable'));
+
+      const rejection = await invoke(ctx).catch((thrown: unknown) => thrown);
+
+      expect(rejection).toBe(cognitoFailure);
+      expect(logError).toHaveBeenCalledWith('idp_user_failure_audit_failed', { username: 'alice', error: 'Error: queue unreachable' });
+    });
+
+    it('fails the request when the record of a success cannot be written', async () => {
+      const ctx          = context();
+      const auditFailure = new Error('queue unreachable');
+      ctx.recordAudit.mockRejectedValue(auditFailure);
+
+      const rejection = await newService().deleteIdpUser(ctx, create(DeleteIdpUserRequestSchema, { username: 'alice' })).catch((thrown: unknown) => thrown);
+
+      expect(rejection).toBe(auditFailure);
+    });
+  });
+
+  describe('a request the validator rejects', () => {
+    it.each([
+      { name: 'listIdpUsers', invoke: (ctx: HandlerContext) => newService().listIdpUsers(ctx, create(ListIdpUsersRequestSchema, { pageSize: 0 })) },
+      { name: 'getIdpUser', invoke: (ctx: HandlerContext) => newService().getIdpUser(ctx, create(GetIdpUserRequestSchema, { username: ' ' })) },
+      { name: 'createIdpUser', invoke: (ctx: HandlerContext) => newService().createIdpUser(ctx, create(CreateIdpUserRequestSchema, { username: 'alice', password: 'short' })) },
+      { name: 'setIdpUserEnabled', invoke: (ctx: HandlerContext) => newService().setIdpUserEnabled(ctx, create(SetIdpUserEnabledRequestSchema, { username: '' })) },
+      { name: 'setIdpUserPassword', invoke: (ctx: HandlerContext) => newService().setIdpUserPassword(ctx, create(SetIdpUserPasswordRequestSchema, { username: 'alice', password: 'short' })) },
+      { name: 'deleteIdpUser', invoke: (ctx: HandlerContext) => newService().deleteIdpUser(ctx, create(DeleteIdpUserRequestSchema, { username: '' })) },
+    ])('$name fails as invalid input before it calls Cognito or records an audit entry', async ({ invoke }) => {
+      const ctx = context();
+
+      await expect(invoke(ctx)).rejects.toBeInstanceOf(InvalidInputError);
+
+      expect(cognitoMock.calls()).toHaveLength(0);
+      expect(ctx.recordAudit).not.toHaveBeenCalled();
     });
   });
 
@@ -395,33 +498,28 @@ describe('CognitoIdpUsersService', () => {
       readonly failWith:  (error: Error) => void;
     }
 
-    const createRequest                        = create(CreateIdpUserRequestSchema, { username: 'alice', password: 'Passw0rd!' });
-    const getUser: FailingOperation            = {
+    const createRequest                 = create(CreateIdpUserRequestSchema, { username: 'alice', password: 'Passw0rd!' });
+    const getUser: FailingOperation     = {
       operation: 'getIdpUser',
       invoke:    (service) => service.getIdpUser(context(), create(GetIdpUserRequestSchema, { username: 'alice' })),
       failWith:  (error) => cognitoMock.on(AdminGetUserCommand).rejects(error),
     };
-    const setEnabled: FailingOperation         = {
+    const setEnabled: FailingOperation  = {
       operation: 'setIdpUserEnabled',
       invoke:    (service) => service.setIdpUserEnabled(context(), create(SetIdpUserEnabledRequestSchema, { username: 'alice', enabled: true })),
       failWith:  (error) => cognitoMock.on(AdminEnableUserCommand).rejects(error),
     };
-    const setPassword: FailingOperation        = {
+    const setPassword: FailingOperation = {
       operation: 'setIdpUserPassword',
       invoke:    (service) => service.setIdpUserPassword(context(), create(SetIdpUserPasswordRequestSchema, { username: 'alice', password: 'Passw0rd!' })),
       failWith:  (error) => cognitoMock.on(AdminSetUserPasswordCommand).rejects(error),
     };
-    const createUser: FailingOperation         = {
+    const createUser: FailingOperation  = {
       operation: 'createIdpUser creating the user',
       invoke:    (service) => service.createIdpUser(context(), createRequest),
       failWith:  (error) => cognitoMock.on(AdminCreateUserCommand).rejects(error),
     };
-    const createUserPassword: FailingOperation = {
-      operation: 'createIdpUser making the password permanent',
-      invoke:    (service) => service.createIdpUser(context(), createRequest),
-      failWith:  (error) => cognitoMock.on(AdminSetUserPasswordCommand).rejects(error),
-    };
-    const deleteUser: FailingOperation         = {
+    const deleteUser: FailingOperation  = {
       operation: 'deleteIdpUser',
       invoke:    (service) => service.deleteIdpUser(context(), create(DeleteIdpUserRequestSchema, { username: 'alice' })),
       failWith:  (error) => cognitoMock.on(AdminDeleteUserCommand).rejects(error),
@@ -434,7 +532,7 @@ describe('CognitoIdpUsersService', () => {
       );
     }
 
-    it.each([getUser, setEnabled, setPassword, createUser, createUserPassword, deleteUser])(
+    it.each([getUser, setEnabled, setPassword, createUser, deleteUser])(
       'is rethrown as it is by $operation when it is not one the service classifies',
       async (operation) => {
         const serviceUnavailable = cognitoError('ServiceUnavailableException');
@@ -464,8 +562,6 @@ describe('CognitoIdpUsersService', () => {
       { operation: createUser, cognitoName: 'UsernameExistsException', becomes: ConflictError, message: 'User already exists' },
       { operation: createUser, cognitoName: 'InvalidPasswordException', becomes: InvalidInputError, message: COGNITO_MESSAGE },
       { operation: createUser, cognitoName: 'InvalidParameterException', becomes: InvalidInputError, message: COGNITO_MESSAGE },
-      { operation: createUserPassword, cognitoName: 'InvalidPasswordException', becomes: InvalidInputError, message: COGNITO_MESSAGE },
-      { operation: createUserPassword, cognitoName: 'InvalidParameterException', becomes: InvalidInputError, message: COGNITO_MESSAGE },
       { operation: deleteUser, cognitoName: 'InvalidParameterException', becomes: InvalidInputError, message: COGNITO_MESSAGE },
     ])('$cognitoName is answered by $operation.operation as $becomes.name', async ({ operation, cognitoName, becomes, message }) => {
       operation.failWith(cognitoError(cognitoName));

@@ -52,7 +52,7 @@ export class Mailbox extends Construct {
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
 
-    const context                                                                                = MailboxContext.resolve(this, props);
+    const context                                                                                = this.resolveContext(props);
     const { artifactResolver, deployerType, vendorLink, encryptionPlan: { queues: queueProps } } = context;
     const enabledUis                                                                             = { adminUi: props.enableAdminUi ?? true, webmailUi: props.enableWebmailUi ?? true };
 
@@ -166,6 +166,25 @@ export class Mailbox extends Construct {
     // Per-region AWS Resource Group collecting all resources tagged with this deployment's
     // root-stack (this is the main stack, so root-stack = AWS::StackName).
     new ServerlessInboxResourceGroup(this, 'resource-group');
+  }
+
+  /** Rejects invalid `extraAllowedOrigins` before anything is built, then resolves the context the sections share. */
+  private resolveContext(props: MailboxProps): MailboxContext {
+    this.validateExtraAllowedOrigins(props.extraAllowedOrigins ?? []);
+
+    return MailboxContext.resolve(this, props);
+  }
+
+  /**
+   * An origin is `https://host[:port]`, or `http://localhost` / `http://127.0.0.1` with an optional port, for
+   * local development. No path, query, fragment or trailing slash. A token is not checked.
+   */
+  private validateExtraAllowedOrigins(origins: string[]): void {
+    for (const origin of origins) {
+      if (!cdk.Token.isUnresolved(origin) && !/^(https:\/\/[A-Za-z0-9.-]+|http:\/\/(localhost|127\.0\.0\.1))(:\d{1,5})?$/.test(origin)) {
+        throw new Error(`extraAllowedOrigins entry '${origin}' is not valid: use an absolute https origin, or http://localhost or http://127.0.0.1, without path, query or trailing slash, for example 'https://app.example.com'`);
+      }
+    }
   }
 
   private resolveAddressing(props: MailboxProps, enabledUis: MailboxEnabledUis): MailboxAddressing {

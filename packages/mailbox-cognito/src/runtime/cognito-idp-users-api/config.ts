@@ -9,13 +9,13 @@ import {
 } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import * as t                                                         from 'typanion';
 
-import { isGroupName, toUserPoolId, type GroupName, type UserPoolId } from '../../runtime/shared/cognito-identifiers';
+import { isGroupName, toUserPoolId, type GroupName, type UserPoolId } from '../shared/cognito-identifiers';
 
 const isGroupNameArray = t.isArray(isGroupName);
 
 /**
- * The environment of the IdP users API Lambda: the base configuration plus its own variables. The group
- * variables hold a JSON array of group names and are absent when the user pool defines none.
+ * The environment of the IdP users API Lambda: the base configuration plus its own variables. The admin group
+ * variable holds a JSON array of group names and is absent when the user pool defines none.
  */
 export interface Config extends BaseConfig {
   readonly userPoolId:                      UserPoolId;
@@ -34,6 +34,8 @@ export function load(loader: env.Loader): Config {
     auditEventsQueueUrl:             env.mandatoryAs(loader, 'AUDIT_EVENTS_QUEUE_URL', toQueueUrl, toQueueUrl('')),
     identityProvisionerFunctionName: env.mandatoryAs(loader, 'IDENTITY_PROVISIONER_FUNCTION_NAME', toFunctionName, toFunctionName('')),
     adminGroups:                     env.optionalAs(loader, 'ADMIN_GROUPS', undefined, env.json(isGroupNameArray)),
+    // BWCOMPAT(2026-10-26): USER_GROUPS is absent when the user pool defines no authorization config.
+    // Remove when: every user pool handed to the addon implements authorizationConfig.
     userGroups:                      env.optionalAs(loader, 'USER_GROUPS', undefined, env.json(isGroupNameArray)),
   };
 }

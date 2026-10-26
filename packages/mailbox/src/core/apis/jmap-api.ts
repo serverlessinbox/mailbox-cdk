@@ -117,6 +117,7 @@ export class JmapApi extends Construct {
       createDefaultStage: false,
       description:        'This service serves mailbox operations.',
       corsPreflight:      this.corsPreflight(props.allowedOrigins),
+      ...(props.customDomain ? { disableExecuteApiEndpoint: true } : {}),
     });
     this.defaultStage = api.addStage('DefaultStage', {
       autoDeploy: true,

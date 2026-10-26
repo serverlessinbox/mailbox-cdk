@@ -78,8 +78,8 @@ A mailbox deploys as one main stack plus the stacks that custom resources create
   pool, its domain, the resource server and the default groups. `MailboxCognitoDataDeployer` deploys
   it with a custom resource of type `Custom::MailboxCognitoDataDeployer`.
 
-The deployer constructs are built on `DeployerInfra` from `mailbox-cdk-shared`. The stack classes are the only place that declare CloudFormation
-parameters and outputs.
+The deployer constructs are built on `DeployerInfra` from `mailbox-cdk-shared`. The stack classes
+are the only place that declare CloudFormation parameters and outputs.
 
 ## Zones
 
@@ -135,8 +135,8 @@ flowchart LR
 ## Artifacts
 
 The Lambda code, the front-end bundles and the stack templates are not CDK assets. They are published
-ahead of time into the artifact registry (see [the artifact layout](../packages/mailbox/docs/artifacts.md)),
-and a synthesized template points at them directly, so the stack needs no `cdk bootstrap`.
+ahead of time into the artifact registry, and a synthesized template points at them directly, so
+the stack needs no `cdk bootstrap`.
 
 - `GoLambda` and `TypeScriptLambda` extend `ArtifactLambda`, which resolves the code from
   `lambdas/<lambdaId>.zip` through an `IArtifactResolver`.

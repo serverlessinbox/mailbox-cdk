@@ -16,7 +16,7 @@ blob APIs, the admin and webmail frontends, mail receiving and sending on SES, a
 To deploy the standard mailbox from a pre-built CloudFormation template, follow
 [Deploy via CloudFormation](https://docs.serverlessinbox.com/tutorials/install-mailbox-standard/).
 It lists the template parameters and the post-deploy steps, and starts from a Route53 hosted zone for
-your domain. The zone may live in a different AWS account from the one you deploy into.
+your domain.
 
 ## Install with CDK
 
@@ -99,8 +99,7 @@ The app looks up your hosted zone, creates a `MailboxUserPool` in it and passes 
 | Which Lambdas, tables, queues and state machines exist? | [`packages/mailbox/src/resources/`](packages/mailbox/src/resources/), one file per resource |
 | Where is a feature such as email, auth or the APIs assembled? | [`packages/mailbox/src/core/`](packages/mailbox/src/core/) |
 | How does the mailbox update itself? | [`packages/mailbox/src/platform/`](packages/mailbox/src/platform/) |
-| Where is the code that runs inside the TypeScript Lambdas? | `src/runtime/` of [`mailbox`](packages/mailbox/src/runtime/), `src/runtime/` and `src/ts-lambdas/` of [`mailbox-cognito`](packages/mailbox-cognito/src/ts-lambdas/) |
-| How are deployable artifacts laid out in S3? | [`packages/mailbox/docs/artifacts.md`](packages/mailbox/docs/artifacts.md) |
+| Where is the code that runs inside the TypeScript Lambdas? | `src/runtime/` of [`mailbox`](packages/mailbox/src/runtime/), `src/runtime/` of [`mailbox-cognito`](packages/mailbox-cognito/src/runtime/) |
 | Where are the architecture and the contribution rules? | [`docs/architecture.md`](docs/architecture.md), [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | What changed between releases? | [`CHANGELOG.md`](CHANGELOG.md) |
 

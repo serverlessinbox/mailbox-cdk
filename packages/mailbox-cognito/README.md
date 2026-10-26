@@ -1,11 +1,13 @@
 # @serverlessinbox/mailbox-cognito
 
+> **Beta.** Use at your own risk; no warranty. Breaking changes are possible before 1.0.
+
 Amazon Cognito as the authentication provider of a [`@serverlessinbox/mailbox`](../mailbox/) email
 server. `MailboxUserPool` creates the user pool and its OAuth endpoint, issues one OAuth client per
 application that calls the Admin API or the JMAP API, and contributes the Admin API addon that manages
 the pool's users. It is a jsii library.
 
-Built for [ServerlessInbox](https://github.com/serverlessinbox/mailbox-cdk).
+Built for [ServerlessInbox](https://github.com/serverlessinbox/serverlessinbox).
 
 ## Concepts
 
@@ -63,15 +65,16 @@ Folders of `src/`:
 | `src/user-pool/` | `MailboxUserPool`, its props, enums and the Cognito scope map |
 | `src/data-stack/` | The sub-stack that owns the user pool, and the deployer that creates it |
 | `src/resources/lambdas/` | One wrapper class per Lambda, with its environment and grants |
-| `src/runtime/` | Code that runs inside the bootstrap-user and OAuth registration Lambdas, one folder per Lambda |
-| `src/ts-lambdas/` | Code that runs inside the user-management API Lambda |
+| `src/runtime/` | Code that runs inside the bootstrap-user, user-management API and OAuth registration Lambdas, one folder per Lambda, plus `shared/` for the units they share |
+| `src/utils/` | Helpers shared by the Lambdas, such as the generator of temporary passwords |
+| `src/__tests__/` | Tests. Not published. |
 
 ## Where to find things
 
 | Question | Where to look |
 |---|---|
 | Which Lambdas exist, and what may each do? | `src/resources/lambdas/`: one file per Lambda with its environment variables and grants |
-| Where is a Lambda's handler code? | `src/runtime/` and `src/ts-lambdas/`, one folder per Lambda |
+| Where is a Lambda's handler code? | `src/runtime/`, one folder per Lambda |
 | Where is the user pool itself defined? | `src/data-stack/mailbox-cognito-data-stack.ts` |
 | Where are the OAuth clients, groups and scopes decided? | `src/user-pool/mailbox-user-pool.ts` and `src/user-pool/cognito-scopemap.ts` |
 | Where is the user management API added to the Admin API? | `src/cognito-idp-users-addon.ts` |

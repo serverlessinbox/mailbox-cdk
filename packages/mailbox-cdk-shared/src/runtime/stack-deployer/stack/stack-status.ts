@@ -16,13 +16,20 @@ export class StackStatus {
     return value === 'ROLLBACK_FAILED' || value === 'ROLLBACK_COMPLETE';
   }
 
-  /** A deploy finished well: any `*_COMPLETE` except a rollback or a delete. */
+  /**
+   * A deploy finished well: any `*_COMPLETE` except a rollback or a delete. `UPDATE_COMPLETE_CLEANUP_IN_PROGRESS`
+   * counts too: the stack's resources and outputs are final by then, and the cleanup of replaced resources
+   * can wait on whatever the answer to CloudFormation releases.
+   */
   isTerminalSuccess(): boolean {
     if (!this.value) {
       return false;
     }
     if (this.isDeleting()) {
       return false;
+    }
+    if (this.value === 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS') {
+      return true;
     }
     return this.value.endsWith('_COMPLETE') && !this.value.includes('ROLLBACK');
   }

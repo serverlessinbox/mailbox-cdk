@@ -1,11 +1,13 @@
 # @serverlessinbox/mailbox
 
+> **Beta.** Use at your own risk; no warranty. Breaking changes are possible before 1.0.
+
 The CDK construct that deploys a complete serverless JMAP email server into your AWS account: mail
 receiving and sending, the data stores, the Admin and JMAP APIs, WebSocket push, the Admin and Webmail
 UIs, the CDN, DNS and the operational pieces around them. It is a jsii library, so it is usable from
 TypeScript, and from the other jsii target languages.
 
-Built for [ServerlessInbox](https://github.com/serverlessinbox/mailbox-cdk).
+Built for [ServerlessInbox](https://github.com/serverlessinbox/serverlessinbox).
 
 ## Concepts
 
@@ -67,18 +69,21 @@ flowchart TD
   edgeDeployer --> edgeStack["MailboxEdgeStack (us-east-1)"]
 
   addons["IAdminApiAddonProvider list"] --> apis
-  resolver["IArtifactResolver"] --> mailbox
+  resolver["IArtifactResolver (@serverlessinbox/artifact-registry-cdk)"] --> mailbox
 ```
 
-The retained data (DynamoDB tables and the email bucket) lives in its own sub-stack, deployed by
-`MailboxDataDeployer`, so deleting the Mailbox from your stack leaves the data stack, and your mail, in place. The CloudFront edge resources
-live in a sub-stack deployed to us-east-1 by `MailboxEdgeDeployer`.
+The retained data (DynamoDB tables and the blob store bucket) lives in its own sub-stack, deployed by
+`MailboxDataDeployer`, so deleting the Mailbox from your stack leaves the data stack, and your mail,
+in place. The CloudFront edge resources live in a sub-stack deployed to us-east-1 by `MailboxEdgeDeployer`.
 
-The code is organised in four top-level folders of `src/`:
+The code is organised in the top-level folders of `src/`:
 
 | Folder | Holds |
 |---|---|
-| `src/resources/` | The resources that hold data or trigger code, one folder per kind: `lambdas`, `tables`, `queues`, `buckets`, `topics`, `events`, `workflows`. One class per resource, each owning its grants. |
+| `src/contracts/` | Names, enums and payload types that both `core/` and `platform/` read, one module per concept. A contract imports from neither zone. |
+| `src/utils/` | Helpers that belong to no zone, such as the resource-descriptions aspect. |
+| `src/__tests__/` | Tests. Not published. |
+| `src/resources/` | The resources that hold data or trigger code, one folder per kind: `lambdas`, `tables`, `queues`, `buckets`, `topics`, `events`, `roles`, `workflows`. One class per resource, each owning its grants. |
 | `src/core/` | How the mail server is built: the sections above, as compound constructs. |
 | `src/platform/` | How the server updates and supports itself: updates, support access, operations. `core/` never imports from `platform/`. |
 | `src/runtime/` | Code that runs inside the TypeScript Lambdas, one folder per Lambda. Excluded from the published API. |
@@ -201,18 +206,24 @@ export class MyManagedMailboxStack extends Stack {
 | `MailboxUrls`, `MailboxCertificates`, `MailboxOAuthClients` | What a created Mailbox exposes: its endpoint URLs, the certificates it created and the OAuth clients of its UIs |
 | `MailboxOverrides`, `MailboxCertificateOverrides`, `MailboxSubdomainOverrides` | Your own certificates and subdomain labels per endpoint |
 | `HostedZoneLookup`, `HostedZoneLookupProps` | Deploy-time Route53 zone lookup, shared across constructs |
-| `IMailboxAuthProvider`, `IMailboxAuthProviderBase`, `MailboxAuthPolicies`, `AuthClientConfig` | The contract an auth provider implements |
+| `IMailboxAuthProvider`, `IMailboxAuthProviderBase`, `MailboxAuthPolicies`, `AuthClientConfig`, `MailboxAuthorizationConfig` | The contract an auth provider implements, and the mapping from identity-provider groups to mailbox roles |
+| `AuthPolicyConfig`, `AuthPoliciesConfig`, `OidcProviderConfig` | The audiences and group requirement of each API's authorizer, and the endpoints of the OIDC provider |
+| `OAuthClientCredentials`, `OAuthAuthorizationCodeClientConfig`, `OAuthClientsConfig` | The OAuth clients the Mailbox bootstraps for its UIs |
+| `GenerateClientParams`, `GenerateAuthorizationCodeClientParams`, `GenerateClientCredentialsClientParams`, `ProvisionAdminApiClientParams`, `ProvisionJmapApiClientParams` | The parameters an auth provider receives when the Mailbox asks it for an OAuth client |
+| `ScopeMap`, `JMAP_SCOPE_DESCRIPTIONS` | Which JMAP permissions each OAuth scope grants, and a readable description of each permission |
 | `AuthMethod`, `OAuthFlow`, `AuthPolicyName`, `OAuthClientName`, `Permission` | Auth vocabulary: how clients authenticate, the OAuth flows, policy and client names, and the JMAP permissions |
-| `IAdminApiAddonProvider`, `IAdminApiAddon`, `AdminApiAddonContext` | The contract for adding capabilities to the Admin API |
+| `IAdminApiAddonProvider`, `IAdminApiAddon`, `AdminApiAddonContext`, `AdminApiRouteSpec`, `AdminUiConfigFragment` | The contract for adding capabilities to the Admin API: the route an addon mounts and the Admin UI configuration it contributes |
+| `IAuditEventsQueue`, `IIdentityProvisioner`, `IDataTable` | The narrow handles an addon receives: send-only access to the audit events queue, the identity provisioner, and a data table |
 | `IJmapApiAddon`, `JmapApiAddonContext` | The contract for adding capabilities to the JMAP API |
-| `StackUpdateAddonProvider` | Admin API addon for human-gated CloudFormation stack updates |
-| `SupportAddonProvider`, `SupportMode` | Admin API addon for support case management |
-| `AutoUpdater`, `Granularity` | Artifact resolver that keeps a deployed Mailbox on newer releases within a chosen bound |
-| `MailboxKmsMode`, `MailboxKmsResource`, `MailboxKmsConfig` | At-rest encryption settings |
+| `StackUpdateAddonProvider`, `StackUpdateAddonProviderProps` | Admin API addon for human-gated CloudFormation stack updates, and its settings |
+| `SupportAddonProvider`, `SupportAddonProviderProps`, `SupportMode` | Admin API addon for support case management, and its settings |
+| `AutoUpdater`, `AutoUpdaterProps`, `Granularity` | Artifact resolver that keeps a deployed Mailbox on newer releases within a chosen bound |
+| `IUiContentUpdater`, `IUiContentDeployTarget` | The contract between an artifact resolver that updates UI content and a UI whose content bucket it may write to |
+| `MailboxKmsMode`, `MailboxKmsResource`, `MailboxKmsConfig`, `MailboxKmsPerResourceConfig` | At-rest encryption settings, including a key per resource type |
 | `SesReceivingMode` | Whether and how the Mailbox activates SES receiving |
 | `SendStackFailuresMode` | Consent for reporting failed stack operations |
-| `MailboxResourceDescriptions` | Aspect that adds readable names and descriptions to the resources of a stack |
-| `ServerlessInboxTagKeys`, `applyServerlessInboxBaseTags`, `applyServerlessInboxComponentTag` | Tagging and correlation helpers |
+| `MailboxResourceDescriptions`, `MailboxResourceDescriptionsOptions` | Aspect that adds readable names and descriptions to the resources of a stack, and its options |
+| `ServerlessInboxTagKeys`, `applyServerlessInboxBaseTags`, `applyServerlessInboxComponentTag`, `ServerlessInboxComponent`, `ApplyServerlessInboxTagsOptions` | Tagging and correlation helpers, the component names and the options of the base tags |
 
 ## Building and testing
 
