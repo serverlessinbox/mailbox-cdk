@@ -2,7 +2,7 @@
 
 Internal package; it is not published.
 
-The handler SDK for the Lambdas that serve the Admin API services of Serverless Inbox addons. It turns an
+The handler SDK for the Lambdas that serve the Admin API services of ServerlessInbox addons. It turns an
 API Gateway request into a typed call: it reads who is calling, decodes the body, runs your handler,
 records the audit event you ask for and answers with the right HTTP status.
 

@@ -7,7 +7,7 @@ receiving and sending, the data stores, the Admin and JMAP APIs, WebSocket push,
 UIs, the CDN, DNS and the operational pieces around them. It is a jsii library, so it is usable from
 TypeScript, and from the other jsii target languages.
 
-Built for [ServerlessInbox](https://github.com/serverlessinbox/mailbox-cdk).
+Built for [ServerlessInbox](https://github.com/serverlessinbox/serverlessinbox).
 
 ## Concepts
 
@@ -72,9 +72,9 @@ flowchart TD
   resolver["IArtifactResolver (@serverlessinbox/artifact-registry-cdk)"] --> mailbox
 ```
 
-The retained data (DynamoDB tables and the email bucket) lives in its own sub-stack, deployed by
-`MailboxDataDeployer`, so deleting the Mailbox from your stack leaves the data stack, and your mail, in place. The CloudFront edge resources
-live in a sub-stack deployed to us-east-1 by `MailboxEdgeDeployer`.
+The retained data (DynamoDB tables and the blob store bucket) lives in its own sub-stack, deployed by
+`MailboxDataDeployer`, so deleting the Mailbox from your stack leaves the data stack, and your mail,
+in place. The CloudFront edge resources live in a sub-stack deployed to us-east-1 by `MailboxEdgeDeployer`.
 
 The code is organised in the top-level folders of `src/`:
 
@@ -83,7 +83,7 @@ The code is organised in the top-level folders of `src/`:
 | `src/contracts/` | Names, enums and payload types that both `core/` and `platform/` read, one module per concept. A contract imports from neither zone. |
 | `src/utils/` | Helpers that belong to no zone, such as the resource-descriptions aspect. |
 | `src/__tests__/` | Tests. Not published. |
-| `src/resources/` | The resources that hold data or trigger code, one folder per kind: `lambdas`, `tables`, `queues`, `buckets`, `topics`, `events`, `workflows`. One class per resource, each owning its grants. |
+| `src/resources/` | The resources that hold data or trigger code, one folder per kind: `lambdas`, `tables`, `queues`, `buckets`, `topics`, `events`, `roles`, `workflows`. One class per resource, each owning its grants. |
 | `src/core/` | How the mail server is built: the sections above, as compound constructs. |
 | `src/platform/` | How the server updates and supports itself: updates, support access, operations. `core/` never imports from `platform/`. |
 | `src/runtime/` | Code that runs inside the TypeScript Lambdas, one folder per Lambda. Excluded from the published API. |

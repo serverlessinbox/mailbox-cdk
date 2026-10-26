@@ -20,8 +20,9 @@ The workspaces live in `packages/`.
 
 Everything is under `packages/mailbox/src`.
 
-- `core/<section>/` is the mail server: `apis`, `auth`, `data`, `domains`, `edge`, `email`, `search`
-  and `ui`. Each section has a `<section>-section.ts` class that `Mailbox` instantiates.
+- `core/<section>/` holds the mail server: the sections `apis`, `auth`, `data`, `edge`, `email`,
+  `search` and `ui`, each with a `<section>-section.ts` class that `Mailbox` instantiates, and
+  `domains`, which holds the shared domain, DNS and hosted-zone classes.
 - `platform/<area>/` holds the features around the mail server: `ops`, `support` and `update`.
 - `resources/<kind>/` holds one resource per file: `buckets`, `events`, `lambdas`, `queues`, `roles`,
   `tables`, `topics` and `workflows`. Each class owns its own grants.
@@ -41,8 +42,9 @@ file name, and the class's props interface sits in the same file.
 **A Lambda gets its environment only in its own wrapper.** Write every variable literally in the
 `environment` map of the wrapper's `super()` call. A value that only exists later is set by a
 named method of the wrapper, such as `enableWebSocketPush` in `admin-api-lambda.ts`, which calls
-`this.addEnvironment`; nothing outside the wrapper calls `addEnvironment` on it. Why: the map is then the complete list of what the function receives, and the Lambda's
-`config.ts` reads the same literal names.
+`this.addEnvironment`; nothing outside the wrapper calls `addEnvironment` on it. Why: the map is
+then the complete list of what the function receives, and the Lambda's `config.ts` reads the same
+literal names.
 
 **A construct never declares a `CfnParameter` or a `CfnOutput`.** Only a stack class does (for
 example `MailboxEdgeStack` and `MailboxDataStack`). A construct exposes a value as a `public readonly`

@@ -7,7 +7,7 @@ server. `MailboxUserPool` creates the user pool and its OAuth endpoint, issues o
 application that calls the Admin API or the JMAP API, and contributes the Admin API addon that manages
 the pool's users. It is a jsii library.
 
-Built for [ServerlessInbox](https://github.com/serverlessinbox/mailbox-cdk).
+Built for [ServerlessInbox](https://github.com/serverlessinbox/serverlessinbox).
 
 ## Concepts
 
@@ -65,7 +65,7 @@ Folders of `src/`:
 | `src/user-pool/` | `MailboxUserPool`, its props, enums and the Cognito scope map |
 | `src/data-stack/` | The sub-stack that owns the user pool, and the deployer that creates it |
 | `src/resources/lambdas/` | One wrapper class per Lambda, with its environment and grants |
-| `src/runtime/` | Code that runs inside the bootstrap-user, user-management API and OAuth registration Lambdas, one folder per Lambda |
+| `src/runtime/` | Code that runs inside the bootstrap-user, user-management API and OAuth registration Lambdas, one folder per Lambda, plus `shared/` for the units they share |
 | `src/utils/` | Helpers shared by the Lambdas, such as the generator of temporary passwords |
 | `src/__tests__/` | Tests. Not published. |
 
