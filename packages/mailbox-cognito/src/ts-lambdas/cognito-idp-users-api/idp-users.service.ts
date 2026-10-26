@@ -154,7 +154,7 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers {
             UserPoolId: this.userPoolId,
             Username:   username,
             Password:   req.password,
-            Permanent:  req.permanent ?? true,
+            Permanent:  false,
           }),
         )
         .catch((thrown: unknown) => {
@@ -237,7 +237,7 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers {
   ): Promise<AdminGetUserCommandOutput> {
     await this.createUser(username, email, password);
 
-    return this.completeCreation(toTenantId(context.caller.tenantId), username, email, password, enabled, groups).catch((thrown: unknown) =>
+    return this.completeCreation(toTenantId(context.caller.tenantId), username, email, enabled, groups).catch((thrown: unknown) =>
       this.rollBackCreation(username, thrown),
     );
   }
@@ -258,23 +258,13 @@ export class CognitoIdpUsersService implements IdpUsersServiceHandlers {
       });
   }
 
-  private async setPermanentPassword(username: Username, password: string): Promise<void> {
-    await this.cognito
-      .send(new AdminSetUserPasswordCommand({ UserPoolId: this.userPoolId, Username: username, Password: password, Permanent: true }))
-      .catch((thrown: unknown) => {
-        throw this.translate(thrown, 'InvalidPasswordException', 'InvalidParameterException');
-      });
-  }
-
   private async completeCreation(
     tenantId: TenantId,
     username: Username,
     email: EmailAddress | undefined,
-    password: string,
     enabled: boolean,
     groups: GroupName[],
   ): Promise<AdminGetUserCommandOutput> {
-    await this.setPermanentPassword(username, password);
     if (!enabled) {
       await this.disableUser(username);
     }

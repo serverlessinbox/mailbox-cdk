@@ -153,7 +153,7 @@ describe('CognitoIdpUsersService', () => {
       });
     }
 
-    it('creates the user without sending a message, then makes its password permanent', async () => {
+    it('creates the user with a temporary password and without sending a message, and sets no other password', async () => {
       cognitoReturnsUser({ sub: 'cognito-sub-abc' });
 
       await newService().createIdpUser(context(), request());
@@ -165,12 +165,7 @@ describe('CognitoIdpUsersService', () => {
         MessageAction:     'SUPPRESS',
         UserAttributes:    [{ Name: 'email', Value: 'newuser@example.com' }],
       });
-      expect(cognitoMock.commandCalls(AdminSetUserPasswordCommand)[0].args[0].input).toEqual({
-        UserPoolId: USER_POOL_ID,
-        Username:   'newuser',
-        Password:   'Passw0rd!',
-        Permanent:  true,
-      });
+      expect(cognitoMock.commandCalls(AdminSetUserPasswordCommand)).toHaveLength(0);
     });
 
     it('creates a user without an email attribute when the request has no email', async () => {
@@ -251,7 +246,6 @@ describe('CognitoIdpUsersService', () => {
       }
 
       it.each([
-        { step: 'making the password permanent', enabled: true, failStep: () => cognitoMock.on(AdminSetUserPasswordCommand).rejects(serviceUnavailable) },
         { step: 'disabling the user', enabled: false, failStep: () => cognitoMock.on(AdminDisableUserCommand).rejects(serviceUnavailable) },
         { step: 'joining the groups', enabled: true, failStep: () => cognitoMock.on(AdminAddUserToGroupCommand).rejects(serviceUnavailable) },
         { step: 'fetching the user', enabled: true, failStep: () => cognitoMock.on(AdminGetUserCommand).rejects(serviceUnavailable) },
@@ -283,7 +277,7 @@ describe('CognitoIdpUsersService', () => {
       });
 
       it('logs the failed deletion with the username and still answers with the original failure', async () => {
-        cognitoMock.on(AdminSetUserPasswordCommand).rejects(serviceUnavailable);
+        cognitoMock.on(AdminAddUserToGroupCommand).rejects(serviceUnavailable);
         cognitoMock.on(AdminDeleteUserCommand).rejects(cognitoError('InternalErrorException', 'Delete refused'));
 
         expect(await rejectionOfCreate()).toBe(serviceUnavailable);
@@ -331,7 +325,7 @@ describe('CognitoIdpUsersService', () => {
     });
 
     it('records a failure, with the failure message, when the creation is rolled back', async () => {
-      cognitoMock.on(AdminSetUserPasswordCommand).rejects(cognitoError('ServiceUnavailableException', 'Cognito is down'));
+      cognitoMock.on(AdminAddUserToGroupCommand).rejects(cognitoError('ServiceUnavailableException', 'Cognito is down'));
       const ctx = context();
 
       await newService().createIdpUser(ctx, request()).catch(() => undefined);
@@ -381,17 +375,14 @@ describe('CognitoIdpUsersService', () => {
   });
 
   describe('setIdpUserPassword', () => {
-    it.each([
-      { permanent: undefined, expected: true },
-      { permanent: false, expected: false },
-    ])('sets the password as permanent=$expected when the request says permanent=$permanent', async ({ permanent, expected }) => {
-      await newService().setIdpUserPassword(context(), create(SetIdpUserPasswordRequestSchema, { username: 'alice', password: 'Passw0rd!', permanent }));
+    it('resets the password as a temporary one', async () => {
+      await newService().setIdpUserPassword(context(), create(SetIdpUserPasswordRequestSchema, { username: 'alice', password: 'Passw0rd!' }));
 
       expect(cognitoMock.commandCalls(AdminSetUserPasswordCommand)[0].args[0].input).toEqual({
         UserPoolId: USER_POOL_ID,
         Username:   'alice',
         Password:   'Passw0rd!',
-        Permanent:  expected,
+        Permanent:  false,
       });
     });
 
@@ -507,33 +498,28 @@ describe('CognitoIdpUsersService', () => {
       readonly failWith:  (error: Error) => void;
     }
 
-    const createRequest                        = create(CreateIdpUserRequestSchema, { username: 'alice', password: 'Passw0rd!' });
-    const getUser: FailingOperation            = {
+    const createRequest                 = create(CreateIdpUserRequestSchema, { username: 'alice', password: 'Passw0rd!' });
+    const getUser: FailingOperation     = {
       operation: 'getIdpUser',
       invoke:    (service) => service.getIdpUser(context(), create(GetIdpUserRequestSchema, { username: 'alice' })),
       failWith:  (error) => cognitoMock.on(AdminGetUserCommand).rejects(error),
     };
-    const setEnabled: FailingOperation         = {
+    const setEnabled: FailingOperation  = {
       operation: 'setIdpUserEnabled',
       invoke:    (service) => service.setIdpUserEnabled(context(), create(SetIdpUserEnabledRequestSchema, { username: 'alice', enabled: true })),
       failWith:  (error) => cognitoMock.on(AdminEnableUserCommand).rejects(error),
     };
-    const setPassword: FailingOperation        = {
+    const setPassword: FailingOperation = {
       operation: 'setIdpUserPassword',
       invoke:    (service) => service.setIdpUserPassword(context(), create(SetIdpUserPasswordRequestSchema, { username: 'alice', password: 'Passw0rd!' })),
       failWith:  (error) => cognitoMock.on(AdminSetUserPasswordCommand).rejects(error),
     };
-    const createUser: FailingOperation         = {
+    const createUser: FailingOperation  = {
       operation: 'createIdpUser creating the user',
       invoke:    (service) => service.createIdpUser(context(), createRequest),
       failWith:  (error) => cognitoMock.on(AdminCreateUserCommand).rejects(error),
     };
-    const createUserPassword: FailingOperation = {
-      operation: 'createIdpUser making the password permanent',
-      invoke:    (service) => service.createIdpUser(context(), createRequest),
-      failWith:  (error) => cognitoMock.on(AdminSetUserPasswordCommand).rejects(error),
-    };
-    const deleteUser: FailingOperation         = {
+    const deleteUser: FailingOperation  = {
       operation: 'deleteIdpUser',
       invoke:    (service) => service.deleteIdpUser(context(), create(DeleteIdpUserRequestSchema, { username: 'alice' })),
       failWith:  (error) => cognitoMock.on(AdminDeleteUserCommand).rejects(error),
@@ -546,7 +532,7 @@ describe('CognitoIdpUsersService', () => {
       );
     }
 
-    it.each([getUser, setEnabled, setPassword, createUser, createUserPassword, deleteUser])(
+    it.each([getUser, setEnabled, setPassword, createUser, deleteUser])(
       'is rethrown as it is by $operation when it is not one the service classifies',
       async (operation) => {
         const serviceUnavailable = cognitoError('ServiceUnavailableException');
@@ -576,8 +562,6 @@ describe('CognitoIdpUsersService', () => {
       { operation: createUser, cognitoName: 'UsernameExistsException', becomes: ConflictError, message: 'User already exists' },
       { operation: createUser, cognitoName: 'InvalidPasswordException', becomes: InvalidInputError, message: COGNITO_MESSAGE },
       { operation: createUser, cognitoName: 'InvalidParameterException', becomes: InvalidInputError, message: COGNITO_MESSAGE },
-      { operation: createUserPassword, cognitoName: 'InvalidPasswordException', becomes: InvalidInputError, message: COGNITO_MESSAGE },
-      { operation: createUserPassword, cognitoName: 'InvalidParameterException', becomes: InvalidInputError, message: COGNITO_MESSAGE },
       { operation: deleteUser, cognitoName: 'InvalidParameterException', becomes: InvalidInputError, message: COGNITO_MESSAGE },
     ])('$cognitoName is answered by $operation.operation as $becomes.name', async ({ operation, cognitoName, becomes, message }) => {
       operation.failWith(cognitoError(cognitoName));
