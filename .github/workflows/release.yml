@@ -74,6 +74,19 @@ jobs:
       - name: Bake artifact versions
         run: yarn bake-artifact-versions --mailbox-pins "$RUNNER_TEMP/mailbox-external-pins.json"
       - run: yarn gitversion pack
+      # gitversion publish requires an npm registry to accept the publish. Packages are
+      # published to S3, not to the npm registry, so this local stub accepts the publish
+      # (any non-GET request gets a 200) and lets gitversion complete.
+      - name: Start npm stub registry
+        run: |
+          node -e "
+            require('http').createServer((req, res) => {
+              req.resume();
+              res.writeHead(req.method === 'GET' ? 404 : 200, {'Content-Type': 'application/json'});
+              res.end(JSON.stringify({ok: true}));
+            }).listen(12345);
+          " &
       - run: yarn gitversion publish
         env:
-          YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          YARN_NPM_REGISTRY_SERVER: "http://127.0.0.1:12345"
+          YARN_NPM_AUTH_TOKEN: "stub"
