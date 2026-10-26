@@ -12,41 +12,45 @@ type RoleOfIncomingArn<PropertyName> = PropertyName extends `${infer Role}Incomi
 /** The properties as the schema types them. */
 type SchemaProperties = ListedFields<t.InferType<typeof isResourceProperties>>;
 
-const schemaToContract = (value: SchemaProperties): ResourceProperties => value;
-const contractToSchema = (value: ResourceProperties): SchemaProperties => value;
+/** Resolves to `true` when both types are assignable to each other, and to `never` otherwise. */
+type SameType<Left, Right> = [Left] extends [Right] ? ([Right] extends [Left] ? true : never) : never;
 
-const rolesOfSchemaToContract = (role: RoleOfIncomingArn<keyof SchemaProperties>): TableRole => role;
-const rolesOfContractToSchema = (role: TableRole): RoleOfIncomingArn<keyof SchemaProperties> => role;
+/** Fails to compile when either side gains, loses or retypes a field. */
+export const contractMatchesSchema: SameType<SchemaProperties, ResourceProperties> = true;
+
+/** Fails to compile when a table role has no incoming-ARN property in the schema, or the schema has one for no role. */
+export const rolesMatchSchema: SameType<RoleOfIncomingArn<keyof SchemaProperties>, TableRole> = true;
 
 /**
  * Pins that the properties the construct writes (the contract) and the properties the Lambda validates (the
  * schema) describe the same shape, and that the table roles are the ones the schema has an incoming ARN for.
- * The assignments above fail to compile when either side gains, loses or retypes a field; the contract carries
- * no typanion, so the declarations a package publishes stay free of it.
+ * The two type constants above carry that check, and `tsc` (the first half of `yarn test`) fails on them; the
+ * contract carries no typanion, so the declarations a package publishes stay free of it. The tests below pin
+ * what the schema does at run time.
  */
 describe('data override resolver resource properties', () => {
-  it('accepts a fully populated set of properties the construct writes', () => {
-    const properties = contractToSchema({
-      configTableIncomingArn:       'arn:aws:dynamodb:eu-west-1:123456789012:table/config',
-      configTableOverrideArn:       'arn:aws:dynamodb:eu-west-1:123456789012:table/config-restored',
-      itemTableIncomingArn:         'arn:aws:dynamodb:eu-west-1:123456789012:table/item',
-      itemTableOverrideArn:         'arn:aws:dynamodb:eu-west-1:123456789012:table/item-restored',
-      changelogTableIncomingArn:    'arn:aws:dynamodb:eu-west-1:123456789012:table/changelog',
-      changelogTableOverrideArn:    'arn:aws:dynamodb:eu-west-1:123456789012:table/changelog-restored',
-      auditLogTableIncomingArn:     'arn:aws:dynamodb:eu-west-1:123456789012:table/auditlog',
-      auditLogTableOverrideArn:     'arn:aws:dynamodb:eu-west-1:123456789012:table/auditlog-restored',
-      mailFeedbackTableIncomingArn: 'arn:aws:dynamodb:eu-west-1:123456789012:table/mailfeedback',
-      mailFeedbackTableOverrideArn: 'arn:aws:dynamodb:eu-west-1:123456789012:table/mailfeedback-restored',
-    });
+  const properties = {
+    configTableIncomingArn:       'arn:aws:dynamodb:eu-west-1:123456789012:table/config',
+    configTableOverrideArn:       'arn:aws:dynamodb:eu-west-1:123456789012:table/config-restored',
+    itemTableIncomingArn:         'arn:aws:dynamodb:eu-west-1:123456789012:table/item',
+    itemTableOverrideArn:         'arn:aws:dynamodb:eu-west-1:123456789012:table/item-restored',
+    changelogTableIncomingArn:    'arn:aws:dynamodb:eu-west-1:123456789012:table/changelog',
+    changelogTableOverrideArn:    'arn:aws:dynamodb:eu-west-1:123456789012:table/changelog-restored',
+    auditLogTableIncomingArn:     'arn:aws:dynamodb:eu-west-1:123456789012:table/auditlog',
+    auditLogTableOverrideArn:     'arn:aws:dynamodb:eu-west-1:123456789012:table/auditlog-restored',
+    mailFeedbackTableIncomingArn: 'arn:aws:dynamodb:eu-west-1:123456789012:table/mailfeedback',
+    mailFeedbackTableOverrideArn: 'arn:aws:dynamodb:eu-west-1:123456789012:table/mailfeedback-restored',
+  } satisfies ResourceProperties;
 
-    expect(isResourceProperties(properties)).toBe(true);
-    expect(schemaToContract(properties)).toBe(properties);
+  it('accepts the properties the construct writes, with the keys CloudFormation adds', () => {
+    const sent = { ServiceToken: 'arn:aws:lambda:eu-west-1:123456789012:function:resolver', ServiceTimeout: '120', ...properties };
+
+    expect(isResourceProperties(sent)).toBe(true);
   });
 
-  it('has a table role for every incoming-ARN property of the schema', () => {
-    const roles: readonly TableRole[] = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];
+  it('rejects properties that lack an ARN', () => {
+    const withoutItemOverride = Object.fromEntries(Object.entries(properties).filter(([key]) => key !== 'itemTableOverrideArn'));
 
-    expect(roles.map((role) => rolesOfContractToSchema(role))).toEqual(roles);
-    expect(roles.map((role) => rolesOfSchemaToContract(role))).toEqual(roles);
+    expect(isResourceProperties(withoutItemOverride)).toBe(false);
   });
 });

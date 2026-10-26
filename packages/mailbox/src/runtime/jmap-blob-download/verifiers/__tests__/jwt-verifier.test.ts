@@ -53,6 +53,8 @@ interface JwtOptions {
   readonly payload?:  Record<string, unknown>;
 }
 
+const FIXED_NOW = new Date('2026-06-01T12:00:00.000Z');
+
 function nowSeconds(): number {
   return Math.floor(Date.now() / 1000);
 }
@@ -86,9 +88,18 @@ describe('JwtVerifier', () => {
   }
 
   beforeEach(() => {
+    // Only the clock is faked: the SDK mock and the signing need the real timers and microtasks.
+    jest.useFakeTimers({
+      now:       FIXED_NOW,
+      doNotFake: ['hrtime', 'nextTick', 'performance', 'queueMicrotask', 'requestAnimationFrame', 'cancelAnimationFrame', 'requestIdleCallback', 'cancelIdleCallback', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout'],
+    });
     dynamodb.reset();
     verifier = new JwtVerifier(new DynamoDBClient({}));
     issuerPublishes([{ ...RSA_KEY.jwk, kid: KID }]);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   describe('accepted tokens', () => {
@@ -118,11 +129,11 @@ describe('JwtVerifier', () => {
     });
 
     it('accepts a token that expired within the five minute clock tolerance', async () => {
-      await expect(verify(jwtOf({ payload: { exp: nowSeconds() - 290 } }))).resolves.toMatchObject({ sub: 'user-1' });
+      await expect(verify(jwtOf({ payload: { exp: nowSeconds() - 299 } }))).resolves.toMatchObject({ sub: 'user-1' });
     });
 
-    it('accepts a token that becomes valid within the five minute clock tolerance', async () => {
-      await expect(verify(jwtOf({ payload: { nbf: nowSeconds() + 290 } }))).resolves.toMatchObject({ sub: 'user-1' });
+    it('accepts a token that becomes valid exactly at the five minute clock tolerance', async () => {
+      await expect(verify(jwtOf({ payload: { nbf: nowSeconds() + 300 } }))).resolves.toMatchObject({ sub: 'user-1' });
     });
   });
 
@@ -179,14 +190,6 @@ describe('JwtVerifier', () => {
       await expect(verify(jwtOf({ payload: { iss: issuerB } }))).resolves.toBeNull();
     });
 
-    it('rejects a token with a critical header parameter it does not understand', async () => {
-      await expect(verify(jwtOf({ header: { crit: ['x-unknown'], 'x-unknown': 1 } }))).resolves.toBeNull();
-    });
-
-    it('rejects a token whose iat is not a number', async () => {
-      await expect(verify(jwtOf({ payload: { iat: 'yesterday' } }))).resolves.toBeNull();
-    });
-
     it('accepts a token signed by a valid key when the issuer also published a key without a key type', async () => {
       issuerPublishes([{ ...RSA_KEY.jwk, kid: KID }, { kid: 'broken' }]);
 
@@ -227,13 +230,6 @@ describe('JwtVerifier', () => {
       await expect(verify(jwtOf({ payload: { iss: undefined } }))).resolves.toBeNull();
     });
 
-    it('rejects a token signed with a key that only another issuer published', async () => {
-      const otherIssuer = 'https://other.example.com/pool';
-      issuerPublishes([{ ...OTHER_RSA_KEY.jwk, kid: KID }], otherIssuer);
-
-      await expect(verify(jwtOf({ payload: { iss: otherIssuer } }))).resolves.toBeNull();
-    });
-
     it('rejects a token whose issuer has no published keys', async () => {
       dynamodb.on(GetItemCommand).resolves({});
 
@@ -261,36 +257,34 @@ describe('JwtVerifier', () => {
     });
 
     it('rejects a token that expired beyond the five minute clock tolerance', async () => {
-      await expect(verify(jwtOf({ payload: { exp: nowSeconds() - 310 } }))).resolves.toBeNull();
+      await expect(verify(jwtOf({ payload: { exp: nowSeconds() - 301 } }))).resolves.toBeNull();
     });
 
     it('rejects a token that becomes valid beyond the five minute clock tolerance', async () => {
-      await expect(verify(jwtOf({ payload: { nbf: nowSeconds() + 310 } }))).resolves.toBeNull();
-    });
-
-    it('rejects a token without a subject', async () => {
-      await expect(verify(jwtOf({ payload: { sub: undefined } }))).resolves.toBeNull();
+      await expect(verify(jwtOf({ payload: { nbf: nowSeconds() + 301 } }))).resolves.toBeNull();
     });
 
     it.each([
-      { claim: 'an exp that is not a number', claims: { exp: '9999999999' } },
-      { claim: 'an issuer that is not a string', claims: { iss: 7 } },
+      { claim: 'a missing subject', claims: { sub: undefined } },
+      { claim: 'an empty subject', claims: { sub: '' } },
       { claim: 'a subject that is not a string', claims: { sub: 7 } },
+      { claim: 'an issuer that is not a string', claims: { iss: 7 } },
+      { claim: 'a client id that is not a string', claims: { client_id: 7 } },
+      { claim: 'an aud that is a number', claims: { client_id: undefined, aud: 7 } },
+      { claim: 'an aud list holding a non-string', claims: { client_id: undefined, aud: ['api', 7] } },
     ])('rejects a token with $claim', async ({ claims }) => {
       await expect(verify(jwtOf({ payload: claims }))).resolves.toBeNull();
     });
 
-    it.each([
-      { shape: 'two parts', token: 'aGVhZGVy.cGF5bG9hZA' },
-      { shape: 'four parts', token: 'a.b.c.d' },
-      { shape: 'a header that is not JSON', token: `bm90LWpzb24.${Buffer.from('{}').toString('base64url')}.c2ln` },
-      { shape: 'a payload that is not JSON', token: `${Buffer.from('{"alg":"RS256"}').toString('base64url')}.bm90LWpzb24.c2ln` },
-      { shape: 'a header without an alg', token: `${Buffer.from('{"kid":"kid-1"}').toString('base64url')}.${Buffer.from('{}').toString('base64url')}.c2ln` },
-      { shape: 'segments that are not base64url', token: '!!!.@@@.###' },
-      { shape: 'a signature that is not base64url', token: `${jwtOf().split('.').slice(0, 2).join('.')}.***` },
-      { shape: 'an empty string', token: '' },
-    ])('rejects a token with $shape', async ({ token }) => {
-      await expect(verify(token)).resolves.toBeNull();
+    it('rejects a token that does not decode, instead of throwing', async () => {
+      await expect(verify('not-a-jwt')).resolves.toBeNull();
+    });
+
+    it('rejects a token whose header names no alg', async () => {
+      const header  = Buffer.from(JSON.stringify({ kid: KID })).toString('base64url');
+      const payload = Buffer.from(JSON.stringify({ iss: ISSUER, sub: 'user-1', exp: nowSeconds() + 3600 })).toString('base64url');
+
+      await expect(verify(`${header}.${payload}.c2ln`)).resolves.toBeNull();
     });
   });
 

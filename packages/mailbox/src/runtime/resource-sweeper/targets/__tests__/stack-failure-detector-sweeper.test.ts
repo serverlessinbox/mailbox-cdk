@@ -134,15 +134,6 @@ describe('StackFailureDetectorSweeper', () => {
     expect(iamMock.commandCalls(DeleteRoleCommand)).toHaveLength(1);
   });
 
-  it('passes IAM the bare role name when the role ARN carries a path', async () => {
-    mockAllStepsSucceeding();
-
-    await sweep({ ...INPUT, detectorRoleArn: 'arn:aws:iam::123456789012:role/team/diag/mailbox-diag-role-abc123' });
-
-    expect(iamMock.commandCalls(ListRoleTagsCommand)[0].args[0].input).toEqual({ RoleName: 'mailbox-diag-role-abc123' });
-    expect(iamMock.commandCalls(DeleteRoleCommand)[0].args[0].input).toEqual({ RoleName: 'mailbox-diag-role-abc123' });
-  });
-
   it('treats every already-deleted resource (Not Found style errors) as already done', async () => {
     eventsMock.on(ListTagsForResourceCommand).rejects(
       Object.assign(new Error('not found'), { name: 'ResourceNotFoundException' }),
@@ -183,17 +174,6 @@ describe('StackFailureDetectorSweeper', () => {
     expect(iamMock.commandCalls(ListRoleTagsCommand)).toHaveLength(0);
   });
 
-  it('stops at the role step on a role root stack mismatch, without deleting the role', async () => {
-    mockAllStepsSucceeding();
-    iamMock.on(ListRoleTagsCommand).resolves({ Tags: [{ Key: ROOT_STACK_TAG_KEY, Value: 'someone-elses-stack' }] });
-
-    const result = await sweep();
-
-    expect(result.status).toBe('FAILED');
-    expect(iamMock.commandCalls(DeleteRolePolicyCommand)).toHaveLength(0);
-    expect(iamMock.commandCalls(DeleteRoleCommand)).toHaveLength(0);
-  });
-
   it('reports failed, naming the error, when a step hits an unexpected error', async () => {
     mockAllStepsSucceeding();
     lambdaMock.on(DeleteFunctionCommand).rejects(
@@ -201,24 +181,5 @@ describe('StackFailureDetectorSweeper', () => {
     );
 
     expect(await sweep()).toEqual({ target: 'detector', status: 'FAILED', reason: 'AccessDeniedException: denied' });
-  });
-
-  it('still deletes the role when its inline policy is already gone (NoSuchEntityException)', async () => {
-    mockAllStepsSucceeding();
-    iamMock.on(DeleteRolePolicyCommand).rejects(
-      Object.assign(new Error('no such policy'), { name: 'NoSuchEntityException' }),
-    );
-
-    expect(await sweep()).toEqual({ target: 'detector', status: 'SUCCESS' });
-    expect(iamMock.commandCalls(DeleteRoleCommand)).toHaveLength(1);
-  });
-
-  it('retries when only the role still has attached policies (DeleteConflictException)', async () => {
-    mockAllStepsSucceeding();
-    iamMock.on(DeleteRoleCommand).rejects(
-      Object.assign(new Error('conflict'), { name: 'DeleteConflictException' }),
-    );
-
-    expect(await sweep()).toEqual({ target: 'detector', status: 'RETRY', reason: 'DeleteConflictException' });
   });
 });

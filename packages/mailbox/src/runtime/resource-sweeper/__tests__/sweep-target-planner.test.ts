@@ -100,6 +100,18 @@ describe('SweepTargetPlanner', () => {
     expect(planner.plan(event)).toEqual({ cert: { certArn: CERT_ARN_NEW } });
   });
 
+  it('Delete: copies a key that is not a registered removal id into the plan, entry unread', () => {
+    const queueEntry = { queueArn: 'arn:aws:sqs:us-west-2:123456789012:q' };
+
+    expect(planner.plan(deleteEvent({ queue: queueEntry }))).toEqual({ queue: queueEntry });
+  });
+
+  it('Delete: plans an entry without validating it', () => {
+    const malformed = { ruleArn: DETECTOR.ruleArn };
+
+    expect(planner.plan(deleteEvent({ detector: malformed }))).toEqual({ detector: malformed });
+  });
+
   it('Create: nothing exists yet to sweep', () => {
     expect(planner.plan(createEvent({ cert: { certArn: CERT_ARN_NEW } }))).toEqual({});
   });
@@ -196,6 +208,12 @@ describe('SweepTargetPlanner', () => {
       const event = updateEvent({ detector: DETECTOR }, { detector: { ruleArn: DETECTOR.ruleArn } });
 
       expect(() => planner.plan(event)).toThrow(/Invalid detector entry in OldResourceProperties: missing .*detectorFnArn.*Entry: .*"ruleArn"/);
+    });
+
+    it('a new entry that is not what its removal registered is a defect naming ResourceProperties', () => {
+      const event = updateEvent({ detector: { ruleArn: DETECTOR.ruleArn } }, { detector: DETECTOR });
+
+      expect(() => planner.plan(event)).toThrow(/Invalid detector entry in ResourceProperties: missing .*detectorFnArn/);
     });
   });
 });

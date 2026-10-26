@@ -62,6 +62,17 @@ describe('OwnedRoleSweep', () => {
     expect(deletionOrder).toEqual(['policy', 'role']);
   });
 
+  it('addresses IAM by the bare role name when the role ARN carries a path', async () => {
+    givenOwnedByRootStack();
+    const logger = new LoggerBuffer();
+    const owned  = new OwnedRoleSweep(new IAMClient({ region: 'us-west-2' }), new RootStackMembership(logger), new TargetResults('sweeper-role'), logger);
+
+    await owned.sweep(ROOT, `arn:aws:iam::123456789012:role/team/diag/${ROLE_NAME}`, POLICY_NAME, LABEL);
+
+    expect(iamMock.commandCalls(ListRoleTagsCommand)[0].args[0].input).toEqual({ RoleName: ROLE_NAME });
+    expect(iamMock.commandCalls(DeleteRoleCommand)[0].args[0].input).toEqual({ RoleName: ROLE_NAME });
+  });
+
   it('deletes nothing when another stack owns the role, and that mismatch is final', async () => {
     iamMock.on(ListRoleTagsCommand).resolves({ Tags: [{ Key: ROOT_STACK_TAG, Value: 'other-stack' }] });
 

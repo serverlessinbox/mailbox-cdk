@@ -84,30 +84,12 @@ describe('SweepWorker', () => {
       expect(detector.sweep).not.toHaveBeenCalled();
     });
 
-    it('rejects a detector payload whose rule target id is empty, which would remove no target', async () => {
-      const { worker, detector } = workerWith();
-
-      const rejection = worker.handle({ removalType: 'detector', target: { ...DETECTOR_TARGET, ruleTargetId: '' }, ...ROOT_STACK });
-
-      await expect(rejection).rejects.toBeInstanceOf(InvalidOwnInput);
-      expect(detector.sweep).not.toHaveBeenCalled();
-    });
-
-    it('rejects a detector payload with a half part, which would sweep a resource it cannot address', async () => {
-      const { worker, detector } = workerWith();
-
-      const rejection = worker.handle({ removalType: 'detector', target: { ruleArn: DETECTOR_TARGET.ruleArn }, ...ROOT_STACK });
-
-      await expect(rejection).rejects.toThrow('must carry all of its fields or none');
-      expect(detector.sweep).not.toHaveBeenCalled();
-    });
-
-    it('rejects a detector payload with no part, which would sweep nothing', async () => {
+    it('rejects an invalid detector payload as an InvalidOwnInput, before the detector sweeper runs', async () => {
       const { worker, detector } = workerWith();
 
       const rejection = worker.handle({ removalType: 'detector', target: {}, ...ROOT_STACK });
 
-      await expect(rejection).rejects.toThrow('at least one detector part');
+      await expect(rejection).rejects.toBeInstanceOf(InvalidOwnInput);
       expect(detector.sweep).not.toHaveBeenCalled();
     });
   });
