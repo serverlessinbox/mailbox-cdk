@@ -1,11 +1,12 @@
 /**
- * Standalone sub-stack account-literal regression gate.
+ * Standalone sub-stack account-and-region-literal regression gate.
  *
  * The data, edge and cognito-data templates are published as customer artifacts, so none of them may
- * carry an account number. A construct that reads `Stack.of(this).account` writes a literal into the
- * template whenever its stack has an explicit `env`, and that is invisible to tsc, jsii and to unit tests
- * that build stacks with an explicit `env`. This test runs the real `build-stack` subcommands and scans
- * every template they write for any 12-digit run.
+ * carry an account number or a region name. A construct that reads `Stack.of(this).account` or
+ * `.region` writes a literal into the template whenever its stack has an explicit `env`, and that is
+ * invisible to tsc, jsii and to unit tests that build stacks with an explicit `env`. This test runs the
+ * real `build-stack` subcommands and scans every template they write for any 12-digit run and, in
+ * string values other than a `Description`, any region name.
  *
  * The subcommands run with CDK_DEFAULT_ACCOUNT and CDK_DEFAULT_REGION set to a fake account and region,
  * so a subcommand that read those variables would write the fake account into its template.
@@ -28,7 +29,17 @@ const SYNTH_TIMEOUT_MILLIS = 300_000;
 /** Matches a bare 12-digit run (an AWS account id is always exactly 12 digits). */
 const ACCOUNT_SHAPED_LITERAL = /\d{12}/;
 
-const SUBCOMMANDS: ReadonlyArray<{ name: string; command: CommandClass }> = [
+/** Matches an AWS region name such as `eu-west-1` or `us-gov-west-1`. */
+const REGION_SHAPED_LITERAL = /[a-z]{2}(-gov)?-[a-z]+-\d/;
+
+/** What a literal scan matches: the pattern, whether keys count as well as values, and one key whose value is skipped. */
+interface LiteralScan {
+  readonly pattern:    RegExp;
+  readonly scanKeys:   boolean;
+  readonly skippedKey: string | undefined;
+}
+
+const SUBCOMMANDS:ReadonlyArray<{ name: string; command: CommandClass }> = [
   { name: 'data',         command: BuildDataStackCommand },
   { name: 'edge',         command: BuildEdgeStackCommand },
   { name: 'cognito-data', command: BuildCognitoDataStackCommand },
@@ -39,19 +50,35 @@ const SUBCOMMANDS: ReadonlyArray<{ name: string; command: CommandClass }> = [
  * run. Keys are scanned as well as values, because a leaked account baked into a logical id is a key.
  */
 function findAccountLiterals(node: unknown, nodePath = '$'): string[] {
+  return findLiterals(node, { pattern: ACCOUNT_SHAPED_LITERAL, scanKeys: true, skippedKey: undefined }, nodePath);
+}
+
+/**
+ * Returns the JSON path of every string value in a synthesized template that holds a region name. Keys
+ * are not scanned: a key is a logical id or a property name, not a value written into a customer account.
+ * A region named in a `Description` is prose for the reader, not a value, so it is not reported. A
+ * `{"Ref":"AWS::Region"}` carries no region name, so it is not reported either.
+ */
+function findRegionLiterals(node: unknown, nodePath = '$'): string[] {
+  return findLiterals(node, { pattern: REGION_SHAPED_LITERAL, scanKeys: false, skippedKey: 'Description' }, nodePath);
+}
+
+function findLiterals(node: unknown, scan: LiteralScan, nodePath: string): string[] {
   if (typeof node === 'string') {
-    return ACCOUNT_SHAPED_LITERAL.test(node) ? [nodePath] : [];
+    return scan.pattern.test(node) ? [nodePath] : [];
   }
 
   if (Array.isArray(node)) {
-    return node.flatMap((item: unknown, index: number) => findAccountLiterals(item, `${nodePath}[${index}]`));
+    return node.flatMap((item: unknown, index: number) => findLiterals(item, scan, `${nodePath}[${index}]`));
   }
 
   if (node !== null && typeof node === 'object') {
-    return Object.entries(node).flatMap(([key, value]: [string, unknown]) => [
-      ...(ACCOUNT_SHAPED_LITERAL.test(key) ? [`${nodePath}.${key} (key)`] : []),
-      ...findAccountLiterals(value, `${nodePath}.${key}`),
-    ]);
+    return Object.entries(node)
+      .filter(([key]: [string, unknown]) => key !== scan.skippedKey)
+      .flatMap(([key, value]: [string, unknown]) => [
+        ...(scan.scanKeys && scan.pattern.test(key) ? [`${nodePath}.${key} (key)`] : []),
+        ...findLiterals(value, scan, `${nodePath}.${key}`),
+      ]);
   }
 
   return [];
@@ -76,7 +103,7 @@ function collectingStream(chunks: string[]): Writable {
   });
 }
 
-describe('Standalone sub-stack account-literal leak (regression gate)', () => {
+describe('Standalone sub-stack account and region literal leak (regression gate)', () => {
   const savedAccount = process.env.CDK_DEFAULT_ACCOUNT;
   const savedRegion  = process.env.CDK_DEFAULT_REGION;
 
@@ -97,7 +124,31 @@ describe('Standalone sub-stack account-literal leak (regression gate)', () => {
     ]);
   });
 
-  it.each(SUBCOMMANDS)('the $name template, written by build-stack, carries no account-shaped literal', async ({ name, command }) => {
+  it('the scanner reports a region literal in a value, and not in a key or a region reference', () => {
+    expect(findRegionLiterals({
+      Resources: {
+        'eu-west-1': {
+          Literal:    'arn:aws:s3:::bucket-eu-west-1',
+          GovLiteral: 'us-gov-west-1',
+          Reference:  { Ref: 'AWS::Region' },
+          Sub:        { 'Fn::Sub': 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:topic' },
+        },
+      },
+    })).toEqual([
+      '$.Resources.eu-west-1.Literal',
+      '$.Resources.eu-west-1.GovLiteral',
+    ]);
+  });
+
+  it('the scanner does not report a region named in a Description', () => {
+    expect(findRegionLiterals({
+      Parameters: { CertArn: { Description: 'ACM certificate (must be in us-east-1)', Default: 'eu-west-1' } },
+    })).toEqual([
+      '$.Parameters.CertArn.Default',
+    ]);
+  });
+
+  it.each(SUBCOMMANDS)('the $name template, written by build-stack, carries no account-shaped or region literal', async ({ name, command }) => {
     const outDir           = mkdtempSync(path.join(tmpdir(), 'build-stack-leak-'));
     const stderr: string[] = [];
 
@@ -112,5 +163,6 @@ describe('Standalone sub-stack account-literal leak (regression gate)', () => {
     expect(exitCode).toBe(0);
     expect(stderr.join('')).toBe('');
     expect(findAccountLiterals(template)).toEqual([]);
+    expect(findRegionLiterals(template)).toEqual([]);
   }, SYNTH_TIMEOUT_MILLIS);
 });
