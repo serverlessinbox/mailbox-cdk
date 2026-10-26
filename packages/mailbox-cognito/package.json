@@ -27,7 +27,7 @@
   "scripts": {
     "build": "jsii --tsconfig tsconfig.build.json",
     "build:watch": "tsc --watch",
-    "prepack": "yarn prepare-manifest build && node -e \"require('fs').copyFileSync('../../LICENSE', 'LICENSE')\" && yarn build:cognito-data-stack && yarn bundle && yarn bundle:jsii && yarn check:declarations",
+    "prepack": "node -e \"const fs=require('fs');fs.rmSync('lib',{recursive:true,force:true});for(const f of fs.readdirSync('.'))if(f.endsWith('.tsbuildinfo'))fs.rmSync(f)\" && yarn prepare-manifest build && node -e \"require('fs').copyFileSync('../../LICENSE', 'LICENSE')\" && yarn build:cognito-data-stack && yarn bundle && yarn bundle:jsii && yarn check:declarations",
     "test": "tsc -p tsconfig.test.json && jest",
     "clean": "rm -rf dist lib *.tsbuildinfo",
     "dev": "task build:watch",
@@ -90,13 +90,14 @@
     "typescript": "^5.9.3"
   },
   "files": [
-    "src",
     "lib",
     ".jsii",
     "artifact-versions.json",
     "registry-record.json",
     "LICENSE",
     "!src/**/__tests__",
-    "!lib/**/__tests__"
+    "!lib/**/__tests__",
+    "!lib/runtime/**/*.js",
+    "!lib/ts-lambdas/**/*.js"
   ]
 }
