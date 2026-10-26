@@ -45,8 +45,8 @@ interface UpdaterFixture {
   readonly registryS3: S3Client;
 }
 
-const { readReleasePointer, deriveTrack, buildArtifactKey } = registryMocks();
-const { deployZipToPrefix, invalidateCloudFront }           = jest.requireMock(
+const { readReleasePointer }                      = registryMocks();
+const { deployZipToPrefix, invalidateCloudFront } = jest.requireMock(
   '@serverlessinbox/mailbox-cdk-shared/lambda-runtime',
 ) as ContentOperationMocks;
 
@@ -71,9 +71,7 @@ describe('UiBucketUpdater', () => {
     cloudFrontMock.reset();
     cloudFrontMock.on(TagResourceCommand).resolves({});
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    deriveTrack.mockReturnValue('v1');
     readReleasePointer.mockResolvedValue({ version: '1.2.4' });
-    buildArtifactKey.mockReturnValue('ui-bundle/release/1.2.4/ui-bundle.zip');
     deployZipToPrefix.mockResolvedValue({ uploaded: 42 });
     invalidateCloudFront.mockResolvedValue({ invalidated: true });
   });
@@ -100,7 +98,7 @@ describe('UiBucketUpdater', () => {
     expect(updated).toBe(true);
     expect(deployZipToPrefix).toHaveBeenCalledWith(registryS3, {
       sourceBucket: 'mailbox-artifacts-us-east-1',
-      sourceKey:    'ui-bundle/release/1.2.4/ui-bundle.zip',
+      sourceKey:    'serverlessinbox/packages/ui-bundle/releases/v1.2.4/ui-bundle.zip',
       targetBucket: 'ui-content-bucket',
       targetPrefix: 'content/',
     });
@@ -120,6 +118,14 @@ describe('UiBucketUpdater', () => {
       expect.anything(),
       expect.objectContaining({ sourceBucket: 'mailbox-artifacts-eu-west-1' }),
     );
+  });
+
+  it('rejects without tagging the new version when the invalidation fails, so the update is tried again', async () => {
+    invalidateCloudFront.mockRejectedValue(new Error('CloudFront CreateInvalidation throttled'));
+
+    await expect(newUpdater().updater.advanceIfStale(uiTarget())).rejects.toThrow('CloudFront CreateInvalidation throttled');
+
+    expect(cloudFrontMock.commandCalls(TagResourceCommand)).toHaveLength(0);
   });
 
   it('rejects and logs, without invalidating or tagging, when the bundle cannot be unpacked', async () => {

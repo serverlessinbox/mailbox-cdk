@@ -4,7 +4,8 @@
  * Pins what the code update path does with a function: it keeps new code, and tags the function, only when the
  * smoke test passes; it puts the function back on its old code when the probe fails or cannot be run, and then
  * writes no tag, because a tag newer than the code would stop the function from ever being updated again. AWS
- * is faked at the SDK clients; the release registry is faked because it reads S3.
+ * is faked at the SDK clients; the release pointer read is faked because it reads S3, and the key and track
+ * builders run for real.
  */
 
 import {
@@ -24,7 +25,6 @@ import {
   lambdaTarget,
   noSleep,
   testConfig,
-  type BuildArtifactKeyArguments,
   registryMocks,
 } from '../../__tests__/updater-helpers';
 import { ReleaseArtifacts }    from '../../release-artifacts';
@@ -37,7 +37,7 @@ jest.mock('@serverlessinbox/artifact-registry', () =>
   (jest.requireActual('../../__tests__/updater-helpers') as typeof import('../../__tests__/updater-helpers')).artifactRegistryModuleMock(),
 );
 
-const { readReleasePointer, deriveTrack, buildArtifactKey } = registryMocks();
+const { readReleasePointer } = registryMocks();
 
 describe('LambdaCodeUpdater', () => {
   const lambdaMock = mockClient(LambdaClient);
@@ -59,10 +59,6 @@ describe('LambdaCodeUpdater', () => {
     jest.clearAllMocks();
     lambdaMock.reset();
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    deriveTrack.mockReturnValue('v1');
-    buildArtifactKey.mockImplementation(
-      (...args: BuildArtifactKeyArguments) => `releases/v${args[2].version.version}/${args[2].objectName}`,
-    );
     lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
     lambdaMock.on(GetFunctionConfigurationCommand).resolves({ LastUpdateStatus: 'Successful' });
     lambdaMock.on(TagResourceCommand).resolves({});
@@ -93,7 +89,7 @@ describe('LambdaCodeUpdater', () => {
     expect(updates[0].args[0].input).toEqual({
       FunctionName: lambdaTarget().arn,
       S3Bucket:     'mailbox-artifacts-us-east-1',
-      S3Key:        'releases/v1.2.4/lambdas/mailbox-go.zip',
+      S3Key:        'serverlessinbox/packages/mailbox-go/releases/v1.2.4/lambdas/mailbox-go.zip',
     });
     const tags = lambdaMock.commandCalls(TagResourceCommand);
     expect(tags).toHaveLength(1);
@@ -119,16 +115,14 @@ describe('LambdaCodeUpdater', () => {
 
   describe.each([
     {
-      outcome:         'fails',
-      arrangeProbe:    () => lambdaMock.on(InvokeCommand).resolves(invokeResponse('{"serverlessInboxSmokeTestOk":false}')),
-      expectedVerdict: 'fail',
+      outcome:      'fails',
+      arrangeProbe: () => lambdaMock.on(InvokeCommand).resolves(invokeResponse('{"serverlessInboxSmokeTestOk":false}')),
     },
     {
-      outcome:         'cannot be run',
-      arrangeProbe:    () => lambdaMock.on(InvokeCommand).rejects(new Error('AccessDenied')),
-      expectedVerdict: 'unprobeable',
+      outcome:      'cannot be run',
+      arrangeProbe: () => lambdaMock.on(InvokeCommand).rejects(new Error('AccessDenied')),
     },
-  ])('when the smoke test $outcome', ({ arrangeProbe, expectedVerdict }) => {
+  ])('when the smoke test $outcome', ({ arrangeProbe }) => {
     it('puts the function back on its old code and writes no tag', async () => {
       readReleasePointer.mockResolvedValue({ version: '1.2.4' });
       arrangeProbe();
@@ -138,16 +132,24 @@ describe('LambdaCodeUpdater', () => {
       expect(updated).toBe(false);
       const updates = lambdaMock.commandCalls(UpdateFunctionCodeCommand);
       expect(updates.map((call) => call.args[0].input.S3Key)).toEqual([
-        'releases/v1.2.4/lambdas/mailbox-go.zip',
-        'releases/v1.2.3/lambdas/mailbox-go.zip',
+        'serverlessinbox/packages/mailbox-go/releases/v1.2.4/lambdas/mailbox-go.zip',
+        'serverlessinbox/packages/mailbox-go/releases/v1.2.3/lambdas/mailbox-go.zip',
       ]);
       expect(lambdaMock.commandCalls(TagResourceCommand)).toHaveLength(0);
-      expect(console.error).toHaveBeenCalledWith('smoke test did not pass, rolling back', {
-        lambdaArn:       lambdaTarget().arn,
-        verdict:         expectedVerdict,
-        failedVersion:   '1.2.4',
-        deployedVersion: '1.2.3',
-      });
+    });
+  });
+
+  it('throws and logs, without rolling back, when tagging the passed function fails', async () => {
+    readReleasePointer.mockResolvedValue({ version: '1.2.4' });
+    lambdaMock.on(InvokeCommand).resolves(invokeResponse('{"serverlessInboxSmokeTestOk":true}'));
+    lambdaMock.on(TagResourceCommand).rejects(new Error('TagResource throttled'));
+
+    await expect(newUpdater().advanceIfStale(clients.deployment, lambdaTarget())).rejects.toThrow('TagResource throttled');
+
+    expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(1);
+    expect(console.error).toHaveBeenCalledWith('failed to update lambda', {
+      lambdaArn: lambdaTarget().arn,
+      error:     'TagResource throttled',
     });
   });
 

@@ -5,17 +5,18 @@
  * is, so its `mailbox-cdk` version becomes the stack version every base tag carries. Without one, the
  * resolver is pinned from the versions the package ships with, so consumers that pass nothing still
  * deploy the release they were built against. The vendor link is keyed by the root-stack identity tag,
- * and the encryption plan is the one the KMS settings it is given resolve to.
+ * the deployer type comes from the CDK context, and everything under the scope is tagged.
  */
 
-import { ServerlessInboxTagKeys }                      from '@serverlessinbox/mailbox-cdk-shared';
-import { TableEncryption }                             from 'aws-cdk-lib/aws-dynamodb';
+import { DEPLOYER_TYPE_CONTEXT_KEY, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                                   from 'aws-cdk-lib/assertions';
+import { CfnBucket }                                         from 'aws-cdk-lib/aws-s3';
+import { App, Stack }                                        from 'aws-cdk-lib';
 
-import { MailboxKmsMode }                              from '../core/mailbox-kms-mode';
-import { loadMailboxArtifactVersions }                 from '../mailbox-artifact-versions';
-import { MailboxContext }                              from '../mailbox-context';
+import { loadMailboxArtifactVersions }                       from '../mailbox-artifact-versions';
+import { MailboxContext }                                    from '../mailbox-context';
 
-import { newDeployerTestStack, TEST_ARTIFACT_VERSION } from './deployer-test-helpers';
+import { newDeployerTestStack, TEST_ARTIFACT_VERSION }       from './deployer-test-helpers';
 
 describe('MailboxContext', () => {
   it('uses the supplied artifact resolver and its mailbox-cdk version', () => {
@@ -43,11 +44,23 @@ describe('MailboxContext', () => {
     expect(context.vendorLink.stackIdentityTagKey).toBe(ServerlessInboxTagKeys.rootStack);
   });
 
-  it('resolves the encryption plan from the KMS settings it is given', () => {
+  it('takes the deployer type from the CDK context', () => {
+    const { artifactResolver } = newDeployerTestStack();
+    const stack                = new Stack(new App({ context: { [DEPLOYER_TYPE_CONTEXT_KEY]: 'marketplace' } }), 'ctx-stack');
+
+    const context = MailboxContext.resolve(stack, { artifactResolver });
+
+    expect(context.deployerType).toBe('marketplace');
+  });
+
+  it('tags every resource under the scope with the Mailbox as the root stack', () => {
     const { stack, artifactResolver } = newDeployerTestStack();
+    new CfnBucket(stack, 'Tagged');
 
-    const context = MailboxContext.resolve(stack, { artifactResolver, kms: { mode: MailboxKmsMode.NONE } });
+    MailboxContext.resolve(stack, { artifactResolver });
 
-    expect(context.encryptionPlan.dynamoTables).toEqual({ encryption: TableEncryption.DEFAULT });
+    Template.fromStack(stack).hasResourceProperties('AWS::S3::Bucket', {
+      Tags: Match.arrayWith([{ Key: ServerlessInboxTagKeys.rootStack, Value: { Ref: 'AWS::StackName' } }]),
+    });
   });
 });

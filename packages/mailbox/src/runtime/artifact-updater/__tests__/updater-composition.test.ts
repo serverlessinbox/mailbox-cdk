@@ -5,14 +5,15 @@
  * with the deployment set only when the deployment region is the edge region), a failed one gets none and its
  * problem; and that each trigger it builds is handed the cycle, the deployment-region Lambda client, the names and
  * the configuration problem of that runtime, so a failed configuration reaches the trigger and not a client that
- * does not exist. The update cycle is faked because it reads and writes AWS. The answers the triggers give are pinned
- * by their own suites.
+ * does not exist. The update cycle is faked because it reads and writes AWS, and the CloudFormation trigger is
+ * faked so that its arguments can be read. The answers the triggers give are pinned by their own suites.
  */
 
 import { InvokeCommand }      from '@aws-sdk/client-lambda';
-import { captureCfnResponse } from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
+import { ParentStackStatus }  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import { mockClient }         from 'aws-sdk-client-mock';
 
+import { CfnTrigger }         from '../triggers/cfn-trigger';
 import { UpdateCycle }        from '../update-cycle';
 import { EDGE_REGION }        from '../updater-clients';
 import { UpdaterComposition } from '../updater-composition';
@@ -28,18 +29,14 @@ import {
 } from './updater-helpers';
 
 jest.mock('../update-cycle');
-jest.mock('https', () => ({
-  request: jest.fn(),
-}));
+jest.mock('../triggers/cfn-trigger');
 
 describe('UpdaterComposition', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation(() => undefined);
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    captureCfnResponse();
   });
 
   afterEach(() => {
@@ -67,7 +64,7 @@ describe('UpdaterComposition', () => {
       expect(runtime.clients?.edge === runtime.clients?.deployment).toBe(true);
     });
 
-    it('reports every problem and builds no clients when the configuration is bad', () => {
+    it('reports the configuration problem and builds no clients when the configuration is bad', () => {
       process.env = { ...originalEnv, ...GOOD_ENVIRONMENT, LOG_LEVEL: 'verbose' };
 
       const runtime = UpdaterComposition.loadRuntime();
@@ -100,12 +97,14 @@ describe('UpdaterComposition', () => {
       });
     });
 
-    it('builds a CloudFormation trigger that emits the manual-finalize hint under the service name', async () => {
+    it('builds a CloudFormation trigger from the event, the context, the configured service name and no configuration problem', () => {
       const composition = new UpdaterComposition(readyRuntime());
+      const event       = deployEndTriggerEvent('Delete');
+      const context     = fakeLambdaContext();
 
-      await composition.cfnTrigger(deployEndTriggerEvent('Delete'), fakeLambdaContext()).handle();
+      composition.cfnTrigger(event, context);
 
-      expect(console.log).toHaveBeenCalledWith(expect.stringMatching(/^MANUAL_FINALIZE .* service=artifact-updater$/));
+      expect(CfnTrigger).toHaveBeenCalledWith(event, context, expect.any(Function), expect.any(ParentStackStatus), undefined, 'artifact-updater');
     });
   });
 

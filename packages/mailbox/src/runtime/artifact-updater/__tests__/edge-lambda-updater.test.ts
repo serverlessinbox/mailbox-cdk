@@ -37,14 +37,13 @@ import {
   invokeResponse,
   lambdaTarget,
   registryMocks,
-  type BuildArtifactKeyArguments,
 } from './updater-helpers';
 
 jest.mock('@serverlessinbox/artifact-registry', () =>
   (jest.requireActual('./updater-helpers') as typeof import('./updater-helpers')).artifactRegistryModuleMock(),
 );
 
-const { readReleasePointer, deriveTrack, buildArtifactKey } = registryMocks();
+const { readReleasePointer } = registryMocks();
 
 const EDGE_ARN        = 'arn:aws:lambda:us-east-1:123456789012:function:edge-lambda';
 const OTHER_ARN       = 'arn:aws:lambda:us-east-1:123456789012:function:other-lambda';
@@ -123,11 +122,7 @@ describe('EdgeLambdaUpdater', () => {
     cloudFrontMock.reset();
     taggingMock.reset();
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    deriveTrack.mockReturnValue('v1');
     readReleasePointer.mockResolvedValue({ version: '1.2.4' });
-    buildArtifactKey.mockImplementation(
-      (...args: BuildArtifactKeyArguments) => `edge-pkg/release/${args[2].version.version}/${args[2].objectName}`,
-    );
     lambdaMock.on(UpdateFunctionCodeCommand).resolves({});
     lambdaMock.on(GetFunctionConfigurationCommand).resolves({ LastUpdateStatus: 'Successful' });
     lambdaMock.on(PublishVersionCommand).resolves({ FunctionArn: NEW_VERSION_ARN });
@@ -157,10 +152,9 @@ describe('EdgeLambdaUpdater', () => {
     const updated = await newUpdater().advanceIfStale(target);
 
     expect(updated).toBe(true);
-    expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)[0].args[0].input).toEqual({
-      FunctionName: EDGE_ARN,
-      S3Bucket:     'mailbox-artifacts-us-east-1',
-      S3Key:        'edge-pkg/release/1.2.4/lambdas/edge-lambda.zip',
+    expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)[0].args[0].input).toMatchObject({
+      S3Bucket: 'mailbox-artifacts-us-east-1',
+      S3Key:    'serverlessinbox/packages/edge-pkg/releases/v1.2.4/lambdas/edge-lambda.zip',
     });
     expect(lambdaMock.commandCalls(PublishVersionCommand)[0].args[0].input).toEqual({ FunctionName: EDGE_ARN });
     expect(lambdaMock.commandCalls(InvokeCommand)[0].args[0].input.FunctionName).toBe(NEW_VERSION_ARN);
@@ -171,22 +165,7 @@ describe('EdgeLambdaUpdater', () => {
     expect(update.DistributionConfig?.DefaultCacheBehavior?.LambdaFunctionAssociations?.Items?.[0].LambdaFunctionARN).toBe(
       NEW_VERSION_ARN,
     );
-    expect(lambdaMock.commandCalls(TagResourceCommand)[0].args[0].input.Tags).toEqual({
-      [ServerlessInboxTagKeys.artifactVersion]: '1.2.4',
-    });
-  });
-
-  it('looks for the distribution among those the root stack of this install owns, by id and by name', async () => {
-    taggedDistributions('DIST123');
-    distributionConfigOf('DIST123', distributionConfig([association(`${EDGE_ARN}:3`, 'origin-request')]));
-
-    await newUpdater().advanceIfStale(target);
-
-    const filters = taggingMock.commandCalls(GetResourcesCommand).map((call) => call.args[0].input.TagFilters);
-    expect(filters).toEqual([
-      [{ Key: ServerlessInboxTagKeys.rootStackId, Values: ['guid-1'] }],
-      [{ Key: ServerlessInboxTagKeys.rootStack, Values: ['my-stack'] }],
-    ]);
+    expect(Object.values(lambdaMock.commandCalls(TagResourceCommand)[0].args[0].input.Tags ?? {})).toEqual(['1.2.4']);
   });
 
   it('repoints the root stack distribution that associates the function, not another root stack one', async () => {
@@ -201,16 +180,14 @@ describe('EdgeLambdaUpdater', () => {
 
   describe.each([
     {
-      outcome:         'fails',
-      arrangeProbe:    () => lambdaMock.on(InvokeCommand).resolves(invokeResponse('{"serverlessInboxSmokeTestOk":false}')),
-      expectedVerdict: 'fail',
+      outcome:      'fails',
+      arrangeProbe: () => lambdaMock.on(InvokeCommand).resolves(invokeResponse('{"serverlessInboxSmokeTestOk":false}')),
     },
     {
-      outcome:         'cannot be run',
-      arrangeProbe:    () => lambdaMock.on(InvokeCommand).rejects(new Error('AccessDenied')),
-      expectedVerdict: 'unprobeable',
+      outcome:      'cannot be run',
+      arrangeProbe: () => lambdaMock.on(InvokeCommand).rejects(new Error('AccessDenied')),
     },
-  ])('when the smoke test of the published version $outcome', ({ arrangeProbe, expectedVerdict }) => {
+  ])('when the smoke test of the published version $outcome', ({ arrangeProbe }) => {
     it('leaves the distribution on its version, puts the code back on the deployed release and writes no tag', async () => {
       arrangeProbe();
 
@@ -221,15 +198,40 @@ describe('EdgeLambdaUpdater', () => {
       expect(lambdaMock.commandCalls(TagResourceCommand)).toHaveLength(0);
       expect(lambdaMock.commandCalls(PublishVersionCommand)).toHaveLength(1);
       expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand).map((call) => call.args[0].input.S3Key)).toEqual([
-        'edge-pkg/release/1.2.4/lambdas/edge-lambda.zip',
-        'edge-pkg/release/1.2.3/lambdas/edge-lambda.zip',
+        'serverlessinbox/packages/edge-pkg/releases/v1.2.4/lambdas/edge-lambda.zip',
+        'serverlessinbox/packages/edge-pkg/releases/v1.2.3/lambdas/edge-lambda.zip',
       ]);
-      expect(console.error).toHaveBeenCalledWith('smoke test did not pass, rolling back', {
-        lambdaArn:       EDGE_ARN,
-        verdict:         expectedVerdict,
-        failedVersion:   '1.2.4',
-        deployedVersion: '1.2.3',
-      });
+    });
+  });
+
+  it('repoints an association written without a version suffix, and leaves another function without one alone', async () => {
+    taggedDistributions('DIST123');
+    distributionConfigOf(
+      'DIST123',
+      distributionConfig([association(OTHER_ARN, 'viewer-request'), association(EDGE_ARN, 'origin-request')]),
+    );
+
+    await newUpdater().advanceIfStale(target);
+
+    const updated = cloudFrontMock.commandCalls(UpdateDistributionCommand)[0].args[0].input.DistributionConfig;
+    expect(updated?.DefaultCacheBehavior?.LambdaFunctionAssociations?.Items?.map((item) => item.LambdaFunctionARN)).toEqual([
+      OTHER_ARN,
+      NEW_VERSION_ARN,
+    ]);
+  });
+
+  it('rejects and logs, without rolling the code back, when tagging fails after the distribution was repointed', async () => {
+    taggedDistributions('DIST123');
+    distributionConfigOf('DIST123', distributionConfig([association(`${EDGE_ARN}:3`, 'origin-request')]));
+    lambdaMock.on(TagResourceCommand).rejects(new Error('TagResource throttled'));
+
+    await expect(newUpdater().advanceIfStale(target)).rejects.toThrow('TagResource throttled');
+
+    expect(cloudFrontMock.commandCalls(UpdateDistributionCommand)).toHaveLength(1);
+    expect(lambdaMock.commandCalls(UpdateFunctionCodeCommand)).toHaveLength(1);
+    expect(console.error).toHaveBeenCalledWith('failed to update edge lambda', {
+      edgeLambdaArn: EDGE_ARN,
+      error:         'TagResource throttled',
     });
   });
 

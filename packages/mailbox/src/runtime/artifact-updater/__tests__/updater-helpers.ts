@@ -31,21 +31,10 @@ import {
 } from '../updater-identifiers';
 import type { FailedUpdater, ReadyUpdater } from '../updater-runtime';
 
-/** The functions of the faked release registry package, which a suite sets up per test. */
+/** The function of the registry package that reads S3, faked; a suite sets it up per test. */
 export interface RegistryMocks {
   readonly readReleasePointer: jest.Mock;
-  readonly deriveTrack:        jest.Mock;
-  readonly buildArtifactKey:   jest.Mock;
 }
-
-/** The part of the release a faked `buildArtifactKey` reads: the parsed version and the name of the object. */
-export interface ReleaseKeyParts {
-  readonly version:    { readonly version: string };
-  readonly objectName: string;
-}
-
-/** What the faked registry's `buildArtifactKey` is called with: the kind of artifact, its package and the release. */
-export type BuildArtifactKeyArguments = [kind: string, packageName: string, release: ReleaseKeyParts];
 
 /** The values of a target in the plain strings tests write; the helpers brand them. */
 export interface TargetValues {
@@ -100,13 +89,13 @@ export function testRootStackResources(): RootStackResources {
 export const noSleep: Sleep = async () => undefined;
 
 /**
- * The module a suite's `jest.mock('@serverlessinbox/artifact-registry', ...)` factory returns: the registry's three
- * functions as jest mocks, which the suite then reads back with registryMocks().
+ * The module a suite's `jest.mock('@serverlessinbox/artifact-registry', ...)` factory returns: the real registry
+ * package with only `readReleasePointer`, the function that reads S3, as a jest mock. The suite reads it back with
+ * registryMocks(); the pure `deriveTrack` and `buildArtifactKey` run for real.
  */
-export function artifactRegistryModuleMock(): RegistryMocks {
+export function artifactRegistryModuleMock(): typeof import('@serverlessinbox/artifact-registry') & RegistryMocks {
   return {
-    deriveTrack:        jest.fn(),
-    buildArtifactKey:   jest.fn(),
+    ...jest.requireActual<typeof import('@serverlessinbox/artifact-registry')>('@serverlessinbox/artifact-registry'),
     readReleasePointer: jest.fn(),
   };
 }

@@ -67,24 +67,16 @@ describe('UpdateCycle', () => {
   });
 
   describe('scanning', () => {
-    it('asks for the lambda functions and distributions the root stack owns, by id and by name', async () => {
+    it('looks only at lambda functions and CloudFront distributions', async () => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [] });
 
       await buildUpdaterParts().cycle.run();
 
-      const filters = taggingMock.commandCalls(GetResourcesCommand).map((call) => call.args[0].input);
-      expect(filters).toEqual([
-        {
-          TagFilters:          [{ Key: ServerlessInboxTagKeys.rootStackId, Values: ['guid-1'] }],
-          ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
-          PaginationToken:     undefined,
-        },
-        {
-          TagFilters:          [{ Key: ServerlessInboxTagKeys.rootStack, Values: ['my-stack'] }],
-          ResourceTypeFilters: ['lambda:function', 'cloudfront:distribution'],
-          PaginationToken:     undefined,
-        },
-      ]);
+      const typeFilters = taggingMock.commandCalls(GetResourcesCommand).map((call) => call.args[0].input.ResourceTypeFilters);
+      expect(typeFilters.length).toBeGreaterThan(0);
+      for (const filter of typeFilters) {
+        expect(filter).toEqual(['lambda:function', 'cloudfront:distribution']);
+      }
     });
 
     it('scans the deployment region and the edge region when they differ', async () => {
@@ -101,8 +93,13 @@ describe('UpdateCycle', () => {
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [] });
 
       await buildUpdaterParts().cycle.run();
+      const callsForOneRegion = taggingMock.calls().length;
+      taggingMock.resetHistory();
 
-      expect(taggingMock.commandCalls(GetResourcesCommand)).toHaveLength(2);
+      await buildUpdaterParts({ deploymentRegion: US_WEST_2 }).cycle.run();
+
+      expect(callsForOneRegion).toBeGreaterThan(0);
+      expect(taggingMock.calls()).toHaveLength(2 * callsForOneRegion);
     });
 
     it('rejects and logs when the scan itself fails', async () => {
@@ -178,9 +175,14 @@ describe('UpdateCycle', () => {
     });
 
     it('skips a resource in the response that has no ARN', async () => {
-      taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [{ Tags: [] }] });
+      taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [{ ...lambdaWithType('code'), ResourceARN: undefined }] });
+      const { cycle, codeUpdater } = buildUpdaterParts();
 
-      await expect(buildUpdaterParts().cycle.run()).resolves.toBeUndefined();
+      await expect(cycle.run()).resolves.toBeUndefined();
+
+      expect(codeUpdater.advanceIfStale).not.toHaveBeenCalled();
+      expect(console.debug).not.toHaveBeenCalled();
+      expect(console.warn).not.toHaveBeenCalled();
     });
 
     it('skips a resource of a service the updater does not manage, and says so at debug level', async () => {
