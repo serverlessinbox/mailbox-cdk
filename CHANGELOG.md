@@ -4,6 +4,30 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.2](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.1...v0.5.2) (Mon Oct 26 2026)
+
+### test
+
+* **mailbox-cdk-shared** pin each unit's own statements, add branded and stack-helpers resource-properties tests ([af75900](https://github.com/serverlessinbox/mailbox-cdk/commit/af75900268dcfe9ba18ec33373b79bd8f0eb9a7c))
+
+* **mailbox** pin the updater's own statements with the real registry key and track builders ([eefdda0](https://github.com/serverlessinbox/mailbox-cdk/commit/eefdda0265c9cdcfe0c6bc95ac209bbfec116012))
+
+* **mailbox** pin each unit's own statements in the sweeper, blob download, data override and description tests ([f34d945](https://github.com/serverlessinbox/mailbox-cdk/commit/f34d94554995dbcafdffec014b6b73fea889e831))
+
+* **mailbox** Lambda wrapper tests pin only what each wrapper contributes ([acb82e5](https://github.com/serverlessinbox/mailbox-cdk/commit/acb82e50fa8fdf941b3cb7e004e798ff8478c473))
+
+* **mailbox** pin the section decisions, drop other units' assertions and pass-through getters ([025dbb0](https://github.com/serverlessinbox/mailbox-cdk/commit/025dbb04bd0836a8b60b51a31fbea27a0943f8eb))
+
+* **mailbox-cognito** pin each unit's own statements in the data stack, user pool, addons and runtime handlers ([2b64ea4](https://github.com/serverlessinbox/mailbox-cdk/commit/2b64ea4d745103839f111b1d4bea0780a25123c0))
+
+### chore
+
+* Idl repo sync ([1296e5d](https://github.com/serverlessinbox/mailbox-cdk/commit/1296e5daa3ddcafe6b3809cdaee26bc1e11f046b))
+
+### fix
+
+* **mailbox-cognito** the custom auth domain passes CertificateArn ([f47bca9](https://github.com/serverlessinbox/mailbox-cdk/commit/f47bca98cd915675aec545115338ce5981305f61))
+
 ## [0.5.1](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.0...v0.5.1) (Mon Oct 26 2026)
 
 ### chore

@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.2](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.1...v0.5.2) (Mon Oct 26 2026)
+
+### test
+
+* **mailbox-cdk-shared** pin each unit's own statements, add branded and stack-helpers resource-properties tests ([af75900](https://github.com/serverlessinbox/mailbox-cdk/commit/af75900268dcfe9ba18ec33373b79bd8f0eb9a7c))
+
 ## [0.5.1](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.0...v0.5.1) (Mon Oct 26 2026)
 
 ### chore

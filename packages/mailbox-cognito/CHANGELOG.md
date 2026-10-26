@@ -4,6 +4,16 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.2](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.1...v0.5.2) (Mon Oct 26 2026)
+
+### test
+
+* **mailbox-cognito** pin each unit's own statements in the data stack, user pool, addons and runtime handlers ([2b64ea4](https://github.com/serverlessinbox/mailbox-cdk/commit/2b64ea4d745103839f111b1d4bea0780a25123c0))
+
+### fix
+
+* **mailbox-cognito** the custom auth domain passes CertificateArn ([f47bca9](https://github.com/serverlessinbox/mailbox-cdk/commit/f47bca98cd915675aec545115338ce5981305f61))
+
 ## [0.5.1](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.0...v0.5.1) (Mon Oct 26 2026)
 
 
