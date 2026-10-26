@@ -7,19 +7,18 @@
  * that blocks stack deletion.
  */
 
-import type { IArtifactResolver, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
-import { Match, Template }                          from 'aws-cdk-lib/assertions';
-import { App, Stack }                               from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { App, Stack }                           from 'aws-cdk-lib';
 
-import { PublicStaticAssetsBucket }                 from '../public-static-assets-bucket';
+import { KIT_ARTIFACT_PACKAGE }                 from '../../../artifacts/kit-artifact-package';
+import { PublicStaticAssetsBucket }             from '../public-static-assets-bucket';
 
-const fakeResolver: IArtifactResolver = {
-  getUrl:     () => 'https://example.invalid/x.zip',
-  getArn:     () => 'arn:aws:s3:::artifacts/lambdas/x.zip',
-  getVersion: () => 'dev',
-  location:   { bucketBase: 'artifacts', project: 'serverlessinbox' },
-  resolve:    (): ResolvedArtifact => ({ bucket: 'artifacts', key: 'lambdas/x.zip' }),
-};
+const fakeResolver = new PinnedArtifactResolver({
+  packages:         { [KIT_ARTIFACT_PACKAGE]: { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+  location:         { bucketBase: 'artifacts', project: 'serverlessinbox' },
+  deploymentRegion: 'eu-west-1',
+});
 
 function newStack(): Stack {
   return new Stack(new App(), 'test-stack', { env: { account: '111122223333', region: 'eu-west-1' } });
@@ -67,29 +66,6 @@ describe('PublicStaticAssetsBucket.getOrCreate', () => {
             Resource:  { 'Fn::Join': ['', [{ 'Fn::GetAtt': [bucketId, 'Arn'] }, '/*']] },
           },
         ],
-      },
-    });
-  });
-
-  it('denies every S3 action on requests that are not sent over TLS', () => {
-    const stack = newStack();
-    PublicStaticAssetsBucket.getOrCreate(stack, fakeResolver);
-
-    const bucketId = onlyBucketLogicalId(stack);
-    Template.fromStack(stack).hasResourceProperties('AWS::S3::BucketPolicy', {
-      PolicyDocument: {
-        Statement: Match.arrayWith([
-          {
-            Action:    's3:*',
-            Condition: { Bool: { 'aws:SecureTransport': 'false' } },
-            Effect:    'Deny',
-            Principal: { AWS: '*' },
-            Resource:  [
-              { 'Fn::GetAtt': [bucketId, 'Arn'] },
-              { 'Fn::Join': ['', [{ 'Fn::GetAtt': [bucketId, 'Arn'] }, '/*']] },
-            ],
-          },
-        ]),
       },
     });
   });

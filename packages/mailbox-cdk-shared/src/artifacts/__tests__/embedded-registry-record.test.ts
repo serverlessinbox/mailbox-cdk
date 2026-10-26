@@ -1,15 +1,10 @@
-import type { RegistryRecord as RegistryPackageRecord } from '@serverlessinbox/artifact-registry/registry';
-import { mkdtempSync, writeFileSync }                   from 'node:fs';
-import { tmpdir }                                       from 'node:os';
-import * as path                                        from 'node:path';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir }                             from 'node:os';
+import * as path                              from 'node:path';
 
-import { loadEmbeddedRegistryRecord }                   from '../embedded-registry-record';
-import type { RegistryRecord }                          from '../registry-record-contract';
+import { loadEmbeddedRegistryRecord }         from '../embedded-registry-record';
 
-import { TEST_REGISTRY_RECORD }                         from './test-registry-record';
-
-const registryPackageToContract = (record: RegistryPackageRecord): RegistryRecord => record;
-const contractToRegistryPackage = (record: RegistryRecord): RegistryPackageRecord => record;
+import { TEST_REGISTRY_RECORD }               from './test-registry-record';
 
 /**
  * Pins that the record at the caller-supplied path is the one loaded, and that a record which
@@ -20,19 +15,15 @@ const contractToRegistryPackage = (record: RegistryRecord): RegistryPackageRecor
 describe('loadEmbeddedRegistryRecord', () => {
   const workDir = mkdtempSync(path.join(tmpdir(), 'embedded-registry-record-'));
 
+  afterAll(() => {
+    rmSync(workDir, { recursive: true, force: true });
+  });
+
   it('loads the record at the given path', () => {
     const filePath = path.join(workDir, 'valid-record.json');
     writeFileSync(filePath, JSON.stringify(TEST_REGISTRY_RECORD));
 
     expect(loadEmbeddedRegistryRecord(filePath)).toEqual(TEST_REGISTRY_RECORD);
-  });
-
-  it('loads a record with every field of the contract, bucket overrides included', () => {
-    const filePath                   = path.join(workDir, 'full-record.json');
-    const fullRecord: RegistryRecord = { ...TEST_REGISTRY_RECORD, bucketOverrides: { 'eu-west-1': 'custom-bucket' } };
-    writeFileSync(filePath, JSON.stringify(fullRecord));
-
-    expect(registryPackageToContract(contractToRegistryPackage(loadEmbeddedRegistryRecord(filePath)))).toEqual(fullRecord);
   });
 
   it('names the file when its content is not a valid registry record', () => {

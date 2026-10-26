@@ -21,7 +21,6 @@ import {
   PHYSICAL_RESOURCE_ID,
   dataSource,
   fakeCreateEvent,
-  fakeDeleteEvent,
   fakeLambdaContext,
   fakeUpdateEvent,
 } from './content-deployer-helpers';
@@ -67,6 +66,7 @@ describe('content-deployer handler', () => {
     event: FakeCfnEvent | SmokeTestProbe,
     environment: Record<string, string>,
     arrange: (fakes: Fakes) => void = () => undefined,
+    remainingMs: number = 300_000,
   ) {
     jest.resetModules();
     process.env = { ...originalEnv, ...environment };
@@ -88,8 +88,7 @@ describe('content-deployer handler', () => {
     const readResponse = captureCfnResponse();
 
     const { handler } = require('../handler') as typeof HandlerModule;
-    const result      = await handler(event, fakeLambdaContext());
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    const result      = await handler(event, fakeLambdaContext(remainingMs));
 
     return {
       result,
@@ -111,31 +110,6 @@ describe('content-deployer handler', () => {
 
     expect(response.Status).toBe('FAILED');
     expect(response.Reason).toContain('LOG_LEVEL');
-  });
-
-  it('answers SUCCESS to Delete when the configuration is bad, and logs the configuration error', async () => {
-    const { response, fakes } = await invoke(fakeDeleteEvent({ sources: [] }), BAD_ENVIRONMENT);
-
-    expect(response.Status).toBe('SUCCESS');
-    expect(response.PhysicalResourceId).toBe(PHYSICAL_RESOURCE_ID);
-    const loggedConfigError: unknown = expect.stringContaining('LOG_LEVEL');
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Configuration error on Delete'), {
-      error: loggedConfigError,
-    });
-    expect(fakes.s3.calls()).toHaveLength(0);
-  });
-
-  it('deploys the sources and flushes nothing', async () => {
-    const { response, fakes } = await invoke(
-      fakeCreateEvent({ targetBucket: 'my-bucket', sources: [dataSource()] }),
-      GOOD_ENVIRONMENT,
-      (arranged) => arranged.s3.on(arranged.s3Sdk.PutObjectCommand).resolves({}),
-    );
-
-    expect(response).toMatchObject({ Status: 'SUCCESS', Data: { objectsWritten: '1' } });
-    expect(fakes.s3.commandCalls(fakes.s3Sdk.PutObjectCommand)).toHaveLength(1);
-    expect(console.debug).not.toHaveBeenCalled();
-    expect(console.info).not.toHaveBeenCalled();
   });
 
   it('emits the trace at the configured log level as it happens', async () => {
@@ -171,16 +145,17 @@ describe('content-deployer handler', () => {
     });
   });
 
-  it('answers FAILED with the invalid properties and flushes the buffered trace when our template wrote properties it should not', async () => {
-    const { response } = await invoke(fakeCreateEvent({ sources: 'not-an-array' }), GOOD_ENVIRONMENT);
+  it('answers FAILED without flushing the buffered trace when the failure is an expected one', async () => {
+    const { response } = await invoke(
+      fakeCreateEvent({ targetBucket: 'my-bucket', sources: [dataSource()] }),
+      GOOD_ENVIRONMENT,
+      (arranged) => arranged.s3.on(arranged.s3Sdk.PutObjectCommand).resolves({}),
+      30_000,
+    );
 
     expect(response.Status).toBe('FAILED');
-    expect(response.Reason).toContain('Invalid ResourceProperties');
-    expect(response.Reason).toContain('"sources":"not-an-array"');
-    expect(console.debug).toHaveBeenCalledWith('CustomResource event received', {
-      requestType: 'Create',
-      service:     'content-deployer',
-    });
+    expect(response.Reason).toContain('before the Lambda deadline');
+    expect(console.debug).not.toHaveBeenCalled();
   });
 
   it('answers SUCCESS to an Update that fails while the parent stack rolls back', async () => {

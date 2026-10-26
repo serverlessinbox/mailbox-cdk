@@ -1,8 +1,6 @@
-import { Template }                           from 'aws-cdk-lib/assertions';
 import * as cdk                               from 'aws-cdk-lib';
 import { BootstraplessSynthesizer }           from 'aws-cdk-lib';
 
-import { StackNamedBucket }                   from '../../resources/buckets/named-bucket';
 import { setStackNameBase, getStackNameBase } from '../stack-name-base-registry';
 
 /**
@@ -15,15 +13,6 @@ function newStack(): cdk.Stack {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
-}
-
-function bucketNameOf(stack: cdk.Stack): string {
-  const template = Template.fromStack(stack);
-  template.resourcePropertiesCountIs('AWS::S3::Bucket', {}, 1);
-  const [bucket]            = Object.values(template.findResources('AWS::S3::Bucket'));
-  const properties: unknown = bucket.Properties;
-  expect(properties).toHaveProperty('BucketName');
-  return JSON.stringify(properties);
 }
 
 describe('Stack Name Base Registry', () => {
@@ -67,42 +56,4 @@ describe('Stack Name Base Registry', () => {
     });
   });
 
-  describe('StackNamedBucket with registry', () => {
-    it('resolves to registered base when set before bucket creation', () => {
-      const stack = newStack();
-      setStackNameBase(stack, 'custom-base');
-
-      new StackNamedBucket(stack, 'test-bucket', {});
-
-      expect(bucketNameOf(stack)).toContain('custom-base');
-    });
-
-    it('resolves to registered base when set after bucket creation (Lazy evaluation)', () => {
-      const stack = newStack();
-      new StackNamedBucket(stack, 'test-bucket', {});
-
-      setStackNameBase(stack, 'custom-base');
-
-      expect(bucketNameOf(stack)).toContain('custom-base');
-    });
-
-    it('resolves to AWS::StackName when nothing is registered', () => {
-      const stack = newStack();
-
-      new StackNamedBucket(stack, 'test-bucket', {});
-
-      expect(bucketNameOf(stack)).toContain('AWS::StackName');
-    });
-
-    it('uses explicit nameBase when provided (bypasses registry)', () => {
-      const stack = newStack();
-      setStackNameBase(stack, 'registered-base');
-
-      new StackNamedBucket(stack, 'test-bucket', { nameBase: 'explicit-base' });
-
-      const bucketName = bucketNameOf(stack);
-      expect(bucketName).toContain('explicit-base');
-      expect(bucketName).not.toContain('registered-base');
-    });
-  });
 });

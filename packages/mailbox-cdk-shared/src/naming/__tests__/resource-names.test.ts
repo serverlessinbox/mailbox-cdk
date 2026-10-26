@@ -2,7 +2,7 @@ import { App, Stack }                     from 'aws-cdk-lib';
 import { Construct }                      from 'constructs';
 
 import { PositionHash }                   from '../position-hash';
-import { makePhysicalName, slugifyLabel } from '../resource-names';
+import { makePhysicalName }               from '../resource-names';
 import { MAX_ROOT_STACK_NAME_LENGTH }     from '../root-stack-name-limit';
 import { StackIdentity }                  from '../stack-identity';
 
@@ -63,15 +63,5 @@ describe('makePhysicalName', () => {
 
     expect(() => makePhysicalName(stack, 'a'.repeat(labelLimit + 1), { maxLength: 80 }))
       .toThrow(`is ${labelLimit + 1} label characters + 19 separator and identifier characters + ${MAX_ROOT_STACK_NAME_LENGTH} root stack name characters = 81 at most, above the limit of 80`);
-  });
-});
-
-describe('slugifyLabel', () => {
-  it('turns a label into a lowercase hyphenated slug', () => {
-    expect(slugifyLabel('Admin UI')).toBe('admin-ui');
-  });
-
-  it('collapses runs of separators and drops edge hyphens', () => {
-    expect(slugifyLabel(' -Admin  &  UI- ')).toBe('admin-ui');
   });
 });

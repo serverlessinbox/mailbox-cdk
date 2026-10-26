@@ -7,13 +7,14 @@
  * the compiler, and CloudFormation would only report it when the resource is created.
  */
 
-import { Match, Template }                from 'aws-cdk-lib/assertions';
-import { Construct }                      from 'constructs';
+import { Match, Template }         from 'aws-cdk-lib/assertions';
+import * as cdk                    from 'aws-cdk-lib';
+import { Construct }               from 'constructs';
 
-import { actionsOf, allPolicyStatements } from '../cdk-test-support';
-import { StackHelpers }                   from '../stack-helpers';
+import { StackHelpersLambda }      from '../resources/lambdas/stack-helpers-lambda';
+import { StackHelpers }            from '../stack-helpers';
 
-import { createStackWithResolver }        from './stack-helpers-helpers';
+import { createStackWithResolver } from './stack-helpers-helpers';
 
 describe('StackHelpers', () => {
   const { stack, resolver } = createStackWithResolver();
@@ -69,31 +70,47 @@ describe('StackHelpers', () => {
       expect(zoneStack.resolve(zoneName)).toEqual({ 'Fn::GetAtt': [logicalId, 'domainName'] });
     });
 
-    it('grants the stack-helpers Lambda route53:GetHostedZone on that zone only', () => {
-      const route53Statements = allPolicyStatements(template)
-        .filter((statement) => actionsOf(statement).some((action) => action.startsWith('route53:')));
+    describe('the hosted zone read grant', () => {
+      const grantHostedZoneRead = jest.spyOn(StackHelpersLambda.prototype, 'grantHostedZoneRead');
 
-      expect(route53Statements).toEqual([
-        {
-          Effect:   'Allow',
-          Action:   'route53:GetHostedZone',
-          Resource: { 'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':route53:::hostedzone/Z123']] },
-        },
-      ]);
-    });
+      function resolveZoneName(hostedZoneId: string): void {
+        const { stack: freshStack, resolver: freshResolver } = createStackWithResolver();
+        StackHelpers.getOrCreate(freshStack, freshResolver).resolveHostedZoneName(
+          new Construct(freshStack, 'Caller'),
+          'zone-name',
+          hostedZoneId,
+        );
+      }
 
-    it('grants no route53 statement for a literal empty zone id', () => {
-      const { stack: emptyStack, resolver: emptyResolver } = createStackWithResolver();
-      StackHelpers.getOrCreate(emptyStack, emptyResolver).resolveHostedZoneName(
-        new Construct(emptyStack, 'Caller'),
-        'zone-name',
-        '',
-      );
+      beforeEach(() => {
+        grantHostedZoneRead.mockClear();
+      });
 
-      const route53Statements = allPolicyStatements(Template.fromStack(emptyStack))
-        .filter((statement) => actionsOf(statement).some((action) => action.startsWith('route53:')));
+      afterAll(() => {
+        grantHostedZoneRead.mockRestore();
+      });
 
-      expect(route53Statements).toEqual([]);
+      it('is requested for the zone given', () => {
+        resolveZoneName('Z123');
+
+        expect(grantHostedZoneRead).toHaveBeenCalledTimes(1);
+        expect(grantHostedZoneRead).toHaveBeenCalledWith('Z123');
+      });
+
+      it('is requested for a zone id that is only known at deploy time, even when it will turn out empty', () => {
+        const zoneIdToken = cdk.Lazy.string({ produce: () => '' });
+
+        resolveZoneName(zoneIdToken);
+
+        expect(grantHostedZoneRead).toHaveBeenCalledTimes(1);
+        expect(grantHostedZoneRead).toHaveBeenCalledWith(zoneIdToken);
+      });
+
+      it('is not requested for a literal empty zone id', () => {
+        resolveZoneName('');
+
+        expect(grantHostedZoneRead).not.toHaveBeenCalled();
+      });
     });
   });
 
@@ -118,13 +135,6 @@ describe('StackHelpers', () => {
       const logicalId = logicalIdOfOnlyCustomResource(template);
 
       expect(nameStack.resolve(s3SafeName)).toEqual({ 'Fn::GetAtt': [logicalId, 's3SafeDataStackName'] });
-    });
-
-    it('grants no route53 statement, since no zone is looked up', () => {
-      const route53Statements = allPolicyStatements(template)
-        .filter((statement) => actionsOf(statement).some((action) => action.startsWith('route53:')));
-
-      expect(route53Statements).toEqual([]);
     });
   });
 

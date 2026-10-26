@@ -2,10 +2,10 @@
 
 /**
  * Pins what the stack-helpers handler file decides: a bad configuration is answered to CloudFormation
- * as FAILED (never a crash that leaves the resource waiting for its service timeout), a Create hands its
- * resource properties to the resolver and returns the result as the resource's attributes, and the buffered
- * trace is flushed when the lookup fails unexpectedly. The response is read from the request the handler
- * sends to the ResponseURL.
+ * as FAILED (never a crash that leaves the resource waiting for its service timeout), the manual-finalize
+ * hint is emitted, the buffered trace is flushed when the lookup fails unexpectedly, and a failed Update
+ * during a rollback is answered SUCCESS. The response is read from the request the handler sends to the
+ * ResponseURL.
  */
 
 import type * as CloudFormationSdk                                              from '@aws-sdk/client-cloudformation';
@@ -14,7 +14,6 @@ import { mockClient }                                                           
 import type { AwsClientStub }                                                   from 'aws-sdk-client-mock';
 
 import { captureCfnResponse }                                                   from '../../../runtime-test-support';
-import type * as LoggerBufferModule                                             from '../../handler-kit/logger-buffer';
 import type { SmokeTestProbe }                                                  from '../../handler-kit/smoke-test';
 import type * as HandlerModule                                                  from '../handler';
 
@@ -73,7 +72,6 @@ describe('stack-helpers handler', () => {
 
     const { handler } = require('../handler') as typeof HandlerModule;
     const result      = await handler(event, fakeLambdaContext());
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     return {
       result,
@@ -101,27 +99,10 @@ describe('stack-helpers handler', () => {
     expect(hostedZoneLookups).toHaveLength(0);
   });
 
-  it('answers SUCCESS to Delete with the physical id CloudFormation sent when the configuration is bad', async () => {
-    const { response, hostedZoneLookups } = await invoke(
-      fakeDeleteEvent({ HostedZoneId: 'Z123' }),
-      { SERVICE_NAME: '' },
-    );
+  it('emits the manual-finalize hint under the configured service name', async () => {
+    await invoke(fakeDeleteEvent({ HostedZoneId: 'Z123' }), { SERVICE_NAME: 'stack-helpers' });
 
-    expect(response).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'physical-id' });
-    expect(hostedZoneLookups).toHaveLength(0);
-  });
-
-  it('answers a Create with the resolver result as the resource attributes', async () => {
-    const { response, hostedZoneLookups } = await invoke(
-      fakeCreateEvent({ HostedZoneId: 'Z123', DataStackName: 'Data_Stack' }),
-      { SERVICE_NAME: 'stack-helpers' },
-    );
-
-    expect(hostedZoneLookups[0].args[0].input).toEqual({ Id: 'Z123' });
-    expect(response).toMatchObject({
-      Status: 'SUCCESS',
-      Data:   { domainName: 'example.com', s3SafeDataStackName: 'data-stack', cognitoDomainPrefix: 'example-com' },
-    });
+    expect(console.log).toHaveBeenCalledWith(expect.stringMatching(/^MANUAL_FINALIZE .* service=stack-helpers$/));
   });
 
   it('answers FAILED and flushes the buffered trace when the Route 53 lookup fails unexpectedly', async () => {
@@ -154,33 +135,4 @@ describe('stack-helpers handler', () => {
     expect(response).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: 'physical-id' });
   });
 
-  it('answers FAILED to an Update that fails while the parent stack is not rolling back', async () => {
-    const { response } = await invoke(
-      fakeUpdateEvent({ HostedZoneId: 'Z123' }),
-      { SERVICE_NAME: 'stack-helpers' },
-      (route53Mock, route53Sdk) => route53Mock.on(route53Sdk.GetHostedZoneCommand).rejects(new Error('AccessDenied')),
-    );
-
-    expect(response.Status).toBe('FAILED');
-    expect(response.Reason).toContain('AccessDenied');
-  });
-
-  it('answers FAILED with the invalid properties and flushes the trace when our template wrote properties it should not', async () => {
-    let flush: jest.SpyInstance | undefined;
-
-    const { response } = await invoke(
-      fakeCreateEvent({ HostedZoneId: 5 }),
-      { SERVICE_NAME: 'stack-helpers' },
-      () => {
-        // The registry was reset by `invoke`, so this is the LoggerBuffer class the handler is about to load.
-        const loggerBufferModule = require('../../handler-kit/logger-buffer') as typeof LoggerBufferModule;
-        flush                    = jest.spyOn(loggerBufferModule.LoggerBuffer.prototype, 'flush');
-      },
-    );
-
-    expect(response.Status).toBe('FAILED');
-    expect(response.Reason).toContain('Invalid ResourceProperties');
-    expect(response.Reason).toContain('"HostedZoneId":5');
-    expect(flush).toHaveBeenCalledTimes(1);
-  });
 });

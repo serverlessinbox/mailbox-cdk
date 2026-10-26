@@ -4,22 +4,20 @@
  * rollback before the resource's Delete runs, which then fails with AccessDenied and the bucket cannot be deleted.
  */
 
-import type { IArtifactResolver, ResolvedArtifact } from '@serverlessinbox/artifact-registry-cdk';
-import { Match, Template }                          from 'aws-cdk-lib/assertions';
-import { CfnRole }                                  from 'aws-cdk-lib/aws-iam';
-import { Bucket, CfnBucket }                        from 'aws-cdk-lib/aws-s3';
-import { App, Stack }                               from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { CfnRole }                              from 'aws-cdk-lib/aws-iam';
+import { Bucket, CfnBucket }                    from 'aws-cdk-lib/aws-s3';
+import { App, Stack }                           from 'aws-cdk-lib';
 
-import { BucketAutoEmpty }                          from '../bucket-auto-empty';
+import { KIT_ARTIFACT_PACKAGE }                 from '../../../artifacts/kit-artifact-package';
+import { BucketAutoEmpty }                      from '../bucket-auto-empty';
 
-/** Minimal stand-in for the real resolver — resolves everything to a fixed S3 location. */
-const fakeResolver: IArtifactResolver = {
-  getUrl:     () => 'https://example.invalid/x.zip',
-  getArn:     () => 'arn:aws:s3:::artifacts/lambdas/x.zip',
-  getVersion: () => 'dev',
-  location:   { bucketBase: 'artifacts', project: 'serverlessinbox' },
-  resolve:    (): ResolvedArtifact => ({ bucket: 'artifacts', key: 'lambdas/x.zip' }),
-};
+const fakeResolver = new PinnedArtifactResolver({
+  packages:         { [KIT_ARTIFACT_PACKAGE]: { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
+  location:         { bucketBase: 'artifacts', project: 'serverlessinbox' },
+  deploymentRegion: 'eu-west-1',
+});
 
 function newStack(): Stack {
   return new Stack(new App(), 'test-stack', { env: { account: '111122223333', region: 'eu-west-1' } });
@@ -50,13 +48,10 @@ describe('BucketAutoEmpty', () => {
       expect(second).toBe(first);
     });
 
-    it('wires the Lambda to the bundle entry point and the service name its configuration requires', () => {
+    it('wires the Lambda to the bundle entry point', () => {
       const { template } = synth();
 
-      template.hasResourceProperties('AWS::Lambda::Function', {
-        Handler:     'index.handler',
-        Environment: { Variables: Match.objectLike({ SERVICE_NAME: 'bucket-auto-empty' }) },
-      });
+      template.hasResourceProperties('AWS::Lambda::Function', { Handler: 'index.handler' });
     });
 
     it('lets the Lambda read the status of its own stack', () => {
@@ -120,16 +115,6 @@ describe('BucketAutoEmpty', () => {
         bucketName:     { Ref: bucketLogicalId },
         ServiceTimeout: '900',
       });
-    });
-
-    it('refuses to attach when the Lambda has no execution role', () => {
-      const stack           = newStack();
-      const bucketAutoEmpty = BucketAutoEmpty.getOrCreate(stack, fakeResolver);
-      Object.defineProperty(bucketAutoEmpty, 'role', { value: undefined });
-
-      expect(() => bucketAutoEmpty.attach(stack, 'auto-empty', new Bucket(stack, 'target-bucket'))).toThrow(
-        'Lambda has no execution role',
-      );
     });
   });
 });

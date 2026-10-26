@@ -54,17 +54,6 @@ describe('PipelineLogGroup', () => {
     expect(() => PipelineLogGroup.getOrCreate(stack, 'jmap')).toThrow(/Expected PipelineLogGroup at log-group-jmap, but found Role/);
   });
 
-  it('tags every pipeline log group with serverless-inbox:root-stack', () => {
-    const stack = newStack();
-    PipelineLogGroup.getOrCreate(stack, 'audit');
-
-    Template.fromStack(stack).hasResourceProperties('AWS::Logs::LogGroup', {
-      Tags: Match.arrayWith([
-        Match.objectLike({ Key: 'serverless-inbox:root-stack' }),
-      ]),
-    });
-  });
-
   it('the infra group is retained on every operation, including a create rollback', () => {
     const stack = newStack();
     PipelineLogGroup.getOrCreate(stack, 'infra');

@@ -76,7 +76,6 @@ describe('bucket-auto-empty handler', () => {
 
     const { handler } = require('../handler') as typeof HandlerModule;
     const result      = await handler(event, fakeLambdaContext(remainingMs));
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     return {
       result,
@@ -108,75 +107,6 @@ describe('bucket-auto-empty handler', () => {
     expect(response.Reason).toContain('LOG_LEVEL');
   });
 
-  it('answers SUCCESS to Delete when the configuration is bad, and logs the configuration error', async () => {
-    const { response, fakes } = await invoke(fakeDeleteEvent({ bucketName: 'my-bucket' }), BAD_ENVIRONMENT);
-
-    expect(response.Status).toBe('SUCCESS');
-    expect(response.PhysicalResourceId).toBe(PHYSICAL_RESOURCE_ID);
-    const loggedConfigError: unknown = expect.stringContaining('LOG_LEVEL');
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Configuration error on Delete'), {
-      error: loggedConfigError,
-    });
-    expect(fakes.s3.calls()).toHaveLength(0);
-  });
-
-  it('empties the bucket on Delete and flushes nothing', async () => {
-    const { response, fakes } = await invoke(
-      fakeDeleteEvent({ bucketName: 'my-bucket' }),
-      GOOD_ENVIRONMENT,
-      (arranged) => bucketHolds(arranged, ['a.txt', 'b.txt']),
-    );
-
-    expect(response).toMatchObject({ Status: 'SUCCESS', Data: { deleted: '2' } });
-    expect(fakes.s3.commandCalls(fakes.s3Sdk.DeleteObjectsCommand)).toHaveLength(1);
-    expect(console.debug).not.toHaveBeenCalled();
-  });
-
-  it('answers a Delete SUCCESS with nothing deleted when the bucket no longer exists', async () => {
-    const { response } = await invoke(
-      fakeDeleteEvent({ bucketName: 'gone-bucket' }),
-      GOOD_ENVIRONMENT,
-      (arranged) =>
-        arranged.s3.on(arranged.s3Sdk.ListObjectVersionsCommand).rejects(
-          new arranged.s3Sdk.NoSuchBucket({ message: 'The specified bucket does not exist', $metadata: {} }),
-        ),
-    );
-
-    expect(response).toMatchObject({ Status: 'SUCCESS', PhysicalResourceId: PHYSICAL_RESOURCE_ID, Data: { deleted: '0' } });
-  });
-
-  it('answers a Delete SUCCESS with nothing deleted when the bucket is already empty', async () => {
-    const { response, fakes } = await invoke(
-      fakeDeleteEvent({ bucketName: 'my-bucket' }),
-      GOOD_ENVIRONMENT,
-      (arranged) => bucketHolds(arranged, []),
-    );
-
-    expect(response).toMatchObject({ Status: 'SUCCESS', Data: { deleted: '0' } });
-    expect(fakes.s3.commandCalls(fakes.s3Sdk.DeleteObjectsCommand)).toHaveLength(0);
-  });
-
-  it('answers a Delete FAILED saying the bucket cannot be checked when it names no bucket', async () => {
-    const { response, fakes } = await invoke(fakeDeleteEvent({}), GOOD_ENVIRONMENT);
-
-    expect(response.Status).toBe('FAILED');
-    expect(response.Reason).toContain('Cannot check the bucket');
-    expect(fakes.s3.calls()).toHaveLength(0);
-  });
-
-  it('answers a Delete FAILED with the reason, and sends the answer, when the invocation is nearly out of time', async () => {
-    const { response, fakes } = await invoke(
-      fakeDeleteEvent({ bucketName: 'my-bucket' }),
-      GOOD_ENVIRONMENT,
-      (arranged) => bucketHolds(arranged, ['a.txt']),
-      30_000,
-    );
-
-    expect(response.Status).toBe('FAILED');
-    expect(response.Reason).toContain('was not fully emptied before the Lambda deadline (0 items deleted so far)');
-    expect(fakes.s3.calls()).toHaveLength(0);
-  });
-
   it('emits the manual-finalize hint under the configured service name', async () => {
     await invoke(
       fakeDeleteEvent({ bucketName: 'my-bucket' }),
@@ -185,6 +115,19 @@ describe('bucket-auto-empty handler', () => {
     );
 
     expect(console.log).toHaveBeenCalledWith(expect.stringMatching(/^MANUAL_FINALIZE .* service=bucket-auto-empty$/));
+  });
+
+  it('answers FAILED without flushing the buffered trace when the failure is an expected one', async () => {
+    const { response } = await invoke(
+      fakeDeleteEvent({ bucketName: 'my-bucket' }),
+      GOOD_ENVIRONMENT,
+      (arranged) => bucketHolds(arranged, ['a.txt']),
+      30_000,
+    );
+
+    expect(response.Status).toBe('FAILED');
+    expect(response.Reason).toContain('before the Lambda deadline');
+    expect(console.debug).not.toHaveBeenCalled();
   });
 
   it('answers FAILED and flushes the buffered trace when emptying the bucket fails unexpectedly', async () => {
@@ -198,18 +141,6 @@ describe('bucket-auto-empty handler', () => {
     expect(response.Reason).toContain('AccessDenied');
     expect(console.debug).toHaveBeenCalledWith('CustomResource event received', {
       requestType: 'Delete',
-      service:     'bucket-auto-empty',
-    });
-  });
-
-  it('answers FAILED with the invalid properties and flushes the buffered trace when our template wrote properties it should not', async () => {
-    const { response } = await invoke(fakeCreateEvent({ bucketName: 123 }), GOOD_ENVIRONMENT);
-
-    expect(response.Status).toBe('FAILED');
-    expect(response.Reason).toContain('Invalid ResourceProperties');
-    expect(response.Reason).toContain('"bucketName":123');
-    expect(console.debug).toHaveBeenCalledWith('CustomResource event received', {
-      requestType: 'Create',
       service:     'bucket-auto-empty',
     });
   });

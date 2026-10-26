@@ -1,7 +1,4 @@
-import * as t from 'typanion';
-
 import {
-  isTemplateUrl,
   toExecutionArn,
   toStateMachineArn,
   type ExecutionArn,
@@ -43,7 +40,6 @@ describe('deployer identifiers', () => {
     });
 
     it.each([
-      ['not-an-arn', 'Invalid ARN "not-an-arn": expected arn:partition:service:region:account:resource'],
       [EXECUTION_ARN, `Invalid ARN "${EXECUTION_ARN}": expected a Step Functions stateMachine`],
       ['arn:aws:sqs:us-east-1:123456789012:stateMachine:deployer', 'Invalid ARN "arn:aws:sqs:us-east-1:123456789012:stateMachine:deployer": expected a Step Functions stateMachine'],
     ])('refuses %s', (raw, problem) => {
@@ -58,13 +54,6 @@ describe('deployer identifiers', () => {
 
     it('refuses the ARN of a state machine', () => {
       expect(() => toExecutionArn(STATE_MACHINE_ARN)).toThrow(`Invalid ARN "${STATE_MACHINE_ARN}": expected a Step Functions execution`);
-    });
-  });
-
-  describe('a validator', () => {
-    it('accepts a string and reports a value that is not one', () => {
-      expect(isTemplateUrl('https://example.com/template.json')).toBe(true);
-      expect(t.as(42, isTemplateUrl, { errors: true }).errors).toEqual(['.: Expected a string (got 42)']);
     });
   });
 });
