@@ -4,6 +4,118 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.4.0...v0.5.0) (Mon Oct 26 2026)
+
+### refactor
+
+* **infrastructure** the package Taskfiles build stacks through build-stack ([f97819d](https://github.com/serverlessinbox/mailbox-cdk/commit/f97819dcb79803946a78cfa1f36062447468bdcb))
+
+* **mailbox** type AutoUpdater granularity as an enum and add the UI content update contract ([40f6657](https://github.com/serverlessinbox/mailbox-cdk/commit/40f66578f5e4db86cb10bada17db5703c7862c82))
+
+* **mailbox** enums for SES receiving and KMS modes, typed admin UI config fragment ([415ea69](https://github.com/serverlessinbox/mailbox-cdk/commit/415ea69efefbd7f3c066214542052cd85533d780))
+
+* **auth** type auth names, flows and methods as enums; split core/auth/types ([e3d4c3d](https://github.com/serverlessinbox/mailbox-cdk/commit/e3d4c3d4a51b389c2cdc12a378a7289065d4e3db))
+
+* **mailbox** drop JWT claim and JWKS schemas that jose already covers ([e94ad3c](https://github.com/serverlessinbox/mailbox-cdk/commit/e94ad3cc539d565947868b9234343e7b47e1ddf5))
+
+* **scripts** build standalone stacks environment-agnostic ([830608d](https://github.com/serverlessinbox/mailbox-cdk/commit/830608da28c9bc92e3f1fab3a619f58a0cbc1913))
+
+* **mailbox** name support roles and the sweeper state machine by position ([dc8be0a](https://github.com/serverlessinbox/mailbox-cdk/commit/dc8be0a594323216c458214209b90519da6fffda))
+
+* **mailbox-cognito** the IdP users API moves to src/runtime ([cf87904](https://github.com/serverlessinbox/mailbox-cdk/commit/cf87904900f6358825cc5f9943e7e3921e5d9f39))
+
+### build
+
+* **mailbox** drop the unused ts-node devDependency ([e0f59d2](https://github.com/serverlessinbox/mailbox-cdk/commit/e0f59d27f5753fd27aaf40749beb9ecb3c1e720f))
+
+* **packaging** check the published declarations in prepack; bundle mailbox-cognito like mailbox ([081bde3](https://github.com/serverlessinbox/mailbox-cdk/commit/081bde37416c444a136789e4874bbedb1ec0d603))
+
+* **packaging** ship .jsii, pin jsii-pacmak, align the package manager, drop a dead exclude ([0d89603](https://github.com/serverlessinbox/mailbox-cdk/commit/0d896037a18e4df815321b8d3b60bf2bcb9bf479))
+
+* **lint** forbid anonymous object types, fs sync calls, require and public writable state ([ff66c5f](https://github.com/serverlessinbox/mailbox-cdk/commit/ff66c5f887f030630ffa6a0e94212dcaceb20db5))
+
+* **packaging** the tarballs ship lib without runtime JS and no src; prepack starts from a clean lib ([8ade3a1](https://github.com/serverlessinbox/mailbox-cdk/commit/8ade3a19ff42d4b0f215fc2d3b13e869234c90bf))
+
+* **packaging** drop files entries that match nothing ([e56cbac](https://github.com/serverlessinbox/mailbox-cdk/commit/e56cbac7f23bc990cef0def5eaae60c608b8fc5f))
+
+### fix
+
+* **mailbox** drop the unused websocket table write grant and type the edge auth key store as IAuthKeyStoreTable ([0aaeab0](https://github.com/serverlessinbox/mailbox-cdk/commit/0aaeab043082369bc9ca99cb79c6bb01d602199a))
+
+* **mailbox-cdk** name physical resources with deploy-time tokens ([910bab8](https://github.com/serverlessinbox/mailbox-cdk/commit/910bab83ff4ca4fbaf969403c25958a2c3723a1c))
+
+* **mailbox** the sweeper removes the worker role of an earlier position when it moves ([1216b67](https://github.com/serverlessinbox/mailbox-cdk/commit/1216b677f213d0d4f2f3226d493b0d6b74cc5d59))
+
+* **mailbox** each WebSocket Lambda gets only the connections-table actions it performs ([520b9ba](https://github.com/serverlessinbox/mailbox-cdk/commit/520b9ba277c42f8295e8da95eb9b2fe390d3ee5e))
+
+* **mailbox** omit empty OAuth URL, write UI URLs alone, derive deploy-end timeout ([b65bcda](https://github.com/serverlessinbox/mailbox-cdk/commit/b65bcda165b0aca6c7e50bb773dff343566ccee8))
+
+* **mailbox** omit empty OAuth URL, write UI URLs alone, derive deploy-end timeout ([4767606](https://github.com/serverlessinbox/mailbox-cdk/commit/476760603d2e2ed16dd91e20c0e793bef6ceea63))
+
+* **mailbox** serve the MCP host with the subdomain namespace; fail permanent edge-function errors ([cbdef72](https://github.com/serverlessinbox/mailbox-cdk/commit/cbdef72883a2d4b71000260bf6f5ce7738458993))
+
+* **mailbox** enforce TLS on the data, UI and public buckets and on every queue ([b9b0017](https://github.com/serverlessinbox/mailbox-cdk/commit/b9b0017b1c9d228f3b0f048cee706a64040fa5e5))
+
+* **mailbox** require exp on blob-download user JWTs ([41810a8](https://github.com/serverlessinbox/mailbox-cdk/commit/41810a8ec29d629791a198c3eeaa1c289b8a4f97))
+
+* **mailbox** allow credentialed blob CORS only for allowlisted origins, 1h cache, security headers ([57daf87](https://github.com/serverlessinbox/mailbox-cdk/commit/57daf872ccb3837a0dfc114f563c28c11918fbd9))
+
+* **mailbox** narrow the edge role, sweeper worker logs and the override ARN check ([f12a758](https://github.com/serverlessinbox/mailbox-cdk/commit/f12a7582e3cc96033a4d4664bf39bd5a23b2a503))
+
+* **mailbox** pick up rotated signing keys in the blob-download verifier ([47c8912](https://github.com/serverlessinbox/mailbox-cdk/commit/47c89125e32f92f580e7f5b2df611fa31b921c47))
+
+* **mailbox** scope the manage-connections grant and the edge deployer to exact names ([7fcf7f1](https://github.com/serverlessinbox/mailbox-cdk/commit/7fcf7f156723e86a6568ad804b8f5929a61a67fa))
+
+* **mailbox** drop the legacy edge stack coverage ([b97ec54](https://github.com/serverlessinbox/mailbox-cdk/commit/b97ec54931a6791988324d15f52dcb25c9bebcc7))
+
+* **ci** read the AWS profile from a local .env for task and yarn ([ac5f1ce](https://github.com/serverlessinbox/mailbox-cdk/commit/ac5f1ce078e55dfebba9bdd2902e31161c5563a5))
+
+* **mailbox** the edge deployer worker can change only the edge function ([86338ec](https://github.com/serverlessinbox/mailbox-cdk/commit/86338ec3c8fcf640bee119002779836ad3ede648))
+
+### test
+
+* **mailbox** give the smoke-probe suite explicit timeouts ([c382499](https://github.com/serverlessinbox/mailbox-cdk/commit/c382499258e9cd2e0554e9b95728f754240cb747))
+
+### feat
+
+* **mailbox** bind the blob-download token to the user ([b26096b](https://github.com/serverlessinbox/mailbox-cdk/commit/b26096bfb02db841561cebaa6a53a1f37eb39e6f))
+
+* **mailbox** security headers and TLS minimum on UI distributions; default-stage throttling on HTTP APIs ([413ef71](https://github.com/serverlessinbox/mailbox-cdk/commit/413ef71e6d69cba6e52f1702a484bd1e3f980df6))
+
+* **mailbox** make the cdn and mcp labels overridable; pass the edge stack finished host names ([d1218af](https://github.com/serverlessinbox/mailbox-cdk/commit/d1218af4844350f2e0737113a41a73d30d39c3a5))
+
+* **mailbox** the Admin API mounts each addon's route behind its own authorizer ([322feed](https://github.com/serverlessinbox/mailbox-cdk/commit/322feed2817141789a0387b0f9ecf2962fa3940b))
+
+* **mailbox** addon routes sit behind a principal-lookup authorizer ([4083fb6](https://github.com/serverlessinbox/mailbox-cdk/commit/4083fb6f76774c7fabe27dbe6ee9b930a2f85f26))
+
+* **mailbox** synthesis fails when the Admin API admin policy has no groups ([d8024dd](https://github.com/serverlessinbox/mailbox-cdk/commit/d8024dd3391a297bb884186041d4e9aa89ede96e))
+
+* **mailbox** no default endpoint next to a custom domain; validated extra origins ([60c2527](https://github.com/serverlessinbox/mailbox-cdk/commit/60c25270b28ef45e960aa179e5abce8bf267aaa1))
+
+### chore
+
+* **packaging** package metadata and licenses for mailbox packages ([6e7128e](https://github.com/serverlessinbox/mailbox-cdk/commit/6e7128e79f11ccb2cc8126877434fc87cc7a2f45))
+
+* **packaging** place LICENSE in mailbox and mailbox-cognito packs ([b726618](https://github.com/serverlessinbox/mailbox-cdk/commit/b726618fb38d71e255d7c0e0787c632608f6e096))
+
+* **packaging** send issues to the front-door repo ([0c6efd8](https://github.com/serverlessinbox/mailbox-cdk/commit/0c6efd8d35fb4e3c391a6bf720b59ff6347215c7))
+
+### ci
+
+* take the deploy role and dev profile from configuration, not the tree ([ea3c608](https://github.com/serverlessinbox/mailbox-cdk/commit/ea3c60896cf070029c72a0b9fbb42daa7ab9a732))
+
+* split release into build-test and publish jobs, add pull-request workflow ([03d4be8](https://github.com/serverlessinbox/mailbox-cdk/commit/03d4be8514e81c81c582fa7d30f8bbd3cece4990))
+
+### docs
+
+* rewrite the root README and the artifacts layout doc ([76f6350](https://github.com/serverlessinbox/mailbox-cdk/commit/76f6350edb9b4d3fa6afa8ebbf6acc71a39894e3))
+
+* **readme** published packages only, a Quick Start that compiles, docs site as homepage ([3367ec7](https://github.com/serverlessinbox/mailbox-cdk/commit/3367ec719b1d7e8c495232c74a1b7ed3ee3a8086))
+
+* a README for every package ([12bfd9d](https://github.com/serverlessinbox/mailbox-cdk/commit/12bfd9d60cb32a74759d833a75e697eb993532e5))
+
+* fixes from the markdown audit ([e56d62a](https://github.com/serverlessinbox/mailbox-cdk/commit/e56d62a27208d74fee38b9014871825fe9b9dbea))
+
 ## [0.4.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.3.1...v0.4.0) (Fri Oct 23 2026)
 
 ### build

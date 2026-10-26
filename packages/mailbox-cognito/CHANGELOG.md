@@ -4,6 +4,80 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.4.0...v0.5.0) (Mon Oct 26 2026)
+
+### refactor
+
+* **infrastructure** the package Taskfiles build stacks through build-stack ([f97819d](https://github.com/serverlessinbox/mailbox-cdk/commit/f97819dcb79803946a78cfa1f36062447468bdcb))
+
+* **auth** type auth names, flows and methods as enums; split core/auth/types ([e3d4c3d](https://github.com/serverlessinbox/mailbox-cdk/commit/e3d4c3d4a51b389c2cdc12a378a7289065d4e3db))
+
+* **mailbox-cognito** lowercase the mfaMode values and map them to Cognito's spelling ([3c3c8a3](https://github.com/serverlessinbox/mailbox-cdk/commit/3c3c8a3a92545272f1f4a4d54b4c7898300319f8))
+
+* **mailbox-addon-sdk** rename mailbox-admin-api to mailbox-addon-sdk ([c9fa9df](https://github.com/serverlessinbox/mailbox-cdk/commit/c9fa9dfc4693eb65cd16152241bdbf598c83bffe))
+
+* **mailbox-cognito** the IdP users API runs on wrapService ([260aeef](https://github.com/serverlessinbox/mailbox-cdk/commit/260aeefc56cfa769ebe17cdb4b81e1e770e66783))
+
+* **mailbox-cognito** the IdP users API moves to src/runtime ([cf87904](https://github.com/serverlessinbox/mailbox-cdk/commit/cf87904900f6358825cc5f9943e7e3921e5d9f39))
+
+### build
+
+* **mailbox** drop the unused ts-node devDependency ([e0f59d2](https://github.com/serverlessinbox/mailbox-cdk/commit/e0f59d27f5753fd27aaf40749beb9ecb3c1e720f))
+
+* **packaging** check the published declarations in prepack; bundle mailbox-cognito like mailbox ([081bde3](https://github.com/serverlessinbox/mailbox-cdk/commit/081bde37416c444a136789e4874bbedb1ec0d603))
+
+* **packaging** ship .jsii, pin jsii-pacmak, align the package manager, drop a dead exclude ([0d89603](https://github.com/serverlessinbox/mailbox-cdk/commit/0d896037a18e4df815321b8d3b60bf2bcb9bf479))
+
+* **lint** forbid anonymous object types, fs sync calls, require and public writable state ([ff66c5f](https://github.com/serverlessinbox/mailbox-cdk/commit/ff66c5f887f030630ffa6a0e94212dcaceb20db5))
+
+* **packaging** the tarballs ship lib without runtime JS and no src; prepack starts from a clean lib ([8ade3a1](https://github.com/serverlessinbox/mailbox-cdk/commit/8ade3a19ff42d4b0f215fc2d3b13e869234c90bf))
+
+* **packaging** drop files entries that match nothing ([e56cbac](https://github.com/serverlessinbox/mailbox-cdk/commit/e56cbac7f23bc990cef0def5eaae60c608b8fc5f))
+
+### fix
+
+* **mailbox-cognito** fail a bootstrap user when no group can be joined, and require SERVICE_NAME ([0b16562](https://github.com/serverlessinbox/mailbox-cdk/commit/0b16562f2da79d17b18d1caa26d243580c7805d7))
+
+* **mailbox-cognito** the user pool exposes its id only through userPool, and the users API takes the pool ([bc035c1](https://github.com/serverlessinbox/mailbox-cdk/commit/bc035c1a2ebfa0d33dfb8cda7473317ac3bd099f))
+
+* **ci** read the AWS profile from a local .env for task and yarn ([ac5f1ce](https://github.com/serverlessinbox/mailbox-cdk/commit/ac5f1ce078e55dfebba9bdd2902e31161c5563a5))
+
+* **mailbox-cognito** attach the OAuth route settings to the throttled JMAP stage ([40416d8](https://github.com/serverlessinbox/mailbox-cdk/commit/40416d8328757b3693962ab6c2088bcb6c98173f))
+
+### chore
+
+* **packaging** package metadata and licenses for mailbox packages ([6e7128e](https://github.com/serverlessinbox/mailbox-cdk/commit/6e7128e79f11ccb2cc8126877434fc87cc7a2f45))
+
+* **packaging** place LICENSE in mailbox and mailbox-cognito packs ([b726618](https://github.com/serverlessinbox/mailbox-cdk/commit/b726618fb38d71e255d7c0e0787c632608f6e096))
+
+* **packaging** send issues to the front-door repo ([0c6efd8](https://github.com/serverlessinbox/mailbox-cdk/commit/0c6efd8d35fb4e3c391a6bf720b59ff6347215c7))
+
+### ci
+
+* take the deploy role and dev profile from configuration, not the tree ([ea3c608](https://github.com/serverlessinbox/mailbox-cdk/commit/ea3c60896cf070029c72a0b9fbb42daa7ab9a732))
+
+### feat
+
+* **mailbox-addon-sdk** caller, service runtime and error table ([88576a1](https://github.com/serverlessinbox/mailbox-cdk/commit/88576a15b91945991657393c32361d073c90d129))
+
+* **mailbox** the Admin API mounts each addon's route behind its own authorizer ([322feed](https://github.com/serverlessinbox/mailbox-cdk/commit/322feed2817141789a0387b0f9ecf2962fa3940b))
+
+* **mailbox** addon routes sit behind a principal-lookup authorizer ([4083fb6](https://github.com/serverlessinbox/mailbox-cdk/commit/4083fb6f76774c7fabe27dbe6ee9b930a2f85f26))
+
+* **mailbox-addon-sdk** audit sink; errors and json in their own folders ([3828ced](https://github.com/serverlessinbox/mailbox-cdk/commit/3828ceddc346ccae0af1f2b7d23ed696e3a8f493))
+
+* **mailbox-cognito** new users join the pool's user groups by default ([50d0b51](https://github.com/serverlessinbox/mailbox-cdk/commit/50d0b517f3eb20d1592d3ecec7575ccdff75971f))
+
+* **users** no permanent-password option; admin-set passwords are temporary ([96185dc](https://github.com/serverlessinbox/mailbox-cdk/commit/96185dc12fce0018cb0c2886f1a95a7cf7403c3f))
+
+### docs
+
+* **readme** published packages only, a Quick Start that compiles, docs site as homepage ([3367ec7](https://github.com/serverlessinbox/mailbox-cdk/commit/3367ec719b1d7e8c495232c74a1b7ed3ee3a8086))
+
+* a README for every package ([12bfd9d](https://github.com/serverlessinbox/mailbox-cdk/commit/12bfd9d60cb32a74759d833a75e697eb993532e5))
+
+* fixes from the markdown audit ([e56d62a](https://github.com/serverlessinbox/mailbox-cdk/commit/e56d62a27208d74fee38b9014871825fe9b9dbea))
+
 ## [0.4.0](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.3.1...v0.4.0) (Fri Oct 23 2026)
 
 ### build
