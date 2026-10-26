@@ -155,8 +155,8 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
    * required; the slash form silently matches nothing.
    *
    * The same actions are granted three ways: on the function ARN prefix, on `*` with a function-name
-   * condition (CreateFunction evaluates against `*` with the name in the request context), and on `*` with
-   * the root-stack tag condition. The tag-scoped statement is the one that survives name truncation: the
+   * condition (CreateFunction evaluates against `*` with the name in the request context), and on the
+   * us-east-1 functions that carry both the root-stack tag and the edge tag. The tag-scoped statement is the one that survives name truncation: the
    * CFN-generated function name is cut to 64 chars for long stack names, which breaks both name-prefix
    * patterns. lambda:TagResource/UntagResource carry no aws:TagKeys constraint because they act on functions
    * already scoped by the root-stack tag; the Resource Groups Tagging API is the one constrained by
@@ -198,10 +198,18 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
         },
       })
     );
+    const edgeRegionFunctionArns = Stack.of(this).formatArn({
+      service:      'lambda',
+      region:       'us-east-1',
+      resource:     'function',
+      resourceName: '*',
+      arnFormat:    ArnFormat.COLON_RESOURCE_NAME,
+    });
+    const edgeTagKey             = `aws:ResourceTag/${ServerlessInboxTagKeys.edge}`;
     for (const conditions of rootStackResourceTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({
-          actions:   [
+          actions:    [
             'lambda:DeleteFunction',
             'lambda:UpdateFunctionCode',
             'lambda:UpdateFunctionConfiguration',
@@ -211,8 +219,11 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
             'lambda:TagResource',
             'lambda:UntagResource',
           ],
-          resources: ['*'],
-          conditions,
+          resources:  [edgeRegionFunctionArns],
+          conditions: {
+            ...conditions,
+            StringEquals: { ...conditions.StringEquals, [edgeTagKey]: 'true' },
+          },
         })
       );
     }

@@ -147,12 +147,33 @@ describe('MailboxEdgeDeployerWorkerLambda', () => {
       expect(statements[1].Condition).toEqual({ StringLike: { 'lambda:FunctionName': 'test-stack-edge-*' } });
     });
 
-    it('also manages existing functions the root stack owns, which survives name truncation', () => {
+    it('also manages existing edge-region functions the root stack owns and the edge tag marks, which survives name truncation', () => {
       const statements = statementsForAction(template, 'lambda:DeleteFunction');
+      const edgeTag    = { 'aws:ResourceTag/serverless-inbox:edge': 'true' };
+      const idTag      = 'aws:ResourceTag/serverless-inbox:root-stack-id';
+      const nameTag    = 'aws:ResourceTag/serverless-inbox:root-stack';
 
       expect(statements).toHaveLength(4);
-      expect(statements.slice(2).map((statement) => statement.Resource)).toEqual(['*', '*']);
-      expect(statements.slice(2).map((statement) => statement.Condition)).toEqual([ownedByResource.byId, ownedByResource.byName]);
+      expect(statements.slice(2).map((statement) => renderWithTokens(statement.Resource))).toEqual([
+        `arn:<token>:lambda:${EDGE_REGION}:${TEST_ACCOUNT}:function:*`,
+        `arn:<token>:lambda:${EDGE_REGION}:${TEST_ACCOUNT}:function:*`,
+      ]);
+      expect(statements.slice(2).map((statement) => statement.Condition)).toEqual([
+        { StringEquals: { [idTag]: ROOT_STACK_ID, ...edgeTag } },
+        { StringEquals: { [nameTag]: ROOT_STACK, ...edgeTag }, Null: { [idTag]: 'true' } },
+      ]);
+    });
+
+    it('grants no Lambda write action on every resource unless it is limited to the edge function name pattern', () => {
+      const writeActions = [
+        'lambda:DeleteFunction', 'lambda:UpdateFunctionCode', 'lambda:UpdateFunctionConfiguration',
+        'lambda:PublishVersion', 'lambda:TagResource', 'lambda:UntagResource',
+      ];
+      const unrestricted = writeActions.flatMap((action) => statementsForAction(template, action))
+        .filter((statement) => statement.Resource === '*')
+        .filter((statement) => statement.Condition?.StringLike?.['lambda:FunctionName'] !== 'test-stack-edge-*');
+
+      expect(unrestricted).toEqual([]);
     });
   });
 
