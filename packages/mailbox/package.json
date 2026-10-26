@@ -105,9 +105,7 @@
     "artifact-versions.json",
     "registry-record.json",
     "LICENSE",
-    "!src/**/__tests__",
     "!lib/**/__tests__",
-    "!lib/runtime/**/*.js",
-    "!lib/ts-lambdas/**/*.js"
+    "!lib/runtime/**/*.js"
   ]
 }
