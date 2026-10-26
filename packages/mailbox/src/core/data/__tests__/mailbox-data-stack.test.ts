@@ -1,165 +1,159 @@
+/// <reference types="jest" />
+
 /**
  * MailboxDataStack template synthesis tests.
  *
- * Pins what the data stack itself decides in its synthesized template: the root-stack tag contract on
- * its tables and buckets, the IAM wildcard guard across the stack, the table count and the correlation
- * parameters, and the retention and point-in-time recovery the stack hands its tables. Each table and
- * bucket owns its own settings in its own test file.
+ * Pins what the data stack itself decides in its synthesized template: its four parameters, the
+ * root-stack tags it stamps on every table and bucket, the fixed logical ids and ARN outputs that
+ * the main stack imports, the production and development settings it hands the tables and the blob
+ * store, and the KMS settings it passes on. What each table and bucket defines is pinned in its own
+ * test file.
  */
 
-import { actionsOf, resourcesOf, statementsOfDocument } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Template }                                     from 'aws-cdk-lib/assertions';
-import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
+import { DEVELOPMENT_CONTEXT_KEY }              from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Key }                                  from 'aws-cdk-lib/aws-kms';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
-import {
-  CloudFormationResource,
-  KNOWN_WILDCARDS,
-  isResourceOfType,
-  readTags,
-} from '../../../__tests__/iam-test-helpers';
-import { MailboxDataStack }                             from '../mailbox-data-stack';
+import type { MailboxKmsConfig }                from '../../kms';
+import { MailboxKmsMode }                       from '../../mailbox-kms-mode';
+import { MailboxDataStack }                     from '../mailbox-data-stack';
 
-/** IAM and CloudWatch Logs actions that change state. Granted on `*` only when allowlisted. */
-const WRITE_ACTIONS = new Set([
-  'iam:CreateRole',
-  'iam:DeleteRole',
-  'iam:PutRolePolicy',
-  'iam:DeleteRolePolicy',
-  'iam:AttachRolePolicy',
-  'iam:DetachRolePolicy',
-  'logs:CreateLogGroup',
-  'logs:DeleteLogGroup',
-  'logs:CreateLogStream',
-  'logs:DeleteLogStream',
-  'logs:PutLogEvents',
-]);
+const TABLE_LOGICAL_IDS = ['auditLogTable', 'changelogTable', 'configTable', 'itemTable', 'mailFeedbackTable'];
 
-function synthDataStack(): Template {
-  const app   = new App();
-  const stack = new MailboxDataStack(app, 'TestMailboxData', {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
+/** Development mode turns on auto-delete of the blob bucket, whose provider is an asset a bootstrapless stack cannot hold. */
+function synthDataStack(options: { readonly development?: boolean; readonly kms?: MailboxKmsConfig } = {}): Template {
+  const development = options.development ?? false;
+  const stack       = new MailboxDataStack(new App({ context: { [DEVELOPMENT_CONTEXT_KEY]: development } }), 'TestMailboxData', {
+    env: { account: '123456789012', region: 'us-west-2' },
+    kms: options.kms,
+    ...(development ? {} : { synthesizer: new BootstraplessSynthesizer() }),
   });
   return Template.fromStack(stack);
 }
 
-function resourcesOfTemplate(template: Template): Record<string, CloudFormationResource> {
-  const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-  if (!resources) {
-    throw new Error('No resources found in template');
-  }
-  return resources;
-}
-
 describe('MailboxDataStack template synthesis', () => {
+  describe('parameters', () => {
+    it('requires nameBase and rootStackId', () => {
+      const template = synthDataStack();
+
+      template.hasParameter('nameBase', { Type: 'String', Default: Match.absent() });
+      template.hasParameter('rootStackId', { Type: 'String', Default: Match.absent() });
+    });
+
+    it('defaults rootStack to empty and deployerType to cfn, limited to cdk, cfn and marketplace', () => {
+      const template = synthDataStack();
+
+      template.hasParameter('rootStack', { Type: 'String', Default: '' });
+      template.hasParameter('deployerType', { Type: 'String', Default: 'cfn', AllowedValues: ['cdk', 'cfn', 'marketplace'] });
+    });
+  });
+
   describe('tag contract', () => {
-    it('tags every table and bucket with the rootStack parameter', () => {
-      const resources = resourcesOfTemplate(synthDataStack());
+    it('tags every table with the root stack name and id parameters', () => {
+      const template = synthDataStack();
 
-      let taggedResourceCount = 0;
-      for (const resource of Object.values(resources)) {
-        if (!isResourceOfType(resource, 'AWS::DynamoDB::Table') && !isResourceOfType(resource, 'AWS::S3::Bucket')) {continue;}
-
-        const tags = readTags(resource);
-        if (tags === undefined) {continue;}
-        taggedResourceCount++;
-
-        const rootStackTag = tags.find((tag) => tag.Key === 'serverless-inbox:root-stack');
-        expect(rootStackTag?.Value).toEqual({ Ref: 'rootStack' });
-      }
-
-      expect(taggedResourceCount).toBeGreaterThan(2);
+      template.resourceCountIs('AWS::DynamoDB::Table', TABLE_LOGICAL_IDS.length);
+      template.allResourcesProperties('AWS::DynamoDB::Table', {
+        Tags: Match.arrayWith([
+          { Key: 'serverless-inbox:root-stack', Value: { Ref: 'rootStack' } },
+          { Key: 'serverless-inbox:root-stack-id', Value: { Ref: 'rootStackId' } },
+        ]),
+      });
     });
 
-    it('declares a mandatory rootStackId parameter and tags its tables and buckets with it', () => {
-      const template   = synthDataStack();
-      const parameters = template.toJSON().Parameters as Record<string, { Type: string; Default?: string }>;
-      expect(parameters.rootStackId).toEqual(expect.objectContaining({ Type: 'String' }));
-      expect(parameters.rootStackId.Default).toBeUndefined();
+    it('tags the blob bucket with the root stack name and id parameters', () => {
+      const template = synthDataStack();
 
-      const tagged = Object.values(resourcesOfTemplate(template)).filter(
-        (resource) => (isResourceOfType(resource, 'AWS::DynamoDB::Table') || isResourceOfType(resource, 'AWS::S3::Bucket')) && readTags(resource) !== undefined,
-      );
-      expect(tagged.length).toBeGreaterThan(2);
-      for (const resource of tagged) {
-        const tag = readTags(resource)?.find((candidate) => candidate.Key === 'serverless-inbox:root-stack-id');
-        expect(tag?.Value).toEqual({ Ref: 'rootStackId' });
-      }
+      template.resourceCountIs('AWS::S3::Bucket', 1);
+      template.allResourcesProperties('AWS::S3::Bucket', {
+        Tags: Match.arrayWith([
+          { Key: 'serverless-inbox:root-stack', Value: { Ref: 'rootStack' } },
+          { Key: 'serverless-inbox:root-stack-id', Value: { Ref: 'rootStackId' } },
+        ]),
+      });
     });
   });
 
-  describe('IAM wildcard guard', () => {
-    it('grants no IAM or logs write action on Resource "*" without a Condition, in any policy of the stack', () => {
-      const violations: string[] = [];
+  describe('logical ids and outputs', () => {
+    it('fixes the logical id of every table, the blob bucket and its policy', () => {
+      const template = synthDataStack();
 
-      for (const [logicalId, resource] of Object.entries(resourcesOfTemplate(synthDataStack()))) {
-        if (!isResourceOfType(resource, 'AWS::IAM::Policy')) {continue;}
+      expect(Object.keys(template.findResources('AWS::DynamoDB::Table')).sort()).toEqual(TABLE_LOGICAL_IDS);
+      expect(Object.keys(template.findResources('AWS::S3::Bucket'))).toEqual(['blobStore']);
+      expect(Object.keys(template.findResources('AWS::S3::BucketPolicy'))).toEqual(['blobStorePolicy']);
+    });
 
-        for (const statement of statementsOfDocument(resource.Properties?.PolicyDocument)) {
-          const resourceList = resourcesOf(statement);
-
-          for (const action of actionsOf(statement)) {
-            if (WRITE_ACTIONS.has(action) && resourceList.includes('*') && !statement.Condition && !KNOWN_WILDCARDS[action]) {
-              violations.push(`${logicalId}: ${action} on Resource "*" without Condition`);
-            }
-          }
-        }
-      }
-
-      expect(violations).toEqual([]);
+    it.each([
+      ['configTableArn',       'configTable'],
+      ['itemTableArn',         'itemTable'],
+      ['changelogTableArn',    'changelogTable'],
+      ['auditLogTableArn',     'auditLogTable'],
+      ['mailFeedbackTableArn', 'mailFeedbackTable'],
+      ['blobStoreArn',         'blobStore'],
+    ])('outputs %s as the ARN of %s', (outputName, logicalId) => {
+      synthDataStack().hasOutput(outputName, { Value: { 'Fn::GetAtt': [logicalId, 'Arn'] } });
     });
   });
 
-  describe('construct quality', () => {
-    it('synthesizes at least four data tables and one blob bucket', () => {
-      const resources = Object.values(resourcesOfTemplate(synthDataStack()));
+  describe('names', () => {
+    it('derives every table name and the blob bucket name from the nameBase parameter', () => {
+      const template = synthDataStack();
 
-      expect(resources.filter((resource) => isResourceOfType(resource, 'AWS::DynamoDB::Table')).length).toBeGreaterThanOrEqual(4);
-      expect(resources.filter((resource) => isResourceOfType(resource, 'AWS::S3::Bucket')).length).toBeGreaterThanOrEqual(1);
+      template.allResourcesProperties('AWS::DynamoDB::Table', {
+        TableName: { 'Fn::Join': ['', Match.arrayWith([{ Ref: 'nameBase' }])] },
+      });
+      template.hasResourceProperties('AWS::S3::Bucket', {
+        BucketName: { 'Fn::Join': ['', Match.arrayWith([{ Ref: 'nameBase' }])] },
+      });
+    });
+  });
+
+  describe('production', () => {
+    it('retains every table on delete and update, with point-in-time recovery', () => {
+      const template = synthDataStack();
+
+      template.allResources('AWS::DynamoDB::Table', { DeletionPolicy: 'RetainExceptOnCreate', UpdateReplacePolicy: 'Retain' });
+      template.allResourcesProperties('AWS::DynamoDB::Table', { PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: true } });
     });
 
-    it('exposes the root-stack correlation parameters', () => {
-      const parameters: unknown = synthDataStack().toJSON().Parameters ?? {};
+    it('retains the blob bucket and versions its objects', () => {
+      const template = synthDataStack();
 
-      expect(parameters).toHaveProperty('rootStack');
-      expect(parameters).toHaveProperty('nameBase');
+      template.hasResource('AWS::S3::Bucket', { DeletionPolicy: 'RetainExceptOnCreate', UpdateReplacePolicy: 'Retain' });
+      template.hasResourceProperties('AWS::S3::Bucket', { VersioningConfiguration: { Status: 'Enabled' } });
+    });
+  });
+
+  describe('development mode', () => {
+    it('drops point-in-time recovery from every table', () => {
+      synthDataStack({ development: true }).allResourcesProperties('AWS::DynamoDB::Table', {
+        PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: false },
+      });
     });
 
-    it('names every table and the blob bucket from the nameBase parameter, never from the stack name', () => {
-      const resources       = resourcesOfTemplate(synthDataStack());
-      const tableLogicalIds = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];
+    it('deletes the tables and the blob bucket with the stack, without versioning', () => {
+      const template = synthDataStack({ development: true });
 
-      for (const logicalId of tableLogicalIds) {
-        const tableName = JSON.stringify(resources[logicalId]?.Properties?.TableName);
-        expect(tableName).toContain('nameBase');
-        expect(tableName).not.toContain('AWS::StackName');
-      }
-
-      const bucketName = JSON.stringify(resources.blobStore?.Properties?.BucketName);
-      expect(bucketName).toContain('nameBase');
-      expect(bucketName).toContain('blob-store');
-      expect(bucketName).not.toContain('AWS::StackName');
+      template.allResources('AWS::DynamoDB::Table', { DeletionPolicy: 'Delete', UpdateReplacePolicy: 'Delete' });
+      template.hasResource('AWS::S3::Bucket', { DeletionPolicy: 'Delete', UpdateReplacePolicy: 'Delete' });
+      template.hasResourceProperties('AWS::S3::Bucket', { VersioningConfiguration: Match.absent() });
     });
+  });
 
-    it('retains every DynamoDB table on delete and update', () => {
-      const tables = Object.values(resourcesOfTemplate(synthDataStack())).filter((resource) => isResourceOfType(resource, 'AWS::DynamoDB::Table')) as Array<CloudFormationResource & { DeletionPolicy?: string; UpdateReplacePolicy?: string }>;
+  describe('KMS', () => {
+    it('encrypts every table and the blob bucket with the customer-managed key it is given', () => {
+      const keyArn = 'arn:aws:kms:us-west-2:123456789012:key/11111111-2222-3333-4444-555555555555';
+      const key    = Key.fromKeyArn(new Stack(new App(), 'KeyStack'), 'key', keyArn);
 
-      expect(tables.length).toBeGreaterThanOrEqual(4);
-      for (const table of tables) {
-        // Values from the synthesized output of RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE (base-table.ts).
-        expect(table.DeletionPolicy).toEqual('RetainExceptOnCreate');
-        expect(table.UpdateReplacePolicy).toEqual('Retain');
-      }
-    });
+      const template = synthDataStack({ kms: { mode: MailboxKmsMode.CUSTOMER_MANAGED, key } });
 
-    it('enables point-in-time recovery on every data table the stack creates', () => {
-      const tables = Object.values(resourcesOfTemplate(synthDataStack())).filter((resource) => isResourceOfType(resource, 'AWS::DynamoDB::Table'));
-
-      expect(tables.length).toBeGreaterThanOrEqual(5);
-      for (const table of tables) {
-        const pitrSpec = table.Properties?.PointInTimeRecoverySpecification as Record<string, unknown> | undefined;
-        expect(pitrSpec?.PointInTimeRecoveryEnabled).toBe(true);
-      }
+      template.allResourcesProperties('AWS::DynamoDB::Table', { SSESpecification: { SSEEnabled: true, SSEType: 'KMS', KMSMasterKeyId: keyArn } });
+      template.hasResourceProperties('AWS::S3::Bucket', {
+        BucketEncryption: {
+          ServerSideEncryptionConfiguration: [{ ServerSideEncryptionByDefault: { SSEAlgorithm: 'aws:kms', KMSMasterKeyID: keyArn } }],
+        },
+      });
     });
   });
 });

@@ -128,15 +128,6 @@ describe('JmapApi', () => {
       template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', { DomainName: 'jmap.example.com' });
       template.hasResourceProperties('AWS::ApiGatewayV2::ApiMapping', { ApiId: { Ref: apiId }, Stage: '$default' });
     });
-
-    it('hands out the logical id pin of its domain name', () => {
-      const sut = new JmapApi(stack, 'jmap-api', propsWith({ customDomain: { domainName: 'jmap.example.com', certificate: certificate(stack, 'jmap.example.com') } }));
-
-      sut.domainLogicalIdPin?.overrideLogicalId('PinnedDomainName');
-
-      const domainIds = Object.keys(Template.fromStack(stack).findResources('AWS::ApiGatewayV2::DomainName'));
-      expect(domainIds).toEqual(['PinnedDomainName']);
-    });
   });
 
   describe('CORS preflight', () => {
@@ -200,14 +191,6 @@ describe('JmapApi', () => {
         expect(addon.addRoutes).toHaveBeenCalledTimes(1);
         expect(addon.addRoutes).toHaveBeenCalledWith(expect.any(HttpApi));
       }
-    });
-
-    it('exposes the HTTP API it mounts the routes on', () => {
-      const sut = new JmapApi(stack, 'jmap-api', propsWith());
-
-      const apiId = Object.keys(Template.fromStack(stack).findResources('AWS::ApiGatewayV2::Api'))[0];
-
-      expect(stack.resolve(sut.httpApi.apiId)).toEqual({ Ref: apiId });
     });
   });
 

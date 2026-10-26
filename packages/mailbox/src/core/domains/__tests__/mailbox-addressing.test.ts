@@ -1,17 +1,18 @@
 /// <reference types="jest" />
 
 /**
- * Pins the branches of the addressing a Mailbox resolves: the given domain, an empty domain when
- * none is given, the namespace condition with and without a subdomain namespace, and the optional
- * UI URLs. A domain that is dropped points every endpoint at the wrong host; a URL present for a
- * disabled UI leaks an endpoint that does not exist.
+ * Pins what MailboxAddressing itself decides: the URLs it composes from the endpoint names, which UIs
+ * get a URL, the namespace condition and its hand-off to the domains, and the subdomain overrides it
+ * passes on. A URL present for a disabled UI leaks an endpoint that does not exist; a lost override or
+ * a namespace condition that does not reach the names points endpoints at the wrong host. The
+ * normalisation of the names is `MailboxDomains`' own and is pinned in its test.
  */
 
-import { Template }                             from 'aws-cdk-lib/assertions';
-import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
+import { Template }                                           from 'aws-cdk-lib/assertions';
+import { App, BootstraplessSynthesizer, CfnParameter, Stack } from 'aws-cdk-lib';
 
-import { MailboxAddressing }                    from '../mailbox-addressing';
-import type { MailboxEnabledUis }               from '../mailbox-addressing';
+import { MailboxAddressing }                                  from '../mailbox-addressing';
+import type { MailboxEnabledUis }                             from '../mailbox-addressing';
 
 const DOMAIN_NAME                 = 'example.com';
 const BOTH_UIS: MailboxEnabledUis = { adminUi: true, webmailUi: true };
@@ -21,74 +22,89 @@ function newStack(): Stack {
 }
 
 describe('MailboxAddressing', () => {
-  it('names the endpoints after the given domain', () => {
-    const addressing = MailboxAddressing.resolve(newStack(), { domainName: 'mail.example.org' }, BOTH_UIS);
-
-    expect(addressing.domains.domainName).toBe('mail.example.org');
-    expect(addressing.urls.adminApi).toBe('https://api.mail.example.org');
-  });
-
-  it('keeps a domain that is only known at deploy time as a token', () => {
-    const stack = newStack();
-
-    const addressing = MailboxAddressing.resolve(stack, { domainName: stack.region }, BOTH_UIS);
-
-    expect(stack.resolve(addressing.domains.domainName)).toEqual({ Ref: 'AWS::Region' });
-  });
-
-  it('has an empty domain when no domain is given', () => {
-    const addressing = MailboxAddressing.resolve(newStack(), {}, BOTH_UIS);
-
-    expect(addressing.domains.domainName).toBe('');
-    expect(addressing.urls.adminApi).toBe('https://api.');
-  });
-
-  it('creates no namespace condition without a subdomain namespace', () => {
-    const stack = newStack();
-
-    const addressing = MailboxAddressing.resolve(stack, { domainName: DOMAIN_NAME }, BOTH_UIS);
-
-    expect(addressing.subdomainNamespaceCondition).toBeUndefined();
-    expect(Template.fromStack(stack).toJSON().Conditions).toBeUndefined();
-  });
-
-  it('creates the namespace condition under the given scope', () => {
-    const stack = newStack();
-
-    const addressing = MailboxAddressing.resolve(stack, { domainName: DOMAIN_NAME, subdomainNamespace: 'team' }, BOTH_UIS);
-
-    const conditionId = String(stack.resolve(addressing.subdomainNamespaceCondition?.logicalId));
-
-    expect(Object.keys(Template.fromStack(stack).findConditions(conditionId))).toEqual([conditionId]);
-  });
-
-  it('includes the url of each enabled UI', () => {
+  it('composes each URL from the name of its endpoint', () => {
     const addressing = MailboxAddressing.resolve(newStack(), { domainName: DOMAIN_NAME }, BOTH_UIS);
 
-    expect(addressing.urls.adminUi).toBeDefined();
-    expect(addressing.urls.webmailUi).toBeDefined();
+    expect(addressing.urls).toEqual({
+      adminUi:   'https://admin.example.com',
+      webmailUi: 'https://webmail.example.com',
+      jmapApi:   'https://jmap.example.com',
+      adminApi:  'https://api.example.com',
+    });
   });
 
   it('omits the webmail url when only the admin UI is enabled', () => {
-    const adminOnly = MailboxAddressing.resolve(newStack(), { domainName: DOMAIN_NAME }, { adminUi: true, webmailUi: false });
+    const addressing = MailboxAddressing.resolve(newStack(), { domainName: DOMAIN_NAME }, { adminUi: true, webmailUi: false });
 
-    expect(adminOnly.urls.adminUi).toBeDefined();
-    expect(adminOnly.urls.webmailUi).toBeUndefined();
+    expect(addressing.urls.adminUi).toBe('https://admin.example.com');
+    expect(addressing.urls).not.toHaveProperty('webmailUi');
   });
 
   it('omits the admin url when only the webmail UI is enabled', () => {
-    const webmailOnly = MailboxAddressing.resolve(newStack(), { domainName: DOMAIN_NAME }, { adminUi: false, webmailUi: true });
+    const addressing = MailboxAddressing.resolve(newStack(), { domainName: DOMAIN_NAME }, { adminUi: false, webmailUi: true });
 
-    expect(webmailOnly.urls.adminUi).toBeUndefined();
-    expect(webmailOnly.urls.webmailUi).toBeDefined();
+    expect(addressing.urls.webmailUi).toBe('https://webmail.example.com');
+    expect(addressing.urls).not.toHaveProperty('adminUi');
   });
 
-  it('omits both UI urls and keeps the API urls when no UI is enabled', () => {
+  it('keeps the API urls when no UI is enabled', () => {
     const addressing = MailboxAddressing.resolve(newStack(), { domainName: DOMAIN_NAME }, { adminUi: false, webmailUi: false });
 
-    expect(addressing.urls.adminUi).toBeUndefined();
-    expect(addressing.urls.webmailUi).toBeUndefined();
-    expect(addressing.urls.jmapApi).toBeDefined();
-    expect(addressing.urls.adminApi).toBeDefined();
+    expect(addressing.urls).toEqual({ jmapApi: 'https://jmap.example.com', adminApi: 'https://api.example.com' });
+  });
+
+  it('hands the subdomain overrides to the endpoint names', () => {
+    const addressing = MailboxAddressing.resolve(
+      newStack(),
+      { domainName: DOMAIN_NAME, overrides: { subdomains: { api: 'rest', admin: 'console' } } },
+      BOTH_UIS,
+    );
+
+    expect(addressing.urls.adminApi).toBe('https://rest.example.com');
+    expect(addressing.urls.adminUi).toBe('https://console.example.com');
+    expect(addressing.urls.jmapApi).toBe('https://jmap.example.com');
+  });
+
+  describe('subdomain namespace', () => {
+    it('creates no namespace condition without a subdomain namespace', () => {
+      const stack = newStack();
+
+      const addressing = MailboxAddressing.resolve(stack, { domainName: DOMAIN_NAME }, BOTH_UIS);
+
+      expect(addressing.subdomainNamespaceCondition).toBeUndefined();
+      expect(Template.fromStack(stack).toJSON().Conditions).toBeUndefined();
+    });
+
+    it('creates the namespace condition under the given scope', () => {
+      const stack = newStack();
+
+      const addressing = MailboxAddressing.resolve(stack, { domainName: DOMAIN_NAME, subdomainNamespace: 'team' }, BOTH_UIS);
+
+      const conditionId = String(stack.resolve(addressing.subdomainNamespaceCondition?.logicalId));
+
+      expect(Object.keys(Template.fromStack(stack).findConditions(conditionId))).toEqual([conditionId]);
+    });
+
+    it('puts a literal namespace into the URLs', () => {
+      const addressing = MailboxAddressing.resolve(newStack(), { domainName: DOMAIN_NAME, subdomainNamespace: 'team' }, BOTH_UIS);
+
+      expect(addressing.urls.adminApi).toBe('https://api.team.example.com');
+    });
+
+    it('guards a namespace that is known only at deploy time with the namespace condition', () => {
+      const stack     = newStack();
+      const namespace = new CfnParameter(stack, 'namespace').valueAsString;
+
+      const addressing = MailboxAddressing.resolve(stack, { domainName: DOMAIN_NAME, subdomainNamespace: namespace }, BOTH_UIS);
+
+      const conditionId = String(stack.resolve(addressing.subdomainNamespaceCondition?.logicalId));
+
+      expect(stack.resolve(addressing.urls.adminApi)).toEqual({
+        'Fn::Join': ['', [
+          'https://api.',
+          { 'Fn::If': [conditionId, { 'Fn::Join': ['', [{ Ref: 'namespace' }, '.example.com']] }, 'example.com'] },
+        ]],
+      });
+    });
   });
 });

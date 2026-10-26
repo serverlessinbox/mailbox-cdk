@@ -29,17 +29,16 @@ describe('AuthKeyStoreTable', () => {
     const stack = createStack();
     const sut   = new AuthKeyStoreTable(stack, 'auth-key-store');
 
-    const logicalId = stack.getLogicalId(defaultCfnResource(sut));
-    const resources = Template.fromStack(stack).toJSON().Resources as Record<string, { Properties?: { TableName?: unknown } }>;
-
-    expect(resources[logicalId].Properties?.TableName).toEqual({
-      'Fn::Join': ['', [
-        { Ref: 'AWS::AccountId' },
-        '-',
-        { Ref: 'AWS::StackName' },
-        `-auth-key-store-${PositionHash.of(sut)}-`,
-        stack.resolve(StackIdentity.guidPrefix),
-      ]],
+    Template.fromStack(stack).hasResourceProperties('AWS::DynamoDB::Table', {
+      TableName: {
+        'Fn::Join': ['', [
+          { Ref: 'AWS::AccountId' },
+          '-',
+          { Ref: 'AWS::StackName' },
+          `-auth-key-store-${PositionHash.of(sut)}-`,
+          stack.resolve(StackIdentity.guidPrefix),
+        ]],
+      },
     });
   });
 
@@ -59,19 +58,28 @@ describe('AuthKeyStoreTable', () => {
     template.hasResource('AWS::DynamoDB::Table', { DeletionPolicy: 'Delete' });
   });
 
-  it('tableName references the table resource\'s logical ID', () => {
+  it('grantGetItem grants exactly one Allow statement with GetItem on the table only', () => {
     const stack = createStack();
     const sut   = new AuthKeyStoreTable(stack, 'auth-key-store-table');
+    const role  = new iam.Role(stack, 'TestRole', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+    });
 
-    expect(stack.resolve(sut.tableName)).toEqual({ Ref: stack.getLogicalId(defaultCfnResource(sut)) });
-  });
+    sut.grantGetItem(role);
 
-  it('tableArn resolves to the table resource\'s Arn attribute', () => {
-    const stack = createStack();
-    const sut   = new AuthKeyStoreTable(stack, 'auth-key-store-table');
+    const tableId = stack.getLogicalId(defaultCfnResource(sut));
 
-    expect(stack.resolve(sut.tableArn)).toEqual({
-      'Fn::GetAtt': [stack.getLogicalId(defaultCfnResource(sut)), 'Arn'],
+    Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
+      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(defaultCfnResource(role)) }]),
+      PolicyDocument: {
+        Statement: Match.arrayEquals([
+          Match.objectEquals({
+            Action:   'dynamodb:GetItem',
+            Effect:   'Allow',
+            Resource: { 'Fn::GetAtt': [tableId, 'Arn'] },
+          }),
+        ]),
+      },
     });
   });
 

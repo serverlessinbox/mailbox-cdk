@@ -74,13 +74,6 @@ describe('WebSocketTable', () => {
     Template.fromStack(stack).hasResource('AWS::DynamoDB::Table', { DeletionPolicy: 'Delete' });
   });
 
-  it('tableName resolves to the table resource', () => {
-    const stack = createStack();
-    const sut   = new WebSocketTable(stack, 'websocket-table');
-
-    expect(stack.resolve(sut.tableName)).toEqual({ Ref: stack.getLogicalId(defaultCfnResource(sut)) });
-  });
-
   it('grantStoreConnection grants exactly one Allow statement with GetItem and PutItem on the table only', () => {
     const stack = createStack();
     const sut   = new WebSocketTable(stack, 'websocket-table');

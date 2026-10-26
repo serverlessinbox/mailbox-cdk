@@ -1,17 +1,18 @@
 /// <reference types="jest" />
 
 /**
- * Pins the exact statements of the Lambda@Edge role behind the public blob endpoint. Widening the table
- * grant beyond `GetItem`, or the log grant beyond the function's own replica log groups, gives that
- * endpoint more reach than its code uses, so every statement is asserted whole.
+ * Pins what the Lambda@Edge role behind the public blob endpoint adds itself: the log statements, asserted
+ * whole, since widening them beyond the function's own replica log groups gives that endpoint more reach
+ * than its code uses. The table statement belongs to `AuthKeyStoreTable.grantGetItem`; here only the
+ * hand-off of the role to that grant is asserted.
  */
 
-import { statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Match, Template }     from 'aws-cdk-lib/assertions';
-import { Stack }               from 'aws-cdk-lib';
+import { statementsForAction }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Match, Template }         from 'aws-cdk-lib/assertions';
+import { Stack }                   from 'aws-cdk-lib';
 
-import { AuthKeyStoreTable }   from '../../tables/auth-key-store-table';
-import { EdgeFunctionRole }    from '../edge-function-role';
+import type { IAuthKeyStoreTable } from '../../tables/auth-key-store-table';
+import { EdgeFunctionRole }        from '../edge-function-role';
 
 const EDGE_STACK_NAME_PATTERN = 'my-stack-edge-*';
 const REPLICA_LOG_GROUP_ARN   = {
@@ -21,13 +22,24 @@ const REPLICA_LOG_STREAM_ARN  = {
   'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':logs:*:', { Ref: 'AWS::AccountId' }, `:log-group:/aws/lambda/us-east-1.${EDGE_STACK_NAME_PATTERN}:*`]],
 };
 
-function synthRole(): Template {
+function fakeAuthKeyStoreTable(): jest.Mocked<IAuthKeyStoreTable> {
+  return {
+    tableName:      'auth-key-store',
+    tableArn:       'arn:aws:dynamodb:us-east-1:123456789012:table/auth-key-store',
+    grantGetItem:   jest.fn(),
+    grantRead:      jest.fn(),
+    grantReadWrite: jest.fn(),
+  };
+}
+
+function createRole(table: IAuthKeyStoreTable = fakeAuthKeyStoreTable()): { readonly role: EdgeFunctionRole; readonly stack: Stack } {
   const stack = new Stack();
-  new EdgeFunctionRole(stack, 'role', {
-    authKeyStoreTable:    new AuthKeyStoreTable(stack, 'auth-key-store-table'),
-    edgeStackNamePattern: EDGE_STACK_NAME_PATTERN,
-  });
-  return Template.fromStack(stack);
+  const role  = new EdgeFunctionRole(stack, 'role', { authKeyStoreTable: table, edgeStackNamePattern: EDGE_STACK_NAME_PATTERN });
+  return { role, stack };
+}
+
+function synthRole(): Template {
+  return Template.fromStack(createRole().stack);
 }
 
 describe('EdgeFunctionRole', () => {
@@ -43,15 +55,12 @@ describe('EdgeFunctionRole', () => {
     });
   });
 
-  it('gets items from the auth key store table only, with no query or batch read', () => {
-    const template = synthRole();
-    const tableId  = Object.keys(template.findResources('AWS::DynamoDB::Table'))[0];
+  it('asks the auth key store table for a GetItem grant to itself', () => {
+    const table    = fakeAuthKeyStoreTable();
+    const { role } = createRole(table);
 
-    expect(statementsForAction(template, 'dynamodb:GetItem')).toEqual([
-      { Action: 'dynamodb:GetItem', Effect: 'Allow', Resource: { 'Fn::GetAtt': [tableId, 'Arn'] } },
-    ]);
-    expect(statementsForAction(template, 'dynamodb:BatchGetItem')).toHaveLength(0);
-    expect(statementsForAction(template, 'dynamodb:Query')).toHaveLength(0);
+    expect(table.grantGetItem).toHaveBeenCalledTimes(1);
+    expect(table.grantGetItem).toHaveBeenCalledWith(role);
   });
 
   it('creates log groups only for the replica log groups of its edge stack, in every region of the account', () => {

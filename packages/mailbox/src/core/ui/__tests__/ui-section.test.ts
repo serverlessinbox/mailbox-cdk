@@ -29,6 +29,10 @@ import type { UiSectionProps }                                    from '../ui-se
 const OPERATOR_ADMIN_CERTIFICATE_ARN = 'arn:aws:acm:us-east-1:123456789012:certificate/operator-admin';
 const EDGE_UI_CERTIFICATE_ARN        = 'arn:aws:acm:us-east-1:123456789012:certificate/edge-ui';
 
+const OPERATOR_WEBMAIL_CERTIFICATE_ARN = 'arn:aws:acm:us-east-1:123456789012:certificate/operator-webmail';
+const API_CERTIFICATE_ARN              = 'arn:aws:acm:us-west-2:123456789012:certificate/api';
+const JMAP_CERTIFICATE_ARN             = 'arn:aws:acm:us-west-2:123456789012:certificate/jmap';
+
 describe('UiSection', () => {
   let stack: cdk.Stack;
 
@@ -46,8 +50,9 @@ describe('UiSection', () => {
     });
   }
 
-  function newSection(overrides: Partial<UiSectionProps> = {}): UiSection {
+  function newSection(overrides: Partial<UiSectionProps> = {}, authorizationConfig?: IMailboxAuthProvider['authorizationConfig']): UiSection {
     const authProvider: IMailboxAuthProvider = {
+      authorizationConfig,
       issuer:                  'https://example.com/issuer',
       tokenEndpoint:           'https://example.com/token',
       authorizationEndpoint:   'https://example.com/authorize',
@@ -139,6 +144,102 @@ describe('UiSection', () => {
 
     Template.fromStack(stack).hasResourceProperties('AWS::CloudFront::Distribution', {
       DistributionConfig: { ViewerCertificate: { AcmCertificateArn: EDGE_UI_CERTIFICATE_ARN } },
+    });
+  });
+
+  it('serves the Webmail UI with the operator certificate over the edge UI certificate', () => {
+    newSection({
+      enableAdminUi:        false,
+      certificateOverrides: { webmailUi: acm.Certificate.fromCertificateArn(stack, 'operator-webmail-cert', OPERATOR_WEBMAIL_CERTIFICATE_ARN) },
+      edge:                 { uiCertificate: acm.Certificate.fromCertificateArn(stack, 'edge-ui-cert', EDGE_UI_CERTIFICATE_ARN) },
+    });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: { Aliases: ['webmail.example.com'], ViewerCertificate: { AcmCertificateArn: OPERATOR_WEBMAIL_CERTIFICATE_ARN } },
+    });
+  });
+
+  describe('Admin UI config', () => {
+    function adminConfigIs(config: unknown): void {
+      Template.fromStack(stack).hasResourceProperties('Custom::ContentDeployment', {
+        sources: [Match.objectLike({ kind: 'data', key: 'config/config.json', body: Match.serializedJson(config) })],
+      });
+    }
+
+    it('deploys no config when there is no authorization mapping, no addon config and no URL', () => {
+      newSection({ enableWebmailUi: false });
+
+      Template.fromStack(stack).resourcePropertiesCountIs('Custom::ContentDeployment', { sources: [Match.objectLike({ kind: 'data' })] }, 0);
+    });
+
+    it('writes the authorization mapping of the auth provider as roles', () => {
+      newSection({ enableWebmailUi: false }, () => ({ adminGroups: ['admins'], userGroups: ['users', 'guests'] }));
+
+      adminConfigIs({ authorization: { roles: { adminGroups: ['admins'], userGroups: ['users', 'guests'] } } });
+    });
+
+    it('merges the config of the addons next to the authorization mapping, a later addon winning over an earlier one on the same key', () => {
+      newSection(
+        { enableWebmailUi: false, apis: { adminApiAddons: [{ uiConfig: { support: true, tier: 'first' } }, {}, { uiConfig: { tier: 'second' } }] } },
+        () => ({ adminGroups: ['admins'], userGroups: [] }),
+      );
+
+      adminConfigIs({ authorization: { roles: { adminGroups: ['admins'], userGroups: [] } }, support: true, tier: 'second' });
+    });
+
+    it('points the Admin UI at the admin API domain when the edge section has an API certificate', () => {
+      newSection({ enableWebmailUi: false, edge: { apiCertificate: acm.Certificate.fromCertificateArn(stack, 'api-cert', API_CERTIFICATE_ARN) } });
+
+      adminConfigIs({ apiUrl: 'https://api.example.com' });
+    });
+
+    it('points the Admin UI at the Webmail UI when the Webmail UI is enabled and has a certificate', () => {
+      newSection({ edge: { uiCertificate: acm.Certificate.fromCertificateArn(stack, 'edge-ui-cert', EDGE_UI_CERTIFICATE_ARN) } });
+
+      adminConfigIs({ webmailUrl: 'https://webmail.example.com' });
+    });
+
+    it('does not point the Admin UI at a Webmail UI that is disabled, even when a certificate exists', () => {
+      newSection({
+        enableWebmailUi: false,
+        edge:            { uiCertificate: acm.Certificate.fromCertificateArn(stack, 'edge-ui-cert', EDGE_UI_CERTIFICATE_ARN) },
+      });
+
+      Template.fromStack(stack).resourcePropertiesCountIs('Custom::ContentDeployment', { sources: [Match.objectLike({ kind: 'data' })] }, 0);
+    });
+  });
+
+  describe('Webmail UI config', () => {
+    it('points the Webmail UI at the JMAP API domain when the edge section has a JMAP certificate', () => {
+      newSection({ enableAdminUi: false, edge: { jmapCertificate: acm.Certificate.fromCertificateArn(stack, 'jmap-cert', JMAP_CERTIFICATE_ARN) } });
+
+      Template.fromStack(stack).hasResourceProperties('Custom::ContentDeployment', {
+        sources: [Match.objectLike({ kind: 'data', key: 'config/config.json', body: Match.serializedJson({ apiUrl: 'https://jmap.example.com' }) })],
+      });
+    });
+  });
+
+  describe('OAuth client provisioning', () => {
+    it('makes the Webmail UI token exchange wait for the OAuth clients to be provisioned', () => {
+      const provisioned = new cdk.CfnWaitConditionHandle(stack, 'oauth-clients-provisioned');
+
+      newSection({ auth: { oauthClientsProvisioned: provisioned } });
+
+      Template.fromStack(stack).hasResource('AWS::Lambda::Function', {
+        Properties: { Environment: { Variables: Match.objectLike({ SERVICE_NAME: 'idp-token-exchange-webmail-ui' }) } },
+        DependsOn:  Match.arrayWith([stack.getLogicalId(provisioned)]),
+      });
+    });
+
+    it('does not make the Admin UI token exchange wait for it', () => {
+      const provisioned = new cdk.CfnWaitConditionHandle(stack, 'oauth-clients-provisioned');
+
+      newSection({ auth: { oauthClientsProvisioned: provisioned } });
+
+      Template.fromStack(stack).hasResource('AWS::Lambda::Function', {
+        Properties: { Environment: { Variables: Match.objectLike({ SERVICE_NAME: 'idp-token-exchange-admin-ui' }) } },
+        DependsOn:  Match.not(Match.arrayWith([stack.getLogicalId(provisioned)])),
+      });
     });
   });
 

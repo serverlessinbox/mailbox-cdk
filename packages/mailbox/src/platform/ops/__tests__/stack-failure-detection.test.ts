@@ -16,6 +16,7 @@ import {
 } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import type { PolicyStatementJson }                     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { Template }                                     from 'aws-cdk-lib/assertions';
+import { CfnParameter }                                 from 'aws-cdk-lib';
 import type { Stack }                                   from 'aws-cdk-lib';
 import * as t                                           from 'typanion';
 
@@ -51,6 +52,43 @@ describe('StackFailureDetection', () => {
     expect(Object.keys(template.findResources('AWS::IAM::Role'))).toEqual([]);
     expect(Object.keys(template.findResources('AWS::Lambda::Permission'))).toEqual([]);
     expect(detection.sweepTargets).toBeUndefined();
+  });
+
+  describe('mode that is only known at deploy time', () => {
+    const GATED_TYPES = ['AWS::Lambda::Function', 'AWS::Events::Rule', 'AWS::IAM::Role', 'AWS::IAM::Policy', 'AWS::Lambda::Permission'];
+
+    function buildGatedDetection(): { readonly template: Template; readonly detection: StackFailureDetection } {
+      const stack = buildStack('test-stack-diag-parameter');
+      // cast: a CloudFormation parameter token stands in for the enum value; its allowedValues guarantee the domain
+      const mode  = new CfnParameter(stack, 'sendStackFailures', { type: 'String', default: 'enabled' }).valueAsString as SendStackFailuresMode;
+
+      const detection = new StackFailureDetection(stack, 'stack-failure-detection', {
+        mode,
+        artifactResolver: newArtifactResolver(stack),
+        vendorAccountIds: ['444455556666'],
+      });
+
+      return { template: Template.fromStack(stack), detection };
+    }
+
+    it('creates the detector and exposes its sweep targets, because the parameter may be "enabled"', () => {
+      const { detection } = buildGatedDetection();
+
+      expect(detection.sweepTargets).toBeDefined();
+    });
+
+    it('creates the is-enabled condition on the parameter equalling "enabled"', () => {
+      const { template } = buildGatedDetection();
+
+      expect(Object.values(template.findConditions('*'))).toEqual([{ 'Fn::Equals': [{ Ref: 'sendStackFailures' }, SendStackFailuresMode.ENABLED] }]);
+    });
+
+    it.each(GATED_TYPES)('gates every %s of the detector on that condition', (type) => {
+      const { template }  = buildGatedDetection();
+      const [conditionId] = Object.keys(template.findConditions('*'));
+
+      template.allResources(type, { Condition: conditionId });
+    });
   });
 
   describe('enabled', () => {

@@ -6,15 +6,21 @@
  * fixed ids (their paths are part of every resource's logical ID, so a rename replaces deployed
  * resources), including the removal that exists only when a regional certificate was created.
  */
+import { renderWithTokens }                                from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }       from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                                 from 'aws-cdk-lib/assertions';
 import * as acm                                            from 'aws-cdk-lib/aws-certificatemanager';
-import { CfnResource, TagManager }                         from 'aws-cdk-lib';
+import { CfnParameter, CfnResource, TagManager }           from 'aws-cdk-lib';
 import type { Stack }                                      from 'aws-cdk-lib';
+import * as t                                              from 'typanion';
 
+import { isTemplateValue, resourcesOfType }                from '../../../__tests__/template-resources';
 import { newArtifactResolver, newDataTable, newTestStack } from '../../__tests__/platform-helpers';
 import { OpsSection }                                      from '../ops-section';
 import type { OpsSectionProps }                            from '../ops-section';
+import { SendStackFailuresMode }                           from '../stack-failure-detection';
+
+const isStateMachineProperties = t.isPartial({ DefinitionString: isTemplateValue });
 
 const VERSION_ARN = 'arn:aws:lambda:us-east-1:111122223333:function:jmap-blob-download:3';
 
@@ -67,6 +73,74 @@ describe('OpsSection', () => {
     Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
       Environment: { Variables: Match.objectLike({ CORE_DOMAIN: 'mail.example.org' }) },
     });
+  });
+
+  describe('edge function removal target', () => {
+    it('is the function ARN, without the version qualifier of the version ARN it is given', () => {
+      const stack = newTestStack('test-stack');
+
+      newSection(stack);
+
+      Template.fromStack(stack).hasResourceProperties('Custom::DeferredRemoval', {
+        'edge-fn': { edgeFnArn: 'arn:aws:lambda:us-east-1:111122223333:function:jmap-blob-download' },
+      });
+    });
+
+    it('keeps the first seven parts of a version ARN that is only known at deploy time', () => {
+      const stack      = newTestStack('test-stack');
+      const versionArn = new CfnParameter(stack, 'versionArn').valueAsString;
+
+      newSection(stack, { edge: { jmapBlobDownloadVersionArn: versionArn } });
+
+      const parts = [0, 1, 2, 3, 4, 5, 6].map((index) => ({ 'Fn::Select': [index, { 'Fn::Split': [':', { Ref: 'versionArn' }] }] }));
+      Template.fromStack(stack).hasResourceProperties('Custom::DeferredRemoval', {
+        'edge-fn': { edgeFnArn: { 'Fn::Join': [':', parts] } },
+      });
+    });
+  });
+
+  describe('stack failure detector removal', () => {
+    it('is registered by default, because the detector is then provisioned', () => {
+      const stack = newTestStack('test-stack');
+
+      newSection(stack);
+
+      Template.fromStack(stack).hasResourceProperties('Custom::DeferredRemoval', { detector: Match.anyValue() });
+    });
+
+    it('is registered when the mode is enabled', () => {
+      const stack = newTestStack('test-stack');
+
+      newSection(stack, { sendStackFailures: SendStackFailuresMode.ENABLED });
+
+      Template.fromStack(stack).hasResourceProperties('Custom::DeferredRemoval', { detector: Match.anyValue() });
+    });
+
+    it('is not registered when the mode is disabled, because no detector is provisioned', () => {
+      const stack = newTestStack('test-stack');
+
+      const section = newSection(stack, { sendStackFailures: SendStackFailuresMode.DISABLED });
+
+      expect(section.node.tryFindChild('stack-failure-detector-removal')).toBeUndefined();
+      Template.fromStack(stack).hasResourceProperties('Custom::DeferredRemoval', { detector: Match.absent() });
+    });
+  });
+
+  it('sweeps the certificate, then the edge function, then the stack failure detector', () => {
+    const stack = newTestStack('test-stack');
+    newSection(stack, {
+      edge: {
+        jmapBlobDownloadVersionArn: VERSION_ARN,
+        regionalCertificate:        acm.Certificate.fromCertificateArn(stack, 'regional-cert', 'arn:aws:acm:us-west-2:111122223333:certificate/regional'),
+      },
+    });
+
+    const [sweeper]  = resourcesOfType(Template.fromStack(stack), 'AWS::StepFunctions::StateMachine', isStateMachineProperties);
+    const definition = renderWithTokens(sweeper.properties.DefinitionString);
+    const positions  = ['cert', 'edge-fn', 'detector'].map((id) => definition.indexOf(`"Variable":"$.toSweep.${id}"`));
+
+    expect(positions.every((position) => position >= 0)).toBe(true);
+    expect(positions).toEqual([...positions].sort((first, second) => first - second));
   });
 
   it('registers the certificate removal only when a regional certificate was created', () => {

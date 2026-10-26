@@ -157,7 +157,24 @@ describe('EdgeSection', () => {
     const endpoint = section.addBlobCdn(BLOB_CDN_PROPS);
 
     expect(section.node.tryFindChild('blob-cdn')).toBeDefined();
-    expect(endpoint.host).toMatch(/^https:\/\//);
+    expect(endpoint.host).toBe('https://cdn.example.com');
+  });
+
+  it('addBlobCdn allows the Admin UI, Webmail UI and extra origins, in that order, to download cross-origin', () => {
+    const { stack, section } = newSection();
+
+    section.addBlobCdn({
+      ui:                  { adminUiOrigins: ['https://admin.example.com'], webmailUiOrigins: ['https://webmail.example.com'] },
+      extraAllowedOrigins: ['https://extra.example.com'],
+    });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
+      ResponseHeadersPolicyConfig: Match.objectLike({
+        CorsConfig: Match.objectLike({
+          AccessControlAllowOrigins: { Items: ['https://admin.example.com', 'https://webmail.example.com', 'https://extra.example.com'] },
+        }),
+      }),
+    });
   });
 
   it('serves the UIs with the edge certificate when the mailbox has a hosted zone and with none otherwise', () => {
@@ -216,6 +233,31 @@ describe('EdgeSection', () => {
     Template.fromStack(stack).hasResourceProperties('AWS::CloudFront::Distribution', {
       DistributionConfig: { Aliases: ['cdn.example.com'], ViewerCertificate: { AcmCertificateArn: cloudFront.certificateArn } },
     });
+  });
+
+  it.each([
+    ['admin',   'admin.example.com.',   'admin-ui.cloudfront.net'],
+    ['webmail', 'webmail.example.com.', 'webmail-ui.cloudfront.net'],
+    ['cdn',     'cdn.example.com.',     'd111111abcdef8.cloudfront.net'],
+    ['api',     'api.example.com.',     'api-target.execute-api.example.net'],
+    ['jmap',    'jmap.example.com.',    'jmap-target.execute-api.example.net'],
+    ['ws',      'ws.example.com.',      'ws-target.execute-api.example.net'],
+    ['mcp',     'mcp.example.com.',     'mcp-target.execute-api.example.net'],
+  ])('addDns points the %s record at the target of its own endpoint', (_endpoint, recordName, target) => {
+    const { stack, section } = newSection();
+
+    section.addDns({
+      ui:      { adminUiCnameTarget: 'admin-ui.cloudfront.net', webmailUiCnameTarget: 'webmail-ui.cloudfront.net' },
+      blobCdn: DNS_PROPS.blobCdn,
+      apis:    {
+        adminApiDomainTarget:  'api-target.execute-api.example.net',
+        jmapApiDomainTarget:   'jmap-target.execute-api.example.net',
+        webSocketDomainTarget: 'ws-target.execute-api.example.net',
+        mcpApiDomainTarget:    'mcp-target.execute-api.example.net',
+      },
+    });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::Route53::RecordSet', { Name: recordName, Type: 'CNAME', ResourceRecords: [target] });
   });
 
   it('addDns creates dns under the section', () => {

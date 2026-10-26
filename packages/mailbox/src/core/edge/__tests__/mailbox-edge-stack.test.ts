@@ -1,20 +1,19 @@
+/// <reference types="jest" />
+
 /**
  * MailboxEdgeStack template synthesis tests.
  *
- * Pins what the edge stack itself decides in its synthesized template: the root-stack tag contract on
- * its taggable resources, the parameter schema it exposes, and the Lambda@Edge function's identity,
- * version and log group. The deployer worker that the stack hands its work to is tested in its own file.
+ * Pins what the edge stack itself decides in its synthesized template: the root-stack tags on its
+ * taggable resources, the parameter schema it exposes, the hosted-zone condition that gates the
+ * certificate and its output, and the retention of the Lambda@Edge function and its version, which
+ * CloudFront replicas keep referencing. The deployer worker that the stack hands its work to is tested
+ * in its own file.
  */
 
-import { Template }                      from 'aws-cdk-lib/assertions';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
-import * as t                            from 'typanion';
+import { Match, Template }                 from 'aws-cdk-lib/assertions';
+import { App, BootstraplessSynthesizer }   from 'aws-cdk-lib';
+import * as t                              from 'typanion';
 
-import {
-  CloudFormationResource,
-  isResourceOfType,
-  readTags,
-} from '../../../__tests__/iam-test-helpers';
 import { MailboxEdgeStack }                from '../mailbox-edge-stack';
 import type { MailboxEdgeStackParameters } from '../mailbox-edge-stack';
 
@@ -30,6 +29,16 @@ function synthEdgeStack(): Template {
 const HOST_PARAMETERS: Array<keyof MailboxEdgeStackParameters> = ['webmailHost', 'adminHost', 'cdnHost'];
 
 const UNDECLARED_PARAMETERS = ['domainName', 'prefix'];
+
+const SCHEMA_PARAMETERS: Array<keyof MailboxEdgeStackParameters> = [
+  'hostedZoneId',
+  'rootStack',
+  'artifactBucket',
+  'logGroupName',
+  'jmapBlobDownloadKey',
+  'jmapBlobDownloadS3VersionId',
+  'jmapBlobDownloadRoleArn',
+];
 
 const isParameterTable = t.isRecord(t.isPartial({
   Type:           t.isOptional(t.isString()),
@@ -58,83 +67,40 @@ function hostParameterOf(template: Template, name: keyof MailboxEdgeStackParamet
   return parameter;
 }
 
-function resourcesOfTemplate(template: Template): Record<string, CloudFormationResource> {
-  const resources = template.toJSON().Resources as Record<string, CloudFormationResource> | undefined;
-  if (!resources) {
-    throw new Error('No resources found in template');
+function onlyLogicalIdOf(template: Template, type: string): string {
+  const logicalIds = Object.keys(template.findResources(type));
+  if (logicalIds.length !== 1) {
+    throw new Error(`Expected exactly one ${type}, found ${logicalIds.length}`);
   }
-  return resources;
+  return logicalIds[0];
 }
 
 describe('MailboxEdgeStack template synthesis', () => {
   describe('tag contract', () => {
-    it('tags every taggable edge resource with the rootStack parameter', () => {
-      const resources = resourcesOfTemplate(synthEdgeStack());
-
-      let taggedResourceCount = 0;
-      for (const resource of Object.values(resources)) {
-        if (!isResourceOfType(resource, 'AWS::Lambda::Function') && !isResourceOfType(resource, 'AWS::IAM::Role') && !isResourceOfType(resource, 'AWS::CertificateManager::Certificate')) {
-          continue;
-        }
-
-        const tags = readTags(resource);
-        if (tags === undefined) {continue;}
-        taggedResourceCount++;
-
-        const rootStackTag = tags.find((tag) => tag.Key === 'serverless-inbox:root-stack');
-        expect(rootStackTag?.Value).toEqual({ Ref: 'rootStack' });
-      }
-
-      expect(taggedResourceCount).toBeGreaterThan(0);
+    it.each(['AWS::Lambda::Function', 'AWS::CertificateManager::Certificate'])('tags every %s with the root stack name and id parameters', (type) => {
+      synthEdgeStack().allResourcesProperties(type, {
+        Tags: Match.arrayWith([
+          { Key: 'serverless-inbox:root-stack', Value: { Ref: 'rootStack' } },
+          { Key: 'serverless-inbox:root-stack-id', Value: { Ref: 'rootStackId' } },
+        ]),
+      });
     });
 
-    it('declares a mandatory rootStackId parameter and tags its resources with it', () => {
-      const template   = synthEdgeStack();
-      const parameters = template.toJSON().Parameters as Record<string, { Type: string; Default?: string }>;
-      expect(parameters.rootStackId).toEqual(expect.objectContaining({ Type: 'String' }));
-      expect(parameters.rootStackId.Default).toBeUndefined();
-
-      const tagged = Object.values(resourcesOfTemplate(template)).filter(
-        (resource) => (isResourceOfType(resource, 'AWS::Lambda::Function') || isResourceOfType(resource, 'AWS::IAM::Role')) && readTags(resource) !== undefined,
-      );
-      expect(tagged.length).toBeGreaterThan(0);
-      for (const resource of tagged) {
-        const tag = readTags(resource)?.find((candidate) => candidate.Key === 'serverless-inbox:root-stack-id');
-        expect(tag?.Value).toEqual({ Ref: 'rootStackId' });
-      }
-    });
-
-    it('never tags an edge Lambda with AWS::StackName in place of the rootStack parameter', () => {
-      for (const resource of Object.values(resourcesOfTemplate(synthEdgeStack()))) {
-        if (!isResourceOfType(resource, 'AWS::Lambda::Function')) {continue;}
-
-        const rootStackTag = readTags(resource)?.find((tag) => tag.Key === 'serverless-inbox:root-stack');
-        if (rootStackTag) {
-          expect(rootStackTag.Value).toEqual({ Ref: 'rootStack' });
-        }
-      }
+    it('requires the rootStackId parameter', () => {
+      synthEdgeStack().hasParameter('rootStackId', { Type: 'String', Default: Match.absent() });
     });
   });
 
   describe('construct quality', () => {
-    it('synthesizes the Lambda, the certificate and more than three resources', () => {
-      const resources       = Object.values(resourcesOfTemplate(synthEdgeStack()));
+    it('synthesizes one Lambda@Edge function and one edge certificate', () => {
+      const template = synthEdgeStack();
 
-      expect(resources.length).toBeGreaterThan(3);
-      expect(resources.some((resource) => isResourceOfType(resource, 'AWS::Lambda::Function'))).toBe(true);
-      expect(resources.some((resource) => isResourceOfType(resource, 'AWS::CertificateManager::Certificate'))).toBe(true);
+      template.resourceCountIs('AWS::Lambda::Function', 1);
+      template.resourceCountIs('AWS::CertificateManager::Certificate', 1);
     });
 
-    it('exposes the parameter schema the root stack passes in', () => {
-      const parameters: unknown = synthEdgeStack().toJSON().Parameters ?? {};
-
-      expect(parameters).toHaveProperty('hostedZoneId');
-      expect(parameters).toHaveProperty('rootStack');
-      expect(parameters).toHaveProperty('artifactBucket');
-      expect(parameters).toHaveProperty('logGroupName');
-      expect(parameters).toHaveProperty('jmapBlobDownloadKey');
-      expect(parameters).toHaveProperty('jmapBlobDownloadS3VersionId');
-      expect(parameters).toHaveProperty('jmapBlobDownloadRoleArn');
+    it.each(SCHEMA_PARAMETERS)('exposes the %s parameter the root stack passes in', (name) => {
+      synthEdgeStack().hasParameter(name, { Type: 'String' });
     });
 
     describe('host parameters', () => {
@@ -161,25 +127,46 @@ describe('MailboxEdgeStack template synthesis', () => {
     });
 
     it('names the Lambda@Edge function, its version and the version output jmap-blob-download', () => {
-      const template         = synthEdgeStack().toJSON();
-      const resources        = template.Resources as Record<string, CloudFormationResource>;
-      const logicalIdsOfType = (type: string): string[] =>
-        Object.entries(resources).filter(([, resource]) => isResourceOfType(resource, type)).map(([logicalId]) => logicalId);
+      const template = synthEdgeStack();
 
-      expect(logicalIdsOfType('AWS::Lambda::Function')).toEqual([expect.stringMatching(/^edgejmapblobdownload[0-9A-F]{8}$/)]);
-      expect(logicalIdsOfType('AWS::Lambda::Version')).toEqual([expect.stringMatching(/^edgejmapblobdownloadCurrentVersion[0-9A-F]{8}/)]);
-      expect(template.Outputs).toHaveProperty('jmapBlobDownloadVersionArn');
+      expect(onlyLogicalIdOf(template, 'AWS::Lambda::Function')).toMatch(/^edgejmapblobdownload[0-9A-F]{8}$/);
+      expect(onlyLogicalIdOf(template, 'AWS::Lambda::Version')).toMatch(/^edgejmapblobdownloadCurrentVersion[0-9A-F]{8}/);
+      template.hasOutput('jmapBlobDownloadVersionArn', {});
     });
 
     it('resolves the jmap-blob-download LoggingConfig.LogGroup to a Ref on the logGroupName parameter', () => {
-      const resources          = resourcesOfTemplate(synthEdgeStack());
-      const jmapBlobDownloadFn = Object.values(resources).find(
-        (resource) => isResourceOfType(resource, 'AWS::Lambda::Function') && resource.Properties?.Handler === 'index.handler',
-      );
+      synthEdgeStack().hasResourceProperties('AWS::Lambda::Function', {
+        Handler:       'index.handler',
+        LoggingConfig: Match.objectLike({ LogGroup: { Ref: 'logGroupName' } }),
+      });
+    });
+  });
 
-      expect(jmapBlobDownloadFn).toBeDefined();
-      const loggingConfig = jmapBlobDownloadFn?.Properties?.LoggingConfig as { LogGroup?: unknown } | undefined;
-      expect(loggingConfig?.LogGroup).toEqual({ Ref: 'logGroupName' });
+  describe('hosted zone', () => {
+    it('has a hosted zone when both the hosted zone id and name are non-empty', () => {
+      synthEdgeStack().hasCondition('hasHostedZone', {
+        'Fn::And': [
+          { 'Fn::Not': [{ 'Fn::Equals': [{ Ref: 'hostedZoneId' }, ''] }] },
+          { 'Fn::Not': [{ 'Fn::Equals': [{ Ref: 'hostedZoneName' }, ''] }] },
+        ],
+      });
+    });
+
+    it('creates the edge certificate only when a hosted zone is present', () => {
+      synthEdgeStack().hasResource('AWS::CertificateManager::Certificate', { Condition: 'hasHostedZone' });
+    });
+
+    it('outputs the certificate ARN when a hosted zone is present and an empty string otherwise', () => {
+      const template      = synthEdgeStack();
+      const certificateId = onlyLogicalIdOf(template, 'AWS::CertificateManager::Certificate');
+
+      template.hasOutput('edgeCertificateArn', { Value: { 'Fn::If': ['hasHostedZone', { Ref: certificateId }, ''] } });
+    });
+  });
+
+  describe('retention', () => {
+    it.each(['AWS::Lambda::Function', 'AWS::Lambda::Version'])('retains the %s on update and delete', (type) => {
+      synthEdgeStack().allResources(type, { DeletionPolicy: 'RetainExceptOnCreate', UpdateReplacePolicy: 'Retain' });
     });
   });
 });

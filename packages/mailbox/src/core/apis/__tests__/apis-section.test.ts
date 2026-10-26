@@ -7,28 +7,34 @@
  * replaces deployed resources), and the logical ids it pins on the custom domains, which are unique
  * per account and region and so cannot be replaced next to their old selves.
  */
-import { ArtifactZone, PinnedArtifactResolver }                    from '@serverlessinbox/artifact-registry-cdk';
-import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }               from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                                         from 'aws-cdk-lib/assertions';
-import * as acm                                                    from 'aws-cdk-lib/aws-certificatemanager';
-import { Table, AttributeType }                                    from 'aws-cdk-lib/aws-dynamodb';
-import { Function as LambdaFunction }                              from 'aws-cdk-lib/aws-lambda';
-import { Bucket }                                                  from 'aws-cdk-lib/aws-s3';
-import * as cdk                                                    from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer, CfnResource, TagManager }  from 'aws-cdk-lib';
-import type { Construct }                                          from 'constructs';
+import { ArtifactZone, PinnedArtifactResolver }                       from '@serverlessinbox/artifact-registry-cdk';
+import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }                  from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                                            from 'aws-cdk-lib/assertions';
+import * as acm                                                       from 'aws-cdk-lib/aws-certificatemanager';
+import { Table, AttributeType }                                       from 'aws-cdk-lib/aws-dynamodb';
+import { Function as LambdaFunction }                                 from 'aws-cdk-lib/aws-lambda';
+import { Bucket }                                                     from 'aws-cdk-lib/aws-s3';
+import * as cdk                                                       from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer, CfnResource, TagManager }     from 'aws-cdk-lib';
+import type { Construct }                                             from 'constructs';
 
-import { DataBlobStore }                                           from '../../../resources/buckets/data-blob-store';
-import { AuditEventsQueue }                                        from '../../../resources/queues/audit-events-queue';
-import { EmailSendingQueue }                                       from '../../../resources/queues/email-sending-queue';
-import { AuthKeyStoreTable }                                       from '../../../resources/tables/auth-key-store-table';
-import { DataTable }                                               from '../../../resources/tables/data-tables';
-import { AuthMethod }                                              from '../../auth/auth-method';
-import type { IMailboxAuthProvider }                               from '../../auth/auth-provider';
-import { MailboxDomains }                                          from '../../domains/mailbox-domains';
-import type { IAdminApiAddon }                                     from '../addons';
-import { ApisSection }                                             from '../apis-section';
-import type { ApisEndpointsProps, IApisEdgeInputs }                from '../apis-section';
+import { DataBlobStore }                                              from '../../../resources/buckets/data-blob-store';
+import { AuditEventsQueue }                                           from '../../../resources/queues/audit-events-queue';
+import { EmailSendingQueue }                                          from '../../../resources/queues/email-sending-queue';
+import { AuthKeyStoreTable }                                          from '../../../resources/tables/auth-key-store-table';
+import { DataTable }                                                  from '../../../resources/tables/data-tables';
+import { AuthMethod }                                                 from '../../auth/auth-method';
+import type { IMailboxAuthProvider }                                  from '../../auth/auth-provider';
+import { MailboxDomains }                                             from '../../domains/mailbox-domains';
+import type { IAdminApiAddon, IAdminApiAddonProvider, IJmapApiAddon } from '../addons';
+import { ApisSection }                                                from '../apis-section';
+import type { ApisEndpointsProps, IApisEdgeInputs }                   from '../apis-section';
+
+/** What a test varies of the section: the optional JMAP hooks of the auth provider and the further admin-api addon providers. */
+interface SectionOptions {
+  readonly authProvider?:           Pick<IMailboxAuthProvider, 'createJmapApiAddons' | 'jmapOAuthIssuerUrl'>;
+  readonly adminApiAddonProviders?: IAdminApiAddonProvider[];
+}
 
 describe('ApisSection', () => {
   let stack: cdk.Stack;
@@ -38,7 +44,7 @@ describe('ApisSection', () => {
     return new DataTable(new Table(stack, id, { partitionKey: { name: 'pk', type: AttributeType.STRING } }));
   }
 
-  function newSection(): ApisSection {
+  function newSection(options: SectionOptions = {}): ApisSection {
     const addon: IAdminApiAddon              = {};
     const authProvider: IMailboxAuthProvider = {
       issuer:                  'https://example.com/issuer',
@@ -54,6 +60,7 @@ describe('ApisSection', () => {
         addonScope = scope;
         return [addon];
       },
+      ...options.authProvider,
     };
     return new ApisSection(stack, 'apis', {
       artifactResolver: new PinnedArtifactResolver({
@@ -66,7 +73,8 @@ describe('ApisSection', () => {
         deploymentRegion: stack.region,
       }),
       authProvider,
-      data:           {
+      adminApiAddonProviders: options.adminApiAddonProviders,
+      data:                   {
         configTable:       dataTable('config-table'),
         itemTable:         dataTable('item-table'),
         changelogTable:    dataTable('changelog-table'),
@@ -75,7 +83,7 @@ describe('ApisSection', () => {
         blobStore:         new DataBlobStore(new Bucket(stack, 'blob-store')),
         auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue'),
       },
-      auth:           {
+      auth:                   {
         authKeyStoreTable:   new AuthKeyStoreTable(stack, 'auth-key-store-table'),
         identityProvisioner: LambdaFunction.fromFunctionArn(
           stack,
@@ -83,13 +91,13 @@ describe('ApisSection', () => {
           'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
         ),
       },
-      email:          {
+      email:                  {
         submissionQueue:  new EmailSendingQueue(stack, 'email-submission-queue'),
         sesRuleSetName:   'rule-set',
         sesConfigSetName: 'config-set',
       },
-      vendorLink:     { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: 'serverless-inbox:stack' },
-      jmapApiBaseUrl: 'https://jmap.example.com',
+      vendorLink:             { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: 'serverless-inbox:stack' },
+      jmapApiBaseUrl:         'https://jmap.example.com',
     });
   }
 
@@ -129,6 +137,87 @@ describe('ApisSection', () => {
 
     expect(addonScope).toBe(section);
     expect(section.adminApiAddons).toHaveLength(1);
+  });
+
+  it('lists the auth provider addons first, then those of each further provider in order, each created under the section', () => {
+    const fromFirst: IAdminApiAddon      = {};
+    const fromSecond: IAdminApiAddon     = {};
+    const first: IAdminApiAddonProvider  = { createAdminApiAddons: jest.fn(() => [fromFirst]) };
+    const second: IAdminApiAddonProvider = { createAdminApiAddons: jest.fn(() => [fromSecond]) };
+
+    const section = newSection({ adminApiAddonProviders: [first, second] });
+
+    expect(section.adminApiAddons).toHaveLength(3);
+    expect(section.adminApiAddons[1]).toBe(fromFirst);
+    expect(section.adminApiAddons[2]).toBe(fromSecond);
+    expect(first.createAdminApiAddons).toHaveBeenCalledWith(section, expect.anything());
+    expect(second.createAdminApiAddons).toHaveBeenCalledWith(section, expect.anything());
+  });
+
+  describe('JMAP addons', () => {
+    it('asks the auth provider for them with the JMAP API base URL and mounts them on the JMAP API', () => {
+      const addon: IJmapApiAddon = { addRoutes: jest.fn() };
+      const createJmapApiAddons  = jest.fn<IJmapApiAddon[], Parameters<NonNullable<IMailboxAuthProvider['createJmapApiAddons']>>>(() => [addon]);
+
+      const section = newSection({ authProvider: { createJmapApiAddons } });
+
+      expect(createJmapApiAddons).toHaveBeenCalledWith(section, expect.objectContaining({ apiBaseUrl: 'https://jmap.example.com' }));
+      expect(addon.addRoutes).not.toHaveBeenCalled();
+
+      section.addEndpoints(endpointsProps());
+
+      expect(addon.addRoutes).toHaveBeenCalledTimes(1);
+    });
+
+    it('serves the OAuth protected-resource route when the auth provider has an OAuth issuer', () => {
+      const section = newSection({ authProvider: { jmapOAuthIssuerUrl: () => 'https://issuer.example.com' } });
+
+      section.addEndpoints(endpointsProps());
+
+      Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Route', { RouteKey: 'GET /.well-known/oauth-protected-resource' });
+    });
+
+    it('serves no OAuth protected-resource route when the auth provider has no OAuth issuer', () => {
+      const section = newSection();
+
+      section.addEndpoints(endpointsProps());
+
+      Template.fromStack(stack).resourcePropertiesCountIs('AWS::ApiGatewayV2::Route', { RouteKey: 'GET /.well-known/oauth-protected-resource' }, 0);
+    });
+  });
+
+  describe('allowed origins', () => {
+    const adminOrigin   = 'https://admin.example.com';
+    const webmailOrigin = 'https://webmail.example.com';
+    const extraOrigin   = 'https://extra.example.com';
+
+    it('allows the Admin UI origins, then the extra origins, on the admin API', () => {
+      const section = newSection();
+
+      section.addEndpoints(endpointsProps({ ui: { adminUiOrigins: [adminOrigin], webmailUiOrigins: [webmailOrigin] }, extraAllowedOrigins: [extraOrigin] }));
+
+      Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Api', {
+        CorsConfiguration: Match.objectLike({ AllowOrigins: [adminOrigin, extraOrigin] }),
+      });
+    });
+
+    it('allows the Webmail UI origins, then the extra origins, on the JMAP API', () => {
+      const section = newSection();
+
+      section.addEndpoints(endpointsProps({ ui: { adminUiOrigins: [adminOrigin], webmailUiOrigins: [webmailOrigin] }, extraAllowedOrigins: [extraOrigin] }));
+
+      Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Api', {
+        CorsConfiguration: Match.objectLike({ AllowOrigins: [webmailOrigin, extraOrigin] }),
+      });
+    });
+
+    it('configures no CORS on either API when no origin is allowed', () => {
+      const section = newSection();
+
+      section.addEndpoints(endpointsProps());
+
+      Template.fromStack(stack).resourcePropertiesCountIs('AWS::ApiGatewayV2::Api', { CorsConfiguration: Match.anyValue() }, 0);
+    });
   });
 
   it('addEndpoints creates the jmap, websocket and admin APIs under the section, without the MCP API by default', () => {
@@ -221,15 +310,32 @@ describe('ApisSection', () => {
     it('serves the admin, JMAP and WebSocket APIs on their mailbox domains when the edge section has their certificates', () => {
       const section = newSection();
 
-      const endpoints = section.addEndpoints(endpointsProps({ edge: edgeWithAllCertificates() }));
+      section.addEndpoints(endpointsProps({ edge: edgeWithAllCertificates() }));
 
       const template = Template.fromStack(stack);
       for (const domainName of ['api.example.com', 'jmap.example.com', 'ws.example.com']) {
         template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', { DomainName: domainName });
       }
-      expect(endpoints.adminApiDomainTarget).toBeDefined();
-      expect(endpoints.jmapApiDomainTarget).toBeDefined();
-      expect(endpoints.webSocketDomainTarget).toBeDefined();
+    });
+
+    it('offers each API its own custom domain as CNAME target', () => {
+      const section = newSection();
+
+      const endpoints = section.addEndpoints(endpointsProps({
+        enableMcp: true,
+        edge:      { ...edgeWithAllCertificates(), regionalCertificate: importedCertificate('regional-certificate') },
+      }));
+
+      const template             = Template.fromStack(stack);
+      const regionalDomainNameOf = (domainName: string): unknown => {
+        const [logicalId] = Object.keys(template.findResources('AWS::ApiGatewayV2::DomainName', { Properties: { DomainName: domainName } }));
+        return { 'Fn::GetAtt': [logicalId, 'RegionalDomainName'] };
+      };
+
+      expect(stack.resolve(endpoints.adminApiDomainTarget)).toEqual(regionalDomainNameOf('api.example.com'));
+      expect(stack.resolve(endpoints.jmapApiDomainTarget)).toEqual(regionalDomainNameOf('jmap.example.com'));
+      expect(stack.resolve(endpoints.webSocketDomainTarget)).toEqual(regionalDomainNameOf('ws.example.com'));
+      expect(stack.resolve(endpoints.mcpApiDomainTarget)).toEqual(regionalDomainNameOf('mcp.example.com'));
     });
 
     it('serves the WebSocket API on no custom domain when the edge section offers no WebSocket certificate', () => {

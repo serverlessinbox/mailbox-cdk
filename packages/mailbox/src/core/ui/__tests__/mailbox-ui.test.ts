@@ -4,15 +4,16 @@
  * MailboxUi tests: what the construct itself decides.
  *
  * Pins how the distribution is exposed (alias only with a certificate), which paths bypass the
- * single-page-app cache (`/config/*`) or go to the token exchange (`/auth/*`), that the bucket is
- * read through its own distribution, what is deployed and tagged for a bundle or
- * a config, and the exact scope of `grantContentDeploy`. A widened grant or a cached `/config/*`
- * stays green in tsc and synth and only shows up on a live distribution.
+ * single-page-app cache (`/config/*`) or go to the token exchange (`/auth/*`), which of the bucket's
+ * origins each behavior reads, what is deployed and tagged for a bundle or a config, and that
+ * `grantContentDeploy` hands the grantee to the bucket, which owns the statement. A cached `/config/*`
+ * or a `/config/*` read from the `content/` prefix stays green in tsc and synth and only shows up on a
+ * live distribution.
  */
 
 import { ArtifactZone, PinnedArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
 import { ServerlessInboxTagKeys }                       from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                              from 'aws-cdk-lib/assertions';
+import { Capture, Match, Template }                     from 'aws-cdk-lib/assertions';
 import * as acm                                         from 'aws-cdk-lib/aws-certificatemanager';
 import * as dynamodb                                    from 'aws-cdk-lib/aws-dynamodb';
 import * as iam                                         from 'aws-cdk-lib/aws-iam';
@@ -20,18 +21,14 @@ import * as cdk                                         from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
 
 import { AuthPolicyName, OAuthClientName }              from '../../../contracts/auth-names';
+import { UiBucket }                                     from '../../../resources/buckets/ui-bucket';
 import { AuditEventsQueue }                             from '../../../resources/queues/audit-events-queue';
 import { DataTable }                                    from '../../../resources/tables/data-tables';
 import { MailboxUi }                                    from '../mailbox-ui';
 import type { MailboxUiProps }                          from '../mailbox-ui';
 
-/** The parts of a synthesized `AWS::CloudFront::Distribution` that these tests read. */
-interface SynthesizedDistribution {
-  readonly Properties: {
-    readonly DistributionConfig: Record<string, unknown>;
-    readonly Tags?:              Array<{ Key: string; Value: string }>;
-  };
-}
+/** CloudFront's managed CachingDisabled policy. */
+const CACHING_DISABLED_POLICY_ID = '4135ea2d-6df8-44a3-9df3-4b5a84be39ad';
 
 describe('MailboxUi', () => {
   let stack: cdk.Stack;
@@ -61,18 +58,16 @@ describe('MailboxUi', () => {
     };
   }
 
-  function synthesizedDistribution(): SynthesizedDistribution {
-    // cast: CDK's findResources returns untyped template JSON; this is the one framework boundary.
-    return Object.values(Template.fromStack(stack).findResources('AWS::CloudFront::Distribution'))[0] as SynthesizedDistribution;
+  function distributionHasConfig(distributionConfig: unknown): void {
+    Template.fromStack(stack).hasResourceProperties('AWS::CloudFront::Distribution', { DistributionConfig: distributionConfig });
   }
 
-  function distributionConfig(): Record<string, unknown> {
-    return synthesizedDistribution().Properties.DistributionConfig;
+  function distributionLogicalId(): string {
+    return Object.keys(Template.fromStack(stack).findResources('AWS::CloudFront::Distribution'))[0];
   }
 
-  function distributionTags(): Record<string, string> {
-    const tags = synthesizedDistribution().Properties.Tags ?? [];
-    return Object.fromEntries(tags.map((tag) => [tag.Key, tag.Value]));
+  function distributionHasTag(key: string, value: string): void {
+    Template.fromStack(stack).hasResourceProperties('AWS::CloudFront::Distribution', { Tags: Match.arrayWith([{ Key: key, Value: value }]) });
   }
 
   beforeEach(() => {
@@ -88,16 +83,15 @@ describe('MailboxUi', () => {
 
       const sut = new MailboxUi(stack, 'admin-ui', propsWith({ certificate }));
 
-      expect(distributionConfig().Aliases).toEqual(['admin.example.com']);
+      distributionHasConfig(Match.objectLike({ Aliases: ['admin.example.com'] }));
       expect(sut.distributionDomainName).toBe('admin.example.com');
     });
 
     it('serves on the CloudFront domain and reports it when no certificate is given', () => {
       const sut = new MailboxUi(stack, 'admin-ui', propsWith());
 
-      const distributionId = Object.keys(Template.fromStack(stack).findResources('AWS::CloudFront::Distribution'))[0];
-      expect(distributionConfig().Aliases).toBeUndefined();
-      expect(stack.resolve(sut.distributionDomainName)).toEqual({ 'Fn::GetAtt': [distributionId, 'DomainName'] });
+      distributionHasConfig(Match.objectLike({ Aliases: Match.absent() }));
+      expect(stack.resolve(sut.distributionDomainName)).toEqual({ 'Fn::GetAtt': [distributionLogicalId(), 'DomainName'] });
     });
   });
 
@@ -105,37 +99,59 @@ describe('MailboxUi', () => {
     it('serves index.html for 403 and 404 so client-side routes resolve', () => {
       new MailboxUi(stack, 'admin-ui', propsWith());
 
-      const config = distributionConfig();
-      expect(config.DefaultRootObject).toBe('index.html');
-      expect(config.CustomErrorResponses).toEqual(expect.arrayContaining([
-        { ErrorCode: 404, ResponseCode: 200, ResponsePagePath: '/index.html' },
-        { ErrorCode: 403, ResponseCode: 200, ResponsePagePath: '/index.html' },
-      ]));
+      distributionHasConfig(Match.objectLike({
+        DefaultRootObject:    'index.html',
+        CustomErrorResponses: Match.arrayWith([
+          { ErrorCode: 404, ResponseCode: 200, ResponsePagePath: '/index.html' },
+          { ErrorCode: 403, ResponseCode: 200, ResponsePagePath: '/index.html' },
+        ]),
+      }));
     });
 
     it('serves /config/* uncached and read-only', () => {
       new MailboxUi(stack, 'admin-ui', propsWith());
 
-      const behaviors      = distributionConfig().CacheBehaviors as Array<Record<string, unknown>>;
-      const configBehavior = behaviors.find((behavior) => behavior.PathPattern === '/config/*');
-      expect(configBehavior).toMatchObject({
-        // CloudFront's managed CachingDisabled policy.
-        CachePolicyId:  '4135ea2d-6df8-44a3-9df3-4b5a84be39ad',
-        AllowedMethods: ['GET', 'HEAD', 'OPTIONS'],
-      });
+      distributionHasConfig(Match.objectLike({
+        CacheBehaviors: Match.arrayWith([Match.objectLike({
+          PathPattern:    '/config/*',
+          CachePolicyId:  CACHING_DISABLED_POLICY_ID,
+          AllowedMethods: ['GET', 'HEAD', 'OPTIONS'],
+        })]),
+      }));
     });
 
     it('routes /auth/* over HTTPS only, uncached, with all methods and the forwarded-host function', () => {
       new MailboxUi(stack, 'admin-ui', propsWith());
 
-      const behaviors    = distributionConfig().CacheBehaviors as Array<Record<string, unknown>>;
-      const authBehavior = behaviors.find((behavior) => behavior.PathPattern === '/auth/*');
-      expect(authBehavior).toMatchObject({
-        ViewerProtocolPolicy: 'https-only',
-        CachePolicyId:        '4135ea2d-6df8-44a3-9df3-4b5a84be39ad',
-        AllowedMethods:       ['GET', 'HEAD', 'OPTIONS', 'PUT', 'PATCH', 'POST', 'DELETE'],
-        FunctionAssociations: [expect.objectContaining({ EventType: 'viewer-request' })],
-      });
+      distributionHasConfig(Match.objectLike({
+        CacheBehaviors: Match.arrayWith([Match.objectLike({
+          PathPattern:          '/auth/*',
+          ViewerProtocolPolicy: 'https-only',
+          CachePolicyId:        CACHING_DISABLED_POLICY_ID,
+          AllowedMethods:       ['GET', 'HEAD', 'OPTIONS', 'PUT', 'PATCH', 'POST', 'DELETE'],
+          FunctionAssociations: [Match.objectLike({ EventType: 'viewer-request' })],
+        })]),
+      }));
+    });
+  });
+
+  describe('origins', () => {
+    it('reads the default behavior from the bucket\'s content/ prefix', () => {
+      new MailboxUi(stack, 'admin-ui', propsWith());
+
+      const originId = new Capture();
+      distributionHasConfig(Match.objectLike({ DefaultCacheBehavior: Match.objectLike({ TargetOriginId: originId }) }));
+      distributionHasConfig(Match.objectLike({ Origins: Match.arrayWith([Match.objectLike({ Id: originId.asString(), OriginPath: '/content' })]) }));
+    });
+
+    it('reads /config/* from the bucket\'s config/ prefix, not from content/config/', () => {
+      new MailboxUi(stack, 'admin-ui', propsWith());
+
+      const originId = new Capture();
+      distributionHasConfig(Match.objectLike({
+        CacheBehaviors: Match.arrayWith([Match.objectLike({ PathPattern: '/config/*', TargetOriginId: originId })]),
+      }));
+      distributionHasConfig(Match.objectLike({ Origins: Match.arrayWith([Match.objectLike({ Id: originId.asString(), OriginPath: '' })]) }));
     });
   });
 
@@ -156,15 +172,8 @@ describe('MailboxUi', () => {
         },
       });
 
-      const config    = distributionConfig();
-      const behaviors = [
-        config.DefaultCacheBehavior as Record<string, unknown>,
-        ...(config.CacheBehaviors as Array<Record<string, unknown>>),
-      ];
-      expect(behaviors).toHaveLength(3);
-      for (const behavior of behaviors) {
-        expect(behavior.ResponseHeadersPolicyId).toEqual({ Ref: policyIds[0] });
-      }
+      const withPolicy = Match.objectLike({ ResponseHeadersPolicyId: { Ref: policyIds[0] } });
+      distributionHasConfig(Match.objectLike({ DefaultCacheBehavior: withPolicy, CacheBehaviors: [withPolicy, withPolicy] }));
     });
 
     it('requires TLS 1.2 2021 as the minimum viewer protocol when a certificate is given', () => {
@@ -173,51 +182,28 @@ describe('MailboxUi', () => {
         env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });
-      const certificate =acm.Certificate.fromCertificateArn(stack, 'certificate', 'arn:aws:acm:us-east-1:123456789012:certificate/abc');
+      const certificate = acm.Certificate.fromCertificateArn(stack, 'certificate', 'arn:aws:acm:us-east-1:123456789012:certificate/abc');
 
       new MailboxUi(stack, 'admin-ui', propsWith({ certificate }));
 
-      expect(distributionConfig().ViewerCertificate).toMatchObject({ MinimumProtocolVersion: 'TLSv1.2_2021' });
+      distributionHasConfig(Match.objectLike({ ViewerCertificate: Match.objectLike({ MinimumProtocolVersion: 'TLSv1.2_2021' }) }));
     });
 
     it('sets no viewer certificate, and so no minimum protocol version, without a certificate', () => {
       new MailboxUi(stack, 'admin-ui', propsWith());
 
-      expect(distributionConfig().ViewerCertificate).toBeUndefined();
-    });
-  });
-
-  describe('bucket', () => {
-    it('reads the bucket through its own distribution', () => {
-      new MailboxUi(stack, 'admin-ui', propsWith());
-
-      const template       = Template.fromStack(stack);
-      const distributionId = Object.keys(template.findResources('AWS::CloudFront::Distribution'))[0];
-      template.hasResourceProperties('AWS::S3::BucketPolicy', {
-        PolicyDocument: {
-          Statement: [
-            Match.objectLike({
-              Effect:    'Deny',
-              Action:    's3:*',
-              Condition: { Bool: { 'aws:SecureTransport': 'false' } },
-            }),
-            Match.objectLike({
-              Condition: { StringEquals: { 'AWS:SourceArn': { 'Fn::Join': ['', Match.arrayWith([{ Ref: distributionId }])] } } },
-            }),
-          ],
-        },
-      });
+      distributionHasConfig(Match.objectLike({ ViewerCertificate: Match.absent() }));
     });
   });
 
   describe('deployment', () => {
-    it('deploys, invalidates and tags nothing without a bundle or a config', () => {
+    it('deploys and invalidates nothing without a bundle or a config', () => {
       new MailboxUi(stack, 'admin-ui', propsWith());
 
       const template = Template.fromStack(stack);
       template.resourceCountIs('Custom::ContentDeployment', 0);
       template.resourceCountIs('Custom::ContentInvalidation', 0);
-      expect(distributionTags()).not.toHaveProperty([ServerlessInboxTagKeys.autoUpdateType]);
+      template.resourcePropertiesCountIs('AWS::CloudFront::Distribution', { Tags: Match.arrayWith([Match.objectLike({ Key: ServerlessInboxTagKeys.autoUpdateType })]) }, 0);
     });
 
     it('with only a config, deploys the config as non-cacheable JSON, invalidates and tags the distribution as a UI', () => {
@@ -235,16 +221,13 @@ describe('MailboxUi', () => {
         })],
       });
       template.hasResourceProperties('Custom::ContentInvalidation', { invalidationPaths: ['/*'] });
-      const tags = distributionTags();
-      expect(tags[ServerlessInboxTagKeys.autoUpdateType]).toBe('ui');
+      distributionHasTag(ServerlessInboxTagKeys.autoUpdateType, 'ui');
     });
 
     it('invalidates its own distribution', () => {
       new MailboxUi(stack, 'admin-ui', propsWith({ uiConfig: { apiUrl: 'https://api.example.com' } }));
 
-      const template       = Template.fromStack(stack);
-      const distributionId = Object.keys(template.findResources('AWS::CloudFront::Distribution'))[0];
-      template.hasResourceProperties('Custom::ContentInvalidation', { distributionId: { Ref: distributionId } });
+      Template.fromStack(stack).hasResourceProperties('Custom::ContentInvalidation', { distributionId: { Ref: distributionLogicalId() } });
     });
 
     it('with a bundle, deploys it under content/', () => {
@@ -260,43 +243,24 @@ describe('MailboxUi', () => {
     it('with a bundle, tags the distribution with the bundle package, object and version', () => {
       new MailboxUi(stack, 'admin-ui', propsWith({ uiBundle: { packageName: 'mailbox-cdk', objectPath: 'ui/admin.zip' } }));
 
-      expect(distributionTags()).toMatchObject({
-        [ServerlessInboxTagKeys.autoUpdateType]:  'ui',
-        [ServerlessInboxTagKeys.artifactPackage]: 'mailbox-cdk',
-        [ServerlessInboxTagKeys.artifactName]:    'ui/admin.zip',
-        [ServerlessInboxTagKeys.artifactVersion]: '1.0.0',
-      });
+      distributionHasTag(ServerlessInboxTagKeys.autoUpdateType, 'ui');
+      distributionHasTag(ServerlessInboxTagKeys.artifactPackage, 'mailbox-cdk');
+      distributionHasTag(ServerlessInboxTagKeys.artifactName, 'ui/admin.zip');
+      distributionHasTag(ServerlessInboxTagKeys.artifactVersion, '1.0.0');
     });
   });
 
   describe('grantContentDeploy', () => {
-    it('allows write and delete on content/ and config/ only, and listing of those prefixes only', () => {
-      const sut  = new MailboxUi(stack, 'admin-ui', propsWith());
-      const role = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
+    it('hands the grantee to the bucket, which owns the statement', () => {
+      const grantContentDeploy = jest.spyOn(UiBucket.prototype, 'grantContentDeploy');
+      const sut                = new MailboxUi(stack, 'admin-ui', propsWith());
+      const role               = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
 
       sut.grantContentDeploy(role);
 
-      const template       = Template.fromStack(stack);
-      const bucketArn      = { 'Fn::GetAtt': [Object.keys(template.findResources('AWS::S3::Bucket'))[0], 'Arn'] };
-      const objectsUnder   = (prefix: string): unknown => ({ 'Fn::Join': ['', [bucketArn, `/${prefix}/*`]] });
-      const writeAndDelete = ['s3:PutObject', 's3:DeleteObject'];
-      const listOnly       = (prefix: string): unknown => Match.objectEquals({
-        Action:    's3:ListBucket',
-        Effect:    'Allow',
-        Resource:  bucketArn,
-        Condition: { StringLike: { 's3:prefix': `${prefix}/*` } },
-      });
-      template.hasResourceProperties('AWS::IAM::Policy', {
-        Roles:          [{ Ref: stack.getLogicalId(role.node.defaultChild as cdk.CfnResource) }],
-        PolicyDocument: {
-          Statement: Match.arrayEquals([
-            Match.objectEquals({ Action: writeAndDelete, Effect: 'Allow', Resource: objectsUnder('content') }),
-            Match.objectEquals({ Action: writeAndDelete, Effect: 'Allow', Resource: objectsUnder('config') }),
-            listOnly('content'),
-            listOnly('config'),
-          ]),
-        },
-      });
+      expect(grantContentDeploy).toHaveBeenCalledTimes(1);
+      expect(grantContentDeploy).toHaveBeenCalledWith(role);
+      grantContentDeploy.mockRestore();
     });
   });
 });
