@@ -128,10 +128,9 @@ export class Mailbox extends Construct {
 
     // The API endpoints need the CDN host and the UI origins, so they follow both.
     const endpoints = apis.addEndpoints({
+      artifactResolver, authProvider: props.authProvider, data, auth, email, vendorLink,
       cdnHost:        blobCdn.host,
-      mailboxDomains: addressing.domains,
-      edge,
-      ui,
+      mailboxDomains: addressing.domains, edge, ui,
       extraAllowedOrigins: props.extraAllowedOrigins,
       enableMcp:           props.enableMcp,
     });

@@ -2,10 +2,11 @@
 
 /**
  * ApisSection takes over the `apis` group node. These tests pin what the section owns: the component
- * tag its subtree carries, the scope the auth provider's addons are created under, and the endpoints
- * it adds on request at fixed ids (their paths are part of every resource's logical ID, so a rename
- * replaces deployed resources), and the logical ids it pins on the custom domains, which are unique
- * per account and region and so cannot be replaced next to their old selves.
+ * tag its subtree carries, the scope the auth provider's addons are created under, the endpoints it adds
+ * on request at fixed ids (their paths are part of every resource's logical ID, so a rename replaces
+ * deployed resources), the shared API the admin and user areas mount on, and the logical ids it pins on
+ * the custom domains, which are unique per account and region and so cannot be replaced next to their old
+ * selves.
  */
 import { ArtifactZone, PinnedArtifactResolver }                       from '@serverlessinbox/artifact-registry-cdk';
 import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }                  from '@serverlessinbox/mailbox-cdk-shared';
@@ -28,7 +29,7 @@ import type { IMailboxAuthProvider }                                  from '../.
 import { MailboxDomains }                                             from '../../domains/mailbox-domains';
 import type { IAdminApiAddon, IAdminApiAddonProvider, IJmapApiAddon } from '../addons';
 import { ApisSection }                                                from '../apis-section';
-import type { ApisEndpointsProps, IApisEdgeInputs }                   from '../apis-section';
+import type { ApisEndpointsProps, ApisSectionProps, IApisEdgeInputs } from '../apis-section';
 
 /** What a test varies of the section: the optional JMAP hooks of the auth provider and the further admin-api addon providers. */
 interface SectionOptions {
@@ -36,9 +37,13 @@ interface SectionOptions {
   readonly adminApiAddonProviders?: IAdminApiAddonProvider[];
 }
 
+/** The section inputs the endpoints are built from, as the constructor was given them. */
+type SectionInputs = Omit<ApisSectionProps, 'adminApiAddonProviders' | 'jmapApiBaseUrl'>;
+
 describe('ApisSection', () => {
   let stack: cdk.Stack;
   let addonScope: Construct | undefined;
+  let sectionInputs: SectionInputs | undefined;
 
   function dataTable(id: string): DataTable {
     return new DataTable(new Table(stack, id, { partitionKey: { name: 'pk', type: AttributeType.STRING } }));
@@ -62,7 +67,7 @@ describe('ApisSection', () => {
       },
       ...options.authProvider,
     };
-    return new ApisSection(stack, 'apis', {
+    const inputs: SectionInputs              = {
       artifactResolver: new PinnedArtifactResolver({
         packages:         {
           'mailbox-cdk':        { version: '1.0.0', zone: ArtifactZone.REGIONAL },
@@ -73,8 +78,7 @@ describe('ApisSection', () => {
         deploymentRegion: stack.region,
       }),
       authProvider,
-      adminApiAddonProviders: options.adminApiAddonProviders,
-      data:                   {
+      data:       {
         configTable:       dataTable('config-table'),
         itemTable:         dataTable('item-table'),
         changelogTable:    dataTable('changelog-table'),
@@ -83,7 +87,7 @@ describe('ApisSection', () => {
         blobStore:         new DataBlobStore(new Bucket(stack, 'blob-store')),
         auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue'),
       },
-      auth:                   {
+      auth:       {
         authKeyStoreTable:   new AuthKeyStoreTable(stack, 'auth-key-store-table'),
         identityProvisioner: LambdaFunction.fromFunctionArn(
           stack,
@@ -91,18 +95,29 @@ describe('ApisSection', () => {
           'arn:aws:lambda:us-west-2:123456789012:function:identity-provisioner',
         ),
       },
-      email:                  {
+      email:      {
         submissionQueue:  new EmailSendingQueue(stack, 'email-submission-queue'),
         sesRuleSetName:   'rule-set',
         sesConfigSetName: 'config-set',
       },
-      vendorLink:             { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: 'serverless-inbox:stack' },
+      vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: 'serverless-inbox:stack' },
+    };
+    sectionInputs                            = inputs;
+
+    return new ApisSection(stack, 'apis', {
+      ...inputs,
+      adminApiAddonProviders: options.adminApiAddonProviders,
       jmapApiBaseUrl:         'https://jmap.example.com',
     });
   }
 
   function endpointsProps(overrides: Partial<ApisEndpointsProps> = {}): ApisEndpointsProps {
+    if (!sectionInputs) {
+      throw new Error('endpointsProps needs the section inputs, so build the section with newSection first');
+    }
+
     return {
+      ...sectionInputs,
       cdnHost:        'https://cdn.example.com',
       mailboxDomains: new MailboxDomains({ domainName: 'example.com' }),
       edge:           {},
@@ -112,8 +127,9 @@ describe('ApisSection', () => {
   }
 
   beforeEach(() => {
-    addonScope = undefined;
-    stack      = new cdk.Stack(new App(), 'TestStack', {
+    addonScope    = undefined;
+    sectionInputs = undefined;
+    stack         = new cdk.Stack(new App(), 'TestStack', {
       env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
@@ -191,13 +207,13 @@ describe('ApisSection', () => {
     const webmailOrigin = 'https://webmail.example.com';
     const extraOrigin   = 'https://extra.example.com';
 
-    it('allows the Admin UI origins, then the extra origins, on the admin API', () => {
+    it('allows the Admin UI, Webmail UI and extra origins, in that order, on the shared API', () => {
       const section = newSection();
 
       section.addEndpoints(endpointsProps({ ui: { adminUiOrigins: [adminOrigin], webmailUiOrigins: [webmailOrigin] }, extraAllowedOrigins: [extraOrigin] }));
 
       Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Api', {
-        CorsConfiguration: Match.objectLike({ AllowOrigins: [adminOrigin, extraOrigin] }),
+        CorsConfiguration: Match.objectLike({ AllowOrigins: [adminOrigin, webmailOrigin, extraOrigin] }),
       });
     });
 
@@ -220,12 +236,44 @@ describe('ApisSection', () => {
     });
   });
 
-  it('addEndpoints creates the jmap, websocket and admin APIs under the section, without the MCP API by default', () => {
+  describe('shared API', () => {
+    it('mounts the admin routes under /admin and the user route under /user on the one shared API', () => {
+      const section = newSection();
+
+      section.addEndpoints(endpointsProps());
+
+      const template = Template.fromStack(stack);
+      template.hasResourceProperties('AWS::ApiGatewayV2::Route', { RouteKey: 'POST /admin/{proxy+}' });
+      template.hasResourceProperties('AWS::ApiGatewayV2::Route', { RouteKey: 'POST /user/{proxy+}' });
+      template.resourcePropertiesCountIs('AWS::ApiGatewayV2::Route', { RouteKey: 'POST /{proxy+}' }, 0);
+    });
+
+    it('creates the shared API under the section, with the admin and user areas as its own siblings', () => {
+      const section = newSection();
+
+      section.addEndpoints(endpointsProps());
+
+      expect(section.node.tryFindChild('admin-api')).toBeDefined();
+      expect(section.node.tryFindChild('admin')?.node.tryFindChild('api-handler')).toBeDefined();
+      expect(section.node.tryFindChild('user-api')?.node.tryFindChild('handler')).toBeDefined();
+    });
+
+    it('creates no Lambda function under the shared API', () => {
+      const section = newSection();
+
+      section.addEndpoints(endpointsProps());
+
+      const host = section.node.findChild('admin-api');
+      expect(host.node.findAll().some((child) => child instanceof LambdaFunction)).toBe(false);
+    });
+  });
+
+  it('addEndpoints creates the jmap, websocket, shared admin-api and admin and user areas under the section, without the MCP API by default', () => {
     const section = newSection();
 
     section.addEndpoints(endpointsProps());
 
-    for (const childId of ['jmap-api', 'websocket-push', 'admin-api']) {
+    for (const childId of ['jmap-api', 'websocket-push', 'admin-api', 'admin', 'user-api']) {
       expect(section.node.tryFindChild(childId)).toBeDefined();
     }
     expect(section.node.tryFindChild('mcp-api')).toBeUndefined();
@@ -332,7 +380,7 @@ describe('ApisSection', () => {
         return { 'Fn::GetAtt': [logicalId, 'RegionalDomainName'] };
       };
 
-      expect(stack.resolve(endpoints.adminApiDomainTarget)).toEqual(regionalDomainNameOf('api.example.com'));
+      expect(stack.resolve(endpoints.apiDomainTarget)).toEqual(regionalDomainNameOf('api.example.com'));
       expect(stack.resolve(endpoints.jmapApiDomainTarget)).toEqual(regionalDomainNameOf('jmap.example.com'));
       expect(stack.resolve(endpoints.webSocketDomainTarget)).toEqual(regionalDomainNameOf('ws.example.com'));
       expect(stack.resolve(endpoints.mcpApiDomainTarget)).toEqual(regionalDomainNameOf('mcp.example.com'));
