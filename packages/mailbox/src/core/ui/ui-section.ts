@@ -129,7 +129,7 @@ export class UiSection extends Construct {
       configTable:      props.data.configTable,
       auditEventsQueue: props.data.auditEventsQueue,
       authProvider:     props.authProvider,
-      apiUrl:           `https://${props.mailboxDomains.jmap}`,
+      jmapUrl:          `https://${props.mailboxDomains.jmap}`,
       userApiUrl:       `https://${props.mailboxDomains.api}/user`,
       artifactResolver: props.artifactResolver,
       dependsOn:        [props.auth.oauthClientsProvisioned],

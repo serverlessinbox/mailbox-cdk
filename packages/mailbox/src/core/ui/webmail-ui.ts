@@ -35,8 +35,8 @@ export interface WebmailUiProps {
   /** Audit events queue for publishing audit logs from token exchange. */
   readonly auditEventsQueue: IAuditEventsQueue;
 
-  /** Base URL for the Webmail UI's backend API. Written into `/config/config.json`. */
-  readonly apiUrl: string;
+  /** Base URL for the JMAP API. Written into `/config/config.json` as `jmapUrl`. */
+  readonly jmapUrl: string;
 
   /** Base URL for the user API's routes. Written into `/config/config.json` as `userApiUrl`. */
   readonly userApiUrl: string;
@@ -72,7 +72,7 @@ export class WebmailUi extends MailboxUi {
         packageName: 'mailbox-webmail-ui',
         objectPath:  'webmail-ui.zip',
       },
-      uiConfig:                 { apiUrl: props.apiUrl, userApiUrl: props.userApiUrl },
+      uiConfig:                 { jmapUrl: props.jmapUrl, userApiUrl: props.userApiUrl },
       artifactResolver:         props.artifactResolver,
     });
     ComponentDescription.describe(this, 'Webmail client — S3-hosted static site behind CloudFront with an OAuth token-exchange backend (BFF).');

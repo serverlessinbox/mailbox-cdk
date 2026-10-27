@@ -209,7 +209,7 @@ describe('UiSection', () => {
         sources: [Match.objectLike({
           kind: 'data',
           key:  'config/config.json',
-          body: Match.serializedJson({ apiUrl: 'https://jmap.example.com', userApiUrl: 'https://api.example.com/user' }),
+          body: Match.serializedJson({ jmapUrl: 'https://jmap.example.com', userApiUrl: 'https://api.example.com/user' }),
         })],
       });
     });

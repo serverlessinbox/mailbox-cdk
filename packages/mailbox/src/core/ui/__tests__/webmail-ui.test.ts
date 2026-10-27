@@ -53,7 +53,7 @@ describe('WebmailUi', () => {
       })),
       auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
       authProvider:     createAuthProvider(),
-      apiUrl:           'https://jmap.example.com',
+      jmapUrl:          'https://jmap.example.com',
       userApiUrl:       'https://api.example.com/user',
       artifactResolver: new PinnedArtifactResolver({
         packages:         {
