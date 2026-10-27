@@ -53,6 +53,8 @@ describe('WebmailUi', () => {
       })),
       auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
       authProvider:     createAuthProvider(),
+      jmapUrl:          'https://jmap.example.com',
+      userApiUrl:       'https://api.example.com/user',
       artifactResolver: new PinnedArtifactResolver({
         packages:         {
           'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },

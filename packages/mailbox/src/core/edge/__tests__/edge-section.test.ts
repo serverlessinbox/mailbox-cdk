@@ -250,7 +250,7 @@ describe('EdgeSection', () => {
       ui:      { adminUiCnameTarget: 'admin-ui.cloudfront.net', webmailUiCnameTarget: 'webmail-ui.cloudfront.net' },
       blobCdn: DNS_PROPS.blobCdn,
       apis:    {
-        adminApiDomainTarget:  'api-target.execute-api.example.net',
+        apiDomainTarget:       'api-target.execute-api.example.net',
         jmapApiDomainTarget:   'jmap-target.execute-api.example.net',
         webSocketDomainTarget: 'ws-target.execute-api.example.net',
         mcpApiDomainTarget:    'mcp-target.execute-api.example.net',

@@ -97,11 +97,11 @@ describe('SupportAddon', () => {
       expect(createAddon(inputs, SupportMode.ENABLED).uiConfig).toEqual({ support: { available: true } });
     });
 
-    it('mounts POST /support/{proxy+} behind an authorizer', () => {
+    it('mounts POST /admin/support/{proxy+} behind an authorizer', () => {
       const inputs   = createSupportTestStack();
       const template = synthesizeOnAdminApi(inputs.stack, createAddon(inputs, SupportMode.ENABLED));
 
-      const route = routeOf(template, 'POST /support/{proxy+}');
+      const route = routeOf(template, 'POST /admin/support/{proxy+}');
 
       expect(route.AuthorizationType).toBe('CUSTOM');
       expect(route.AuthorizerId).toBeDefined();

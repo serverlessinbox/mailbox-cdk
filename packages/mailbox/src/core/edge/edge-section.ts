@@ -86,8 +86,8 @@ export interface IEdgeDnsUiInputs {
 
 /** What {@link EdgeSection.addDns} uses of the API endpoints. */
 export interface IEdgeDnsApisInputs {
-  /** CNAME target of the admin API custom domain, when it has one. */
-  readonly adminApiDomainTarget?: string;
+  /** CNAME target of the shared API's custom domain, when it has one. */
+  readonly apiDomainTarget?: string;
   /** CNAME target of the JMAP API custom domain, when it has one. */
   readonly jmapApiDomainTarget?: string;
   /** CNAME target of the WebSocket API custom domain, when it has one. */
@@ -198,7 +198,7 @@ export class EdgeSection extends Construct {
       admin:   props.ui.adminUiCnameTarget,
       webmail: props.ui.webmailUiCnameTarget,
       cdn:     props.blobCdn.distributionDomainName,
-      api:     props.apis.adminApiDomainTarget,
+      api:     props.apis.apiDomainTarget,
       jmap:    props.apis.jmapApiDomainTarget,
       ws:      props.apis.webSocketDomainTarget,
       mcp:     props.apis.mcpApiDomainTarget,

@@ -109,8 +109,8 @@ describe('StackUpdateAddon routes', () => {
     template = synthesizeOnAdminApi(stack, newAddon(stack));
   });
 
-  it('serves POST /stack-update/{proxy+} behind an authorizer and no other method', () => {
-    const route = routeOf(template, 'POST /stack-update/{proxy+}');
+  it('serves POST /admin/stack-update/{proxy+} behind an authorizer and no other method', () => {
+    const route = routeOf(template, 'POST /admin/stack-update/{proxy+}');
 
     expect(route.AuthorizationType).toBe('CUSTOM');
     expect(route.AuthorizerId).toBeDefined();

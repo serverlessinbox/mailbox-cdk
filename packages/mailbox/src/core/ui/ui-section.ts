@@ -40,10 +40,6 @@ export interface IUiApisInputs {
 export interface IUiEdgeInputs {
   /** The certificate the UIs are served with unless the operator gave their own; present when the mailbox has a hosted zone. */
   readonly uiCertificate?: acm.ICertificate;
-  /** Present when the Admin API has a custom domain the Admin UI should call. */
-  readonly apiCertificate?: acm.ICertificate;
-  /** Present when the JMAP API has a custom domain the Webmail UI should call. */
-  readonly jmapCertificate?: acm.ICertificate;
 }
 
 /** Props of {@link UiSection}. */
@@ -113,7 +109,7 @@ export class UiSection extends Construct {
       configTable:      props.data.configTable,
       auditEventsQueue: props.data.auditEventsQueue,
       authProvider:     props.authProvider,
-      apiUrl:           props.edge.apiCertificate ? `https://${props.mailboxDomains.api}` : undefined,
+      apiUrl:           `https://${props.mailboxDomains.api}/admin`,
       webmailUrl:       props.enableWebmailUi && this.webmailUiCertificate(props)
         ? `https://${props.mailboxDomains.webmail}`
         : undefined,
@@ -133,7 +129,8 @@ export class UiSection extends Construct {
       configTable:      props.data.configTable,
       auditEventsQueue: props.data.auditEventsQueue,
       authProvider:     props.authProvider,
-      apiUrl:           props.edge.jmapCertificate ? `https://${props.mailboxDomains.jmap}` : undefined,
+      jmapUrl:          `https://${props.mailboxDomains.jmap}`,
+      userApiUrl:       `https://${props.mailboxDomains.api}/user`,
       artifactResolver: props.artifactResolver,
       dependsOn:        [props.auth.oauthClientsProvisioned],
     });

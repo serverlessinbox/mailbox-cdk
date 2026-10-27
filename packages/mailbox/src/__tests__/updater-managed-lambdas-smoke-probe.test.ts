@@ -61,6 +61,7 @@ const GO_ARTIFACTS = new Set<string>([
   'sqs-ses-event-processor',
   'stack-failure-detector',
   'tantivy-indexer',
+  'user-api',
   'websocket-broadcast',
   'websocket-connect',
   'websocket-disconnect',

@@ -81,8 +81,8 @@ export function inlineFunction(scope: Construct, id: string): LambdaFunction {
 }
 
 /**
- * The inputs of an `AdminApi`. Every input resource is created under a scope of its own, so the
- * stack stays free for the construct ids of the unit under test.
+ * The inputs of an `AdminApi`. Every input resource is created under a scope of its own, so the stack
+ * stays free for the construct ids of the unit under test.
  */
 export function newAdminApiProps(stack: cdk.Stack, overrides: Partial<AdminApiProps> = {}): AdminApiProps {
   const inputs = new Construct(stack, 'admin-api-inputs');

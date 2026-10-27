@@ -42,7 +42,7 @@ export interface AdminUiProps {
   readonly cspPolicy?: string;
 
   /** Base URL for the Admin UI's backend API. Written into `/config/config.json`. */
-  readonly apiUrl?: string;
+  readonly apiUrl: string;
 
   /** Webmail app URL. Written into `/config/config.json` as `webmailUrl`. */
   readonly webmailUrl?: string;
@@ -68,12 +68,11 @@ export class AdminUi extends MailboxUi {
   readonly oauthRedirectUri: string;
 
   constructor(scope: Construct, id: string, props: AdminUiProps) {
-    const adminUiConfig: MailboxUiConfig              = {
+    const adminUiConfig: MailboxUiConfig = {
       ...props.uiConfig,
-      ...(props.apiUrl ? { apiUrl: props.apiUrl } : {}),
+      apiUrl: props.apiUrl,
       ...(props.webmailUrl ? { webmailUrl: props.webmailUrl } : {}),
     };
-    const staticUiConfig: MailboxUiConfig | undefined = Object.keys(adminUiConfig).length > 0 ? adminUiConfig : undefined;
 
     super(scope, id, {
       label:                    'Admin UI',
@@ -89,7 +88,7 @@ export class AdminUi extends MailboxUi {
         packageName: 'mailbox-admin-ui',
         objectPath:  'admin-ui.zip',
       },
-      uiConfig:                 staticUiConfig,
+      uiConfig:                 adminUiConfig,
       artifactResolver:         props.artifactResolver,
     });
     ComponentDescription.describe(this, 'Admin web console — S3-hosted static site behind CloudFront with an OAuth token-exchange backend (BFF).');

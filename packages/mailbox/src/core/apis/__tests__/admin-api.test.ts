@@ -1,13 +1,12 @@
 /// <reference types="jest" />
 
 /**
- * AdminApi tests: what the construct itself decides.
+ * AdminApi tests: what the admin area itself decides, on a real shared API it is mounted on.
  *
- * Pins the custom-domain wiring (API mapped onto the domain, the domain's logical id pin handed
- * out), the CORS preflight switch, that every route is behind a Lambda authorizer, that the addon
- * routes get the principal-lookup authorizer and the handler route the plain one. A route that
- * loses its authorizer, or gets the wrong one, stays green in tsc and synth, so these assertions
- * are the only guard.
+ * Pins that every admin route is served under `/admin` and none at the root, that the handler route gets
+ * the plain authorizer and each addon route the principal-lookup authorizer, and the duplicate base-path
+ * guard. A route that loses its authorizer, or gets the wrong one, stays green in tsc and synth, so these
+ * assertions are the only guard.
  */
 
 import { Match, Template }                           from 'aws-cdk-lib/assertions';
@@ -19,10 +18,10 @@ import type { IWebSocketBroadcastPublisher }         from '../../../contracts/we
 import type { IAdminApiAddon }                       from '../addons';
 import { AdminApi }                                  from '../admin-api';
 import type { AdminApiProps }                        from '../admin-api';
+import { ApiGateway }                                from '../api-gateway';
 
 import {
   authorizerOfRoute,
-  certificate,
   inlineFunction,
   newAdminApiProps,
   newApiStack,
@@ -31,6 +30,7 @@ import {
 
 describe('AdminApi', () => {
   let stack: cdk.Stack;
+  let gateway: ApiGateway;
   let addonHandler: IFunction;
 
   function propsWith(overrides: Partial<AdminApiProps> = {}): AdminApiProps {
@@ -41,181 +41,115 @@ describe('AdminApi', () => {
     return { routeSpec: { basePath, methods: [HttpMethod.POST], handler: addonHandler } };
   }
 
+  function mountedAdminApi(overrides: Partial<AdminApiProps> = {}): AdminApi {
+    const sut = new AdminApi(stack, 'admin', propsWith(overrides));
+
+    gateway.mount(sut);
+
+    return sut;
+  }
+
   beforeEach(() => {
     stack        = newApiStack();
+    gateway      = new ApiGateway(stack, 'admin-api', {});
     addonHandler = inlineFunction(stack, 'addon-handler');
   });
 
-  describe('without a custom domain', () => {
-    it('serves on the API Gateway endpoint and publishes no domain target', () => {
-      const sut = new AdminApi(stack, 'admin-api', propsWith());
+  it('creates its handler Lambda under itself', () => {
+    const sut = new AdminApi(stack, 'admin', propsWith());
 
-      const template = Template.fromStack(stack);
-      const apiId    = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
+    expect(sut.node.tryFindChild('api-handler')).toBeDefined();
+  });
 
-      expect(stack.resolve(sut.url)).toEqual({ 'Fn::GetAtt': [apiId, 'ApiEndpoint'] });
-      expect(sut.domainTarget).toBeUndefined();
-      expect(sut.domainLogicalIdPin).toBeUndefined();
-      template.resourceCountIs('AWS::ApiGatewayV2::DomainName', 0);
-      template.resourceCountIs('AWS::ApiGatewayV2::ApiMapping', 0);
+  it('lists the addon routes, then the handler route', () => {
+    const sut = new AdminApi(stack, 'admin', propsWith({ addons: [addonAt('/first'), addonAt('/second')] }));
+
+    expect(sut.routes.map((route) => route.path)).toEqual(['/admin/first/{proxy+}', '/admin/second/{proxy+}', '/admin/{proxy+}']);
+  });
+
+  it('mounts the handler route under /admin behind the plain authorizer', () => {
+    mountedAdminApi();
+
+    const { functionEnvironment } = authorizerOfRoute(Template.fromStack(stack), 'POST /admin/{proxy+}');
+
+    expect(functionEnvironment).toMatchObject({ AUTH_POLICY_NAME: 'ADMIN_API', PRINCIPAL_LOOKUP: 'off' });
+  });
+
+  it('mounts no route at the root of the shared API', () => {
+    mountedAdminApi({ addons: [addonAt('/first')] });
+
+    Template.fromStack(stack).resourcePropertiesCountIs('AWS::ApiGatewayV2::Route', { RouteKey: 'POST /{proxy+}' }, 0);
+  });
+
+  it.each(['/first', '/second'])('mounts the route of the addon at /admin%s behind the principal-lookup authorizer', (basePath) => {
+    mountedAdminApi({ addons: [addonAt('/first'), addonAt('/second')] });
+
+    const { functionEnvironment } = authorizerOfRoute(Template.fromStack(stack), `POST /admin${basePath}/{proxy+}`);
+
+    expect(functionEnvironment).toMatchObject({ PRINCIPAL_LOOKUP: 'on' });
+  });
+
+  it('gives the addon routes and the handler route two distinct authorizers, under the shared API', () => {
+    mountedAdminApi({ addons: [addonAt('/first')] });
+
+    const template = Template.fromStack(stack);
+
+    expect(routeOf(template, 'POST /admin/first/{proxy+}').AuthorizerId).not.toEqual(routeOf(template, 'POST /admin/{proxy+}').AuthorizerId);
+    expect(Object.keys(template.findResources('AWS::ApiGatewayV2::Authorizer')).sort()).toEqual([
+      'adminapiauthorizer35A63265',
+      'adminapilookupauthorizerD8B2A7F4',
+    ]);
+  });
+
+  it('caches the answer of the principal-lookup authorizer for 60 seconds', () => {
+    mountedAdminApi({ addons: [addonAt('/first')] });
+
+    const { cacheTtlSeconds } = authorizerOfRoute(Template.fromStack(stack), 'POST /admin/first/{proxy+}');
+
+    expect(cacheTtlSeconds).toBe(60);
+  });
+
+  it('turns the lookup on for only one function, under its own service name', () => {
+    mountedAdminApi({ addons: [addonAt('/first')] });
+
+    const template        = Template.fromStack(stack);
+    const lookupFunctions = template.findResources('AWS::Lambda::Function', {
+      Properties: { Environment: { Variables: { PRINCIPAL_LOOKUP: 'on' } } },
+    });
+
+    expect(Object.keys(lookupFunctions)).toHaveLength(1);
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ PRINCIPAL_LOOKUP: 'on', SERVICE_NAME: 'authorizer-admin-api-lookup' }) },
     });
   });
 
-  it('keeps the default endpoint enabled, since the no-domain configuration serves through it', () => {
-    new AdminApi(stack, 'admin-api', propsWith());
+  it('mounts the methods the route spec lists and no others', () => {
+    const addon: IAdminApiAddon = { routeSpec: { basePath: '/multi', methods: [HttpMethod.POST, HttpMethod.GET], handler: addonHandler } };
 
-    Template.fromStack(stack).resourcePropertiesCountIs('AWS::ApiGatewayV2::Api', { DisableExecuteApiEndpoint: true }, 0);
+    mountedAdminApi({ addons: [addon] });
+
+    const template = Template.fromStack(stack);
+    template.hasResourceProperties('AWS::ApiGatewayV2::Route', { RouteKey: 'POST /admin/multi/{proxy+}' });
+    template.hasResourceProperties('AWS::ApiGatewayV2::Route', { RouteKey: 'GET /admin/multi/{proxy+}' });
+    template.resourceCountIs('AWS::ApiGatewayV2::Route', 3);
   });
 
-  it('throttles its default stage', () => {
-    new AdminApi(stack, 'admin-api', propsWith());
+  it('mounts nothing for an addon without a route spec', () => {
+    mountedAdminApi({ addons: [{}] });
 
-    Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Stage', {
-      DefaultRouteSettings: { ThrottlingBurstLimit: 200, ThrottlingRateLimit: 100 },
-    });
+    Template.fromStack(stack).resourceCountIs('AWS::ApiGatewayV2::Route', 1);
   });
 
-  describe('with a custom domain', () => {
-    it('disables the default execute-api endpoint', () => {
-      new AdminApi(stack, 'admin-api', propsWith({ customDomain: { domainName: 'api.example.com', certificate: certificate(stack, 'api.example.com') } }));
-
-      Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Api', { DisableExecuteApiEndpoint: true });
-    });
-
-    it('serves on the domain, maps the API onto it and publishes its regional target', () => {
-      const customDomain = { domainName: 'api.example.com', certificate: certificate(stack, 'api.example.com') };
-
-      const sut = new AdminApi(stack, 'admin-api', propsWith({ customDomain }));
-
-      const template = Template.fromStack(stack);
-      const apiId    = Object.keys(template.findResources('AWS::ApiGatewayV2::Api'))[0];
-
-      expect(sut.url).toBe('https://api.example.com');
-      expect(sut.domainTarget).toBeDefined();
-      template.hasResourceProperties('AWS::ApiGatewayV2::DomainName', { DomainName: 'api.example.com' });
-      template.hasResourceProperties('AWS::ApiGatewayV2::ApiMapping', { ApiId: { Ref: apiId }, Stage: '$default' });
-    });
-
-    it('hands out the logical id pin of its domain name', () => {
-      const sut = new AdminApi(stack, 'admin-api', propsWith({ customDomain: { domainName: 'api.example.com', certificate: certificate(stack, 'api.example.com') } }));
-
-      sut.domainLogicalIdPin?.overrideLogicalId('PinnedDomainName');
-
-      const domainIds = Object.keys(Template.fromStack(stack).findResources('AWS::ApiGatewayV2::DomainName'));
-      expect(domainIds).toEqual(['PinnedDomainName']);
-    });
-  });
-
-  describe('CORS preflight', () => {
-    it('allows only POST and OPTIONS from the given origins', () => {
-      new AdminApi(stack, 'admin-api', propsWith({ allowedOrigins: ['https://admin.example.com'] }));
-
-      Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Api', {
-        CorsConfiguration: {
-          AllowOrigins:     ['https://admin.example.com'],
-          AllowMethods:     ['POST', 'OPTIONS'],
-          AllowHeaders:     ['Content-Type', 'Authorization'],
-          AllowCredentials: true,
-          MaxAge:           3600,
-        },
-      });
-    });
-
-    it.each([[undefined], [[]]])('configures no CORS when allowedOrigins is %p', (allowedOrigins) => {
-      new AdminApi(stack, 'admin-api', propsWith({ allowedOrigins }));
-
-      Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Api', {
-        CorsConfiguration: Match.absent(),
-      });
-    });
-  });
-
-  describe('routes', () => {
-    it('routes every POST through the Lambda authorizer', () => {
-      new AdminApi(stack, 'admin-api', propsWith());
-
-      Template.fromStack(stack).hasResourceProperties('AWS::ApiGatewayV2::Route', {
-        RouteKey:          'POST /{proxy+}',
-        AuthorizationType: 'CUSTOM',
-        AuthorizerId:      Match.anyValue(),
-      });
-    });
-
-    it.each(['/first', '/second'])('mounts the route of the addon at %s behind the principal-lookup authorizer', (basePath) => {
-      new AdminApi(stack, 'admin-api', propsWith({ addons: [addonAt('/first'), addonAt('/second')] }));
-
-      const { functionEnvironment } = authorizerOfRoute(Template.fromStack(stack), `POST ${basePath}/{proxy+}`);
-
-      expect(functionEnvironment).toMatchObject({ PRINCIPAL_LOOKUP: 'on' });
-    });
-
-    it('mounts the handler route behind the plain authorizer', () => {
-      new AdminApi(stack, 'admin-api', propsWith({ addons: [addonAt('/first')] }));
-
-      const { functionEnvironment } = authorizerOfRoute(Template.fromStack(stack), 'POST /{proxy+}');
-
-      expect(functionEnvironment).toMatchObject({ AUTH_POLICY_NAME: 'ADMIN_API', PRINCIPAL_LOOKUP: 'off' });
-    });
-
-    it('gives the addon routes and the handler route two distinct authorizers', () => {
-      new AdminApi(stack, 'admin-api', propsWith({ addons: [addonAt('/first')] }));
-
-      const template = Template.fromStack(stack);
-
-      expect(routeOf(template, 'POST /first/{proxy+}').AuthorizerId).not.toEqual(routeOf(template, 'POST /{proxy+}').AuthorizerId);
-      template.resourceCountIs('AWS::ApiGatewayV2::Authorizer', 2);
-    });
-
-    it('caches the answer of the principal-lookup authorizer for 60 seconds', () => {
-      new AdminApi(stack, 'admin-api', propsWith({ addons: [addonAt('/first')] }));
-
-      const { cacheTtlSeconds } = authorizerOfRoute(Template.fromStack(stack), 'POST /first/{proxy+}');
-
-      expect(cacheTtlSeconds).toBe(60);
-    });
-
-    it('turns the lookup on for only one function, under its own service name', () => {
-      new AdminApi(stack, 'admin-api', propsWith({ addons: [addonAt('/first')] }));
-
-      const template        = Template.fromStack(stack);
-      const lookupFunctions = template.findResources('AWS::Lambda::Function', {
-        Properties: { Environment: { Variables: { PRINCIPAL_LOOKUP: 'on' } } },
-      });
-
-      expect(Object.keys(lookupFunctions)).toHaveLength(1);
-      template.hasResourceProperties('AWS::Lambda::Function', {
-        Environment: { Variables: Match.objectLike({ PRINCIPAL_LOOKUP: 'on', SERVICE_NAME: 'authorizer-admin-api-lookup' }) },
-      });
-    });
-
-    it('mounts the methods the route spec lists and no others', () => {
-      const addon: IAdminApiAddon = { routeSpec: { basePath: '/multi', methods: [HttpMethod.POST, HttpMethod.GET], handler: addonHandler } };
-
-      new AdminApi(stack, 'admin-api', propsWith({ addons: [addon] }));
-
-      const template = Template.fromStack(stack);
-      template.hasResourceProperties('AWS::ApiGatewayV2::Route', { RouteKey: 'POST /multi/{proxy+}' });
-      template.hasResourceProperties('AWS::ApiGatewayV2::Route', { RouteKey: 'GET /multi/{proxy+}' });
-      template.resourceCountIs('AWS::ApiGatewayV2::Route', 3);
-    });
-
-    it('mounts nothing for an addon without a route spec', () => {
-      new AdminApi(stack, 'admin-api', propsWith({ addons: [{}] }));
-
-      Template.fromStack(stack).resourceCountIs('AWS::ApiGatewayV2::Route', 1);
-    });
-
-    it('fails the synthesis when two addons use the same base path', () => {
-      expect(() => new AdminApi(stack, 'admin-api', propsWith({ addons: [addonAt('/same'), addonAt('/same')] }))).toThrow(
-        "Two Admin API addons use the base path '/same'; each addon needs its own.",
-      );
-    });
+  it('fails the synthesis when two addons use the same base path', () => {
+    expect(() => new AdminApi(stack, 'admin', propsWith({ addons: [addonAt('/same'), addonAt('/same')] }))).toThrow(
+      "Two Admin API addons use the base path '/same'; each addon needs its own.",
+    );
   });
 
   describe('enableWebSocketPublishing', () => {
     it('lets the handler Lambda invoke the broadcaster', () => {
       const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
-      const sut                                       = new AdminApi(stack, 'admin-api', propsWith());
+      const sut                                       = new AdminApi(stack, 'admin', propsWith());
 
       sut.enableWebSocketPublishing(broadcaster);
 

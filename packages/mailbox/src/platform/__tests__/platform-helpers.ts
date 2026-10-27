@@ -8,6 +8,7 @@ import { App, BootstraplessSynthesizer, Stack }      from 'aws-cdk-lib';
 import { newAdminApiProps }                          from '../../core/apis/__tests__/apis-helpers';
 import type { AdminApiAddonContext, IAdminApiAddon } from '../../core/apis/addons';
 import { AdminApi }                                  from '../../core/apis/admin-api';
+import { ApiGateway }                                from '../../core/apis/api-gateway';
 import type { IIdentityProvisioner }                 from '../../resources/lambdas/identity-provisioner-lambda';
 import { AuditEventsQueue }                          from '../../resources/queues/audit-events-queue';
 import { DataTable }                                 from '../../resources/tables/data-tables';
@@ -58,9 +59,11 @@ export function newInlineFunction(stack: Stack, id: string): LambdaFunction {
   return new LambdaFunction(stack, id, { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });
 }
 
-/** Mounts `addon` on a real `AdminApi` in `stack` and returns the synthesized template. */
+/** Mounts `addon` on a real `AdminApi` in `stack`, on a real `ApiGateway` host, and returns the synthesized template. */
 export function synthesizeOnAdminApi(stack: Stack, addon: IAdminApiAddon): Template {
-  new AdminApi(stack, 'admin-api', newAdminApiProps(stack, { addons: [addon] }));
+  const gateway  = new ApiGateway(stack, 'admin-api', {});
+  const adminApi = new AdminApi(stack, 'admin', newAdminApiProps(stack, { addons: [addon] }));
+  gateway.mount(adminApi);
 
   return Template.fromStack(stack);
 }
