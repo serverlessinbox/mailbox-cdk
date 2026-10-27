@@ -36,7 +36,10 @@ export interface WebmailUiProps {
   readonly auditEventsQueue: IAuditEventsQueue;
 
   /** Base URL for the Webmail UI's backend API. Written into `/config/config.json`. */
-  readonly apiUrl?: string;
+  readonly apiUrl: string;
+
+  /** Base URL for the user API's routes. Written into `/config/config.json` as `userApiUrl`. */
+  readonly userApiUrl: string;
 
   /** Artifact resolver for all UI resources (bundle + ui-deployer + token-exchange). */
   readonly artifactResolver: IArtifactResolver;
@@ -69,7 +72,7 @@ export class WebmailUi extends MailboxUi {
         packageName: 'mailbox-webmail-ui',
         objectPath:  'webmail-ui.zip',
       },
-      uiConfig:                 props.apiUrl ? { apiUrl: props.apiUrl } : undefined,
+      uiConfig:                 { apiUrl: props.apiUrl, userApiUrl: props.userApiUrl },
       artifactResolver:         props.artifactResolver,
     });
     ComponentDescription.describe(this, 'Webmail client — S3-hosted static site behind CloudFront with an OAuth token-exchange backend (BFF).');

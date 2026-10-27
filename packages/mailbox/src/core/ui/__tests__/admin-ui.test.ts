@@ -86,6 +86,7 @@ describe('AdminUi', () => {
       })),
       auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
       authProvider:     createAuthProvider(),
+      apiUrl:           'https://api.example.com/admin',
       artifactResolver: new PinnedArtifactResolver({
         packages:         {
           'mailbox-go':         { version: '1.0.0', zone: ArtifactZone.REGIONAL },
