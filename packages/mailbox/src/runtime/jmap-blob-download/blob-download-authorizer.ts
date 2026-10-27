@@ -62,7 +62,7 @@ export class BlobDownloadAuthorizer {
     this.requireAccountAccess(session, params.accountId, blob);
     this.requireSameIdentity(verifiedJwt, session);
     await this.requireBlobMac(hmac, session, params.accountId, blob, config);
-    this.requireSafePath(blob);
+    this.requireSafeKeyParts(blob);
 
     return this.forward(request, session.tenantId, params, blob);
   }
@@ -203,12 +203,12 @@ export class BlobDownloadAuthorizer {
     this.logger.debug('Blob MAC verified');
   }
 
-  private requireSafePath(blob: ParsedBlobId): void {
-    if (!isSafeBlobPath(blob.path)) {
+  private requireSafeKeyParts(blob: ParsedBlobId): void {
+    if (!isSafeBlobPath(blob.entityId) || !isSafeBlobPath(blob.path)) {
       throw this.reject(403, 'Access denied: invalid blob path', 'Access denied: unsafe blob path');
     }
 
-    this.logger.debug('Blob path safety verified');
+    this.logger.debug('Blob key parts safety verified');
   }
 
   private forward(

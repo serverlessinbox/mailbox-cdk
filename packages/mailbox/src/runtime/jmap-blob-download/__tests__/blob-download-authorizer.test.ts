@@ -308,6 +308,31 @@ describe('BlobDownloadAuthorizer', () => {
     });
   });
 
+  describe('blob entity id', () => {
+    const UNSAFE_ENTITY_IDS   = ['card/1', 'card\\1', 'card\u00001', '..', 'card-1/..'];
+    const UNSAFE_ENTITY_BLOBS = UNSAFE_ENTITY_IDS.flatMap((entityId) => [
+      `eml:${entityId}:document.pdf:mac-value`,
+      `cnt:${entityId}:photo.jpg`,
+      `prn:${entityId}:avatar.png`,
+    ]);
+
+    it.each(UNSAFE_ENTITY_BLOBS)('rejects %j with a 403 and leaves the request unaddressed', async (blob) => {
+      const request   = downloadRequest({ blob });
+      const uriBefore = request.uri;
+
+      await expectRejected(request, 403, 'Access denied: invalid blob path');
+      expect(request.uri).toBe(uriBefore);
+    });
+
+    it('serves a contact blob whose entity id holds a dot', async () => {
+      const request = downloadRequest({ blob: 'cnt:card.1:photo.jpg' });
+
+      await authorizer.authorize(request);
+
+      expect(request.uri).toBe('/tenants/tenant-1/accounts/account-1/contacts/card.1/photo.jpg');
+    });
+  });
+
   describe('an allowed request', () => {
     it.each([
       { kind: 'an email', blob: 'eml:email-1:document.pdf:mac-value', uri: '/tenants/tenant-1/accounts/account-1/emails/email-1/document.pdf' },
