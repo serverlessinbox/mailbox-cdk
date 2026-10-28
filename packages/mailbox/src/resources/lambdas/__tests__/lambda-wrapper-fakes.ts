@@ -21,7 +21,17 @@ export function fakeDataTable(name: string) {
 
 /** Stands in for the `IAuthKeyStoreTable`. */
 export function fakeAuthKeyStoreTable(name: string) {
-  return { tableName: name, tableArn: `arn:fake:${name}`, grantGetItem: grantSpy(), grantRead: grantSpy(), grantReadWrite: grantSpy() };
+  return {
+    tableName:                 name,
+    tableArn:                  `arn:fake:${name}`,
+    grantReadJwks:             grantSpy(),
+    grantReadHmac:             grantSpy(),
+    grantManageHmac:           grantSpy(),
+    grantManageJwks:           grantSpy(),
+    grantManageImportKeys:     grantSpy(),
+    grantReadImportPublicKey:  grantSpy(),
+    grantReadImportPrivateKey: grantSpy(),
+  };
 }
 
 /** Stands in for the `IWebSocketTable` that holds the connections. */

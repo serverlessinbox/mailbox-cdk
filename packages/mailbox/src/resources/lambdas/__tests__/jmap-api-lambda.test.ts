@@ -90,7 +90,7 @@ describe('JmapApiLambda', () => {
       const { lambda, configTable, authKeyStoreTable } = synthesize();
 
       expectGrantedOnceTo(configTable.grantRead, lambda);
-      expectGrantedOnceTo(authKeyStoreTable.grantRead, lambda);
+      expectGrantedOnceTo(authKeyStoreTable.grantReadHmac, lambda);
     });
 
     it('read-write on the item and changelog tables', () => {

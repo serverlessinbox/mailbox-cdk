@@ -1,9 +1,11 @@
 /**
  * AuthKeyStore owns the key-store table and the updater Lambda that fills it. These tests pin what the
- * construct adds: the issuers it passes to the updater, and the table it hands to the updater and
- * exposes to its caller.
+ * construct adds: the issuers it passes to the updater, the table it hands to the updater and exposes to
+ * its caller, and the table encryption it takes from the mailbox: AWS-owned unless a customer key is set.
  */
-import { Template }             from 'aws-cdk-lib/assertions';
+import { Match, Template }      from 'aws-cdk-lib/assertions';
+import { TableEncryption }      from 'aws-cdk-lib/aws-dynamodb';
+import * as kms                 from 'aws-cdk-lib/aws-kms';
 import type { Stack }           from 'aws-cdk-lib';
 
 import { newDeployerTestStack } from '../../../__tests__/deployer-test-helpers';
@@ -19,9 +21,13 @@ interface SynthesizedStore {
   readonly tableLogicalId: string;
 }
 
-function synthStore(): SynthesizedStore {
+/** Synthesizes a store the way the mailbox does: the plan carries AWS-managed encryption unless a customer key is configured. */
+function synthStore(withCustomerKey = false): SynthesizedStore {
   const { stack, artifactResolver } = newDeployerTestStack();
-  const store                       = new AuthKeyStore(stack, 'auth-key-store', { issuers: [ISSUER_A, ISSUER_B], artifactResolver });
+  const dynamoTables                = withCustomerKey
+    ? { encryption: TableEncryption.CUSTOMER_MANAGED, encryptionKey: new kms.Key(stack, 'customer-key') }
+    : { encryption: TableEncryption.AWS_MANAGED };
+  const store                       = new AuthKeyStore(stack, 'auth-key-store', { issuers: [ISSUER_A, ISSUER_B], artifactResolver, dynamoTables });
   const template                    = Template.fromStack(stack);
   const tableLogicalIds             = Object.keys(template.findResources('AWS::DynamoDB::Table'));
   expect(tableLogicalIds).toHaveLength(1);
@@ -50,4 +56,19 @@ describe('AuthKeyStore', () => {
 
     expect(stack.resolve(store.authKeyStoreTable.tableName)).toEqual({ Ref: tableLogicalId });
   });
+
+  it('keeps AWS-owned encryption, with no SSESpecification, when the mailbox has no customer key', () => {
+    const { template } = synthStore();
+
+    template.hasResourceProperties('AWS::DynamoDB::Table', { SSESpecification: Match.absent() });
+  });
+
+  it('encrypts the table with the customer key when the mailbox has one', () => {
+    const { template } = synthStore(true);
+
+    template.hasResourceProperties('AWS::DynamoDB::Table', {
+      SSESpecification: Match.objectLike({ SSEEnabled: true, SSEType: 'KMS' }),
+    });
+  });
 });
+

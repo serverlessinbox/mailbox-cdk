@@ -56,7 +56,7 @@ export class AuthorizerLambda extends GoLambda {
       },
     });
 
-    props.authKeyStoreTable.grantRead(this);
+    props.authKeyStoreTable.grantReadJwks(this);
     props.configTable.grantRead(this);
   }
 }

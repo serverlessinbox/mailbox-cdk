@@ -12,6 +12,7 @@ import type { IIdentityProvisioner }                                            
 import type { IAuditEventsQueue }                                                            from '../../resources/queues/audit-events-queue';
 import type { IEmailSendingQueue }                                                           from '../../resources/queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                                           from '../../resources/tables/auth-key-store-table';
+import type { DynamoTableEncryptionProps }                                                   from '../../resources/tables/data-table-props';
 import type { IDataTable }                                                                   from '../../resources/tables/data-tables';
 import type { IDnsZone }                                                                     from '../edge/dns-zone';
 import type { IOAuthUi }                                                                     from '../ui/ui-section';
@@ -63,6 +64,8 @@ export interface AuthSectionProps {
   readonly data:             IAuthDataInputs;
   readonly email:            IAuthEmailInputs;
   readonly vendorLink:       VendorLink;
+  /** The table encryption of the mailbox, passed on to the auth key store. */
+  readonly dynamoTables:     DynamoTableEncryptionProps;
   /** The domain name the mailbox serves; a deploy-time token when it comes from a hosted zone. */
   readonly domainName:       string;
   /** URL of the Admin UI; absent when no Admin UI is deployed. */
@@ -100,6 +103,7 @@ export class AuthSection extends Construct {
     const authKeyStore = new AuthKeyStore(this, 'auth-key-store', {
       issuers:          [props.authProvider.issuer],
       artifactResolver: props.artifactResolver,
+      dynamoTables:     props.dynamoTables,
     });
 
     this.authKeyStoreTable = authKeyStore.authKeyStoreTable;

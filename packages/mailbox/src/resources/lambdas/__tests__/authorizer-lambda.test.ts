@@ -53,7 +53,7 @@ describe('AuthorizerLambda', () => {
   it('requests read on the key store table for itself', () => {
     const { lambda, authKeyStoreTable } = synthesize();
 
-    expectGrantedOnceTo(authKeyStoreTable.grantRead, lambda);
+    expectGrantedOnceTo(authKeyStoreTable.grantReadJwks, lambda);
   });
 
   it('requests read on the config table for itself', () => {

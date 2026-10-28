@@ -71,7 +71,7 @@ export class JmapApiLambda extends GoLambda implements IWebSocketPushTargetWithU
     });
 
     props.configTable.grantRead(this);
-    props.authKeyStoreTable.grantRead(this);
+    props.authKeyStoreTable.grantReadHmac(this);
 
     props.itemTable.grantReadWrite(this);
     props.changelogTable.grantReadWrite(this);

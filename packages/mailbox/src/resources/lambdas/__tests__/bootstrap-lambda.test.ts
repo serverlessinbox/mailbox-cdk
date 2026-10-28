@@ -141,7 +141,7 @@ describe('BootstrapLambda', () => {
     it('requests read-write on the auth-key-store table for itself', () => {
       const bootstrap = newBootstrap();
 
-      expectGrantedOnceTo(authKeyStoreTable.grantReadWrite, bootstrap);
+      expectGrantedOnceTo(authKeyStoreTable.grantManageHmac, bootstrap);
     });
 
     it('requests read-write on the config table for itself', () => {

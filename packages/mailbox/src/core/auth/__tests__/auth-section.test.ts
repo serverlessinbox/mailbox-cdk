@@ -5,23 +5,23 @@
  * tag its subtree carries, and the construct ids it builds under itself (their paths are part of
  * every resource's logical ID, so a rename replaces deployed resources).
  */
-import { ArtifactZone, PinnedArtifactResolver }                       from '@serverlessinbox/artifact-registry-cdk';
-import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }                  from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                                            from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                                       from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket }                                                     from 'aws-cdk-lib/aws-s3';
-import { ReceiptRuleSet }                                             from 'aws-cdk-lib/aws-ses';
-import * as cdk                                                       from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer, CfnResource, TagManager }     from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver }                                        from '@serverlessinbox/artifact-registry-cdk';
+import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }                                   from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                                                             from 'aws-cdk-lib/assertions';
+import { Table, AttributeType, TableEncryption }                                       from 'aws-cdk-lib/aws-dynamodb';
+import { Bucket }                                                                      from 'aws-cdk-lib/aws-s3';
+import { ReceiptRuleSet }                                                              from 'aws-cdk-lib/aws-ses';
+import * as cdk                                                                        from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer, CfnResource, TagManager }                      from 'aws-cdk-lib';
 
-import { DataBlobStore }                                              from '../../../resources/buckets/data-blob-store';
-import { AuditEventsQueue }                                           from '../../../resources/queues/audit-events-queue';
-import { EmailSendingQueue }                                          from '../../../resources/queues/email-sending-queue';
-import { DataTable }                                                  from '../../../resources/tables/data-tables';
-import type { IOAuthUi }                                              from '../../ui/ui-section';
-import { AuthMethod }                                                 from '../auth-method';
-import type { AuthPolicyConfig, IMailboxAuthProvider }                from '../auth-provider';
-import { AuthSection }                                                from '../auth-section';
+import { DataBlobStore }                                                               from '../../../resources/buckets/data-blob-store';
+import { AuditEventsQueue }                                                            from '../../../resources/queues/audit-events-queue';
+import { EmailSendingQueue }                                                           from '../../../resources/queues/email-sending-queue';
+import { DataTable }                                                                   from '../../../resources/tables/data-tables';
+import type { IOAuthUi }                                                               from '../../ui/ui-section';
+import { AuthMethod }                                                                  from '../auth-method';
+import type { AuthPolicyConfig, IMailboxAuthProvider }                                 from '../auth-provider';
+import { AuthSection }                                                                 from '../auth-section';
 
 describe('AuthSection', () => {
   let stack: cdk.Stack;
@@ -56,19 +56,20 @@ describe('AuthSection', () => {
         deploymentRegion: stack.region,
       }),
       authProvider,
-      data:       {
+      data:         {
         configTable:      dataTable('config-table'),
         itemTable:        dataTable('item-table'),
         changelogTable:   dataTable('changelog-table'),
         auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
         blobStore:        new DataBlobStore(new Bucket(stack, 'blob-store')),
       },
-      email:      {
+      email:        {
         submissionQueue:  new EmailSendingQueue(stack, 'email-submission-queue'),
         sesConfigSetName: 'config-set',
       },
-      vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
-      domainName: 'example.com',
+      vendorLink:   { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
+      dynamoTables: { encryption: TableEncryption.DEFAULT },
+      domainName:   'example.com',
     });
   }
 

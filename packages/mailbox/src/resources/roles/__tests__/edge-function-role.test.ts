@@ -3,8 +3,8 @@
 /**
  * Pins what the Lambda@Edge role behind the public blob endpoint adds itself: the log statements, asserted
  * whole, since widening them beyond the function's own replica log groups gives that endpoint more reach
- * than its code uses. The table statement belongs to `AuthKeyStoreTable.grantGetItem`; here only the
- * hand-off of the role to that grant is asserted.
+ * than its code uses. The table statements belong to `AuthKeyStoreTable.grantReadJwks` and
+ * `AuthKeyStoreTable.grantReadHmac`; here only the hand-off of the role to those grants is asserted.
  */
 
 import { statementsForAction }     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
@@ -24,11 +24,15 @@ const REPLICA_LOG_STREAM_ARN  = {
 
 function fakeAuthKeyStoreTable(): jest.Mocked<IAuthKeyStoreTable> {
   return {
-    tableName:      'auth-key-store',
-    tableArn:       'arn:aws:dynamodb:us-east-1:123456789012:table/auth-key-store',
-    grantGetItem:   jest.fn(),
-    grantRead:      jest.fn(),
-    grantReadWrite: jest.fn(),
+    tableName:                 'auth-key-store',
+    tableArn:                  'arn:aws:dynamodb:us-east-1:123456789012:table/auth-key-store',
+    grantReadJwks:             jest.fn(),
+    grantReadHmac:             jest.fn(),
+    grantManageHmac:           jest.fn(),
+    grantManageJwks:           jest.fn(),
+    grantManageImportKeys:     jest.fn(),
+    grantReadImportPublicKey:  jest.fn(),
+    grantReadImportPrivateKey: jest.fn(),
   };
 }
 
@@ -55,12 +59,14 @@ describe('EdgeFunctionRole', () => {
     });
   });
 
-  it('asks the auth key store table for a GetItem grant to itself', () => {
+  it('asks the auth key store table for the JWKS and HMAC read grants to itself', () => {
     const table    = fakeAuthKeyStoreTable();
     const { role } = createRole(table);
 
-    expect(table.grantGetItem).toHaveBeenCalledTimes(1);
-    expect(table.grantGetItem).toHaveBeenCalledWith(role);
+    expect(table.grantReadJwks).toHaveBeenCalledTimes(1);
+    expect(table.grantReadJwks).toHaveBeenCalledWith(role);
+    expect(table.grantReadHmac).toHaveBeenCalledTimes(1);
+    expect(table.grantReadHmac).toHaveBeenCalledWith(role);
   });
 
   it('creates log groups only for the replica log groups of its edge stack, in every region of the account', () => {

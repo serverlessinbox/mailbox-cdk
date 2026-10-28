@@ -19,7 +19,8 @@ export interface EdgeFunctionRoleProps {
  * the stack. On a replacement CloudFormation creates the new role before deleting the old one, and updates
  * the edge function with the new ARN in the same operation.
  *
- * Owns its grants: `GetItem` on the auth key store and log writes to the function's replica log groups.
+ * Owns its grants: reads of the JWKS and HMAC items in the auth key store and log writes to the function's
+ * replica log groups.
  */
 export class EdgeFunctionRole extends iam.Role {
   constructor(scope: Construct, id: string, props: EdgeFunctionRoleProps) {
@@ -31,12 +32,13 @@ export class EdgeFunctionRole extends iam.Role {
       description: `Serverless Inbox Mailbox: jmap-blob-download Lambda@Edge role (${Aws.STACK_NAME})`,
     });
 
-    this.grantAuthKeyStoreGetItem(props.authKeyStoreTable);
+    this.grantAuthKeyStoreReads(props.authKeyStoreTable);
     this.grantReplicaLogs(props.edgeStackNamePattern);
   }
 
-  private grantAuthKeyStoreGetItem(authKeyStoreTable: IAuthKeyStoreTable): void {
-    authKeyStoreTable.grantGetItem(this);
+  private grantAuthKeyStoreReads(authKeyStoreTable: IAuthKeyStoreTable): void {
+    authKeyStoreTable.grantReadJwks(this);
+    authKeyStoreTable.grantReadHmac(this);
   }
 
   /**

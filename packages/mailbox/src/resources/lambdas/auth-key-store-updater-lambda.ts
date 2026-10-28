@@ -1,5 +1,6 @@
 import type { IArtifactResolver }        from '@serverlessinbox/artifact-registry-cdk';
 import { GoLambda, StackDeployedEvent }  from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                      from 'aws-cdk-lib';
 import { Construct }                     from 'constructs';
 
 import { AuthKeyRefreshSchedule }        from '../events/auth-key-refresh-schedule';
@@ -25,15 +26,18 @@ export class AuthKeyStoreUpdaterLambda extends GoLambda {
       lambdaId:         'auth-key-store-updater',
       pipeline:         'infra',
       artifactResolver: props.artifactResolver,
-      memorySize:       128,
+      memorySize:       512,
+      timeout:          Duration.seconds(60),
       environment:      {
         ISSUERS:                   props.issuers.join(','),
         AUTH_KEY_STORE_TABLE_NAME: props.authKeyStoreTable.tableName,
       },
     });
 
-    // This Lambda writes the current (and rotating previous) HMAC key and JWKS entries.
-    props.authKeyStoreTable.grantReadWrite(this);
+    // This Lambda writes the HMAC key, the JWKS entries and the import key pair.
+    props.authKeyStoreTable.grantManageHmac(this);
+    props.authKeyStoreTable.grantManageJwks(this);
+    props.authKeyStoreTable.grantManageImportKeys(this);
 
     new AuthKeyRefreshSchedule(this, 'refresh-schedule', { target: this });
     new StackDeployedEvent(this, 'stack-deployed', this);

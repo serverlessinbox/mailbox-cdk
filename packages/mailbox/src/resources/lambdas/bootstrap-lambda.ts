@@ -60,7 +60,7 @@ export class BootstrapLambda extends GoLambda {
     this.grantServiceQuotasServiceLinkedRoleCreation();
 
     props.configTable.grantReadWrite(this);
-    props.authKeyStoreTable.grantReadWrite(this);
+    props.authKeyStoreTable.grantManageHmac(this);
 
     this.grantLicenseApiAccess(props.vendorLink.vendorAccountIds);
     this.grantSesReceiptRuleSetActivation();
