@@ -14,6 +14,7 @@ export class AuditLogTable extends StackNamedTable {
     super(scope, 'auditlog-table', {
       partitionKey:                     { name: 'pk', type: AttributeType.STRING },
       sortKey:                          { name: 'sk', type: AttributeType.STRING },
+      timeToLiveAttribute:              'ttl',
       nameBase:                         props.nameBase,
       encryption:                       props.encryption,
       encryptionKey:                    props.encryptionKey,
