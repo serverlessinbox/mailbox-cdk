@@ -2,6 +2,7 @@ import { Match, Template }    from 'aws-cdk-lib/assertions';
 import * as kms               from 'aws-cdk-lib/aws-kms';
 import { Topic }              from 'aws-cdk-lib/aws-sns';
 
+import { defaultCfnResource } from '../../../utils/cfn-resource';
 import { SesEventQueue }      from '../ses-event-queue';
 
 import { createStack }        from './queue-helpers';
@@ -11,7 +12,8 @@ import { createStack }        from './queue-helpers';
  *
  * Pin what lets SNS deliver SES notifications into the queue (unencrypted by default, the topic's
  * permission on a customer-managed key, raw message delivery); SNS cannot deliver to a queue under the
- * AWS-managed SQS key, so a regression drops notifications silently.
+ * AWS-managed SQS key, so a regression drops notifications silently. Also pin the dead-letter queue
+ * beside it: its redrive after 3 receives, its retention, and its encryption matching the queue's.
  */
 
 describe('SesEventQueue', () => {
@@ -59,6 +61,53 @@ describe('SesEventQueue', () => {
           }),
         ]),
       },
+    });
+  });
+
+  it('moves a message to the dead-letter queue created beside it after 3 receives', () => {
+    const stack = createStack();
+    new SesEventQueue(stack, 'ses-event-queue', { topic: new Topic(stack, 'TestTopic') });
+
+    const dlqId = stack.getLogicalId(defaultCfnResource(stack.node.findChild('ses-event-queue-dlq')));
+
+    Template.fromStack(stack).hasResourceProperties('AWS::SQS::Queue', {
+      RedrivePolicy: { deadLetterTargetArn: { 'Fn::GetAtt': [dlqId, 'Arn'] }, maxReceiveCount: 3 },
+    });
+  });
+
+  it('keeps dead-lettered messages for 14 days', () => {
+    const stack = createStack();
+    new SesEventQueue(stack, 'ses-event-queue', { topic: new Topic(stack, 'TestTopic') });
+
+    Template.fromStack(stack).hasResourceProperties('AWS::SQS::Queue', {
+      MessageRetentionPeriod: 14 * 24 * 60 * 60,
+    });
+  });
+
+  it('gives the dead-letter queue the same encryption as the queue when no key is supplied', () => {
+    const stack = createStack();
+    new SesEventQueue(stack, 'ses-event-queue', { topic: new Topic(stack, 'TestTopic') });
+
+    const template = Template.fromStack(stack);
+    template.resourceCountIs('AWS::SQS::Queue', 2);
+    template.allResourcesProperties('AWS::SQS::Queue', {
+      KmsMasterKeyId:       Match.absent(),
+      SqsManagedSseEnabled: false,
+    });
+  });
+
+  it('gives the dead-letter queue the same customer-managed key as the queue', () => {
+    const stack = createStack();
+    const topic = new Topic(stack, 'TestTopic');
+    const key   = new kms.Key(stack, 'TestKey');
+    new SesEventQueue(stack, 'ses-event-queue', { topic, queueProps: { encryptionMasterKey: key } });
+
+    const keyId = stack.getLogicalId(defaultCfnResource(key));
+
+    const template = Template.fromStack(stack);
+    template.resourceCountIs('AWS::SQS::Queue', 2);
+    template.allResourcesProperties('AWS::SQS::Queue', {
+      KmsMasterKeyId: { 'Fn::GetAtt': [keyId, 'Arn'] },
     });
   });
 });

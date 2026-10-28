@@ -36,7 +36,8 @@ export interface ISesEventQueue {
  * that key (imported keys that reject policy edits are the caller's responsibility to configure).
  *
  * Visibility timeout is 6 minutes; it must exceed the consumer's Lambda timeout plus its SQS event
- * source batching window.
+ * source batching window. Messages that fail after 3 receives move to a dead-letter queue created beside
+ * it, with the same encryption, which keeps them for 14 days.
  *
  * Not responsible for the topic itself or the SES configuration set; the topic is passed in.
  */
@@ -47,10 +48,20 @@ export class SesEventQueue extends BaseQueue implements ISesEventQueue {
     const encryption = queueProps.encryption
       ?? (queueProps.encryptionMasterKey ? QueueEncryption.KMS : QueueEncryption.UNENCRYPTED);
 
+    const dlq = new BaseQueue(scope, `${id}-dlq`, {
+      encryption,
+      encryptionMasterKey: queueProps.encryptionMasterKey,
+      retentionPeriod:     Duration.days(14),
+    });
+
     super(scope, id, {
       ...queueProps,
       visibilityTimeout: Duration.minutes(6),
       encryption,
+      deadLetterQueue:   {
+        queue:           dlq,
+        maxReceiveCount: 3,
+      },
     });
 
     props.topic.addSubscription(
