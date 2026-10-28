@@ -24,14 +24,14 @@ const CERTIFICATE_ARN  = 'arn:aws:acm:us-east-1:123456789012:certificate/1111111
 function fakeAuthKeyStoreTable(tableName: string): IAuthKeyStoreTable {
   return {
     tableName,
-    tableArn:                  `arn:aws:dynamodb:eu-west-1:123456789012:table/${tableName}`,
-    grantReadJwks:             jest.fn(),
-    grantReadHmac:             jest.fn(),
-    grantManageHmac:           jest.fn(),
-    grantManageJwks:           jest.fn(),
-    grantManageImportKeys:     jest.fn(),
-    grantReadImportPublicKey:  jest.fn(),
-    grantReadImportPrivateKey: jest.fn(),
+    tableArn:                      `arn:aws:dynamodb:eu-west-1:123456789012:table/${tableName}`,
+    grantReadJwks:                 jest.fn(),
+    grantReadHmac:                 jest.fn(),
+    grantManageHmac:               jest.fn(),
+    grantManageJwks:               jest.fn(),
+    grantManageConnectionKeys:     jest.fn(),
+    grantReadConnectionPublicKey:  jest.fn(),
+    grantReadConnectionPrivateKey: jest.fn(),
   };
 }
 

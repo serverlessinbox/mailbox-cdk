@@ -37,7 +37,7 @@ export class AuthKeyStoreUpdaterLambda extends GoLambda {
     // This Lambda writes the HMAC key, the JWKS entries and the import key pair.
     props.authKeyStoreTable.grantManageHmac(this);
     props.authKeyStoreTable.grantManageJwks(this);
-    props.authKeyStoreTable.grantManageImportKeys(this);
+    props.authKeyStoreTable.grantManageConnectionKeys(this);
 
     new AuthKeyRefreshSchedule(this, 'refresh-schedule', { target: this });
     new StackDeployedEvent(this, 'stack-deployed', this);

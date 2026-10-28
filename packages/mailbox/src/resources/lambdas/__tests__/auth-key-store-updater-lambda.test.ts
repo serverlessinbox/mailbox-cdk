@@ -42,12 +42,12 @@ describe('AuthKeyStoreUpdaterLambda', () => {
     });
   });
 
-  it('requests the HMAC, JWKS and import-key grants on the key store table for itself', () => {
+  it('requests the HMAC, JWKS and connection-key grants on the key store table for itself', () => {
     const { lambda, authKeyStoreTable } = synthesize();
 
     expectGrantedOnceTo(authKeyStoreTable.grantManageHmac, lambda);
     expectGrantedOnceTo(authKeyStoreTable.grantManageJwks, lambda);
-    expectGrantedOnceTo(authKeyStoreTable.grantManageImportKeys, lambda);
+    expectGrantedOnceTo(authKeyStoreTable.grantManageConnectionKeys, lambda);
   });
 
   it('registers the refresh schedule with itself as the target', () => {

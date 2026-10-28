@@ -33,9 +33,9 @@ const GRANT_METHODS: readonly GrantMethod[] = [
   'grantReadHmac',
   'grantManageHmac',
   'grantManageJwks',
-  'grantManageImportKeys',
-  'grantReadImportPublicKey',
-  'grantReadImportPrivateKey',
+  'grantManageConnectionKeys',
+  'grantReadConnectionPublicKey',
+  'grantReadConnectionPrivateKey',
 ];
 
 interface TableAccess {
@@ -164,9 +164,9 @@ describe('AuthKeyStoreTable', () => {
     table.grantManageHmac(roles.bootstrap);
     table.grantManageHmac(roles.updater);
     table.grantManageJwks(roles.updater);
-    table.grantManageImportKeys(roles.updater);
-    table.grantReadImportPublicKey(roles.userApi);
-    table.grantReadImportPrivateKey(roles.runner);
+    table.grantManageConnectionKeys(roles.updater);
+    table.grantReadConnectionPublicKey(roles.userApi);
+    table.grantReadConnectionPrivateKey(roles.runner);
 
     const template               = Template.fromStack(stack);
     const tableId                = stack.getLogicalId(defaultCfnResource(table));
@@ -182,10 +182,10 @@ describe('AuthKeyStoreTable', () => {
       { role: 'bootstrap',   leadingKeys: ['hmac'] },
       { role: 'updater',     leadingKeys: ['hmac'] },
       { role: 'updater',     leadingKeys: ['jwks'] },
-      { role: 'updater',     leadingKeys: ['import-key-public'] },
-      { role: 'updater',     leadingKeys: ['import-key-private'] },
-      { role: 'userApi',     leadingKeys: ['import-key-public'] },
-      { role: 'runner',      leadingKeys: ['import-key-private'] },
+      { role: 'updater',     leadingKeys: ['connection-key-public'] },
+      { role: 'updater',     leadingKeys: ['connection-key-private'] },
+      { role: 'userApi',     leadingKeys: ['connection-key-public'] },
+      { role: 'runner',      leadingKeys: ['connection-key-private'] },
     ]);
   });
 
@@ -194,12 +194,12 @@ describe('AuthKeyStoreTable', () => {
     ['grantReadHmac',             [{ actions: ['dynamodb:GetItem'], leadingKeys: ['hmac'] }]],
     ['grantManageHmac',           [{ actions: ['dynamodb:GetItem', 'dynamodb:PutItem'], leadingKeys: ['hmac'] }]],
     ['grantManageJwks',           [{ actions: ['dynamodb:GetItem', 'dynamodb:PutItem'], leadingKeys: ['jwks'] }]],
-    ['grantManageImportKeys',     [
-      { actions: ['dynamodb:GetItem', 'dynamodb:PutItem'], leadingKeys: ['import-key-public'] },
-      { actions: ['dynamodb:DeleteItem', 'dynamodb:PutItem', 'dynamodb:Query'], leadingKeys: ['import-key-private'] },
+    ['grantManageConnectionKeys',     [
+      { actions: ['dynamodb:GetItem', 'dynamodb:PutItem'], leadingKeys: ['connection-key-public'] },
+      { actions: ['dynamodb:DeleteItem', 'dynamodb:PutItem', 'dynamodb:Query'], leadingKeys: ['connection-key-private'] },
     ]],
-    ['grantReadImportPublicKey',  [{ actions: ['dynamodb:GetItem'], leadingKeys: ['import-key-public'] }]],
-    ['grantReadImportPrivateKey', [{ actions: ['dynamodb:GetItem'], leadingKeys: ['import-key-private'] }]],
+    ['grantReadConnectionPublicKey',  [{ actions: ['dynamodb:GetItem'], leadingKeys: ['connection-key-public'] }]],
+    ['grantReadConnectionPrivateKey', [{ actions: ['dynamodb:GetItem'], leadingKeys: ['connection-key-private'] }]],
   ])('%s renders exactly its planned table access', (method, expected) => {
     const { template, tableId } = grantedTemplate(method, false);
 

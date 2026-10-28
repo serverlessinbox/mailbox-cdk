@@ -25,20 +25,20 @@ export interface IAuthKeyStoreTable {
   /** Read and write the JWKS of each issuer. */
   grantManageJwks(grantee: IGrantable): void;
 
-  /** Read and write the import key pair items. */
-  grantManageImportKeys(grantee: IGrantable): void;
+  /** Read and write the connection key pair items. */
+  grantManageConnectionKeys(grantee: IGrantable): void;
 
-  /** Read the active import public key. */
-  grantReadImportPublicKey(grantee: IGrantable): void;
+  /** Read the active connection public key. */
+  grantReadConnectionPublicKey(grantee: IGrantable): void;
 
-  /** Read one import private key by its key id. */
-  grantReadImportPrivateKey(grantee: IGrantable): void;
+  /** Read one connection private key by its key id. */
+  grantReadConnectionPrivateKey(grantee: IGrantable): void;
 }
 
 /**
- * DynamoDB table holding the blob-URL signing key, the per-issuer JWKS and the import key pair. Each
- * item type is in `pk` (`hmac`, `jwks`, `import-key-public`, `import-key-private`), so every grant is
- * limited to one value of `dynamodb:LeadingKeys`.
+ * DynamoDB table holding the blob-URL signing key, the per-issuer JWKS and the connection key pair. Each
+ * item type is in `pk` (`hmac`, `jwks`, `connection-key-public`, `connection-key-private`), so every grant
+ * is limited to one value of `dynamodb:LeadingKeys`.
  *
  * Pay-per-request billing, removed along with the stack. Physical table name is stack-derived and unique
  * per position and install (`StackNamedTable`). The table is encrypted with the customer key when the
@@ -128,18 +128,18 @@ export class AuthKeyStoreTable extends StackNamedTable implements IAuthKeyStoreT
     }
   }
 
-  public grantManageImportKeys(grantee: IGrantable): void {
+  public grantManageConnectionKeys(grantee: IGrantable): void {
     Grant.addToPrincipal({
       grantee,
       actions:      ['dynamodb:GetItem', 'dynamodb:PutItem'],
       resourceArns: [this.tableArn],
-      conditions:   { 'ForAllValues:StringEquals': { 'dynamodb:LeadingKeys': ['import-key-public'] } },
+      conditions:   { 'ForAllValues:StringEquals': { 'dynamodb:LeadingKeys': ['connection-key-public'] } },
     });
     Grant.addToPrincipal({
       grantee,
       actions:      ['dynamodb:PutItem', 'dynamodb:DeleteItem', 'dynamodb:Query'],
       resourceArns: [this.tableArn],
-      conditions:   { 'ForAllValues:StringEquals': { 'dynamodb:LeadingKeys': ['import-key-private'] } },
+      conditions:   { 'ForAllValues:StringEquals': { 'dynamodb:LeadingKeys': ['connection-key-private'] } },
     });
     if (this.encryptionKey) {
       Grant.addToPrincipal({
@@ -150,12 +150,12 @@ export class AuthKeyStoreTable extends StackNamedTable implements IAuthKeyStoreT
     }
   }
 
-  public grantReadImportPublicKey(grantee: IGrantable): void {
+  public grantReadConnectionPublicKey(grantee: IGrantable): void {
     Grant.addToPrincipal({
       grantee,
       actions:      ['dynamodb:GetItem'],
       resourceArns: [this.tableArn],
-      conditions:   { 'ForAllValues:StringEquals': { 'dynamodb:LeadingKeys': ['import-key-public'] } },
+      conditions:   { 'ForAllValues:StringEquals': { 'dynamodb:LeadingKeys': ['connection-key-public'] } },
     });
     if (this.encryptionKey) {
       Grant.addToPrincipal({
@@ -166,12 +166,12 @@ export class AuthKeyStoreTable extends StackNamedTable implements IAuthKeyStoreT
     }
   }
 
-  public grantReadImportPrivateKey(grantee: IGrantable): void {
+  public grantReadConnectionPrivateKey(grantee: IGrantable): void {
     Grant.addToPrincipal({
       grantee,
       actions:      ['dynamodb:GetItem'],
       resourceArns: [this.tableArn],
-      conditions:   { 'ForAllValues:StringEquals': { 'dynamodb:LeadingKeys': ['import-key-private'] } },
+      conditions:   { 'ForAllValues:StringEquals': { 'dynamodb:LeadingKeys': ['connection-key-private'] } },
     });
     if (this.encryptionKey) {
       Grant.addToPrincipal({

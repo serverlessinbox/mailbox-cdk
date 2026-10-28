@@ -27,15 +27,15 @@ export function fakeMailLogTable(name: string) {
 /** Stands in for the `IAuthKeyStoreTable`. */
 export function fakeAuthKeyStoreTable(name: string) {
   return {
-    tableName:                 name,
-    tableArn:                  `arn:fake:${name}`,
-    grantReadJwks:             grantSpy(),
-    grantReadHmac:             grantSpy(),
-    grantManageHmac:           grantSpy(),
-    grantManageJwks:           grantSpy(),
-    grantManageImportKeys:     grantSpy(),
-    grantReadImportPublicKey:  grantSpy(),
-    grantReadImportPrivateKey: grantSpy(),
+    tableName:                     name,
+    tableArn:                      `arn:fake:${name}`,
+    grantReadJwks:                 grantSpy(),
+    grantReadHmac:                 grantSpy(),
+    grantManageHmac:               grantSpy(),
+    grantManageJwks:               grantSpy(),
+    grantManageConnectionKeys:     grantSpy(),
+    grantReadConnectionPublicKey:  grantSpy(),
+    grantReadConnectionPrivateKey: grantSpy(),
   };
 }
 

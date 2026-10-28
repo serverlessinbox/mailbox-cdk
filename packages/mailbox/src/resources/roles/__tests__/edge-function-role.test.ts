@@ -24,15 +24,15 @@ const REPLICA_LOG_STREAM_ARN  = {
 
 function fakeAuthKeyStoreTable(): jest.Mocked<IAuthKeyStoreTable> {
   return {
-    tableName:                 'auth-key-store',
-    tableArn:                  'arn:aws:dynamodb:us-east-1:123456789012:table/auth-key-store',
-    grantReadJwks:             jest.fn(),
-    grantReadHmac:             jest.fn(),
-    grantManageHmac:           jest.fn(),
-    grantManageJwks:           jest.fn(),
-    grantManageImportKeys:     jest.fn(),
-    grantReadImportPublicKey:  jest.fn(),
-    grantReadImportPrivateKey: jest.fn(),
+    tableName:                     'auth-key-store',
+    tableArn:                      'arn:aws:dynamodb:us-east-1:123456789012:table/auth-key-store',
+    grantReadJwks:                 jest.fn(),
+    grantReadHmac:                 jest.fn(),
+    grantManageHmac:               jest.fn(),
+    grantManageJwks:               jest.fn(),
+    grantManageConnectionKeys:     jest.fn(),
+    grantReadConnectionPublicKey:  jest.fn(),
+    grantReadConnectionPrivateKey: jest.fn(),
   };
 }
 
