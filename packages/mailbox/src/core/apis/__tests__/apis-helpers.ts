@@ -1,23 +1,24 @@
-import { ArtifactZone, PinnedArtifactResolver }      from '@serverlessinbox/artifact-registry-cdk';
-import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
-import type { Template }                             from 'aws-cdk-lib/assertions';
-import * as acm                                      from 'aws-cdk-lib/aws-certificatemanager';
-import { Table, AttributeType }                      from 'aws-cdk-lib/aws-dynamodb';
-import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
-import { Bucket }                                    from 'aws-cdk-lib/aws-s3';
-import * as cdk                                      from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
-import { Construct }                                 from 'constructs';
-import * as t                                        from 'typanion';
+import { ArtifactZone, PinnedArtifactResolver }                       from '@serverlessinbox/artifact-registry-cdk';
+import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }                  from '@serverlessinbox/mailbox-cdk-shared';
+import type { Template }                                              from 'aws-cdk-lib/assertions';
+import * as acm                                                       from 'aws-cdk-lib/aws-certificatemanager';
+import { Table, AttributeType, TableEncryption }                      from 'aws-cdk-lib/aws-dynamodb';
+import { Code, Function as LambdaFunction, Runtime }                  from 'aws-cdk-lib/aws-lambda';
+import { Bucket }                                                     from 'aws-cdk-lib/aws-s3';
+import * as cdk                                                       from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                              from 'aws-cdk-lib';
+import { Construct }                                                  from 'constructs';
+import * as t                                                         from 'typanion';
 
-import { resourcesOfType, isTemplateValue }          from '../../../__tests__/template-resources';
-import type { TemplateValue }                        from '../../../__tests__/template-resources';
-import { DataBlobStore }                             from '../../../resources/buckets/data-blob-store';
-import { AuditEventsQueue }                          from '../../../resources/queues/audit-events-queue';
-import { EmailSendingQueue }                         from '../../../resources/queues/email-sending-queue';
-import { AuthKeyStoreTable }                         from '../../../resources/tables/auth-key-store-table';
-import { DataTable }                                 from '../../../resources/tables/data-tables';
-import type { AdminApiProps }                        from '../admin-api';
+import { resourcesOfType, isTemplateValue }                           from '../../../__tests__/template-resources';
+import type { TemplateValue }                                         from '../../../__tests__/template-resources';
+import { DataBlobStore }                                              from '../../../resources/buckets/data-blob-store';
+import { AuditEventsQueue }                                           from '../../../resources/queues/audit-events-queue';
+import { EmailSendingQueue }                                          from '../../../resources/queues/email-sending-queue';
+import { AuthKeyStoreTable }                                          from '../../../resources/tables/auth-key-store-table';
+import { DataTable }                                                  from '../../../resources/tables/data-tables';
+import { MailLogTable }                                               from '../../../resources/tables/mail-log-table';
+import type { AdminApiProps }                                         from '../admin-api';
 
 const isRouteProperties = t.isPartial({
   RouteKey:          t.isString(),
@@ -93,6 +94,7 @@ export function newAdminApiProps(stack: cdk.Stack, overrides: Partial<AdminApiPr
     auditLogTable:        dataTable(inputs, 'audit-log-table'),
     changelogTable:       dataTable(inputs, 'changelog-table'),
     mailFeedbackTable:    dataTable(inputs, 'mail-feedback-table'),
+    mailLogTable:         new MailLogTable(inputs, 'mail-log-table', { encryption: TableEncryption.AWS_MANAGED }),
     authKeyStoreTable:    new AuthKeyStoreTable(inputs, 'auth-key-store-table'),
     blobStore:            new DataBlobStore(new Bucket(inputs, 'blob-store')),
     emailSubmissionQueue: new EmailSendingQueue(inputs, 'email-submission-queue'),

@@ -10,6 +10,7 @@ import type { IDataBlobStore }                                                  
 import type { IAuditEventsQueue }                                                                   from '../queues/audit-events-queue';
 import type { IEmailSendingQueue }                                                                  from '../queues/email-sending-queue';
 import type { IDataTable }                                                                          from '../tables/data-tables';
+import type { IMailLogTable }                                                                       from '../tables/mail-log-table';
 
 import type { IIdentityProvisioner }                                                                from './identity-provisioner-lambda';
 
@@ -23,6 +24,7 @@ export interface AdminApiLambdaProps {
   readonly auditLogTable:        IDataTable;
   readonly changelogTable:       IDataTable;
   readonly mailFeedbackTable:    IDataTable;
+  readonly mailLogTable:         IMailLogTable;
   readonly blobStore:            IDataBlobStore;
   readonly emailSubmissionQueue: IEmailSendingQueue;
   readonly auditEventsQueue:     IAuditEventsQueue;
@@ -58,6 +60,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
         AUDIT_EVENTS_QUEUE_URL:             props.auditEventsQueue.queueUrl,
         CHANGELOG_TABLE_NAME:               props.changelogTable.tableName,
         MAIL_FEEDBACK_TABLE_NAME:           props.mailFeedbackTable.tableName,
+        MAIL_LOG_TABLE_NAME:                props.mailLogTable.tableName,
         BLOB_STORE_NAME:                    props.blobStore.bucketName,
         EMAIL_SUBMISSION_QUEUE_URL:         props.emailSubmissionQueue.queueUrl,
         SES_CONFIG_SET_NAME:                props.sesConfigSetName,
@@ -86,6 +89,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
 
     props.auditLogTable.grantRead(this);
     props.mailFeedbackTable.grantRead(this);
+    props.mailLogTable.grantRead(this);
 
     props.configTable.grantReadWrite(this);
     props.itemTable.grantReadWrite(this);

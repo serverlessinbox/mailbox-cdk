@@ -19,6 +19,11 @@ export function fakeDataTable(name: string) {
   return { tableName: name, tableArn: `arn:fake:${name}`, grantRead: grantSpy(), grantReadWrite: grantSpy() };
 }
 
+/** Stands in for the `IMailLogTable`. */
+export function fakeMailLogTable(name: string) {
+  return { tableName: name, grantRead: grantSpy(), grantWrite: grantSpy() };
+}
+
 /** Stands in for the `IAuthKeyStoreTable`. */
 export function fakeAuthKeyStoreTable(name: string) {
   return {

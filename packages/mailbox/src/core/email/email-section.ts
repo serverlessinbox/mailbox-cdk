@@ -10,7 +10,10 @@ import type { IDataBlobStore }                                     from '../../r
 import { EmailProcessorLambda }                                    from '../../resources/lambdas/email-processor-lambda';
 import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
 import type { IEmailSendingQueue }                                 from '../../resources/queues/email-sending-queue';
+import type { DynamoTableEncryptionProps }                         from '../../resources/tables/data-table-props';
 import type { IDataTable }                                         from '../../resources/tables/data-tables';
+import type { IMailLogTable }                                      from '../../resources/tables/mail-log-table';
+import { MailLogTable }                                            from '../../resources/tables/mail-log-table';
 
 import { EmailSending }                                            from './email-sending';
 import { SesEventProcessing }                                      from './ses-event-processing';
@@ -33,6 +36,7 @@ export interface EmailSectionProps {
   readonly artifactResolver: IArtifactResolver;
   readonly data:             IEmailDataInputs;
   readonly queueProps?:      Partial<BaseQueueProps>;
+  readonly dynamoTables:     DynamoTableEncryptionProps;
 }
 
 /** Email receiving, sending and SES event processing. */
@@ -41,6 +45,7 @@ export class EmailSection extends Construct {
   public readonly sesRuleSetName: string;
   public readonly sesRuleSet: IReceiptRuleSet;
   public readonly submissionQueue: IEmailSendingQueue;
+  public readonly mailLogTable: IMailLogTable;
 
   private readonly sesEventProcessing: SesEventProcessing;
   private readonly emailSending: EmailSending;
@@ -81,12 +86,15 @@ export class EmailSection extends Construct {
       queueProps:       props.queueProps,
     });
 
+    this.mailLogTable = new MailLogTable(this, 'mail-log-table', props.dynamoTables);
+
     this.emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
       configTable:          data.configTable,
       itemTable:            data.itemTable,
       changelogTable:       data.changelogTable,
       blobStore:            data.blobStore,
       emailProcessingQueue: sesRules.emailProcessingQueue,
+      mailLogTable:         this.mailLogTable,
       artifactResolver:     props.artifactResolver,
     });
 

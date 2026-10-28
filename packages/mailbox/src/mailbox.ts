@@ -73,7 +73,7 @@ export class Mailbox extends Construct {
     const addressing = this.resolveAddressing(props, enabledUis);
 
     // Receives, sends and processes mail on top of the data stores; auth needs its queue and SES settings.
-    const email = new EmailSection(this, 'email', { artifactResolver, data, queueProps });
+    const email = new EmailSection(this, 'email', { artifactResolver, data, queueProps, dynamoTables });
 
     // Key store and identity provisioning, which need data and email. The bootstrap that registers
     // the OAuth clients waits for the UIs (`auth.addBootstrap` below).

@@ -16,6 +16,7 @@ import type { IAuditEventsQueue }                                     from '../.
 import type { IEmailSendingQueue }                                    from '../../resources/queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                    from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }                                            from '../../resources/tables/data-tables';
+import type { IMailLogTable }                                         from '../../resources/tables/mail-log-table';
 
 import type { IAdminApiAddon }                                        from './addons';
 import type { ApiRoute, IApiArea }                                    from './api-area';
@@ -31,6 +32,7 @@ export interface AdminApiProps {
   readonly changelogTable:       IDataTable;
   readonly mailFeedbackTable:    IDataTable;
   readonly authKeyStoreTable:    IAuthKeyStoreTable;
+  readonly mailLogTable:         IMailLogTable;
   readonly blobStore:            IDataBlobStore;
   readonly emailSubmissionQueue: IEmailSendingQueue;
   readonly auditEventsQueue:     IAuditEventsQueue;
@@ -122,6 +124,7 @@ export class AdminApi extends Construct implements IApiArea {
       auditLogTable:        props.auditLogTable,
       changelogTable:       props.changelogTable,
       mailFeedbackTable:    props.mailFeedbackTable,
+      mailLogTable:         props.mailLogTable,
       blobStore:            props.blobStore,
       emailSubmissionQueue: props.emailSubmissionQueue,
       auditEventsQueue:     props.auditEventsQueue,

@@ -11,6 +11,7 @@ import type { IAuditEventsQueue }                                               
 import type { IEmailSendingQueue }                                                          from '../../resources/queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                                          from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }                                                                  from '../../resources/tables/data-tables';
+import type { IMailLogTable }                                                               from '../../resources/tables/mail-log-table';
 import type { IMailboxAuthProvider }                                                        from '../auth/auth-provider';
 import type { ScopeMap }                                                                    from '../auth/jmap-scopes';
 import type { IMailboxDomainNames }                                                         from '../domains/mailbox-domains';
@@ -46,6 +47,7 @@ export interface IApisEmailInputs {
   readonly submissionQueue:  IEmailSendingQueue;
   readonly sesRuleSetName:   string;
   readonly sesConfigSetName: string;
+  readonly mailLogTable:     IMailLogTable;
 }
 
 /** What {@link ApisSection.addEndpoints} uses of the edge section. */
@@ -334,6 +336,7 @@ export class ApisSection extends Construct {
 
       sesRuleSetName:   email.sesRuleSetName,
       sesConfigSetName: email.sesConfigSetName,
+      mailLogTable:     email.mailLogTable,
       systemSenderAddress,
     });
   }
