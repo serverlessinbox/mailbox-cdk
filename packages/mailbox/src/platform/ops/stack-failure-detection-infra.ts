@@ -1,5 +1,6 @@
 import type { IArtifactResolver }                        from '@serverlessinbox/artifact-registry-cdk';
 import { PipelineLogGroup, PositionHash, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IPipelineLogGroup }                        from '@serverlessinbox/mailbox-cdk-shared';
 import * as iam                                          from 'aws-cdk-lib/aws-iam';
 import * as lambda                                       from 'aws-cdk-lib/aws-lambda';
 import { Fn, Aws }                                       from 'aws-cdk-lib';
@@ -75,7 +76,7 @@ export class StackFailureDetectionInfra extends Construct {
     });
     retainOnEveryOperation(detector);
 
-    this.createDetectorPolicy(detectorRole, infraLogGroup.logGroupArn, props.vendorAccountIds);
+    this.createDetectorPolicy(detectorRole, infraLogGroup, props.vendorAccountIds);
 
     this.detector               = detector;
     this.stackFailedEvent       = detector.stackFailedEvent;
@@ -83,7 +84,7 @@ export class StackFailureDetectionInfra extends Construct {
     this.detectorRolePolicyName = DETECTOR_POLICY_NAME;
   }
 
-  private createDetectorPolicy(detectorRole: iam.IRole, infraLogGroupArn: string, vendorAccountIds: string[]): void {
+  private createDetectorPolicy(detectorRole: iam.IRole, infraLogGroup: IPipelineLogGroup, vendorAccountIds: string[]): void {
     // The log grants live on this policy rather than on the role through grant methods, so the role
     // never gets an implicit DefaultPolicy. CreateLogStream/PutLogEvents is needed because the explicit
     // `role:` passed to the Lambda skips the AWSLambdaBasicExecutionRole attachment `Function` would add.
@@ -96,12 +97,12 @@ export class StackFailureDetectionInfra extends Construct {
         }),
         new iam.PolicyStatement({
           actions:   ['logs:CreateLogStream', 'logs:PutLogEvents'],
-          resources: [infraLogGroupArn],
+          resources: [infraLogGroup.logGroupArn],
         }),
         // FilterLogEvents is for recovery and troubleshooting.
         new iam.PolicyStatement({
           actions:   ['logs:FilterLogEvents'],
-          resources: [infraLogGroupArn],
+          resources: [infraLogGroup.logGroupArn, infraLogGroup.groupLevelArn],
         }),
         // Cross-account SigV4 calls to the vendor API need an identity-side allow in addition to its resource policy.
         new iam.PolicyStatement({

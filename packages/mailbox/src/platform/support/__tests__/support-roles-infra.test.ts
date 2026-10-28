@@ -32,6 +32,11 @@ interface StatementJson {
   readonly Condition?: unknown;
 }
 
+/** A synthesized `Fn::Join` value: a delimiter and its parts. */
+interface JoinValue {
+  readonly 'Fn::Join': [string, unknown[]];
+}
+
 /** The parts of a synthesized `AWS::IAM::Role` these assertions read. */
 interface SynthesizedRole {
   readonly DependsOn?: string[];
@@ -205,6 +210,21 @@ describe('SupportRolesInfra', () => {
 
       expect(edgeLogGroupArn(roleWithPolicy(template, DIAG_POLICY).role)).toContain(':log-group:/serverlessinbox/');
       expect(edgeLogGroupArn(roleWithPolicy(template, CONFIG_READ_POLICY).role)).not.toContain(':log-group:/serverlessinbox/');
+    });
+
+    it('list the edge log group with its trailing :* and as the plain log-group ARN, both built from the same parts', () => {
+      const { template } = synthesize(['111111111111']);
+      const { role }     = roleWithPolicy(template, DIAG_POLICY);
+
+      const edgeStatement = statementsOf(role).find((statement) => JSON.stringify(statement.Resource).includes(':log-group:'));
+      // cast: the Resource is untyped template JSON; the synthesized edge statement carries two Fn::Join values.
+      const resources     = edgeStatement?.Resource as JoinValue[];
+
+      expect(resources).toHaveLength(2);
+      const [withStreams, groupLevel] = resources;
+      const groupLevelParts           = groupLevel['Fn::Join'][1];
+      expect(groupLevelParts.at(-1)).not.toBe(':*');
+      expect(withStreams).toEqual({ 'Fn::Join': ['', [...groupLevelParts, ':*']] });
     });
 
     it.each([DIAG_POLICY, CONFIG_READ_POLICY])('%s may read the stack and its nested stacks', (policyName) => {

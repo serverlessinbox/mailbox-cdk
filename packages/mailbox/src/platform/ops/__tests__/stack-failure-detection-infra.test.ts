@@ -226,6 +226,23 @@ describe('StackFailureDetectionInfra — detector role policies', () => {
   });
 });
 
+describe('StackFailureDetectionInfra — infra log group access', () => {
+  it('FilterLogEvents lists the infra log group with its trailing :* and as the plain log-group ARN', () => {
+    const template          = synthesizeDetectionTemplate();
+    const [infraLogGroupId] = Object.keys(template.findResources('AWS::Logs::LogGroup'));
+
+    const filterStatements = statementsOfNamedPolicy(template, DETECTOR_POLICY_NAME).filter((statement) =>
+      actionsOf(statement).includes('logs:FilterLogEvents'),
+    );
+
+    expect(filterStatements.flatMap(resourcesOf)).toEqual([
+      { 'Fn::GetAtt': [infraLogGroupId, 'Arn'] },
+      expect.anything(),
+    ]);
+    expect(JSON.stringify(filterStatements.flatMap(resourcesOf)[1])).toContain('":log-group:"');
+  });
+});
+
 describe('StackFailureDetectionInfra — vendor license API access', () => {
   it('the detector policy grants execute-api:Invoke on the vendor issue-upload route only, in the stack\'s partition', () => {
     const template = synthesizeDetectionTemplate();
