@@ -9,6 +9,7 @@ import { MailboxAddressing }                                                    
 import type { MailboxEnabledUis }                                                                              from './core/domains/mailbox-addressing';
 import { EdgeSection }                                                                                         from './core/edge/edge-section';
 import { EmailSection }                                                                                        from './core/email/email-section';
+import { JobsSection }                                                                                         from './core/jobs/jobs-section';
 import { SearchSection }                                                                                       from './core/search/search-section';
 import { UiSection }                                                                                           from './core/ui/ui-section';
 import { MailboxContext }                                                                                      from './mailbox-context';
@@ -64,6 +65,9 @@ export class Mailbox extends Construct {
       queueProps,
     });
     setStackNameBase(this, data.mainStackNameBase);
+
+    // Mail-import queue, encrypted with the same plan as the data queues.
+    new JobsSection(this, 'jobs', { queueProps });
 
     // Fixes the domain names and URLs up front, since the sections below embed them.
     const addressing = this.resolveAddressing(props, enabledUis);
