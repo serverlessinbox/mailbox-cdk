@@ -4,6 +4,18 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.4](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.3...v0.5.4) (Tue Oct 27 2026)
+
+### feat
+
+* **mailbox** shared API host with admin and user areas ([c6ef099](https://github.com/serverlessinbox/mailbox-cdk/commit/c6ef09902125d9bebaa34208a01df5a0cc9fb9b4))
+
+* **mailbox** the UIs always get their API URLs ([6a2add1](https://github.com/serverlessinbox/mailbox-cdk/commit/6a2add197352bbe2312b02c2cc194de4ae45a7ea))
+
+### refactor
+
+* **mailbox** webmail config names its JMAP URL jmapUrl ([bcf2b9b](https://github.com/serverlessinbox/mailbox-cdk/commit/bcf2b9bed122397cd2a724e8a5a747848dcca2d3))
+
 ## [0.5.3](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.2...v0.5.3) (Mon Oct 26 2026)
 
 
