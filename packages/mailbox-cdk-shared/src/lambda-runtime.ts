@@ -18,6 +18,7 @@ export { readCustomResourceRequest } from './runtime/handler-kit/custom-resource
 export { FailedRequestAnswerer } from './runtime/handler-kit/custom-resource/custom-resource-failed-request-answerer';
 export { CaughtError } from './runtime/handler-kit/errors/caught-error';
 export { parseArn, type ParsedArn } from './runtime/handler-kit/arn';
+export { runConcurrently } from './runtime/handler-kit/run-concurrently';
 export { isBrandedString, type Branded, type Unbranded } from './runtime/handler-kit/branded';
 export {
   toStackName,
