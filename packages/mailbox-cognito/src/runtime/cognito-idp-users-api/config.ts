@@ -36,6 +36,6 @@ export function load(loader: env.Loader): Config {
     adminGroups:                     env.optionalAs(loader, 'ADMIN_GROUPS', undefined, env.json(isGroupNameArray)),
     // BWCOMPAT(2026-10-26): USER_GROUPS is absent when the user pool defines no authorization config.
     // Remove when: every user pool handed to the addon implements authorizationConfig.
-    userGroups:                      env.optionalAs(loader, 'USER_GROUPS', undefined, env.json(isGroupNameArray)),
+    userGroups: env.optionalAs(loader, 'USER_GROUPS', undefined, env.json(isGroupNameArray)),
   };
 }

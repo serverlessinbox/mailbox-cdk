@@ -191,9 +191,9 @@ describe('UpdateCycle', () => {
       expect(edgeUpdater.advanceIfStale).not.toHaveBeenCalled();
       expect(uiUpdater.advanceIfStale).not.toHaveBeenCalled();
       expect(console.debug).toHaveBeenCalledWith('unknown auto-update-type', {
-        arn:          unknownType.ResourceARN,
+        arn: unknownType.ResourceARN,
         resourceType,
-        type:         'canary',
+        type: 'canary',
       });
     });
 

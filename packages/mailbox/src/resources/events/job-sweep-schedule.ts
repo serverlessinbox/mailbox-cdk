@@ -7,7 +7,7 @@ import type { Construct }   from 'constructs';
 /** Settings of the schedule that periodically sweeps stale import jobs and expired connections. */
 export interface JobSweepScheduleProps {
   /** The function invoked on each sweep; EventBridge is granted permission to invoke it. */
-  readonly target:   IFunction;
+  readonly target: IFunction;
   /** The period between two sweeps. */
   readonly interval: Duration;
 }

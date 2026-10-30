@@ -24,7 +24,7 @@ carries the shared lint configuration that the repository's `eslint.config.cjs` 
 | `mailbox/events-import` | Only `resources/lambdas` and `resources/events` import `resources/events`, and then with `import type` |
 | `mailbox/kit-isolation` | `mailbox-cdk-shared` never imports the `mailbox` package |
 | `mailbox/plan-labels` | No plan labels or change narration in comments |
-| `mailbox/align` | `=` and `:` are aligned in groups of consecutive lines |
+| `mailbox/align` | `=` and `:` are aligned in groups of consecutive lines, capped at column 80: an entry past the cap is a group of its own, and a lone entry gets one space before `=` or its value |
 | `mailbox/import-layout` | Imports fit a column-80 lane: a wide import is wrapped with its names packed, and `from` is aligned across each run of adjacent imports |
 | `mailbox/iam-statement-home` | IAM statements only in `resources/`, `grants/` and the allow-list |
 | `mailbox/logical-id-home` | `overrideLogicalId` only in a Stack class or on the allow-list |

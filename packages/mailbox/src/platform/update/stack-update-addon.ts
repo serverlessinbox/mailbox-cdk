@@ -85,7 +85,7 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
       pointerBucket,
       pointerKey,
       templateUrlTemplate,
-      auditEventsQueue:    props.auditEventsQueue,
+      auditEventsQueue: props.auditEventsQueue,
     });
 
     this.routeSpec = {

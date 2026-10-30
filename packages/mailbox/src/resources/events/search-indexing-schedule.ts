@@ -8,7 +8,7 @@ import type { Construct } from 'constructs';
 /** Settings of the schedule that periodically triggers search indexing. */
 export interface SearchIndexingScheduleProps {
   /** The function invoked every 6 hours to index; EventBridge is granted permission to invoke it. */
-  readonly target:          IFunction;
+  readonly target: IFunction;
   /** Receives the invocations EventBridge could not deliver to the target; EventBridge is granted permission to send to it. */
   readonly deadLetterQueue: IQueue;
 }

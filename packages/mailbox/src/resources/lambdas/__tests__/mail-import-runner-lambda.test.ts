@@ -75,7 +75,7 @@ function arrangeRunner(encrypted: boolean, broadcaster?: IWebSocketBroadcastPubl
   const itemTable = dataTable(stack, 'item-table');
   const key       = encrypted ? new kms.Key(stack, 'AuthKey') : undefined;
   const runner    = new MailImportRunnerLambda(stack, 'mail-import-runner', {
-    artifactResolver:  resolverFor(stack),
+    artifactResolver: resolverFor(stack),
     itemTable,
     configTable:       dataTable(stack, 'config-table'),
     changelogTable:    dataTable(stack, 'changelog-table'),

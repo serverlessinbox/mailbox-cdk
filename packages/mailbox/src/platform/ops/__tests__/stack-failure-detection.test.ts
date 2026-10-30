@@ -60,7 +60,7 @@ describe('StackFailureDetection', () => {
     function buildGatedDetection(): { readonly template: Template; readonly detection: StackFailureDetection } {
       const stack = buildStack('test-stack-diag-parameter');
       // cast: a CloudFormation parameter token stands in for the enum value; its allowedValues guarantee the domain
-      const mode  = new CfnParameter(stack, 'sendStackFailures', { type: 'String', default: 'enabled' }).valueAsString as SendStackFailuresMode;
+      const mode = new CfnParameter(stack, 'sendStackFailures', { type: 'String', default: 'enabled' }).valueAsString as SendStackFailuresMode;
 
       const detection = new StackFailureDetection(stack, 'stack-failure-detection', {
         mode,

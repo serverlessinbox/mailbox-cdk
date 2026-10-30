@@ -16,7 +16,7 @@ import { StackHelpersLambda }                      from '../stack-helpers-lambda
 describe('StackHelpersLambda', () => {
   const { stack, resolver } = createStackWithResolver();
   new StackHelpersLambda(stack, 'handler', { artifactResolver: resolver });
-  const template            = Template.fromStack(stack);
+  const template = Template.fromStack(stack);
 
   it('loads its code from the stack-helpers bundle of mailbox-cdk-shared', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {

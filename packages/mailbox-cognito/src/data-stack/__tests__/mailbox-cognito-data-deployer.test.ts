@@ -51,7 +51,7 @@ describe('MailboxCognitoDataDeployer', () => {
       const templateUrl: unknown                  = stack.resolve(artifactResolver.getUrl('mailbox-cognito', 'cognito-data-stack-template.json'));
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
-        stackName:        COGNITO_STACK_NAME,
+        stackName: COGNITO_STACK_NAME,
         templateUrl,
         region:           { Ref: 'AWS::Region' },
         preserveOnDelete: true,

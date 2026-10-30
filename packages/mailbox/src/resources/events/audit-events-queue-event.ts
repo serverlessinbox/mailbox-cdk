@@ -10,7 +10,7 @@ export interface AuditEventsQueueEventProps {
   /** The function that receives each batch of audit events. */
   readonly target: IFunction;
   /** The queue the audit events are read from, seen from the consuming side. */
-  readonly queue:  IAuditEventsQueueConsumer;
+  readonly queue: IAuditEventsQueueConsumer;
 }
 
 /** Invokes the target with batches of up to 100 audit events, reporting partial batch failures. */

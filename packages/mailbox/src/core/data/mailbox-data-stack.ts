@@ -18,11 +18,11 @@ import { MailboxEncryption }                                                    
 /** The values the data stack's template parameters take; the keys are the parameter names. */
 export type MailboxDataStackParameters = {
   /** S3-safe base for bucket names. */
-  readonly nameBase:     string;
+  readonly nameBase: string;
   /** Root (main) CloudFormation stack name. */
-  readonly rootStack:    string;
+  readonly rootStack: string;
   /** Unique id (stack id guid) of the root (main) CloudFormation stack. */
-  readonly rootStackId:  string;
+  readonly rootStackId: string;
   /** Deployment mechanism label used for tagging. */
   readonly deployerType: ServerlessInboxDeployerType;
 };

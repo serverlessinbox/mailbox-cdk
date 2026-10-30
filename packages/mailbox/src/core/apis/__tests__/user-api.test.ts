@@ -31,10 +31,10 @@ describe('UserApi', () => {
 
   function userApiProps() {
     const { configTable, itemTable, auditEventsQueue, authKeyStoreTable, artifactResolver } = newAdminApiProps(stack);
-    const importJobsQueue                                                                   = new ImportJobsQueue(stack, 'import-jobs-queue', { encryption: { kind: 'aws-managed' } });
-    const mailImportRunner                                                                  = fakeMailImportRunner('mail-import-runner');
+    const importJobsQueue  = new ImportJobsQueue(stack, 'import-jobs-queue', { encryption: { kind: 'aws-managed' } });
+    const mailImportRunner = fakeMailImportRunner('mail-import-runner');
 
-    const scopeMap                                                                          = { 'mail-reader': [Permission.MAIL_READ] };
+    const scopeMap = { 'mail-reader': [Permission.MAIL_READ] };
 
     return { configTable, itemTable, auditEventsQueue, authKeyStoreTable, importJobsQueue, mailImportRunner, artifactResolver, scopeMap };
   }

@@ -90,7 +90,7 @@ export class MailboxDataDeployer extends Construct {
       templateUrl:      props.artifactResolver.getUrl(MAILBOX_ARTIFACT_PACKAGE, MailboxDataDeployer.TEMPLATE_OBJECT),
       preserveOnDelete: true,
       parameters,
-      tags:             serverlessInboxSubStackTags({
+      tags: serverlessInboxSubStackTags({
         rootStack:   Aws.STACK_NAME,
         rootStackId: StackIdentity.guid,
         stack:       props.dataStackName,

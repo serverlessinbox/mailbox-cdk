@@ -75,7 +75,7 @@ export class SesEventProcessing extends Construct {
       blobStore:         props.blobStore,
       auditEventsQueue:  props.auditEventsQueue,
       sesEventQueue,
-      artifactResolver:  props.artifactResolver,
+      artifactResolver: props.artifactResolver,
     });
   }
 

@@ -63,7 +63,7 @@ export class UserApi extends Construct implements IApiArea {
       methods:       [HttpMethod.POST],
       integrationId: 'user-api',
       handler,
-      authorizer:    new HttpLambdaAuthorizer('user-authorizer', authorizerLambda),
+      authorizer: new HttpLambdaAuthorizer('user-authorizer', authorizerLambda),
     }];
   }
 }

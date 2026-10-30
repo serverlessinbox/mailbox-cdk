@@ -24,7 +24,7 @@ export interface UserApiLambdaProps {
   readonly mailImportRunner:  IMailImportRunner;
   readonly artifactResolver:  IArtifactResolver;
   /** The OAuth scope map; delivered to the Go handler in the OAUTH_HANDLER_CONFIG variable. */
-  readonly scopeMap:          ScopeMap;
+  readonly scopeMap: ScopeMap;
 }
 
 /**

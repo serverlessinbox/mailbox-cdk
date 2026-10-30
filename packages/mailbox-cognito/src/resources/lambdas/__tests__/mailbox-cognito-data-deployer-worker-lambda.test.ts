@@ -40,9 +40,9 @@ function synthWorker(): { readonly worker: MailboxCognitoDataDeployerWorkerLambd
   const { stack, artifactResolver } = newDeployerTestStack();
   const worker                      = new MailboxCognitoDataDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
-    template:      dataTemplate,
+    template: dataTemplate,
     deployedStack,
-    rootStack:     ROOT_STACK,
+    rootStack: ROOT_STACK,
   });
   return { worker, template: Template.fromStack(stack) };
 }

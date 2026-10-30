@@ -31,7 +31,7 @@ describe('McpApi', () => {
     });
 
     sut = new McpApi(stack, 'mcp-api', {
-      jmapApiUrl:       'https://jmap.example.com',
+      jmapApiUrl: 'https://jmap.example.com',
       authorizerLambda,
       certificate:      certificate(stack, 'mcp.example.com'),
       host:             'mcp.example.com',

@@ -5,8 +5,10 @@ import { createRule }                                                    from '.
 // Aligns the `=` of consecutive single-statement declarations and assignments, and the
 // values of consecutive key-value members of object literals, interfaces and type literals.
 // A group is a run of members where each starts on the line directly after the previous one
-// ends: a blank line, a comment line or a member that does not take part ends it. A group of
-// one is left alone. Only the whitespace right before the `=` / after the `:` is rewritten.
+// ends: a blank line, a comment line or a member that does not take part ends it. Every group
+// aligns, including a group of one, so a lone entry gets exactly one space. An entry whose `=`
+// or value would start past ALIGN_CAP_COLUMN is over the cap: it is a group of its own.
+// Only the whitespace right before the `=` / after the `:` is rewritten.
 
 type AlignMessageId = 'alignEquals' | 'alignValue';
 
@@ -21,12 +23,15 @@ interface AlignEntry {
   column:      number;
   gapStart:    number;
   gapEnd:      number;
+  overCap:     boolean;
 }
 
 interface AlignedPair {
   left:  TSESTree.Node;
   right: TSESTree.Node;
 }
+
+const ALIGN_CAP_COLUMN = 80;
 
 export const align = createRule({
   name:           'align',
@@ -92,12 +97,18 @@ class AlignChecker {
 
   private continuesGroup(group: readonly AlignEntry[], entry: AlignEntry): boolean {
     const last = group[group.length - 1];
+    if (last === undefined) {
+      return true;
+    }
+    if (last.overCap || entry.overCap) {
+      return false;
+    }
 
-    return last === undefined || entry.node.loc.start.line === last.node.loc.end.line + 1;
+    return entry.node.loc.start.line === last.node.loc.end.line + 1;
   }
 
   private alignIfGroup(group: readonly AlignEntry[]): void {
-    if (group.length > 1) {
+    if (group.length > 0) {
       this.alignGroup(group);
     }
   }
@@ -177,13 +188,16 @@ class AlignChecker {
       return null;
     }
 
+    const column = gapStart.loc.end.column;
+
     return {
       node,
       reportToken,
       messageId,
-      column:   gapStart.loc.end.column,
+      column,
       gapStart: gapStart.range[1],
       gapEnd:   gapEnd.range[0],
+      overCap:  column + 1 > ALIGN_CAP_COLUMN,
     };
   }
 

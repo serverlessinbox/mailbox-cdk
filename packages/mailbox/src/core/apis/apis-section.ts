@@ -57,7 +57,7 @@ export interface IApisEdgeInputs {
   readonly apiCertificate?:  acm.ICertificate;
   readonly jmapCertificate?: acm.ICertificate;
   /** Present only when the mailbox has a hosted zone: the WebSocket API gets a custom domain only then. */
-  readonly wsCertificate?:   acm.ICertificate;
+  readonly wsCertificate?: acm.ICertificate;
   /** The certificate the MCP API is served with; absent when the edge section created none. */
   readonly regionalCertificate?: acm.ICertificate;
 }
@@ -289,7 +289,7 @@ export class ApisSection extends Construct {
       auditEventsQueue:     data.auditEventsQueue,
       artifactResolver,
       authProvider,
-      identityProvisioner:  auth.identityProvisioner,
+      identityProvisioner: auth.identityProvisioner,
 
       customDomain,
 
@@ -341,7 +341,7 @@ export class ApisSection extends Construct {
       emailSubmissionQueue: email.submissionQueue,
       auditEventsQueue:     data.auditEventsQueue,
       artifactResolver,
-      identityProvisioner:  auth.identityProvisioner,
+      identityProvisioner: auth.identityProvisioner,
       vendorLink,
 
       addons: adminApiAddons,

@@ -10,7 +10,7 @@ import { retainOnEveryOperation }        from '../../utils/cfn-resource';
 /** What the sweeper needs to find and remove the retained rule. */
 export interface IStackFailedEvent {
   /** ARN of the retained rule. */
-  readonly ruleArn:      string;
+  readonly ruleArn: string;
   /** Id of the rule's single target within the rule. */
   readonly ruleTargetId: string;
 }

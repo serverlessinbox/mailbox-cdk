@@ -55,9 +55,9 @@ export class Mailbox extends Construct {
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
 
-    const context                                                                                           = this.resolveContext(props);
+    const context = this.resolveContext(props);
     const { artifactResolver, deployerType, vendorLink, encryptionPlan: { queueEncryption, dynamoTables } } = context;
-    const enabledUis                                                                                        = { adminUi: props.enableAdminUi ?? true, webmailUi: props.enableWebmailUi ?? true };
+    const enabledUis = { adminUi: props.enableAdminUi ?? true, webmailUi: props.enableWebmailUi ?? true };
 
     // Every other section reads the data tables, queues and blob store, so data comes first.
     const data = new DataSection(this, 'data', {

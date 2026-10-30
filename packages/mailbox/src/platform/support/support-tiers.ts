@@ -4,9 +4,9 @@ export type SupportTierId = 'support-diag' | 'support-config-read';
 /** One support access tier: the role it gets, the trust tag that gates it and the actions it may use. */
 export interface SupportTier {
   /** Determines the role's logical ID, so changing it replaces the role. */
-  readonly constructId:       SupportTierId;
+  readonly constructId: SupportTierId;
   /** Role name slug used in the role's name. */
-  readonly roleNameSlug:      string;
+  readonly roleNameSlug: string;
   /** IAM tag key the tier role's trust policy is conditioned on. */
   readonly tagKey:           string;
   readonly inlinePolicyName: string;

@@ -218,7 +218,7 @@ describe('SupportRolesInfra', () => {
 
       const edgeStatement = statementsOf(role).find((statement) => JSON.stringify(statement.Resource).includes(':log-group:'));
       // cast: the Resource is untyped template JSON; the synthesized edge statement carries two Fn::Join values.
-      const resources     = edgeStatement?.Resource as JoinValue[];
+      const resources = edgeStatement?.Resource as JoinValue[];
 
       expect(resources).toHaveLength(2);
       const [withStreams, groupLevel] = resources;

@@ -45,7 +45,7 @@ export class BucketEmptier {
       this.assertTimeLeft(bucketName, deadline, deleted);
       const page = await this.listVersions(bucketName, position);
       deleted   += await this.deleteVersions(bucketName, this.identifiersIn(page), deadline);
-      position   = this.nextPosition(page);
+      position = this.nextPosition(page);
     } while (position);
 
     return deleted;

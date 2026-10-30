@@ -72,7 +72,7 @@ describe('AdminApiLambda IAM scoping', () => {
       auditLogTable,
       changelogTable,
       mailFeedbackTable,
-      mailLogTable:        new MailLogTable(stack, 'mail-log-table', { encryption: TableEncryption.AWS_MANAGED }),
+      mailLogTable: new MailLogTable(stack, 'mail-log-table', { encryption: TableEncryption.AWS_MANAGED }),
       blobStore,
       emailSubmissionQueue,
       auditEventsQueue,

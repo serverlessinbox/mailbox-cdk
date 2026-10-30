@@ -8,7 +8,7 @@ export interface LicenseRefreshScheduleProps {
   /** The function invoked once a day; EventBridge is granted permission to invoke it. */
   readonly target: IFunction;
   /** Hour of the day (UTC, as EventBridge cron expressions are) of the invocation, as a cron hour field such as `'13'`. */
-  readonly hour:   string;
+  readonly hour: string;
   /** Minute of the hour of the invocation, as a cron minute field such as `'47'`. */
   readonly minute: string;
 }

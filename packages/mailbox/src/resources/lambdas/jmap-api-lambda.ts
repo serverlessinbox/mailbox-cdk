@@ -31,7 +31,7 @@ export interface JmapApiLambdaProps {
   readonly artifactResolver:     IArtifactResolver;
   readonly identityProvisioner:  IIdentityProvisioner;
   /** The OAuth scope map; delivered to the Go handler in the OAUTH_HANDLER_CONFIG variable. */
-  readonly scopeMap:             ScopeMap;
+  readonly scopeMap: ScopeMap;
   /** Optional: fully-resolved RFC 9728 protected-resource document URL (e.g. https://jmap.example.com/.well-known/oauth-protected-resource).
    *  The Go handler advertises this URL via 401 WWW-Authenticate: Bearer resource_metadata="...". */
   readonly oauthProtectedResourceUrl?: string;

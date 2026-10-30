@@ -33,7 +33,7 @@ export class AuditWriting extends Construct {
     this.auditEventsQueue  = auditEventsQueue;
 
     new AuditWriterLambda(this, 'audit-writer', {
-      auditLogTable:    props.auditLogTable,
+      auditLogTable: props.auditLogTable,
       auditEventsQueue,
       artifactResolver: props.artifactResolver,
     });

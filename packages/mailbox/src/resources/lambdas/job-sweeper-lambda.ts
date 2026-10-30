@@ -11,9 +11,9 @@ export interface JobSweeperLambdaProps {
   readonly artifactResolver: IArtifactResolver;
   readonly itemTable:        IDataTable;
   /** The period between two sweeps. */
-  readonly sweepInterval:    Duration;
+  readonly sweepInterval: Duration;
   /** How long a non-terminal job may go without progress before it is failed. */
-  readonly staleAfter:       Duration;
+  readonly staleAfter: Duration;
 }
 
 /**

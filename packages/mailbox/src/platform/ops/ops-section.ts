@@ -34,7 +34,7 @@ export interface OpsSectionProps {
   readonly artifactResolver: IArtifactResolver;
   readonly vendorAccountIds: string[];
   /** The domain name the mailbox serves; a deploy-time token when it comes from a hosted zone. */
-  readonly domainName:       string;
+  readonly domainName: string;
   /** Default: {@link SendStackFailuresMode.ENABLED}. */
   readonly sendStackFailures?: SendStackFailuresMode;
   readonly data:               IOpsDataInputs;

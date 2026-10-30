@@ -65,9 +65,9 @@ export interface AuthSectionProps {
   readonly email:            IAuthEmailInputs;
   readonly vendorLink:       VendorLink;
   /** The table encryption of the mailbox, passed on to the auth key store. */
-  readonly dynamoTables:     DynamoTableEncryptionProps;
+  readonly dynamoTables: DynamoTableEncryptionProps;
   /** The domain name the mailbox serves; a deploy-time token when it comes from a hosted zone. */
-  readonly domainName:       string;
+  readonly domainName: string;
   /** URL of the Admin UI; absent when no Admin UI is deployed. */
   readonly adminUiUrl?: string;
 }

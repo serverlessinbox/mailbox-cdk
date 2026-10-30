@@ -333,7 +333,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       passwordMinLength:   this.passwordMinLength,
       artifactResolver:    this.artifacts,
       deployerType,
-      rootStack:           { name: Aws.STACK_NAME, id: StackIdentity.guid },
+      rootStack: { name: Aws.STACK_NAME, id: StackIdentity.guid },
     });
     const stackRef        = cognitoDeployer.dataStackRef;
 

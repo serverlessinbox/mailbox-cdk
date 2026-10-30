@@ -56,7 +56,7 @@ export interface EdgeSectionProps {
   readonly auth:             IEdgeAuthInputs;
   readonly addressing:       IEdgeAddressing;
   /** The hosted zone the mailbox has, if any: the certificates validate and the DNS records are written into it. */
-  readonly hostedZone?:      route53.IHostedZone;
+  readonly hostedZone?: route53.IHostedZone;
   /** The operator's own certificates; the api, jmap, ws and cloudFront ones are read here. */
   readonly certificateOverrides?: MailboxCertificateOverrides;
 }

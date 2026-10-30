@@ -10,7 +10,7 @@ export interface SesNotificationsQueueEventProps {
   /** The function that receives each batch of SES notifications. */
   readonly target: IFunction;
   /** The queue the SES notifications are read from. */
-  readonly queue:  ISesEventQueue;
+  readonly queue: ISesEventQueue;
 }
 
 /** Invokes the target with batches of up to 100 SES notifications, at most 5 concurrent batches, reporting partial batch failures. */

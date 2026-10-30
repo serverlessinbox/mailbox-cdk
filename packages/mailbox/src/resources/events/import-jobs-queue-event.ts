@@ -9,7 +9,7 @@ export interface ImportJobsQueueEventProps {
   /** The function that receives each import job. */
   readonly target: IFunction;
   /** The queue the import jobs are read from, seen from the consuming side. */
-  readonly queue:  IImportJobsQueueConsumer;
+  readonly queue: IImportJobsQueueConsumer;
 }
 
 /**

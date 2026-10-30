@@ -11,7 +11,7 @@ export interface AuthKeyStoreProps {
   readonly issuers:          string[];
   readonly artifactResolver: IArtifactResolver;
   /** The table encryption of the mailbox; the key store uses its customer key only when one is configured. */
-  readonly dynamoTables:     DynamoTableEncryptionProps;
+  readonly dynamoTables: DynamoTableEncryptionProps;
 }
 
 /**

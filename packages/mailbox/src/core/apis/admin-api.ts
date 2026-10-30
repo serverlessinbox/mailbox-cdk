@@ -81,7 +81,7 @@ export class AdminApi extends Construct implements IApiArea {
         methods:       [HttpMethod.POST],
         integrationId: 'handler',
         handler,
-        authorizer:    httpLambdaAuthorize,
+        authorizer: httpLambdaAuthorize,
       },
     ];
   }

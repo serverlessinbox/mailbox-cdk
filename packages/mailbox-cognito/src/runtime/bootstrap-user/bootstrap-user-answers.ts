@@ -7,7 +7,7 @@ export const PASSWORD_SET_AT_INSTALL_TIME = '(password set at install time)';
 export type BootstrapUserAnswerData = {
   readonly temporaryPassword: string;
   /** The groups the user could not be joined to, joined by `,`; empty when every group was joined. */
-  readonly failedGroups:      string;
+  readonly failedGroups: string;
 };
 
 /** An answer to CloudFormation that reports the password, with a physical id when it carries one. */

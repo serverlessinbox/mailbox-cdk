@@ -90,17 +90,17 @@ export interface ProvisionJmapApiClientParams {
  */
 export interface IMailboxAuthProviderBase {
   /** Issuer URL of the OIDC provider. */
-  readonly issuer:                string;
+  readonly issuer: string;
   /** URL of the provider's token endpoint. */
-  readonly tokenEndpoint:         string;
+  readonly tokenEndpoint: string;
   /** URL of the provider's authorization endpoint. */
   readonly authorizationEndpoint: string;
   /** How the OAuth client authenticates at the token endpoint. */
-  readonly authMethod:            AuthMethod;
+  readonly authMethod: AuthMethod;
   /** Whether the authorization code flow uses PKCE. */
-  readonly usePkce:               boolean;
+  readonly usePkce: boolean;
   /** Maps each OAuth scope name the provider issues to the JMAP permissions it stands for. */
-  readonly scopeMap:              ScopeMap;
+  readonly scopeMap: ScopeMap;
 
   /** Policy configuration consumed by authorizers (audiences + optional group requirement). */
   readonly policies: MailboxAuthPolicies;
@@ -117,7 +117,7 @@ export interface MailboxAuthorizationConfig {
   /** Names of the identity-provider groups whose members get the admin role. Written to the Admin UI config as `authorization.roles.adminGroups`. */
   readonly adminGroups: string[];
   /** Names of the identity-provider groups whose members get the user role. Written to the Admin UI config as `authorization.roles.userGroups`. */
-  readonly userGroups:  string[];
+  readonly userGroups: string[];
 }
 
 /**
