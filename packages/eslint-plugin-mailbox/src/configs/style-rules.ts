@@ -16,7 +16,7 @@ export const styleRules: TSESLint.FlatConfig.Rules = {
     },
   ],
   'max-classes-per-file':                 ['error', 1],
-  'max-lines-per-function':               ['error', { max: 80, skipBlankLines: true, skipComments: true }],
+  'max-lines-per-function':               ['error', { max: 100, skipBlankLines: true, skipComments: true }],
   '@typescript-eslint/member-ordering':   [
     'error',
     {
