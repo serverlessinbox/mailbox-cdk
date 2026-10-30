@@ -15,6 +15,7 @@ import * as cdk                                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
 
 import { resourcesOfType }                               from '../../../__tests__/iam-test-helpers';
+import type { IWebSocketBroadcastPublisher }             from '../../../contracts/websocket-push';
 import { DataBlobStore }                                 from '../../buckets/data-blob-store';
 import { ImportJobsQueue }                               from '../../queues/import-jobs-queue';
 import { AuthKeyStoreTable }                             from '../../tables/auth-key-store-table';
@@ -65,12 +66,15 @@ function dataTable(stack: cdk.Stack, id: string): DataTable {
   }));
 }
 
-/** Synthesizes the runner with the real tables, blob bucket, queue and auth key store, encrypted with a customer key when asked. */
-function arrangeRunner(encrypted: boolean) {
+/**
+ * Synthesizes the runner with the real tables, blob bucket, queue and auth key store, encrypted with a customer key when asked.
+ * When a broadcaster is given, the runner is pointed at it before the template is taken.
+ */
+function arrangeRunner(encrypted: boolean, broadcaster?: IWebSocketBroadcastPublisher) {
   const stack     = createStack();
   const itemTable = dataTable(stack, 'item-table');
   const key       = encrypted ? new kms.Key(stack, 'AuthKey') : undefined;
-  new MailImportRunnerLambda(stack, 'mail-import-runner', {
+  const runner    = new MailImportRunnerLambda(stack, 'mail-import-runner', {
     artifactResolver:  resolverFor(stack),
     itemTable,
     configTable:       dataTable(stack, 'config-table'),
@@ -79,8 +83,11 @@ function arrangeRunner(encrypted: boolean) {
     importJobsQueue:   new ImportJobsQueue(stack, 'import-jobs-queue', { encryption: { kind: 'aws-managed' } }),
     authKeyStoreTable: new AuthKeyStoreTable(stack, 'auth-key-store', key),
   });
+  if (broadcaster) {
+    runner.enableWebSocketPush(broadcaster);
+  }
 
-  return { stack, template: Template.fromStack(stack), itemTable };
+  return { stack, runner, template: Template.fromStack(stack), itemTable };
 }
 
 function allStatements(template: Template): PolicyStatement[] {
@@ -150,5 +157,14 @@ describe('MailImportRunnerLambda', () => {
 
     expect(kmsStatementCount(arrangeRunner(false).template)).toBe(0);
     expect(kmsStatementCount(arrangeRunner(true).template)).toBeGreaterThan(0);
+  });
+
+  it('pushes over the WebSocket once enabled: the broadcaster name is in its environment and the runner is granted the invoke', () => {
+    const grantInvoke          = jest.fn();
+    const { runner, template } = arrangeRunner(false, { functionName: 'broadcaster-function', grantInvoke });
+
+    expect(runnerProperties(template).Environment.Variables.WEBSOCKET_BROADCAST_FUNCTION_NAME).toBe('broadcaster-function');
+    expect(grantInvoke).toHaveBeenCalledTimes(1);
+    expect(grantInvoke).toHaveBeenCalledWith(runner);
   });
 });

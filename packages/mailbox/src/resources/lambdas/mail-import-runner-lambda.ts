@@ -1,14 +1,15 @@
-import type { IArtifactResolver }          from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                        from '@serverlessinbox/mailbox-cdk-shared';
-import type { IGrantable }                 from 'aws-cdk-lib/aws-iam';
-import { Duration }                        from 'aws-cdk-lib';
-import { Construct }                       from 'constructs';
+import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                                                from '@serverlessinbox/mailbox-cdk-shared';
+import type { IGrantable }                                         from 'aws-cdk-lib/aws-iam';
+import { Duration }                                                from 'aws-cdk-lib';
+import { Construct }                                               from 'constructs';
 
-import type { IDataBlobStore }             from '../buckets/data-blob-store';
-import { ImportJobsQueueEvent }            from '../events/import-jobs-queue-event';
-import type { IImportJobsQueueConsumer }   from '../queues/import-jobs-queue';
-import type { IAuthKeyStoreTable }         from '../tables/auth-key-store-table';
-import type { IDataTable }                 from '../tables/data-tables';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
+import type { IDataBlobStore }                                     from '../buckets/data-blob-store';
+import { ImportJobsQueueEvent }                                    from '../events/import-jobs-queue-event';
+import type { IImportJobsQueueConsumer }                           from '../queues/import-jobs-queue';
+import type { IAuthKeyStoreTable }                                 from '../tables/auth-key-store-table';
+import type { IDataTable }                                         from '../tables/data-tables';
 
 /** The mail-import runner's physical name, and the grant that allows invoking it. */
 export interface IMailImportRunner {
@@ -35,7 +36,7 @@ export interface MailImportRunnerLambdaProps {
  * inspect. It grants itself its tables, the blob write, the queue and the connection private key, and it owns
  * the event source mapping that feeds it.
  */
-export class MailImportRunnerLambda extends GoLambda implements IMailImportRunner {
+export class MailImportRunnerLambda extends GoLambda implements IMailImportRunner, IWebSocketPushTarget {
   constructor(scope: Construct, id: string, props: MailImportRunnerLambdaProps) {
     super(scope, id, {
       lambdaId:                     'mail-import-runner',
@@ -64,5 +65,10 @@ export class MailImportRunnerLambda extends GoLambda implements IMailImportRunne
     props.authKeyStoreTable.grantReadConnectionPrivateKey(this);
 
     new ImportJobsQueueEvent(this, 'import-jobs-queue', { target: this, queue: props.importJobsQueue });
+  }
+
+  public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {
+    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this);
   }
 }

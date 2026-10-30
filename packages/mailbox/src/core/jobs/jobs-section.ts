@@ -4,6 +4,7 @@ import { applyServerlessInboxComponentTag }                          from '@serv
 import { Duration }                                                  from 'aws-cdk-lib';
 import { Construct }                                                 from 'constructs';
 
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }   from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                       from '../../resources/buckets/data-blob-store';
 import { JobSweeperLambda }                                          from '../../resources/lambdas/job-sweeper-lambda';
 import { MailImportRunnerLambda }                                    from '../../resources/lambdas/mail-import-runner-lambda';
@@ -45,13 +46,15 @@ export class JobsSection extends Construct {
   public readonly importJobsQueue: IImportJobsQueueConsumer;
   public readonly mailImportRunner: IMailImportRunner;
 
+  private readonly mailImportRunnerLambda: IWebSocketPushTarget;
+
   constructor(scope: Construct, id: string, props: JobsSectionProps) {
     super(scope, id);
     applyServerlessInboxComponentTag(this, 'data');
 
     this.importJobsQueue = new ImportJobsQueue(this, 'import-jobs-queue', { encryption: props.queueEncryption });
 
-    this.mailImportRunner = new MailImportRunnerLambda(this, 'mail-import-runner', {
+    const runner                = new MailImportRunnerLambda(this, 'mail-import-runner', {
       artifactResolver:  props.artifactResolver,
       itemTable:         props.data.itemTable,
       configTable:       props.data.configTable,
@@ -60,6 +63,8 @@ export class JobsSection extends Construct {
       importJobsQueue:   this.importJobsQueue,
       authKeyStoreTable: props.auth.authKeyStoreTable,
     });
+    this.mailImportRunner       = runner;
+    this.mailImportRunnerLambda = runner;
 
     new JobSweeperLambda(this, 'job-sweeper', {
       artifactResolver: props.artifactResolver,
@@ -67,5 +72,10 @@ export class JobsSection extends Construct {
       sweepInterval:    JobsSection.SWEEP_INTERVAL,
       staleAfter:       JobsSection.JOB_STALE_AFTER,
     });
+  }
+
+  /** Enables WebSocket push emission from the mail-import runner's ChangeTracker. */
+  public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
+    this.mailImportRunnerLambda.enableWebSocketPush(broadcaster);
   }
 }
