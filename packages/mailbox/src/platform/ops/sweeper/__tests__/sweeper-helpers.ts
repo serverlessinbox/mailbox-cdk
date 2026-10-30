@@ -1,20 +1,20 @@
-import { renderLiteralText, renderWithRefs }              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { ServerlessInboxTagKeys }                         from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                       from 'aws-cdk-lib/assertions';
-import * as acm                                           from 'aws-cdk-lib/aws-certificatemanager';
-import * as iam                                           from 'aws-cdk-lib/aws-iam';
-import * as lambda                                        from 'aws-cdk-lib/aws-lambda';
-import * as sfn                                           from 'aws-cdk-lib/aws-stepfunctions';
-import { Duration, Stack }                                from 'aws-cdk-lib';
-import { Construct }                                      from 'constructs';
-import * as t                                             from 'typanion';
+import { renderLiteralText, renderWithRefs } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { ServerlessInboxTagKeys }            from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                          from 'aws-cdk-lib/assertions';
+import * as acm                              from 'aws-cdk-lib/aws-certificatemanager';
+import * as iam                              from 'aws-cdk-lib/aws-iam';
+import * as lambda                           from 'aws-cdk-lib/aws-lambda';
+import * as sfn                              from 'aws-cdk-lib/aws-stepfunctions';
+import { Duration, Stack }                   from 'aws-cdk-lib';
+import { Construct }                         from 'constructs';
+import * as t                                from 'typanion';
 
-import { resourcesOfType, isTemplateValue }               from '../../../../__tests__/template-resources';
-import { StackFailedEvent }                               from '../../../../resources/events/stack-failed-event';
-import { CertificateRemoval }                             from '../certificate-removal';
-import { EdgeFunctionRemoval }                            from '../edge-function-removal';
-import type { IResourceRemoval }                          from '../removal';
-import { StackFailureDetectorRemoval }                    from '../stack-failure-detector-removal';
+import { resourcesOfType, isTemplateValue }  from '../../../../__tests__/template-resources';
+import { StackFailedEvent }                  from '../../../../resources/events/stack-failed-event';
+import { CertificateRemoval }                from '../certificate-removal';
+import { EdgeFunctionRemoval }               from '../edge-function-removal';
+import type { IResourceRemoval }             from '../removal';
+import { StackFailureDetectorRemoval }       from '../stack-failure-detector-removal';
 
 /** Shared fixtures of the sweeper feature's tests: real removals over imported or fresh CDK objects, and a rendered state machine. */
 

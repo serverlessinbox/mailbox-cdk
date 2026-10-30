@@ -1,13 +1,13 @@
-import { fileDesc, messageDesc, type GenMessage } from '@bufbuild/protobuf/codegenv2';
-import { base64Encode }                           from '@bufbuild/protobuf/wire';
+import { fileDesc, messageDesc, type GenMessage }                               from '@bufbuild/protobuf/codegenv2';
+import { base64Encode }                                                         from '@bufbuild/protobuf/wire';
 import {
   FieldDescriptorProto_Label,
   FieldDescriptorProto_Type,
   FieldDescriptorProtoSchema,
   FileDescriptorProtoSchema,
   type FieldDescriptorProto,
-}                                         from '@bufbuild/protobuf/wkt';
-import { create, toBinary, type Message } from '@bufbuild/protobuf';
+}                                                                               from '@bufbuild/protobuf/wkt';
+import { create, toBinary, type Message }                                       from '@bufbuild/protobuf';
 
 /*
  * A small protobuf service built from real protobuf-es descriptors, in the shape protoc-gen-es and the service

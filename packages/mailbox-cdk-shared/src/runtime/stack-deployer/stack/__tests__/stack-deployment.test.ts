@@ -1,6 +1,6 @@
-import type { Unbranded }                                                  from '../../../handler-kit/branded';
-import type { StackDeployerProperties }                                    from '../stack-deployer-properties-contract';
-import { isStackDeployerProperties, type BrandedStackDeployerProperties }  from '../stack-deployment';
+import type { Unbranded }                                                 from '../../../handler-kit/branded';
+import type { StackDeployerProperties }                                   from '../stack-deployer-properties-contract';
+import { isStackDeployerProperties, type BrandedStackDeployerProperties } from '../stack-deployment';
 
 /** The fields a shape lists by name, leaving out the index signature that lets the schema accept unlisted keys. */
 type ListedFields<Shape> = { [Field in keyof Shape as string extends Field ? never : Field]: Shape[Field] };

@@ -1,9 +1,10 @@
-import { toAccountId, toIssuer, toRegion, toTableName, toTenantId }                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import * as crypto                                                                  from 'crypto';
+import { toAccountId, toIssuer, toRegion, toTableName, toTenantId }             from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import * as crypto                                                              from 'crypto';
 
-import { toAudience }                                                               from '../auth-identifiers';
-import { toDecodedBlobId, toEncodedBlobId, type DecodedBlobId, type EncodedBlobId } from '../blob-id/blob-id';
-import { readOriginRequest, type CloudFrontRequest }                                from '../cloudfront/cloudfront-event';
+import { toAudience }                                                           from '../auth-identifiers';
+import { toDecodedBlobId, toEncodedBlobId, type DecodedBlobId,
+  type EncodedBlobId }                                                          from '../blob-id/blob-id';
+import { readOriginRequest, type CloudFrontRequest }                            from '../cloudfront/cloudfront-event';
 
 export const AUTH_KEY_STORE_TABLE       = toTableName('auth-key-store');
 export const OTHER_AUTH_KEY_STORE_TABLE = toTableName('other-auth-key-store');

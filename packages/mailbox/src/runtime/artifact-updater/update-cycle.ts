@@ -1,13 +1,15 @@
-import type { ResourceTagMapping, Tag }                                                      from '@aws-sdk/client-resource-groups-tagging-api';
-import { CaughtError, parseArn, runConcurrently, ServerlessInboxTagKeys, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import * as t                                                                                from 'typanion';
+import type { ResourceTagMapping, Tag }                                         from '@aws-sdk/client-resource-groups-tagging-api';
+import { CaughtError, parseArn, runConcurrently, ServerlessInboxTagKeys,
+  type LoggerBuffer }                                                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import * as t                                                                   from 'typanion';
 
-import type { LambdaTarget, UiTarget }                                                       from './artifact-target';
-import type { Config }                                                                       from './config';
-import type { EdgeLambdaUpdater }                                                            from './edge-lambda-updater';
-import type { LambdaCodeUpdater }                                                            from './lambda-code/lambda-code-updater';
-import type { UiBucketUpdater }                                                              from './ui-bucket-updater';
-import { EDGE_REGION, type RegionClients, type RootStackResources, type UpdaterClients }     from './updater-clients';
+import type { LambdaTarget, UiTarget }                                          from './artifact-target';
+import type { Config }                                                          from './config';
+import type { EdgeLambdaUpdater }                                               from './edge-lambda-updater';
+import type { LambdaCodeUpdater }                                               from './lambda-code/lambda-code-updater';
+import type { UiBucketUpdater }                                                 from './ui-bucket-updater';
+import { EDGE_REGION, type RegionClients, type RootStackResources,
+  type UpdaterClients }                                                         from './updater-clients';
 import {
   toArtifactName,
   toArtifactPackageName,
@@ -15,7 +17,7 @@ import {
   toContentBucketName,
   toDistributionArn,
   toLambdaFunctionArn,
-} from './updater-identifiers';
+}                                                                               from './updater-identifiers';
 
 const isUpdateType = t.isEnum(['code', 'edge', 'ui'] as const);
 

@@ -14,9 +14,9 @@ import {
   LambdaClient,
   TagResourceCommand,
   UpdateFunctionCodeCommand,
-} from '@aws-sdk/client-lambda';
-import { LoggerBuffer, ServerlessInboxTagKeys } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                           from 'aws-sdk-client-mock';
+}                                                                               from '@aws-sdk/client-lambda';
+import { LoggerBuffer, ServerlessInboxTagKeys }                                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
 import {
   EU_WEST_1,
@@ -26,12 +26,12 @@ import {
   noSleep,
   testConfig,
   registryMocks,
-} from '../../__tests__/updater-helpers';
-import { ReleaseArtifacts }    from '../../release-artifacts';
-import { FunctionSmokeTester } from '../function-smoke-tester';
-import { LambdaCodeRollback }  from '../lambda-code-rollback';
-import { LambdaCodeUpdater }   from '../lambda-code-updater';
-import { LambdaFunctionCode }  from '../lambda-function-code';
+}                                                                               from '../../__tests__/updater-helpers';
+import { ReleaseArtifacts }                                                     from '../../release-artifacts';
+import { FunctionSmokeTester }                                                  from '../function-smoke-tester';
+import { LambdaCodeRollback }                                                   from '../lambda-code-rollback';
+import { LambdaCodeUpdater }                                                    from '../lambda-code-updater';
+import { LambdaFunctionCode }                                                   from '../lambda-function-code';
 
 jest.mock('@serverlessinbox/artifact-registry', () =>
   (jest.requireActual('../../__tests__/updater-helpers') as typeof import('../../__tests__/updater-helpers')).artifactRegistryModuleMock(),

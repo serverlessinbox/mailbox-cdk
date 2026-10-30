@@ -1,24 +1,24 @@
-import type { IArtifactResolver }                                                                              from '@serverlessinbox/artifact-registry-cdk';
-import type { QueueEncryptionChoice, VendorLink }                                                              from '@serverlessinbox/mailbox-cdk-shared';
-import { ServerlessInboxResourceGroup, setStackNameBase, StackHelpers }                                        from '@serverlessinbox/mailbox-cdk-shared';
-import * as cdk                                                                                                from 'aws-cdk-lib';
-import { Construct }                                                                                           from 'constructs';
+import type { IArtifactResolver }                                       from '@serverlessinbox/artifact-registry-cdk';
+import type { QueueEncryptionChoice, VendorLink }                       from '@serverlessinbox/mailbox-cdk-shared';
+import { ServerlessInboxResourceGroup, setStackNameBase, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
+import * as cdk                                                         from 'aws-cdk-lib';
+import { Construct }                                                    from 'constructs';
 
-import { ApisSection }                                                                                         from './core/apis/apis-section';
-import { AuthSection }                                                                                         from './core/auth/auth-section';
-import { DataSection }                                                                                         from './core/data/data-section';
-import { MailboxAddressing }                                                                                   from './core/domains/mailbox-addressing';
-import type { MailboxEnabledUis }                                                                              from './core/domains/mailbox-addressing';
-import { EdgeSection }                                                                                         from './core/edge/edge-section';
-import { EmailSection }                                                                                        from './core/email/email-section';
-import { JobsSection }                                                                                         from './core/jobs/jobs-section';
-import { SearchSection }                                                                                       from './core/search/search-section';
-import { UiSection }                                                                                           from './core/ui/ui-section';
-import { MailboxContext }                                                                                      from './mailbox-context';
-import type { MailboxUrls, MailboxCertificates, MailboxOAuthClients }                                          from './mailbox-outputs';
-import type { MailboxProps }                                                                                   from './mailbox-props';
-import { OpsSection }                                                                                          from './platform/ops/ops-section';
-import { MailboxResourceDescriptions }                                                                         from './utils/resource-descriptions';
+import { ApisSection }                                                  from './core/apis/apis-section';
+import { AuthSection }                                                  from './core/auth/auth-section';
+import { DataSection }                                                  from './core/data/data-section';
+import { MailboxAddressing }                                            from './core/domains/mailbox-addressing';
+import type { MailboxEnabledUis }                                       from './core/domains/mailbox-addressing';
+import { EdgeSection }                                                  from './core/edge/edge-section';
+import { EmailSection }                                                 from './core/email/email-section';
+import { JobsSection }                                                  from './core/jobs/jobs-section';
+import { SearchSection }                                                from './core/search/search-section';
+import { UiSection }                                                    from './core/ui/ui-section';
+import { MailboxContext }                                               from './mailbox-context';
+import type { MailboxUrls, MailboxCertificates, MailboxOAuthClients }   from './mailbox-outputs';
+import type { MailboxProps }                                            from './mailbox-props';
+import { OpsSection }                                                   from './platform/ops/ops-section';
+import { MailboxResourceDescriptions }                                  from './utils/resource-descriptions';
 
 /**
  * The complete Serverless Inbox mail server as one construct: data stack, email receiving and

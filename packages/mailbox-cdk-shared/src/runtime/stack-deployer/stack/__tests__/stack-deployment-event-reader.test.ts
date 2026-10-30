@@ -1,4 +1,4 @@
-import { InvalidOwnInput }            from '../../../../runtime/handler-kit/errors/invalid-own-input';
+import { InvalidOwnInput }                                                      from '../../../../runtime/handler-kit/errors/invalid-own-input';
 import {
   cfnRequest,
   DEPLOYER_RESOURCE_PROPERTIES,
@@ -13,8 +13,8 @@ import {
   STACK_NAME,
   stackDeployerProperties,
   US_EAST_1,
-} from '../../__tests__/stack-deployer-helpers';
-import { StackDeploymentEventReader } from '../stack-deployment-event-reader';
+}                                                                               from '../../__tests__/stack-deployer-helpers';
+import { StackDeploymentEventReader }                                           from '../stack-deployment-event-reader';
 
 /**
  * Pins what the deployer Lambdas accept as input. The properties and the workflow input come from the CDK

@@ -6,12 +6,12 @@
  * wrong runtime or handler leaves the function unable to start.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import { Match, Template }                       from 'aws-cdk-lib/assertions';
-import { App, BootstraplessSynthesizer, Stack }  from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
-import { GoLambda }                              from '../go-lambda';
-import type { GoLambdaProps }                    from '../go-lambda';
+import { GoLambda }                             from '../go-lambda';
+import type { GoLambdaProps }                   from '../go-lambda';
 
 function newStack(): Stack {
   return new Stack(new App(), 'TestStack', {

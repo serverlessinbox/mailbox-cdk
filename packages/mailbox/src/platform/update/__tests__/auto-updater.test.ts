@@ -7,22 +7,22 @@
  * code mid-run.
  */
 
-import { getAttLogicalId, statementsForRole }             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { ServerlessInboxTagKeys }                         from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                                from 'aws-cdk-lib/assertions';
-import { PolicyStatement }                                from 'aws-cdk-lib/aws-iam';
-import type { IGrantable }                                from 'aws-cdk-lib/aws-iam';
-import type { Stack }                                     from 'aws-cdk-lib';
-import { Duration }                                       from 'aws-cdk-lib';
-import * as t                                             from 'typanion';
+import { getAttLogicalId, statementsForRole } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { ServerlessInboxTagKeys }             from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                    from 'aws-cdk-lib/assertions';
+import { PolicyStatement }                    from 'aws-cdk-lib/aws-iam';
+import type { IGrantable }                    from 'aws-cdk-lib/aws-iam';
+import type { Stack }                         from 'aws-cdk-lib';
+import { Duration }                           from 'aws-cdk-lib';
+import * as t                                 from 'typanion';
 
-import { isTemplateValue, resourcesOfType }               from '../../../__tests__/template-resources';
-import type { TemplateResource }                          from '../../../__tests__/template-resources';
-import { Granularity }                                    from '../../../contracts/granularity';
-import type { AdminApiAddonContext }                      from '../../../core/apis/addons';
-import { newInlineFunction, newTestStack }                from '../../__tests__/platform-helpers';
-import { AutoUpdater }                                    from '../auto-updater';
-import type { AutoUpdaterProps }                          from '../auto-updater';
+import { isTemplateValue, resourcesOfType }   from '../../../__tests__/template-resources';
+import type { TemplateResource }              from '../../../__tests__/template-resources';
+import { Granularity }                        from '../../../contracts/granularity';
+import type { AdminApiAddonContext }          from '../../../core/apis/addons';
+import { newInlineFunction, newTestStack }    from '../../__tests__/platform-helpers';
+import { AutoUpdater }                        from '../auto-updater';
+import type { AutoUpdaterProps }              from '../auto-updater';
 
 const ARTIFACT_CONTEXT = {
   bucketBase: 'test-artifacts',

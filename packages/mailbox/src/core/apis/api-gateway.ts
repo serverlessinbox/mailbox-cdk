@@ -1,18 +1,18 @@
-import { ComponentDescription }                                    from '@serverlessinbox/mailbox-cdk-shared';
-import { HttpLambdaIntegration }                                   from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { ComponentDescription }                     from '@serverlessinbox/mailbox-cdk-shared';
+import { HttpLambdaIntegration }                    from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
   ApiMapping,
   CorsHttpMethod,
   HttpApi,
   IHttpStage,
-} from 'aws-cdk-lib/aws-apigatewayv2';
-import type { CorsPreflightOptions }                               from 'aws-cdk-lib/aws-apigatewayv2';
-import { Duration, Aws }                                           from 'aws-cdk-lib';
-import { Construct }                                               from 'constructs';
+}                                                   from 'aws-cdk-lib/aws-apigatewayv2';
+import type { CorsPreflightOptions }                from 'aws-cdk-lib/aws-apigatewayv2';
+import { Duration, Aws }                            from 'aws-cdk-lib';
+import { Construct }                                from 'constructs';
 
-import type { IApiArea }                                           from './api-area';
-import { ApiCustomDomain }                                         from './api-custom-domain';
-import type { ApiCustomDomainProps, ILogicalIdPin }                from './api-custom-domain';
+import type { IApiArea }                            from './api-area';
+import { ApiCustomDomain }                          from './api-custom-domain';
+import type { ApiCustomDomainProps, ILogicalIdPin } from './api-custom-domain';
 
 /** Inputs of {@link ApiGateway}: the origins its CORS preflight allows and the optional custom domain. */
 export interface ApiGatewayProps {

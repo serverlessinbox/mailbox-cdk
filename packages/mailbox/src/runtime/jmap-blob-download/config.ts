@@ -1,8 +1,9 @@
-import { toRegion, toTableName, type Region, type TableName }                            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import * as t                                                                            from 'typanion';
+import { toRegion, toTableName, type Region, type TableName }                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import * as t                                                                   from 'typanion';
 
-import { firstHeaderValue, type CloudFrontRequest }                                      from './cloudfront/cloudfront-event';
-import { isSupportedAlgorithm, type BlobDownloadOriginHeaders, type SupportedAlgorithm } from './cloudfront/origin-headers';
+import { firstHeaderValue, type CloudFrontRequest }                             from './cloudfront/cloudfront-event';
+import { isSupportedAlgorithm, type BlobDownloadOriginHeaders,
+  type SupportedAlgorithm }                                                     from './cloudfront/origin-headers';
 
 /**
  * Configuration the CloudFront distribution hands the function in the custom origin headers of its S3 origin;

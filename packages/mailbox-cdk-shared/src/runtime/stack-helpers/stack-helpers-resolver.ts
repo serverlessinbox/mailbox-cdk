@@ -1,12 +1,13 @@
-import { GetHostedZoneCommand, type Route53Client }                              from '@aws-sdk/client-route-53';
-import { createHash }                                                            from 'crypto';
+import { GetHostedZoneCommand, type Route53Client }                             from '@aws-sdk/client-route-53';
+import { createHash }                                                           from 'crypto';
 
-import { sanitizeStackName }                                                     from '../../naming/sanitize-name';
-import type { StackId }                                                          from '../handler-kit/custom-resource/custom-resource-identifiers';
-import { InvalidOwnInput }                                                       from '../handler-kit/errors/invalid-own-input';
-import type { LoggerBuffer }                                                     from '../handler-kit/logger-buffer';
+import { sanitizeStackName }                                                    from '../../naming/sanitize-name';
+import type { StackId }                                                         from '../handler-kit/custom-resource/custom-resource-identifiers';
+import { InvalidOwnInput }                                                      from '../handler-kit/errors/invalid-own-input';
+import type { LoggerBuffer }                                                    from '../handler-kit/logger-buffer';
 
-import { isStackHelpersResourceProperties, type StackHelpersResourceProperties } from './resource-properties';
+import { isStackHelpersResourceProperties,
+  type StackHelpersResourceProperties }                                         from './resource-properties';
 
 const MAX_S3_SAFE_STACK_NAME_LENGTH = 40;
 const TRAILING_DOT                  = /\.$/;

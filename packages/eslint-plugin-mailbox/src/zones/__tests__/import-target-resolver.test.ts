@@ -1,6 +1,6 @@
-import { ImportTargetResolver }  from '../import-target-resolver';
-import { mailboxPackage }        from '../package-roots';
-import { ZoneClassifier }        from '../zone-classifier';
+import { ImportTargetResolver } from '../import-target-resolver';
+import { mailboxPackage }       from '../package-roots';
+import { ZoneClassifier }       from '../zone-classifier';
 
 const resolver = new ImportTargetResolver(new ZoneClassifier());
 

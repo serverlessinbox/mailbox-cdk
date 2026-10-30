@@ -1,15 +1,15 @@
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
 import {
   DeployerWorkerLambda,
   rootStackRequestTagConditions,
   rootStackResourceTagConditions,
-} from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactObject, IDeployedStack, RootStack } from '@serverlessinbox/mailbox-cdk-shared';
-import { Effect, PolicyStatement }                         from 'aws-cdk-lib/aws-iam';
-import type { PolicyStatementProps }                       from 'aws-cdk-lib/aws-iam';
-import { Construct }                                       from 'constructs';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactObject, IDeployedStack, RootStack }                      from '@serverlessinbox/mailbox-cdk-shared';
+import { Effect, PolicyStatement }                                              from 'aws-cdk-lib/aws-iam';
+import type { PolicyStatementProps }                                            from 'aws-cdk-lib/aws-iam';
+import { Construct }                                                            from 'constructs';
 
-import { COGNITO_DEPLOYED_STACK_NAME }                     from '../../data-stack/mailbox-cognito-data-stack-contract';
+import { COGNITO_DEPLOYED_STACK_NAME }                                          from '../../data-stack/mailbox-cognito-data-stack-contract';
 
 /** What `MailboxCognitoDataDeployerWorkerLambda` needs to resolve its code, to read the template it deploys and to scope its grants. */
 export interface MailboxCognitoDataDeployerWorkerLambdaProps {

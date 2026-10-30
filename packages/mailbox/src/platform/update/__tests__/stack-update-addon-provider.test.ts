@@ -4,13 +4,13 @@
  * and that the settings it was given (dist-tag, template name, template version) reach the addon.
  */
 
-import { Template, Match }                                             from 'aws-cdk-lib/assertions';
-import type { Stack }                                                  from 'aws-cdk-lib';
-import { Construct }                                                   from 'constructs';
+import { Template, Match }                                            from 'aws-cdk-lib/assertions';
+import type { Stack }                                                 from 'aws-cdk-lib';
+import { Construct }                                                  from 'constructs';
 
-import { newAdminApiAddonContext, newArtifactResolver, newTestStack }  from '../../__tests__/platform-helpers';
-import { StackUpdateAddonProvider }                                    from '../stack-update-addon-provider';
-import type { StackUpdateAddonProviderProps }                          from '../stack-update-addon-provider';
+import { newAdminApiAddonContext, newArtifactResolver, newTestStack } from '../../__tests__/platform-helpers';
+import { StackUpdateAddonProvider }                                   from '../stack-update-addon-provider';
+import type { StackUpdateAddonProviderProps }                         from '../stack-update-addon-provider';
 
 function providerProps(stack: Stack, overrides: Partial<StackUpdateAddonProviderProps> = {}): StackUpdateAddonProviderProps {
   return {

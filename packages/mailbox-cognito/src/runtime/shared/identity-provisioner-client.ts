@@ -1,6 +1,6 @@
-import { InvokeCommand, type InvokeCommandOutput, type LambdaClient } from '@aws-sdk/client-lambda';
-import type { FunctionName }                                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { StrictValidator }                                       from 'typanion';
+import { InvokeCommand, type InvokeCommandOutput, type LambdaClient }           from '@aws-sdk/client-lambda';
+import type { FunctionName }                                                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { StrictValidator }                                                 from 'typanion';
 
 import {
   isDcrCheckResponse,
@@ -15,7 +15,7 @@ import {
   type ProvisionUserParams,
   type ProvisionUserResponse,
   type ResolveTenantResponse,
-} from './identity-provisioner-contract';
+}                                                                               from './identity-provisioner-contract';
 
 /**
  * Typed client of the `identity-provisioner` Lambda's invoke contract. Every response is untrusted external

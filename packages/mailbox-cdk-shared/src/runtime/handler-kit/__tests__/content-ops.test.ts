@@ -17,11 +17,11 @@ import {
   ListObjectsV2Command,
   PutObjectCommand,
   type _Object,
-} from '@aws-sdk/client-s3';
-import { mockClient }                                   from 'aws-sdk-client-mock';
-import { Readable }                                     from 'stream';
+}                                                                               from '@aws-sdk/client-s3';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
+import { Readable }                                                             from 'stream';
 
-import { deletePrefix, deployZipToPrefix, writeObject } from '../content-ops';
+import { deletePrefix, deployZipToPrefix, writeObject }                         from '../content-ops';
 
 /** The part of an unzipper entry that `deployZipToPrefix` reads. */
 interface FakeZipEntry {

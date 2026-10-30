@@ -1,8 +1,8 @@
-import * as t                 from 'typanion';
+import * as t                from 'typanion';
 
-import { InvalidInputError }  from '../errors/index';
+import { InvalidInputError } from '../errors/index';
 
-import type { JsonValue }     from './json-value';
+import type { JsonValue }    from './json-value';
 
 /**
  * Reads the body of a request as JSON. A missing or empty body reads as an empty object; a body that is not

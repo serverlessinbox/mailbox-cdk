@@ -6,14 +6,14 @@
  * The sweepers are driven with "not found" answers, so each sweep ends after its first call.
  */
 
-import { ACMClient, ListTagsForCertificateCommand }          from '@aws-sdk/client-acm';
-import { EventBridgeClient, ListTagsForResourceCommand }     from '@aws-sdk/client-eventbridge';
-import { IAMClient, ListRoleTagsCommand }                    from '@aws-sdk/client-iam';
-import { LambdaClient, GetFunctionCommand }                  from '@aws-sdk/client-lambda';
-import { LoggerBuffer, toRegion }                            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                        from 'aws-sdk-client-mock';
+import { ACMClient, ListTagsForCertificateCommand }      from '@aws-sdk/client-acm';
+import { EventBridgeClient, ListTagsForResourceCommand } from '@aws-sdk/client-eventbridge';
+import { IAMClient, ListRoleTagsCommand }                from '@aws-sdk/client-iam';
+import { LambdaClient, GetFunctionCommand }              from '@aws-sdk/client-lambda';
+import { LoggerBuffer, toRegion }                        from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                    from 'aws-sdk-client-mock';
 
-import { SweepWorkerComposition }                            from '../sweep-worker-composition';
+import { SweepWorkerComposition }                        from '../sweep-worker-composition';
 
 const acmMock         = mockClient(ACMClient);
 const lambdaMock      = mockClient(LambdaClient);

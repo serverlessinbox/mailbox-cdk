@@ -1,5 +1,5 @@
-import { CloudFormationClient }          from '@aws-sdk/client-cloudformation';
-import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
+import { CloudFormationClient }                                                 from '@aws-sdk/client-cloudformation';
+import { CognitoIdentityProviderClient }                                        from '@aws-sdk/client-cognito-identity-provider';
 import {
   answerRequestWithBadConfig,
   emitManualFinalize,
@@ -10,13 +10,13 @@ import {
   ParentStackStatus,
   readCustomResourceRequest,
   withSmokeTest,
-} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { wrapHandler }                 from 'aws-custom-resources';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { wrapHandler }                                                          from 'aws-custom-resources';
 
-import { BootstrapUserAnswers }        from './bootstrap-user-answers';
-import { BootstrapUserRequestHandler } from './bootstrap-user-request-handler';
-import { load }                        from './config';
-import { UserEnsurer }                 from './ensure-user';
+import { BootstrapUserAnswers }                                                 from './bootstrap-user-answers';
+import { BootstrapUserRequestHandler }                                          from './bootstrap-user-request-handler';
+import { load }                                                                 from './config';
+import { UserEnsurer }                                                          from './ensure-user';
 
 const { config, error: configError } = env.tryLoad(load);
 const cognito                        = new CognitoIdentityProviderClient({});

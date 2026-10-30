@@ -7,11 +7,11 @@
  * the OAuth scope map, serialized as JSON. The wrapper makes no grant of its own.
  */
 
-import { Template }                                  from 'aws-cdk-lib/assertions';
+import { Template }                          from 'aws-cdk-lib/assertions';
 
-import { McpApiLambda }                              from '../mcp-api-lambda';
+import { McpApiLambda }                      from '../mcp-api-lambda';
 
-import { arrangeWrapperStack, onlyLambdaOf }         from './lambda-wrapper-helpers';
+import { arrangeWrapperStack, onlyLambdaOf } from './lambda-wrapper-helpers';
 
 const JMAP_API_URL = 'https://jmap.example.com';
 

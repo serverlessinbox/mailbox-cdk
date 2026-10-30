@@ -13,16 +13,16 @@ import {
   getAttLogicalId,
   resourcesOf,
   statementsForAction,
-} from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson }                     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Template }                                     from 'aws-cdk-lib/assertions';
-import { CfnParameter }                                 from 'aws-cdk-lib';
-import type { Stack }                                   from 'aws-cdk-lib';
-import * as t                                           from 'typanion';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson }                                             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                                                             from 'aws-cdk-lib/assertions';
+import { CfnParameter }                                                         from 'aws-cdk-lib';
+import type { Stack }                                                           from 'aws-cdk-lib';
+import * as t                                                                   from 'typanion';
 
-import { resourcesOfType }                              from '../../../__tests__/template-resources';
-import { newArtifactResolver, newTestStack }            from '../../__tests__/platform-helpers';
-import { StackFailureDetection, SendStackFailuresMode } from '../stack-failure-detection';
+import { resourcesOfType }                                                      from '../../../__tests__/template-resources';
+import { newArtifactResolver, newTestStack }                                    from '../../__tests__/platform-helpers';
+import { StackFailureDetection, SendStackFailuresMode }                         from '../stack-failure-detection';
 
 const isRoleProperties     = t.isPartial({});
 const isPolicyProperties   = t.isPartial({ PolicyName: t.isString(), Roles: t.isArray(t.isPartial({ Ref: t.isString() })) });

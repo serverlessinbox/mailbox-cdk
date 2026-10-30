@@ -7,11 +7,11 @@
  * because the data stack is synthesized with an explicit environment.
  */
 
-import { Match, Template }                          from 'aws-cdk-lib/assertions';
-import * as kms                                     from 'aws-cdk-lib/aws-kms';
-import { App, RemovalPolicy, Stack }                from 'aws-cdk-lib';
+import { Match, Template }           from 'aws-cdk-lib/assertions';
+import * as kms                      from 'aws-cdk-lib/aws-kms';
+import { App, RemovalPolicy, Stack } from 'aws-cdk-lib';
 
-import { BlobStore }                                from '../blob-store';
+import { BlobStore }                 from '../blob-store';
 
 function createStack(): Stack {
   return new Stack(new App(), 'TestStack', { env: { account: '123456789012', region: 'us-west-2' } });

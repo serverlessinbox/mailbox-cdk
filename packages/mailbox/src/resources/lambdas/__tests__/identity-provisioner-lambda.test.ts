@@ -9,19 +9,19 @@
  * asserted in their own files.
  */
 
-import { actionsOf }                                 from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Template }                                  from 'aws-cdk-lib/assertions';
-import { AttributeType, Table }                      from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket }                                    from 'aws-cdk-lib/aws-s3';
+import { actionsOf }                         from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                          from 'aws-cdk-lib/assertions';
+import { AttributeType, Table }              from 'aws-cdk-lib/aws-dynamodb';
+import { Bucket }                            from 'aws-cdk-lib/aws-s3';
 
-import { DataBlobStore }                             from '../../buckets/data-blob-store';
-import { AuditEventsQueue }                          from '../../queues/audit-events-queue';
-import { EmailSendingQueue }                         from '../../queues/email-sending-queue';
-import { DataTable }                                 from '../../tables/data-tables';
-import { IdentityProvisionerLambda }                 from '../identity-provisioner-lambda';
+import { DataBlobStore }                     from '../../buckets/data-blob-store';
+import { AuditEventsQueue }                  from '../../queues/audit-events-queue';
+import { EmailSendingQueue }                 from '../../queues/email-sending-queue';
+import { DataTable }                         from '../../tables/data-tables';
+import { IdentityProvisionerLambda }         from '../identity-provisioner-lambda';
 
-import { arrangeWrapperStack, onlyLambdaOf }         from './lambda-wrapper-helpers';
-import type { SynthesizedLambda }                    from './lambda-wrapper-helpers';
+import { arrangeWrapperStack, onlyLambdaOf } from './lambda-wrapper-helpers';
+import type { SynthesizedLambda }            from './lambda-wrapper-helpers';
 
 function synthesize(adminUIURL?: string): SynthesizedLambda {
   const { stack, artifactResolver } = arrangeWrapperStack();

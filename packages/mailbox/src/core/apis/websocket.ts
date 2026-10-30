@@ -1,27 +1,27 @@
-import type { IArtifactResolver }     from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription }       from '@serverlessinbox/mailbox-cdk-shared';
-import { WebSocketLambdaAuthorizer }  from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import type { IArtifactResolver }                               from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }                                 from '@serverlessinbox/mailbox-cdk-shared';
+import { WebSocketLambdaAuthorizer }                            from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { WebSocketLambdaIntegration }                           from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
   ApiMapping,
   WebSocketApi,
   WebSocketStage,
-} from 'aws-cdk-lib/aws-apigatewayv2';
-import { Effect, IGrantable, PolicyStatement }                             from 'aws-cdk-lib/aws-iam';
-import type { IFunction }                                                  from 'aws-cdk-lib/aws-lambda';
-import { ArnFormat, Aws, Stack }                                           from 'aws-cdk-lib';
-import { Construct }                                                       from 'constructs';
+}                                                               from 'aws-cdk-lib/aws-apigatewayv2';
+import { Effect, IGrantable, PolicyStatement }                  from 'aws-cdk-lib/aws-iam';
+import type { IFunction }                                       from 'aws-cdk-lib/aws-lambda';
+import { ArnFormat, Aws, Stack }                                from 'aws-cdk-lib';
+import { Construct }                                            from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushApi }            from '../../contracts/websocket-push';
-import { WebSocketBroadcastLambda }                                        from '../../resources/lambdas/websocket-broadcast-lambda';
-import { WebSocketConnectLambda }                                          from '../../resources/lambdas/websocket-connect-lambda';
-import { WebSocketDisconnectLambda }                                       from '../../resources/lambdas/websocket-disconnect-lambda';
-import { WebSocketMessageLambda }                                          from '../../resources/lambdas/websocket-message-lambda';
-import type { IDataTable }                                                 from '../../resources/tables/data-tables';
-import { WebSocketTable, IWebSocketTable }                                 from '../../resources/tables/websocket-table';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushApi } from '../../contracts/websocket-push';
+import { WebSocketBroadcastLambda }                             from '../../resources/lambdas/websocket-broadcast-lambda';
+import { WebSocketConnectLambda }                               from '../../resources/lambdas/websocket-connect-lambda';
+import { WebSocketDisconnectLambda }                            from '../../resources/lambdas/websocket-disconnect-lambda';
+import { WebSocketMessageLambda }                               from '../../resources/lambdas/websocket-message-lambda';
+import type { IDataTable }                                      from '../../resources/tables/data-tables';
+import { WebSocketTable, IWebSocketTable }                      from '../../resources/tables/websocket-table';
 
-import { ApiCustomDomain }                                                 from './api-custom-domain';
-import type { ApiCustomDomainProps, ILogicalIdPin }                        from './api-custom-domain';
+import { ApiCustomDomain }                                      from './api-custom-domain';
+import type { ApiCustomDomainProps, ILogicalIdPin }             from './api-custom-domain';
 
 /** Inputs of {@link WebSocketPush}: the tables and authorizer its route handlers use, and the optional custom domain. */
 export interface WebSocketPushProps {

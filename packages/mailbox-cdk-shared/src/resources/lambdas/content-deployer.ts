@@ -1,22 +1,22 @@
-import type { IArtifactResolver }                                    from '@serverlessinbox/artifact-registry-cdk';
-import type { IDistribution }                                        from 'aws-cdk-lib/aws-cloudfront';
-import * as iam                                                      from 'aws-cdk-lib/aws-iam';
-import { Duration, CustomResource, Stack, Token, Tokenization }      from 'aws-cdk-lib';
-import { Construct, type IDependable }                               from 'constructs';
-import { createHash }                                                from 'node:crypto';
-import * as t                                                        from 'typanion';
+import type { IArtifactResolver }                               from '@serverlessinbox/artifact-registry-cdk';
+import type { IDistribution }                                   from 'aws-cdk-lib/aws-cloudfront';
+import * as iam                                                 from 'aws-cdk-lib/aws-iam';
+import { Duration, CustomResource, Stack, Token, Tokenization } from 'aws-cdk-lib';
+import { Construct, type IDependable }                          from 'constructs';
+import { createHash }                                           from 'node:crypto';
+import * as t                                                   from 'typanion';
 
-import { KIT_ARTIFACT_PACKAGE }                                      from '../../artifacts/kit-artifact-package';
-import { parentStackStatusReadStatement }                            from '../../grants/parent-stack-status-read';
+import { KIT_ARTIFACT_PACKAGE }                                 from '../../artifacts/kit-artifact-package';
+import { parentStackStatusReadStatement }                       from '../../grants/parent-stack-status-read';
 import type {
   ContentDeployerResourceProperties,
   StaticContentSourceSpec,
-} from '../../runtime/content-deployer/resource-properties-contract';
-import type { IStaticContentSource }                                 from '../../static-content-source';
-import { getOrCreateSharedGroup }                                    from '../../tagging/shared-group';
-import type { IStaticContentTarget }                                 from '../buckets/static-content-target';
+}                                                               from '../../runtime/content-deployer/resource-properties-contract';
+import type { IStaticContentSource }                            from '../../static-content-source';
+import { getOrCreateSharedGroup }                               from '../../tagging/shared-group';
+import type { IStaticContentTarget }                            from '../buckets/static-content-target';
 
-import { TypeScriptLambda }                                          from './ts-lambda';
+import { TypeScriptLambda }                                     from './ts-lambda';
 
 /** What `StaticContentDeployer.deploy` deploys, and where. */
 export interface StaticContentDeploymentProps {

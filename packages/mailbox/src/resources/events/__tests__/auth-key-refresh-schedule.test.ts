@@ -5,12 +5,12 @@
  * how long a rotated key stays unknown to the cache.
  */
 
-import { Match, Template }                           from 'aws-cdk-lib/assertions';
-import { Code, Function, Runtime }                   from 'aws-cdk-lib/aws-lambda';
-import { App, BootstraplessSynthesizer, Stack }      from 'aws-cdk-lib';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Code, Function, Runtime }              from 'aws-cdk-lib/aws-lambda';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
-import { defaultCfnResource }                        from '../../../utils/cfn-resource';
-import { AuthKeyRefreshSchedule }                    from '../auth-key-refresh-schedule';
+import { defaultCfnResource }                   from '../../../utils/cfn-resource';
+import { AuthKeyRefreshSchedule }               from '../auth-key-refresh-schedule';
 
 describe('AuthKeyRefreshSchedule', () => {
   let targetId: string;

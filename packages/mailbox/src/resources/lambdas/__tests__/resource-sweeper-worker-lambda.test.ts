@@ -6,17 +6,17 @@
  * or the grants the sweeper attaches to that role never reach the function.
  */
 
-import type { ArtifactPin }                     from '@serverlessinbox/artifact-registry-cdk';
-import { ArtifactZone }                         from '@serverlessinbox/artifact-registry-cdk';
-import { Template }                             from 'aws-cdk-lib/assertions';
-import * as iam                                 from 'aws-cdk-lib/aws-iam';
-import { Duration }                             from 'aws-cdk-lib';
-import * as t                                   from 'typanion';
+import type { ArtifactPin }                 from '@serverlessinbox/artifact-registry-cdk';
+import { ArtifactZone }                     from '@serverlessinbox/artifact-registry-cdk';
+import { Template }                         from 'aws-cdk-lib/assertions';
+import * as iam                             from 'aws-cdk-lib/aws-iam';
+import { Duration }                         from 'aws-cdk-lib';
+import * as t                               from 'typanion';
 
-import { isTemplateValue, resourcesOfType }     from '../../../__tests__/template-resources';
-import { ResourceSweeperWorkerLambda }          from '../resource-sweeper-worker-lambda';
+import { isTemplateValue, resourcesOfType } from '../../../__tests__/template-resources';
+import { ResourceSweeperWorkerLambda }      from '../resource-sweeper-worker-lambda';
 
-import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+import { arrangeWrapperStack }              from './lambda-wrapper-helpers';
 
 const WORKER_PACKAGES: Record<string, ArtifactPin> = { 'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL } };
 

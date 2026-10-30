@@ -4,20 +4,20 @@
  * every resource's logical ID, so a rename replaces deployed resources) and the WebSocket fan-out to
  * the Lambdas that record changelog state.
  */
-import { ArtifactZone, PinnedArtifactResolver }                         from '@serverlessinbox/artifact-registry-cdk';
-import { ServerlessInboxTagKeys }                                       from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                                              from 'aws-cdk-lib/assertions';
-import { Table, AttributeType, TableEncryption }                        from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket }                                                       from 'aws-cdk-lib/aws-s3';
-import { CfnResource, TagManager }                                      from 'aws-cdk-lib';
-import type { Stack }                                                   from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver }        from '@serverlessinbox/artifact-registry-cdk';
+import { ServerlessInboxTagKeys }                      from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                             from 'aws-cdk-lib/assertions';
+import { Table, AttributeType, TableEncryption }       from 'aws-cdk-lib/aws-dynamodb';
+import { Bucket }                                      from 'aws-cdk-lib/aws-s3';
+import { CfnResource, TagManager }                     from 'aws-cdk-lib';
+import type { Stack }                                  from 'aws-cdk-lib';
 
-import { newDeployerTestStack, TEST_ARTIFACT_VERSION }                  from '../../../__tests__/deployer-test-helpers';
-import type { IWebSocketBroadcastPublisher }                            from '../../../contracts/websocket-push';
-import { DataBlobStore }                                                from '../../../resources/buckets/data-blob-store';
-import { AuditEventsQueue }                                             from '../../../resources/queues/audit-events-queue';
-import { DataTable }                                                    from '../../../resources/tables/data-tables';
-import { EmailSection }                                                 from '../email-section';
+import { newDeployerTestStack, TEST_ARTIFACT_VERSION } from '../../../__tests__/deployer-test-helpers';
+import type { IWebSocketBroadcastPublisher }           from '../../../contracts/websocket-push';
+import { DataBlobStore }                               from '../../../resources/buckets/data-blob-store';
+import { AuditEventsQueue }                            from '../../../resources/queues/audit-events-queue';
+import { DataTable }                                   from '../../../resources/tables/data-tables';
+import { EmailSection }                                from '../email-section';
 
 function newSection(stack: Stack): EmailSection {
   const dataTable = (id: string) => new DataTable(new Table(stack, id, {

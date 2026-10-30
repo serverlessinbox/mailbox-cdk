@@ -1,16 +1,16 @@
 /// <reference types="node" />
 
-import type { S3Client }                   from '@aws-sdk/client-s3';
-import type { ListObjectsV2CommandOutput } from '@aws-sdk/client-s3';
+import type { S3Client }                                                        from '@aws-sdk/client-s3';
+import type { ListObjectsV2CommandOutput }                                      from '@aws-sdk/client-s3';
 import {
   DeleteObjectsCommand,
   GetObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
-} from '@aws-sdk/client-s3';
-import mime                   from 'mime-types';
-import { posix as pathPosix } from 'node:path';
-import unzipper               from 'unzipper';
+}                                                                               from '@aws-sdk/client-s3';
+import mime                                                                     from 'mime-types';
+import { posix as pathPosix }                                                   from 'node:path';
+import unzipper                                                                 from 'unzipper';
 
 const S3_DELETE_OBJECTS_LIMIT = 1000;
 

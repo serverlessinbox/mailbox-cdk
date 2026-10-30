@@ -4,10 +4,10 @@
  * deployment is billed for.
  */
 
-import { Template }                      from 'aws-cdk-lib/assertions';
+import { Template }             from 'aws-cdk-lib/assertions';
 
-import { newTestStack }                  from '../../__tests__/platform-helpers';
-import { TemplateVersionParam }          from '../template-version-param';
+import { newTestStack }         from '../../__tests__/platform-helpers';
+import { TemplateVersionParam } from '../template-version-param';
 
 describe('TemplateVersionParam', () => {
   it('stores the template version as the value of a standard-tier string parameter', () => {

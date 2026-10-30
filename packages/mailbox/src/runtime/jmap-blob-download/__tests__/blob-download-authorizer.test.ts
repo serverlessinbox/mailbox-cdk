@@ -7,16 +7,16 @@
  * every refused request in the log.
  */
 
-import { DynamoDBClient }                          from '@aws-sdk/client-dynamodb';
-import { ExpectedFailure, LoggerBuffer, toIssuer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { DynamoDBClient }                                                       from '@aws-sdk/client-dynamodb';
+import { ExpectedFailure, LoggerBuffer, toIssuer }                              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { BlobDownloadAuthorizer }                  from '../blob-download-authorizer';
-import { BlobRequestRejected }                     from '../blob-id/blob-request-rejected';
-import type { CloudFrontRequest }                  from '../cloudfront/cloudfront-event';
-import { corsPreflightResponse, errorResponse }    from '../cloudfront/cloudfront-responses';
-import type { HmacTokenPayload, VerifiedJwt }      from '../verifiers/auth-tokens';
-import { HmacVerifier }                            from '../verifiers/hmac-verifier';
-import { JwtVerifier }                             from '../verifiers/jwt-verifier';
+import { BlobDownloadAuthorizer }                                               from '../blob-download-authorizer';
+import { BlobRequestRejected }                                                  from '../blob-id/blob-request-rejected';
+import type { CloudFrontRequest }                                               from '../cloudfront/cloudfront-event';
+import { corsPreflightResponse, errorResponse }                                 from '../cloudfront/cloudfront-responses';
+import type { HmacTokenPayload, VerifiedJwt }                                   from '../verifiers/auth-tokens';
+import { HmacVerifier }                                                         from '../verifiers/hmac-verifier';
+import { JwtVerifier }                                                          from '../verifiers/jwt-verifier';
 
 import {
   ACCOUNT_ID,
@@ -31,7 +31,7 @@ import {
   originRequestOf,
   TENANT_ID,
   type OriginRequestOptions,
-} from './jmap-blob-download-helpers';
+}                                                                               from './jmap-blob-download-helpers';
 
 const VERIFIED_JWT: VerifiedJwt = { sub: 'user-1', issuer: ISSUER, audience: AUDIENCE };
 const SESSION: HmacTokenPayload = { tenantId: TENANT_ID, issuer: ISSUER, audience: AUDIENCE, sub: 'user-1', accountIds: [ACCOUNT_ID] };

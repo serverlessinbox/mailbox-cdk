@@ -1,7 +1,7 @@
-import type * as t                             from 'typanion';
+import type * as t                            from 'typanion';
 
-import type { ResourceProperties, TableRole }  from '../resource-properties-contract';
-import { isResourceProperties }                from '../resource-properties';
+import type { ResourceProperties, TableRole } from '../resource-properties-contract';
+import { isResourceProperties }               from '../resource-properties';
 
 /** The fields a shape lists by name, leaving out the index signature that lets the schema accept unlisted keys. */
 type ListedFields<Shape> = { [Field in keyof Shape as string extends Field ? never : Field]: Shape[Field] };

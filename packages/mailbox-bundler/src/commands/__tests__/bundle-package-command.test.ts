@@ -1,9 +1,9 @@
-import { Cli }                   from 'clipanion';
-import { join }                  from 'path';
+import { Cli }                  from 'clipanion';
+import { join }                 from 'path';
 
-import { bundleJsiiPackage }     from '../../jsii-package/bundle-jsii-package';
-import { readPackageJson }       from '../../jsii-package/package-json';
-import { BundlePackageCommand }  from '../bundle-package-command';
+import { bundleJsiiPackage }    from '../../jsii-package/bundle-jsii-package';
+import { readPackageJson }      from '../../jsii-package/package-json';
+import { BundlePackageCommand } from '../bundle-package-command';
 
 jest.mock('../../jsii-package/bundle-jsii-package');
 jest.mock('../../jsii-package/package-json');

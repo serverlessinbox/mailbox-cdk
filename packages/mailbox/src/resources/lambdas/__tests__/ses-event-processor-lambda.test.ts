@@ -7,14 +7,14 @@
  * the event that own them, not here.
  */
 
-import { Template }                                                                         from 'aws-cdk-lib/assertions';
+import { Template }                                                         from 'aws-cdk-lib/assertions';
 
-import type { IWebSocketBroadcastPublisher }                                                from '../../../contracts/websocket-push';
-import { SesNotificationsQueueEvent }                                                       from '../../events/ses-notifications-queue-event';
-import { SesEventProcessorLambda }                                                          from '../ses-event-processor-lambda';
+import type { IWebSocketBroadcastPublisher }                                from '../../../contracts/websocket-push';
+import { SesNotificationsQueueEvent }                                       from '../../events/ses-notifications-queue-event';
+import { SesEventProcessorLambda }                                          from '../ses-event-processor-lambda';
 
-import { expectGrantedOnceTo, fakeDataBlobStore, fakeDataTable, fakeQueue }                 from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                                                from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataBlobStore, fakeDataTable, fakeQueue } from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                                from './lambda-wrapper-helpers';
 
 jest.mock('../../events/ses-notifications-queue-event');
 

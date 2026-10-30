@@ -1,18 +1,19 @@
-import type { IArtifactResolver }                                                                   from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda, ServerlessInboxTagKeys, StackIdentity, rootStackRequestTagConditions }           from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack, VendorLink }                                                               from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement, Effect }                                                                  from 'aws-cdk-lib/aws-iam';
-import { Aws, Duration }                                                                            from 'aws-cdk-lib';
-import { Construct }                                                                                from 'constructs';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda, ServerlessInboxTagKeys, StackIdentity,
+  rootStackRequestTagConditions }                                               from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack, VendorLink }                                           from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement, Effect }                                              from 'aws-cdk-lib/aws-iam';
+import { Aws, Duration }                                                        from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }                                  from '../../contracts/websocket-push';
-import type { IDataBlobStore }                                                                      from '../buckets/data-blob-store';
-import type { IAuditEventsQueue }                                                                   from '../queues/audit-events-queue';
-import type { IEmailSendingQueue }                                                                  from '../queues/email-sending-queue';
-import type { IDataTable }                                                                          from '../tables/data-tables';
-import type { IMailLogTable }                                                                       from '../tables/mail-log-table';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }              from '../../contracts/websocket-push';
+import type { IDataBlobStore }                                                  from '../buckets/data-blob-store';
+import type { IAuditEventsQueue }                                               from '../queues/audit-events-queue';
+import type { IEmailSendingQueue }                                              from '../queues/email-sending-queue';
+import type { IDataTable }                                                      from '../tables/data-tables';
+import type { IMailLogTable }                                                   from '../tables/mail-log-table';
 
-import type { IIdentityProvisioner }                                                                from './identity-provisioner-lambda';
+import type { IIdentityProvisioner }                                            from './identity-provisioner-lambda';
 
 /**
  * The tables, queues, bucket, identity provisioner and SES and vendor settings the admin-api Lambda

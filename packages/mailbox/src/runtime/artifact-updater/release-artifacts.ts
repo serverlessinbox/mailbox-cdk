@@ -1,17 +1,17 @@
-import type { S3Client }                                                      from '@aws-sdk/client-s3';
-import { buildArtifactKey, deriveTrack, readReleasePointer }                  from '@serverlessinbox/artifact-registry';
-import type { LoggerBuffer, Region }                                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { gt as semverGt, parse as semverParse, type SemVer }                  from 'semver';
+import type { S3Client }                                                        from '@aws-sdk/client-s3';
+import { buildArtifactKey, deriveTrack, readReleasePointer }                    from '@serverlessinbox/artifact-registry';
+import type { LoggerBuffer, Region }                                            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { gt as semverGt, parse as semverParse, type SemVer }                    from 'semver';
 
-import type { ArtifactCoordinates }                                           from './artifact-target';
-import type { UpdaterTargetConfig }                                           from './config';
+import type { ArtifactCoordinates }                                             from './artifact-target';
+import type { UpdaterTargetConfig }                                             from './config';
 import {
   toArtifactBucketName,
   toArtifactVersion,
   type ArtifactBucketName,
   type ArtifactPackageName,
   type ArtifactVersion,
-} from './updater-identifiers';
+}                                                                               from './updater-identifiers';
 
 /** A release newer than the deployed version: its version as published and parsed, and the deployed version parsed. */
 export interface StaleTarget {

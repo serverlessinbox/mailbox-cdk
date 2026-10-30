@@ -6,13 +6,14 @@ import {
   DescribeStacksCommand,
   UpdateStackCommand,
   type StackEvent,
-} from '@aws-sdk/client-cloudformation';
-import { mockClient }                                                                             from 'aws-sdk-client-mock';
-import * as t                                                                                     from 'typanion';
+}                                                                               from '@aws-sdk/client-cloudformation';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
+import * as t                                                                   from 'typanion';
 
-import { CloudFormationStacks }                                                                   from '../cloudformation-stacks';
+import { CloudFormationStacks }                                                 from '../cloudformation-stacks';
 
-import { defaultLevelLogger, EU_WEST_1, operation, silenceConsole, stack, STACK_NAME, US_EAST_1 } from './stack-deployer-helpers';
+import { defaultLevelLogger, EU_WEST_1, operation, silenceConsole, stack,
+  STACK_NAME, US_EAST_1 }                                                       from './stack-deployer-helpers';
 
 const isStackEventOnTheWire = t.isObject({
   StackId:           t.isString(),

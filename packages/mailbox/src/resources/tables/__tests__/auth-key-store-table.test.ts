@@ -4,17 +4,17 @@ import {
   resourcesOf,
   statementsForRole,
   type PolicyStatementJson,
-} from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { PositionHash, StackIdentity }                                  from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                                              from 'aws-cdk-lib/assertions';
-import * as iam                                                         from 'aws-cdk-lib/aws-iam';
-import * as kms                                                         from 'aws-cdk-lib/aws-kms';
-import * as cdk                                                         from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                                from 'aws-cdk-lib';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { PositionHash, StackIdentity }                                          from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                                                      from 'aws-cdk-lib/assertions';
+import * as iam                                                                 from 'aws-cdk-lib/aws-iam';
+import * as kms                                                                 from 'aws-cdk-lib/aws-kms';
+import * as cdk                                                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                                        from 'aws-cdk-lib';
 
-import { defaultCfnResource }                                           from '../../../utils/cfn-resource';
-import { AuthKeyStoreTable }                                            from '../auth-key-store-table';
-import type { IAuthKeyStoreTable }                                      from '../auth-key-store-table';
+import { defaultCfnResource }                                                   from '../../../utils/cfn-resource';
+import { AuthKeyStoreTable }                                                    from '../auth-key-store-table';
+import type { IAuthKeyStoreTable }                                              from '../auth-key-store-table';
 
 /**
  * AuthKeyStoreTable tests.

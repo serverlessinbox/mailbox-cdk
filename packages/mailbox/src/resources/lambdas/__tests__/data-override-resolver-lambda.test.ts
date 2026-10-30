@@ -5,14 +5,14 @@
  * a resolver without that pin must fail to synthesize rather than reference a missing artifact.
  */
 
-import { ArtifactZone }                         from '@serverlessinbox/artifact-registry-cdk';
-import type { ArtifactPin }                     from '@serverlessinbox/artifact-registry-cdk';
-import { allPolicyStatements }                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Template }                             from 'aws-cdk-lib/assertions';
+import { ArtifactZone }               from '@serverlessinbox/artifact-registry-cdk';
+import type { ArtifactPin }           from '@serverlessinbox/artifact-registry-cdk';
+import { allPolicyStatements }        from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                   from 'aws-cdk-lib/assertions';
 
-import { DataOverrideResolverLambda }           from '../data-override-resolver-lambda';
+import { DataOverrideResolverLambda } from '../data-override-resolver-lambda';
 
-import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+import { arrangeWrapperStack }        from './lambda-wrapper-helpers';
 
 describe('DataOverrideResolverLambda', () => {
   it('grants dynamodb:DescribeTable, and no other action, on every DynamoDB table', () => {

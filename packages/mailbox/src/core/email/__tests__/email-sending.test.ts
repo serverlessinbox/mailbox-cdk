@@ -4,19 +4,19 @@
  * caller passes reaches that queue, and the WebSocket capability reaches the Lambda. A break here leaves
  * submissions enqueued that nothing sends, or a sender that never publishes WebSocket updates.
  */
-import { ArtifactZone, PinnedArtifactResolver }    from '@serverlessinbox/artifact-registry-cdk';
-import type { IArtifactResolver }                  from '@serverlessinbox/artifact-registry-cdk';
-import type { QueueEncryptionChoice }              from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                         from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                    from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket }                                  from 'aws-cdk-lib/aws-s3';
-import * as cdk                                    from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }           from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }               from '@serverlessinbox/artifact-registry-cdk';
+import type { QueueEncryptionChoice }           from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }                 from 'aws-cdk-lib/aws-dynamodb';
+import { Bucket }                               from 'aws-cdk-lib/aws-s3';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }       from '../../../contracts/websocket-push';
-import { DataBlobStore }                           from '../../../resources/buckets/data-blob-store';
-import { DataTable }                               from '../../../resources/tables/data-tables';
-import { EmailSending, type EmailSendingProps }    from '../email-sending';
+import type { IWebSocketBroadcastPublisher }    from '../../../contracts/websocket-push';
+import { DataBlobStore }                        from '../../../resources/buckets/data-blob-store';
+import { DataTable }                            from '../../../resources/tables/data-tables';
+import { EmailSending, type EmailSendingProps } from '../email-sending';
 
 function createStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {

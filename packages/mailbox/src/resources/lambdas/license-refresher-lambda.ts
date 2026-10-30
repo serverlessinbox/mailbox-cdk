@@ -1,11 +1,11 @@
-import type { IArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda, StackDeployedEvent }     from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement }                  from 'aws-cdk-lib/aws-iam';
-import { Aws, Duration }                    from 'aws-cdk-lib';
-import { Construct }                        from 'constructs';
+import type { IArtifactResolver }       from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda, StackDeployedEvent } from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }              from 'aws-cdk-lib/aws-iam';
+import { Aws, Duration }                from 'aws-cdk-lib';
+import { Construct }                    from 'constructs';
 
-import { LicenseRefreshSchedule }           from '../events/license-refresh-schedule';
-import type { IDataTable }                  from '../tables/data-tables';
+import { LicenseRefreshSchedule }       from '../events/license-refresh-schedule';
+import type { IDataTable }              from '../tables/data-tables';
 
 /**
  * The config table the refresher reads and writes, the core domain it refreshes against, the vendor

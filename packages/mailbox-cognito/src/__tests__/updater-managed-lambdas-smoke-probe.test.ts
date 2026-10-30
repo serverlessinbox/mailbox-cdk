@@ -11,24 +11,24 @@
  * present. The `Mailbox` suite of the mailbox package cannot cover them: it synthesizes with a fake auth provider.
  */
 
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
 import {
   handlerSourceOf,
   managedLambdasOf,
   probeManagedLambda,
   type ManagedLambda,
-} from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { MailboxArtifactResolverFactory }     from '@serverlessinbox/mailbox-cdk-shared';
-import type { AdminApiAddonContext }          from '@serverlessinbox/mailbox';
-import { Template }                           from 'aws-cdk-lib/assertions';
-import * as cdk                               from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }      from 'aws-cdk-lib';
-import * as path                              from 'node:path';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { MailboxArtifactResolverFactory }                                       from '@serverlessinbox/mailbox-cdk-shared';
+import type { AdminApiAddonContext }                                            from '@serverlessinbox/mailbox';
+import { Template }                                                             from 'aws-cdk-lib/assertions';
+import * as cdk                                                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                                        from 'aws-cdk-lib';
+import * as path                                                                from 'node:path';
 
-import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
-import { loadMailboxCognitoRegistryRecord }   from '../mailbox-cognito-registry-record';
-import { DynamicClientRegistrationMode }      from '../user-pool/dynamic-client-registration-mode';
-import { MailboxUserPool }                    from '../user-pool/mailbox-user-pool';
+import { loadMailboxCognitoArtifactVersions }                                   from '../mailbox-cognito-artifact-versions';
+import { loadMailboxCognitoRegistryRecord }                                     from '../mailbox-cognito-registry-record';
+import { DynamicClientRegistrationMode }                                        from '../user-pool/dynamic-client-registration-mode';
+import { MailboxUserPool }                                                      from '../user-pool/mailbox-user-pool';
 
 const TS_LAMBDA_ROOTS = [path.join(__dirname, '..', 'runtime')];
 

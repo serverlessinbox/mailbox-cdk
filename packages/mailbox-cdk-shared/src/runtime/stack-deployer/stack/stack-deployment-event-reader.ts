@@ -1,6 +1,6 @@
-import * as t               from 'typanion';
+import * as t                                                                   from 'typanion';
 
-import { InvalidOwnInput }  from '../../../runtime/handler-kit/errors/invalid-own-input';
+import { InvalidOwnInput }                                                      from '../../../runtime/handler-kit/errors/invalid-own-input';
 
 import {
   isCfnRequest,
@@ -24,7 +24,7 @@ import {
   type RequestType,
   type BrandedStackDeployerProperties,
   type SfnInvokeEvent,
-} from './stack-deployment';
+}                                                                               from './stack-deployment';
 
 /**
  * Turns the untyped payloads the deployer Lambdas receive into the payload types. An event that is not the

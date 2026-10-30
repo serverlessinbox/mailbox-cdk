@@ -1,5 +1,5 @@
-import type { Plugin, PluginBuild }  from 'esbuild';
-import { isAbsolute, relative }      from 'path';
+import type { Plugin, PluginBuild } from 'esbuild';
+import { isAbsolute, relative }     from 'path';
 
 /** Marks relative imports made by the package's own files external, so each source file stays its own output module. */
 export function localLibImportPlugin(packageFolder: string): Plugin {

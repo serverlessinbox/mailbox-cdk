@@ -16,10 +16,10 @@ import {
   emitManualFinalize,
   ParentStackStatus,
   toPhysicalResourceId,
-} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type * as LambdaRuntime                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { captureCfnResponse, type CapturedCfnResponse }                      from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
-import type { CloudFormationCustomResourceEvent }                            from 'aws-lambda';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type * as LambdaRuntime                                                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { captureCfnResponse, type CapturedCfnResponse }                         from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
+import type { CloudFormationCustomResourceEvent }                               from 'aws-lambda';
 
 import {
   BAD_CONFIG_ERROR,
@@ -28,9 +28,9 @@ import {
   fakeCloudFormationClient,
   fakeLambdaContext,
   newUpdateCycle,
-} from '../../__tests__/updater-helpers';
-import { UpdateCycle }                                                      from '../../update-cycle';
-import { CfnTrigger }                                                       from '../cfn-trigger';
+}                                                                               from '../../__tests__/updater-helpers';
+import { UpdateCycle }                                                          from '../../update-cycle';
+import { CfnTrigger }                                                           from '../cfn-trigger';
 
 jest.mock('../../update-cycle');
 jest.mock('https', () => ({

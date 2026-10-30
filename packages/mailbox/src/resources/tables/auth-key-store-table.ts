@@ -1,9 +1,9 @@
-import { StackNamedTable }                                 from '@serverlessinbox/mailbox-cdk-shared';
-import { AttributeType, BillingMode, TableEncryption }     from 'aws-cdk-lib/aws-dynamodb';
-import { Grant, IGrantable }                               from 'aws-cdk-lib/aws-iam';
-import type * as kms                                       from 'aws-cdk-lib/aws-kms';
-import { RemovalPolicy }                                   from 'aws-cdk-lib';
-import { Construct }                                       from 'constructs';
+import { StackNamedTable }                             from '@serverlessinbox/mailbox-cdk-shared';
+import { AttributeType, BillingMode, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
+import { Grant, IGrantable }                           from 'aws-cdk-lib/aws-iam';
+import type * as kms                                   from 'aws-cdk-lib/aws-kms';
+import { RemovalPolicy }                               from 'aws-cdk-lib';
+import { Construct }                                   from 'constructs';
 
 /**
  * Grants on the auth key store. Each grant method names one item type (`pk`) and the access one kind of

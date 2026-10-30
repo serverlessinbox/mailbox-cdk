@@ -1,23 +1,23 @@
-import type { IArtifactResolver }                    from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription }                      from '@serverlessinbox/mailbox-cdk-shared';
-import type { VendorLink }                           from '@serverlessinbox/mailbox-cdk-shared';
-import type { IFunction }                            from 'aws-cdk-lib/aws-lambda';
-import { IReceiptRuleSet }                           from 'aws-cdk-lib/aws-ses';
-import { CustomResource, Duration }                  from 'aws-cdk-lib';
-import { Construct, IDependable }                    from 'constructs';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }                                                 from '@serverlessinbox/mailbox-cdk-shared';
+import type { VendorLink }                                                      from '@serverlessinbox/mailbox-cdk-shared';
+import type { IFunction }                                                       from 'aws-cdk-lib/aws-lambda';
+import { IReceiptRuleSet }                                                      from 'aws-cdk-lib/aws-ses';
+import { CustomResource, Duration }                                             from 'aws-cdk-lib';
+import { Construct, IDependable }                                               from 'constructs';
 
-import type { SesReceivingMode }                     from '../../contracts/ses-receiving-mode';
-import { BootstrapLambda }                           from '../../resources/lambdas/bootstrap-lambda';
-import type { IAuthKeyStoreTable }                   from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                           from '../../resources/tables/data-tables';
-import type { IDnsZone }                             from '../edge/dns-zone';
+import type { SesReceivingMode }                                                from '../../contracts/ses-receiving-mode';
+import { BootstrapLambda }                                                      from '../../resources/lambdas/bootstrap-lambda';
+import type { IAuthKeyStoreTable }                                              from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                                                      from '../../resources/tables/data-tables';
+import type { IDnsZone }                                                        from '../edge/dns-zone';
 
 import type {
   AuthPoliciesConfig,
   OAuthClientsConfig,
   OAuthAuthorizationCodeClientConfig,
   OidcProviderConfig,
-} from './auth-bootstrap-config';
+}                                                                               from './auth-bootstrap-config';
 
 /** Inputs of the bootstrap custom resource and of the Lambda behind it. */
 export interface BootstrapProps {

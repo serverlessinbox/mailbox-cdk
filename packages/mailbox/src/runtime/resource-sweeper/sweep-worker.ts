@@ -1,4 +1,4 @@
-import { InvalidOwnInput, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { InvalidOwnInput, type LoggerBuffer }                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import {
   isWorkerInput,
@@ -10,7 +10,7 @@ import {
   type TargetSweeper,
   type WorkerInput,
   type WorkerOutput,
-} from './removal';
+}                                                                               from './removal';
 
 /**
  * Sweeps one removal per invocation: dispatches the removal's payload on `removalType` to the

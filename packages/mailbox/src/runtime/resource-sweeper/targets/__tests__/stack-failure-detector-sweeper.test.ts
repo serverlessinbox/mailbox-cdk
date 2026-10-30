@@ -12,20 +12,20 @@ import {
   ListTagsForResourceCommand,
   RemoveTargetsCommand,
   DeleteRuleCommand,
-} from '@aws-sdk/client-eventbridge';
+}                                                                               from '@aws-sdk/client-eventbridge';
 import {
   IAMClient,
   ListRoleTagsCommand,
   DeleteRolePolicyCommand,
   DeleteRoleCommand,
-} from '@aws-sdk/client-iam';
-import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand } from '@aws-sdk/client-lambda';
-import { LoggerBuffer }                                            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                              from 'aws-sdk-client-mock';
+}                                                                               from '@aws-sdk/client-iam';
+import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand }              from '@aws-sdk/client-lambda';
+import { LoggerBuffer }                                                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import type { StackFailureDetectorRemovalInput }                   from '../../removal';
-import { RootStackMembership }                                     from '../../root-stack-membership';
-import { StackFailureDetectorSweeper }                             from '../stack-failure-detector-sweeper';
+import type { StackFailureDetectorRemovalInput }                                from '../../removal';
+import { RootStackMembership }                                                  from '../../root-stack-membership';
+import { StackFailureDetectorSweeper }                                          from '../stack-failure-detector-sweeper';
 
 const eventsMock = mockClient(EventBridgeClient);
 const lambdaMock = mockClient(LambdaClient);

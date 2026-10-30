@@ -1,21 +1,22 @@
-import type { IArtifactResolver, ResolvedArtifact }                                                                                        from '@serverlessinbox/artifact-registry-cdk';
-import type { ServerlessInboxDeployerType }                                                                                                from '@serverlessinbox/mailbox-cdk-shared';
-import { ArtifactObject, ComponentDescription, DeployedStack, DeployerInfra, PositionHash, StackIdentity, serverlessInboxSubStackTags }    from '@serverlessinbox/mailbox-cdk-shared';
-import * as acm                                                                                                                            from 'aws-cdk-lib/aws-certificatemanager';
-import * as iam                                                                                                                            from 'aws-cdk-lib/aws-iam';
-import * as lambda                                                                                                                         from 'aws-cdk-lib/aws-lambda';
-import * as route53                                                                                                                        from 'aws-cdk-lib/aws-route53';
-import { Aws, CustomResource, Stack }                                                                                                      from 'aws-cdk-lib';
-import { Construct }                                                                                                                       from 'constructs';
+import type { IArtifactResolver, ResolvedArtifact }                             from '@serverlessinbox/artifact-registry-cdk';
+import type { ServerlessInboxDeployerType }                                     from '@serverlessinbox/mailbox-cdk-shared';
+import { ArtifactObject, ComponentDescription, DeployedStack, DeployerInfra,
+  PositionHash, StackIdentity, serverlessInboxSubStackTags }                    from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                                                                 from 'aws-cdk-lib/aws-certificatemanager';
+import * as iam                                                                 from 'aws-cdk-lib/aws-iam';
+import * as lambda                                                              from 'aws-cdk-lib/aws-lambda';
+import * as route53                                                             from 'aws-cdk-lib/aws-route53';
+import { Aws, CustomResource, Stack }                                           from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import { JmapBlobDownloadLambda }                                                                                                          from '../../resources/lambdas/jmap-blob-download-lambda';
-import { MailboxEdgeDeployerWorkerLambda }                                                                                                 from '../../resources/lambdas/mailbox-edge-deployer-worker-lambda';
-import { EdgeFunctionRole }                                                                                                                from '../../resources/roles/edge-function-role';
-import type { IAuthKeyStoreTable }                                                                                                         from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                                                                                                                 from '../../resources/tables/data-tables';
-import type { IMailboxDomainNames }                                                                                                        from '../domains/mailbox-domains';
+import { JmapBlobDownloadLambda }                                               from '../../resources/lambdas/jmap-blob-download-lambda';
+import { MailboxEdgeDeployerWorkerLambda }                                      from '../../resources/lambdas/mailbox-edge-deployer-worker-lambda';
+import { EdgeFunctionRole }                                                     from '../../resources/roles/edge-function-role';
+import type { IAuthKeyStoreTable }                                              from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                                                      from '../../resources/tables/data-tables';
+import type { IMailboxDomainNames }                                             from '../domains/mailbox-domains';
 
-import type { MailboxEdgeStackParameters }                                                                                                 from './mailbox-edge-stack';
+import type { MailboxEdgeStackParameters }                                      from './mailbox-edge-stack';
 
 /** Inputs of `MailboxEdgeDeployer`: the domain, the regional tables the edge stack is pointed at, and the tagging values. */
 export interface MailboxEdgeDeployerProps {

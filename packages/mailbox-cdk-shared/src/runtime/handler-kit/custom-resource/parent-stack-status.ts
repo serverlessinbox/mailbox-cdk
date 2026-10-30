@@ -2,7 +2,7 @@ import {
   DescribeStacksCommand,
   type CloudFormationClient,
   type StackStatus,
-} from '@aws-sdk/client-cloudformation';
+}                            from '@aws-sdk/client-cloudformation';
 
 import { CaughtError }       from '../errors/caught-error';
 import type { LoggerBuffer } from '../logger-buffer';

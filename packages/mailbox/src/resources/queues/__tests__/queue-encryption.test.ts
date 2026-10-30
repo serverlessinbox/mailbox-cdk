@@ -5,19 +5,19 @@
  * leaves a queue silently less encrypted than the operator chose, or a topic unable to deliver to its queue.
  */
 
-import type { QueueEncryptionChoice }                       from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                                  from 'aws-cdk-lib/assertions';
-import * as kms                                             from 'aws-cdk-lib/aws-kms';
-import { Topic }                                            from 'aws-cdk-lib/aws-sns';
-import * as cdk                                             from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                    from 'aws-cdk-lib';
+import type { QueueEncryptionChoice }    from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }               from 'aws-cdk-lib/assertions';
+import * as kms                          from 'aws-cdk-lib/aws-kms';
+import { Topic }                         from 'aws-cdk-lib/aws-sns';
+import * as cdk                          from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
-import { AuditEventsQueue }                                 from '../audit-events-queue';
-import { EmailProcessingQueue }                             from '../email-processing-queue';
-import { EmailSendingQueue }                                from '../email-sending-queue';
-import { ImportJobsQueue }                                  from '../import-jobs-queue';
-import { SesEventQueue }                                    from '../ses-event-queue';
-import { TantivyIndexingScheduleDlq }                       from '../tantivy-indexing-schedule-dlq';
+import { AuditEventsQueue }              from '../audit-events-queue';
+import { EmailProcessingQueue }          from '../email-processing-queue';
+import { EmailSendingQueue }             from '../email-sending-queue';
+import { ImportJobsQueue }               from '../import-jobs-queue';
+import { SesEventQueue }                 from '../ses-event-queue';
+import { TantivyIndexingScheduleDlq }    from '../tantivy-indexing-schedule-dlq';
 
 type Variant = 'aws-managed' | 'unencrypted' | 'kms';
 

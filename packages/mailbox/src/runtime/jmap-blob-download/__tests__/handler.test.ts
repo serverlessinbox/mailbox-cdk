@@ -6,13 +6,14 @@
  * one that did not flush an unexpected error would leave the bug without its trace.
  */
 
-import { DynamoDBClient }                                                                   from '@aws-sdk/client-dynamodb';
-import { LoggerBuffer }                                                                     from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { DynamoDBClient }                                                       from '@aws-sdk/client-dynamodb';
+import { LoggerBuffer }                                                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { handler }                                                                          from '../handler';
-import { RegionBoundVerifiers }                                                             from '../verifiers/region-bound-verifiers';
+import { handler }                                                              from '../handler';
+import { RegionBoundVerifiers }                                                 from '../verifiers/region-bound-verifiers';
 
-import { cloudFrontEventOf, downloadQuery, encodedBlobIdOf, EU_CENTRAL_1, originRequestOf } from './jmap-blob-download-helpers';
+import { cloudFrontEventOf, downloadQuery, encodedBlobIdOf, EU_CENTRAL_1,
+  originRequestOf }                                                             from './jmap-blob-download-helpers';
 
 jest.mock('../verifiers/region-bound-verifiers');
 

@@ -20,17 +20,17 @@ process.env['SERVICE_NAME']                      = 'resource-sweeper';
 process.env['AWS_REGION']                        = 'us-west-2';
 process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'] = STATE_MACHINE_ARN;
 
-import { ACMClient, DeleteCertificateCommand }                                                   from '@aws-sdk/client-acm';
-import { SFNClient, StartExecutionCommand, ListExecutionsCommand }                               from '@aws-sdk/client-sfn';
-import { ExpectedFailure, LoggerBuffer }                                                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { captureCfnResponse }                                                                    from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
-import { mockClient }                                                                            from 'aws-sdk-client-mock';
+import { ACMClient, DeleteCertificateCommand }                     from '@aws-sdk/client-acm';
+import { SFNClient, StartExecutionCommand, ListExecutionsCommand } from '@aws-sdk/client-sfn';
+import { ExpectedFailure, LoggerBuffer }                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { captureCfnResponse }                                      from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
+import { mockClient }                                              from 'aws-sdk-client-mock';
 
-import { starterHandler, workerHandler }                                                         from '../handler';
-import { SweepStarter }                                                                          from '../sweep-starter';
-import { SweepWorker }                                                                           from '../sweep-worker';
+import { starterHandler, workerHandler }                           from '../handler';
+import { SweepStarter }                                            from '../sweep-starter';
+import { SweepWorker }                                             from '../sweep-worker';
 
-import { lambdaContext, updateEvent, answerCertificateRemoval }                                  from './sweep-helpers';
+import { lambdaContext, updateEvent, answerCertificateRemoval }    from './sweep-helpers';
 
 // wrapHandler PUTs the CFN response over real `https`; captureCfnResponse routes it into memory.
 jest.mock('https', () => ({ request: jest.fn() }));

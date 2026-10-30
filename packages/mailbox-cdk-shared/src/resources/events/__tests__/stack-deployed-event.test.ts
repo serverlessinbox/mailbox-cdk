@@ -1,9 +1,9 @@
 /// <reference types="jest" />
-import { Match, Template }                           from 'aws-cdk-lib/assertions';
-import { Code, Function, Runtime }                   from 'aws-cdk-lib/aws-lambda';
-import { App, BootstraplessSynthesizer, Stack }      from 'aws-cdk-lib';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Code, Function, Runtime }              from 'aws-cdk-lib/aws-lambda';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
-import { StackDeployedEvent }                        from '../stack-deployed-event';
+import { StackDeployedEvent }                   from '../stack-deployed-event';
 
 describe('StackDeployedEvent', () => {
   let template: Template;

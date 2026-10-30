@@ -7,14 +7,15 @@
  * the event renders are pinned by the resource and the event that own them, not here.
  */
 
-import { Template }                                                                                           from 'aws-cdk-lib/assertions';
+import { Template }                                                             from 'aws-cdk-lib/assertions';
 
-import type { IWebSocketBroadcastPublisher }                                                                  from '../../../contracts/websocket-push';
-import { EmailProcessingQueueEvent }                                                                          from '../../events/email-processing-queue-event';
-import { EmailProcessorLambda }                                                                               from '../email-processor-lambda';
+import type { IWebSocketBroadcastPublisher }                                    from '../../../contracts/websocket-push';
+import { EmailProcessingQueueEvent }                                            from '../../events/email-processing-queue-event';
+import { EmailProcessorLambda }                                                 from '../email-processor-lambda';
 
-import { expectGrantedOnceTo, fakeDataBlobStore, fakeDataTable, fakeMailLogTable, fakeQueue }                 from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                                                                  from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataBlobStore, fakeDataTable,
+  fakeMailLogTable, fakeQueue }                                                 from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                                    from './lambda-wrapper-helpers';
 
 jest.mock('../../events/email-processing-queue-event');
 

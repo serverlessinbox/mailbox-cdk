@@ -1,10 +1,12 @@
-import { SFNClient, StartExecutionCommand, ListExecutionsCommand, StopExecutionCommand }            from '@aws-sdk/client-sfn';
-import { CaughtError, emitManualFinalize, toStackId, type LoggerBuffer, type ParentStackStatus }    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { CloudFormationCustomResourceEvent }                                                   from 'aws-lambda';
+import { SFNClient, StartExecutionCommand, ListExecutionsCommand,
+  StopExecutionCommand }                                                        from '@aws-sdk/client-sfn';
+import { CaughtError, emitManualFinalize, toStackId, type LoggerBuffer,
+  type ParentStackStatus }                                                      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { CloudFormationCustomResourceEvent }                               from 'aws-lambda';
 
-import type { StarterConfig }                                                                       from './config';
-import type { RemovalPropertiesMap }                                                                from './removal';
-import type { SweepTargetPlanner }                                                                  from './sweep-target-planner';
+import type { StarterConfig }                                                   from './config';
+import type { RemovalPropertiesMap }                                            from './removal';
+import type { SweepTargetPlanner }                                              from './sweep-target-planner';
 
 /** The answer to CloudFormation: the resource's fixed physical id and no attributes. A type alias, because `wrapHandler` requires `Data` to be a `Record<string, string>`. */
 export type StarterAnswer = {

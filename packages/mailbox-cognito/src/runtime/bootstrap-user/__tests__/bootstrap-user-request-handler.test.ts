@@ -11,15 +11,15 @@ import {
   AdminCreateUserCommand,
   CognitoIdentityProviderClient,
   UsernameExistsException,
-} from '@aws-sdk/client-cognito-identity-provider';
-import { InvalidOwnInput, LoggerBuffer }                                              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                                                 from 'aws-sdk-client-mock';
+}                                                                               from '@aws-sdk/client-cognito-identity-provider';
+import { InvalidOwnInput, LoggerBuffer }                                        from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import { PASSWORD_SET_AT_INSTALL_TIME }                                               from '../bootstrap-user-answers';
-import { BootstrapUserRequestHandler }                                                from '../bootstrap-user-request-handler';
-import { UserEnsurer }                                                                from '../ensure-user';
+import { PASSWORD_SET_AT_INSTALL_TIME }                                         from '../bootstrap-user-answers';
+import { BootstrapUserRequestHandler }                                          from '../bootstrap-user-request-handler';
+import { UserEnsurer }                                                          from '../ensure-user';
 
-import { PHYSICAL_RESOURCE_ID, request, templateProperties, USER_POOL_ID }            from './bootstrap-user-helpers';
+import { PHYSICAL_RESOURCE_ID, request, templateProperties, USER_POOL_ID }      from './bootstrap-user-helpers';
 
 const SUPPLIED_PASSWORD = 'Supplied1Password';
 

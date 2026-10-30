@@ -6,8 +6,8 @@
  * mis-wired transition either fails every deployment or loops it until the workflow times out.
  */
 
-import { Template }                              from 'aws-cdk-lib/assertions';
-import { Duration, Stack }                       from 'aws-cdk-lib';
+import { Template }                                                             from 'aws-cdk-lib/assertions';
+import { Duration, Stack }                                                      from 'aws-cdk-lib';
 
 import {
   TEST_ACCOUNT,
@@ -15,10 +15,10 @@ import {
   newDeployerTestStack,
   newWorkerStandIn,
   stateMachineDefinition,
-} from '../../../__tests__/deployer-infra-helpers';
-import { statementsForAction }                   from '../../../cdk-test-support';
-import { PollingCfnDeployerWorkflow }            from '../polling-cfn-deployer-workflow';
-import type { PollingCfnDeployerWorkflowProps }  from '../polling-cfn-deployer-workflow';
+}                                                                               from '../../../__tests__/deployer-infra-helpers';
+import { statementsForAction }                                                  from '../../../cdk-test-support';
+import { PollingCfnDeployerWorkflow }                                           from '../polling-cfn-deployer-workflow';
+import type { PollingCfnDeployerWorkflowProps }                                 from '../polling-cfn-deployer-workflow';
 
 interface SynthesizedWorkflow {
   readonly stack:    Stack;

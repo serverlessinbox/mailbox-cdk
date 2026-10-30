@@ -1,7 +1,7 @@
-import { build }             from 'esbuild';
-import { zipSync }           from 'fflate';
-import { mkdir, writeFile }  from 'fs/promises';
-import { dirname }           from 'path';
+import { build }            from 'esbuild';
+import { zipSync }          from 'fflate';
+import { mkdir, writeFile } from 'fs/promises';
+import { dirname }          from 'path';
 
 /** Everything needed to bundle one Lambda entry file into a zip holding a single `index.js`. */
 export interface LambdaZipSpec {

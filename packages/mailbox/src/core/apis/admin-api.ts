@@ -1,25 +1,25 @@
-import type { IArtifactResolver }                                     from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription }                                       from '@serverlessinbox/mailbox-cdk-shared';
-import type { VendorLink }                                            from '@serverlessinbox/mailbox-cdk-shared';
-import { HttpLambdaAuthorizer }                                       from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpMethod }                                                 from 'aws-cdk-lib/aws-apigatewayv2';
-import { Duration }                                                   from 'aws-cdk-lib';
-import { Construct }                                                  from 'constructs';
+import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }                                    from '@serverlessinbox/mailbox-cdk-shared';
+import type { VendorLink }                                         from '@serverlessinbox/mailbox-cdk-shared';
+import { HttpLambdaAuthorizer }                                    from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpMethod }                                              from 'aws-cdk-lib/aws-apigatewayv2';
+import { Duration }                                                from 'aws-cdk-lib';
+import { Construct }                                               from 'constructs';
 
-import { AuthPolicyName }                                             from '../../contracts/auth-names';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }    from '../../contracts/websocket-push';
-import type { IDataBlobStore }                                        from '../../resources/buckets/data-blob-store';
-import { AdminApiLambda }                                             from '../../resources/lambdas/admin-api-lambda';
-import { AuthorizerLambda }                                           from '../../resources/lambdas/authorizer-lambda';
-import type { IIdentityProvisioner }                                  from '../../resources/lambdas/identity-provisioner-lambda';
-import type { IAuditEventsQueue }                                     from '../../resources/queues/audit-events-queue';
-import type { IEmailSendingQueue }                                    from '../../resources/queues/email-sending-queue';
-import type { IAuthKeyStoreTable }                                    from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                                            from '../../resources/tables/data-tables';
-import type { IMailLogTable }                                         from '../../resources/tables/mail-log-table';
+import { AuthPolicyName }                                          from '../../contracts/auth-names';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
+import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
+import { AdminApiLambda }                                          from '../../resources/lambdas/admin-api-lambda';
+import { AuthorizerLambda }                                        from '../../resources/lambdas/authorizer-lambda';
+import type { IIdentityProvisioner }                               from '../../resources/lambdas/identity-provisioner-lambda';
+import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }                                 from '../../resources/queues/email-sending-queue';
+import type { IAuthKeyStoreTable }                                 from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                                         from '../../resources/tables/data-tables';
+import type { IMailLogTable }                                      from '../../resources/tables/mail-log-table';
 
-import type { IAdminApiAddon }                                        from './addons';
-import type { ApiRoute, IApiArea }                                    from './api-area';
+import type { IAdminApiAddon }                                     from './addons';
+import type { ApiRoute, IApiArea }                                 from './api-area';
 
 /**
  * Inputs of {@link AdminApi}: the tables, queues and blob store its handler Lambda works on, and the

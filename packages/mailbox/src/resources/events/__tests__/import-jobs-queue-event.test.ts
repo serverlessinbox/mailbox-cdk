@@ -5,13 +5,13 @@
  * two concurrent invocations and partial batch reporting, read from the synthesized mapping.
  */
 
-import { Template }                                                 from 'aws-cdk-lib/assertions';
-import { Code, Function as LambdaFunction, Runtime }                from 'aws-cdk-lib/aws-lambda';
-import * as cdk                                                     from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                            from 'aws-cdk-lib';
+import { Template }                                  from 'aws-cdk-lib/assertions';
+import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
+import * as cdk                                      from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }             from 'aws-cdk-lib';
 
-import { ImportJobsQueue }                                          from '../../queues/import-jobs-queue';
-import { ImportJobsQueueEvent }                                     from '../import-jobs-queue-event';
+import { ImportJobsQueue }                           from '../../queues/import-jobs-queue';
+import { ImportJobsQueueEvent }                      from '../import-jobs-queue-event';
 
 function arrangeEvent() {
   const stack  = new cdk.Stack(new App(), 'TestStack', {

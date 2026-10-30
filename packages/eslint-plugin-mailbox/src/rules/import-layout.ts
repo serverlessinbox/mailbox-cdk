@@ -1,7 +1,7 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree }  from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 
-import { createRule }                                    from './create-rule';
-import { ImportPacker, type ImportParts }                from './import-packer';
+import { createRule }                                   from './create-rule';
+import { ImportPacker, type ImportParts }               from './import-packer';
 
 type ImportLayoutMessageId = 'alignImport';
 

@@ -1,24 +1,25 @@
-import type { IArtifactResolver }                                                   from '@serverlessinbox/artifact-registry-cdk';
-import type { ServerlessInboxDeployerType }                                         from '@serverlessinbox/mailbox-cdk-shared';
-import { ComponentDescription, PipelineLogGroup, applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
-import * as acm                                                                     from 'aws-cdk-lib/aws-certificatemanager';
-import type * as route53                                                            from 'aws-cdk-lib/aws-route53';
-import type { IBucket }                                                             from 'aws-cdk-lib/aws-s3';
-import * as cdk                                                                     from 'aws-cdk-lib';
-import { Construct }                                                                from 'constructs';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import type { ServerlessInboxDeployerType }                                     from '@serverlessinbox/mailbox-cdk-shared';
+import { ComponentDescription, PipelineLogGroup,
+  applyServerlessInboxComponentTag }                                            from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                                                                 from 'aws-cdk-lib/aws-certificatemanager';
+import type * as route53                                                        from 'aws-cdk-lib/aws-route53';
+import type { IBucket }                                                         from 'aws-cdk-lib/aws-s3';
+import * as cdk                                                                 from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import type { MailboxCertificateOverrides }                                         from '../../mailbox-props';
-import type { IAuthKeyStoreTable }                                                  from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                                                          from '../../resources/tables/data-tables';
-import { MailboxDns }                                                               from '../domains/mailbox-dns';
-import type { MailboxDnsCnameTargets }                                              from '../domains/mailbox-dns';
-import type { IMailboxDomainNames }                                                 from '../domains/mailbox-domains';
-import { Cdn }                                                                      from '../ui/cdn-construct';
-import type { CdnCustomDomain }                                                     from '../ui/cdn-construct';
+import type { MailboxCertificateOverrides }                                     from '../../mailbox-props';
+import type { IAuthKeyStoreTable }                                              from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                                                      from '../../resources/tables/data-tables';
+import { MailboxDns }                                                           from '../domains/mailbox-dns';
+import type { MailboxDnsCnameTargets }                                          from '../domains/mailbox-dns';
+import type { IMailboxDomainNames }                                             from '../domains/mailbox-domains';
+import { Cdn }                                                                  from '../ui/cdn-construct';
+import type { CdnCustomDomain }                                                 from '../ui/cdn-construct';
 
-import { DnsZone }                                                                  from './dns-zone';
-import type { IDnsZone }                                                            from './dns-zone';
-import { MailboxEdgeDeployer }                                                      from './mailbox-edge-deployer';
+import { DnsZone }                                                              from './dns-zone';
+import type { IDnsZone }                                                        from './dns-zone';
+import { MailboxEdgeDeployer }                                                  from './mailbox-edge-deployer';
 
 /** What {@link EdgeSection} uses of the data section. */
 export interface IEdgeDataInputs {

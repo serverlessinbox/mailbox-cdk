@@ -1,18 +1,19 @@
-import type { IArtifactResolver }                                                                                             from '@serverlessinbox/artifact-registry-cdk';
-import type { ServerlessInboxDeployerType }                                                                                   from '@serverlessinbox/mailbox-cdk-shared';
-import { ArtifactObject, ComponentDescription, DeployedStack, DeployerInfra, StackIdentity, serverlessInboxSubStackTags }     from '@serverlessinbox/mailbox-cdk-shared';
-import { IBucket }                                                                                                            from 'aws-cdk-lib/aws-s3';
-import { Aws, Stack }                                                                                                         from 'aws-cdk-lib';
-import { Construct }                                                                                                          from 'constructs';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import type { ServerlessInboxDeployerType }                                     from '@serverlessinbox/mailbox-cdk-shared';
+import { ArtifactObject, ComponentDescription, DeployedStack, DeployerInfra,
+  StackIdentity, serverlessInboxSubStackTags }                                  from '@serverlessinbox/mailbox-cdk-shared';
+import { IBucket }                                                              from 'aws-cdk-lib/aws-s3';
+import { Aws, Stack }                                                           from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import { MAILBOX_ARTIFACT_PACKAGE }                                                                                           from '../../../contracts/mailbox-artifact-package';
-import type { IDataBlobStore }                                                                                                from '../../../resources/buckets/data-blob-store';
-import { MailboxDataDeployerWorkerLambda }                                                                                    from '../../../resources/lambdas/mailbox-data-deployer-worker-lambda';
-import type { IDataTable }                                                                                                    from '../../../resources/tables/data-tables';
-import { MailboxDataStackRef }                                                                                                from '../mailbox-data-stack-ref';
-import type { MailboxDataStackParameters }                                                                                    from '../mailbox-data-stack';
+import { MAILBOX_ARTIFACT_PACKAGE }                                             from '../../../contracts/mailbox-artifact-package';
+import type { IDataBlobStore }                                                  from '../../../resources/buckets/data-blob-store';
+import { MailboxDataDeployerWorkerLambda }                                      from '../../../resources/lambdas/mailbox-data-deployer-worker-lambda';
+import type { IDataTable }                                                      from '../../../resources/tables/data-tables';
+import { MailboxDataStackRef }                                                  from '../mailbox-data-stack-ref';
+import type { MailboxDataStackParameters }                                      from '../mailbox-data-stack';
 
-import { MailboxDataOverrideResolver }                                                                                        from './mailbox-data-override-resolver';
+import { MailboxDataOverrideResolver }                                          from './mailbox-data-override-resolver';
 
 /** Inputs of `MailboxDataDeployer`: the data stack's name and bucket-name base, and the tagging values. */
 export interface MailboxDataDeployerProps {

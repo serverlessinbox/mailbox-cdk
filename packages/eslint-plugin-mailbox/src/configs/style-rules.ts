@@ -1,7 +1,6 @@
 import type { TSESLint } from '@typescript-eslint/utils';
 
 export const styleRules: TSESLint.FlatConfig.Rules = {
-  'arca/import-align':                    'error',
   'arca/import-ordering':                 'error',
   'arca/import-quotes':                   'error',
   'arca/newline-after-import-section':    'error',

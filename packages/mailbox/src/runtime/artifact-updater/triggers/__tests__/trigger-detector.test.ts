@@ -7,7 +7,7 @@
  * so what the detector returns is exactly what it asked the builder for.
  */
 
-import { LoggerBuffer, ParentStackStatus }      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { LoggerBuffer, ParentStackStatus }                                      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 import {
   badConfigCycle,
@@ -15,11 +15,11 @@ import {
   fakeCloudFormationClient,
   fakeLambdaContext,
   httpApiEvent,
-} from '../../__tests__/updater-helpers';
-import { CfnTrigger }                           from '../cfn-trigger';
-import { HttpTrigger }                          from '../http-trigger';
-import { ScheduledTrigger }                     from '../scheduled-trigger';
-import { TriggerDetector, type TriggerBuilder } from '../trigger-detector';
+}                                                                               from '../../__tests__/updater-helpers';
+import { CfnTrigger }                                                           from '../cfn-trigger';
+import { HttpTrigger }                                                          from '../http-trigger';
+import { ScheduledTrigger }                                                     from '../scheduled-trigger';
+import { TriggerDetector, type TriggerBuilder }                                 from '../trigger-detector';
 
 describe('TriggerDetector', () => {
   const context          = fakeLambdaContext();

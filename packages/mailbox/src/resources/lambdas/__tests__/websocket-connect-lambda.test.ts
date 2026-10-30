@@ -6,12 +6,12 @@
  * table that owns it.
  */
 
-import { Template }                                                from 'aws-cdk-lib/assertions';
+import { Template }                                               from 'aws-cdk-lib/assertions';
 
-import { WebSocketConnectLambda }                                  from '../websocket-connect-lambda';
+import { WebSocketConnectLambda }                                 from '../websocket-connect-lambda';
 
-import { expectGrantedOnceTo, fakeDataTable, fakeWebSocketTable }  from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                       from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataTable, fakeWebSocketTable } from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                      from './lambda-wrapper-helpers';
 
 function synthesize() {
   const { stack, artifactResolver } = arrangeWrapperStack();

@@ -9,15 +9,15 @@
  * function that is never updated, never replaced, or never created.
  */
 
-import { ServerlessInboxTagKeys }            from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                   from 'aws-cdk-lib/assertions';
-import * as iam                              from 'aws-cdk-lib/aws-iam';
-import * as logs                             from 'aws-cdk-lib/aws-logs';
-import * as s3                               from 'aws-cdk-lib/aws-s3';
-import * as cdk                              from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }     from 'aws-cdk-lib';
+import { ServerlessInboxTagKeys }        from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }               from 'aws-cdk-lib/assertions';
+import * as iam                          from 'aws-cdk-lib/aws-iam';
+import * as logs                         from 'aws-cdk-lib/aws-logs';
+import * as s3                           from 'aws-cdk-lib/aws-s3';
+import * as cdk                          from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
-import { JmapBlobDownloadLambda }            from '../jmap-blob-download-lambda';
+import { JmapBlobDownloadLambda }        from '../jmap-blob-download-lambda';
 
 const ROLE_ARN = 'arn:aws:iam::123456789012:role/jmap-blob-download';
 

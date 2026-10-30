@@ -8,15 +8,15 @@
  * for SendRawEmail. The statement each requested grant renders is pinned by the resource that owns it.
  */
 
-import { statementsForAction }                                                              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Template }                                                                         from 'aws-cdk-lib/assertions';
+import { statementsForAction }                                              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                                                         from 'aws-cdk-lib/assertions';
 
-import type { IWebSocketBroadcastPublisher }                                                from '../../../contracts/websocket-push';
-import { EmailSubmissionsQueueEvent }                                                       from '../../events/email-submissions-queue-event';
-import { EmailSenderLambda }                                                                from '../email-sender-lambda';
+import type { IWebSocketBroadcastPublisher }                                from '../../../contracts/websocket-push';
+import { EmailSubmissionsQueueEvent }                                       from '../../events/email-submissions-queue-event';
+import { EmailSenderLambda }                                                from '../email-sender-lambda';
 
-import { expectGrantedOnceTo, fakeDataBlobStore, fakeDataTable, fakeQueue }                 from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                                                from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataBlobStore, fakeDataTable, fakeQueue } from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                                from './lambda-wrapper-helpers';
 
 jest.mock('../../events/email-submissions-queue-event');
 

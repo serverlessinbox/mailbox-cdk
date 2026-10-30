@@ -1,8 +1,8 @@
-import { emitManualFinalize }                from '../../runtime/handler-kit/custom-resource/custom-resource-manual-finalize';
+import { emitManualFinalize }              from '../../runtime/handler-kit/custom-resource/custom-resource-manual-finalize';
 
-import type { CfnResponder }                 from './answers/cfn-responder';
-import type { StackDeployerStarter }         from './stack-deployer-starter';
-import type { StackDeploymentEventReader }   from './stack/stack-deployment-event-reader';
+import type { CfnResponder }               from './answers/cfn-responder';
+import type { StackDeployerStarter }       from './stack-deployer-starter';
+import type { StackDeploymentEventReader } from './stack/stack-deployment-event-reader';
 
 /**
  * Turns the event the starter function receives into a request the starter can act on: it reads the event,

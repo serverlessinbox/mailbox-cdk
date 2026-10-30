@@ -1,22 +1,22 @@
-import type { CloudFrontClient }                         from '@aws-sdk/client-cloudfront';
-import type { S3Client }                                 from '@aws-sdk/client-s3';
+import type { CloudFrontClient }                                                from '@aws-sdk/client-cloudfront';
+import type { S3Client }                                                        from '@aws-sdk/client-s3';
 
-import { invalidateCloudFront }                          from '../../runtime/handler-kit/cloudfront-invalidation';
-import { deletePrefix, deployZipToPrefix, writeObject }  from '../../runtime/handler-kit/content-ops';
-import { toPhysicalResourceId, type PhysicalResourceId } from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import type { CustomResourceRequest, DeleteRequest }     from '../../runtime/handler-kit/custom-resource/custom-resource-request';
-import { ExpectedFailure }                               from '../../runtime/handler-kit/errors/expected-failure';
-import { InvalidOwnInput }                               from '../../runtime/handler-kit/errors/invalid-own-input';
-import { hasTimeLeft, type InvocationDeadline }          from '../../runtime/handler-kit/invocation-deadline';
-import type { LoggerBuffer }                             from '../../runtime/handler-kit/logger-buffer';
+import { invalidateCloudFront }                                                 from '../../runtime/handler-kit/cloudfront-invalidation';
+import { deletePrefix, deployZipToPrefix, writeObject }                         from '../../runtime/handler-kit/content-ops';
+import { toPhysicalResourceId, type PhysicalResourceId }                        from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import type { CustomResourceRequest, DeleteRequest }                            from '../../runtime/handler-kit/custom-resource/custom-resource-request';
+import { ExpectedFailure }                                                      from '../../runtime/handler-kit/errors/expected-failure';
+import { InvalidOwnInput }                                                      from '../../runtime/handler-kit/errors/invalid-own-input';
+import { hasTimeLeft, type InvocationDeadline }                                 from '../../runtime/handler-kit/invocation-deadline';
+import type { LoggerBuffer }                                                    from '../../runtime/handler-kit/logger-buffer';
 
 import type {
   ContentDeployerResourceProperties,
   DataSourceSpec,
   StaticContentSourceSpec,
   ZipSourceSpec,
-} from './resource-properties-contract';
-import { isContentDeployerResourceProperties } from './resource-properties';
+}                                                                               from './resource-properties-contract';
+import { isContentDeployerResourceProperties }                                  from './resource-properties';
 
 /** The attributes a content-deployer resource returns, all as strings. A type alias, because `wrapHandler` requires `Data` to be a `Record<string, string>`. */
 export type ContentDeployerResponseData = {

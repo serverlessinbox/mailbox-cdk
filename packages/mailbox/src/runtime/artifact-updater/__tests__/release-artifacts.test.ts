@@ -8,12 +8,13 @@
  * reads S3; the track and key builders run for real.
  */
 
-import { LoggerBuffer }                                                                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { SemVer }                                                                                from 'semver';
+import { LoggerBuffer }                                                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { SemVer }                                                               from 'semver';
 
-import { ReleaseArtifacts }                                                                      from '../release-artifacts';
+import { ReleaseArtifacts }                                                     from '../release-artifacts';
 
-import { EU_WEST_1, fakeUpdaterClients, lambdaTarget, registryMocks, testConfig, uiTarget }      from './updater-helpers';
+import { EU_WEST_1, fakeUpdaterClients, lambdaTarget, registryMocks,
+  testConfig, uiTarget }                                                        from './updater-helpers';
 
 jest.mock('@serverlessinbox/artifact-registry', () =>
   (jest.requireActual('./updater-helpers') as typeof import('./updater-helpers')).artifactRegistryModuleMock(),

@@ -7,20 +7,20 @@
  * the feature leak into a deployment that disabled it, or trust the wrong AWS account.
  */
 
-import { actionsOf, statementsForRole }          from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { VENDOR_ACCOUNT_ID }                     from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                       from 'aws-cdk-lib/assertions';
-import * as cdk                                  from 'aws-cdk-lib';
+import { actionsOf, statementsForRole } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { VENDOR_ACCOUNT_ID }            from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }              from 'aws-cdk-lib/assertions';
+import * as cdk                         from 'aws-cdk-lib';
 
-import { routeOf }                               from '../../../core/apis/__tests__/apis-helpers';
-import { synthesizeOnAdminApi }                  from '../../__tests__/platform-helpers';
-import { SupportAddon, SupportMode }             from '../support-addon';
+import { routeOf }                      from '../../../core/apis/__tests__/apis-helpers';
+import { synthesizeOnAdminApi }         from '../../__tests__/platform-helpers';
+import { SupportAddon, SupportMode }    from '../support-addon';
 
 import {
   createSupportTestStack,
   findFunction,
   type SupportTestStack,
-} from './support-helpers';
+}                                       from './support-helpers';
 
 const SUPPORT_API = 'support-api';
 

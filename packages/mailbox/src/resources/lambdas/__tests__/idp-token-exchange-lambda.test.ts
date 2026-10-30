@@ -9,19 +9,19 @@
  * exchange reads: the config table read-only and the audit queue send.
  */
 
-import type { IArtifactResolver }                            from '@serverlessinbox/artifact-registry-cdk';
-import { actionsOf }                                         from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Match, Template }                                   from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                              from 'aws-cdk-lib/aws-dynamodb';
-import { CfnResource }                                       from 'aws-cdk-lib';
-import type { Stack }                                        from 'aws-cdk-lib';
+import type { IArtifactResolver }            from '@serverlessinbox/artifact-registry-cdk';
+import { actionsOf }                         from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Match, Template }                   from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }              from 'aws-cdk-lib/aws-dynamodb';
+import { CfnResource }                       from 'aws-cdk-lib';
+import type { Stack }                        from 'aws-cdk-lib';
 
-import { AuthPolicyName, OAuthClientName }                   from '../../../contracts/auth-names';
-import { AuditEventsQueue }                                  from '../../queues/audit-events-queue';
-import { DataTable }                                         from '../../tables/data-tables';
-import { IdpTokenExchangeLambda }                            from '../idp-token-exchange-lambda';
+import { AuthPolicyName, OAuthClientName }   from '../../../contracts/auth-names';
+import { AuditEventsQueue }                  from '../../queues/audit-events-queue';
+import { DataTable }                         from '../../tables/data-tables';
+import { IdpTokenExchangeLambda }            from '../idp-token-exchange-lambda';
 
-import { arrangeWrapperStack, onlyLambdaOf }                 from './lambda-wrapper-helpers';
+import { arrangeWrapperStack, onlyLambdaOf } from './lambda-wrapper-helpers';
 
 describe('IdpTokenExchangeLambda', () => {
   let stack: Stack;

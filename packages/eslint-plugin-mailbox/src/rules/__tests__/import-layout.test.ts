@@ -1,10 +1,10 @@
 // Pins the import lane: a wide import is packed within column 79, `from` of a run with a wide import
 // sits on column 80, a run without one collapses to its widest line, and an exempt import is left
 // as written and ends its run. The 68 and 69 character names are the boundary pair for the cap.
-import { RuleTester }    from '@typescript-eslint/rule-tester';
-import typescriptEslint  from 'typescript-eslint';
+import { RuleTester }   from '@typescript-eslint/rule-tester';
+import typescriptEslint from 'typescript-eslint';
 
-import { importLayout }  from '../import-layout';
+import { importLayout } from '../import-layout';
 
 const code = (...rows: string[]): string => rows.join('\n');
 

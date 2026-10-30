@@ -6,12 +6,12 @@
  * runtime or handler leaves the function unable to start.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import { Template }                              from 'aws-cdk-lib/assertions';
-import { App, BootstraplessSynthesizer, Stack }  from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
-import { TypeScriptLambda }                      from '../ts-lambda';
-import type { TypeScriptLambdaProps }            from '../ts-lambda';
+import { TypeScriptLambda }                     from '../ts-lambda';
+import type { TypeScriptLambdaProps }           from '../ts-lambda';
 
 function newStack(): Stack {
   return new Stack(new App(), 'TestStack', {

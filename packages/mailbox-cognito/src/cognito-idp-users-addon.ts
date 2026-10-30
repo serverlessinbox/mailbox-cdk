@@ -1,12 +1,13 @@
-import type { IArtifactResolver }                                                                    from '@serverlessinbox/artifact-registry-cdk';
-import { IAdminApiAddon, type AdminApiRouteSpec, type IAuditEventsQueue, type IIdentityProvisioner } from '@serverlessinbox/mailbox';
-import { HttpMethod }                                                                                from 'aws-cdk-lib/aws-apigatewayv2';
-import type { IFunction }                                                                            from 'aws-cdk-lib/aws-lambda';
-import { Construct }                                                                                 from 'constructs';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import { IAdminApiAddon, type AdminApiRouteSpec, type IAuditEventsQueue,
+  type IIdentityProvisioner }                                                   from '@serverlessinbox/mailbox';
+import { HttpMethod }                                                           from 'aws-cdk-lib/aws-apigatewayv2';
+import type { IFunction }                                                       from 'aws-cdk-lib/aws-lambda';
+import { Construct }                                                            from 'constructs';
 
-import type { ICognitoIdpUsersPoolConfig }                                                           from './cognito-idp-users-pool-config';
-import { CognitoIdpUsersApiLambda }                                                                  from './resources/lambdas/cognito-idp-users-api-lambda';
-import type { MailboxUserPoolAdminUiConfig }                                                         from './user-pool/mailbox-user-pool-admin-ui-config';
+import type { ICognitoIdpUsersPoolConfig }                                      from './cognito-idp-users-pool-config';
+import { CognitoIdpUsersApiLambda }                                             from './resources/lambdas/cognito-idp-users-api-lambda';
+import type { MailboxUserPoolAdminUiConfig }                                    from './user-pool/mailbox-user-pool-admin-ui-config';
 
 /** What `CognitoIdpUsersAdminApiAddon` needs to mount the users API and create the Lambda behind it. */
 export interface CognitoIdpUsersAdminApiAddonProps {

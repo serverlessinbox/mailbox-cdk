@@ -1,25 +1,27 @@
 /// <reference types="jest" />
-import { CloudFormationClient }                                                     from '@aws-sdk/client-cloudformation';
-import { CloudFrontClient }                                                         from '@aws-sdk/client-cloudfront';
-import { LambdaClient, type InvokeCommandOutput }                                   from '@aws-sdk/client-lambda';
-import { ResourceGroupsTaggingAPIClient }                                           from '@aws-sdk/client-resource-groups-tagging-api';
-import { S3Client }                                                                 from '@aws-sdk/client-s3';
-import { LoggerBuffer, toRegion, type Region }                                      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { APIGatewayProxyEventV2, CloudFormationCustomResourceEvent, Context }  from 'aws-lambda';
+import { CloudFormationClient }                                                 from '@aws-sdk/client-cloudformation';
+import { CloudFrontClient }                                                     from '@aws-sdk/client-cloudfront';
+import { LambdaClient, type InvokeCommandOutput }                               from '@aws-sdk/client-lambda';
+import { ResourceGroupsTaggingAPIClient }                                       from '@aws-sdk/client-resource-groups-tagging-api';
+import { S3Client }                                                             from '@aws-sdk/client-s3';
+import { LoggerBuffer, toRegion, type Region }                                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { APIGatewayProxyEventV2, CloudFormationCustomResourceEvent,
+  Context }                                                                     from 'aws-lambda';
 
-import type { LambdaTarget, UiTarget }                                              from '../artifact-target';
-import type { Config }                                                              from '../config';
-import { EdgeLambdaUpdater }                                                        from '../edge-lambda-updater';
-import { FunctionSmokeTester }                                                      from '../lambda-code/function-smoke-tester';
-import { LambdaCodeRollback }                                                       from '../lambda-code/lambda-code-rollback';
-import { LambdaCodeUpdater }                                                        from '../lambda-code/lambda-code-updater';
-import { LambdaFunctionCode, type Sleep }                                           from '../lambda-code/lambda-function-code';
-import { ReleaseArtifacts }                                                         from '../release-artifacts';
-import type { NewUpdateCycle }                                                      from '../triggers/updater-trigger';
-import { UiBucketUpdater }                                                          from '../ui-bucket-updater';
-import { UpdateCycle }                                                              from '../update-cycle';
-import { EDGE_REGION, type RegionClients, RootStackResources, type UpdaterClients } from '../updater-clients';
-import type { HttpTriggerEvent }                                                    from '../updater-event';
+import type { LambdaTarget, UiTarget }                                          from '../artifact-target';
+import type { Config }                                                          from '../config';
+import { EdgeLambdaUpdater }                                                    from '../edge-lambda-updater';
+import { FunctionSmokeTester }                                                  from '../lambda-code/function-smoke-tester';
+import { LambdaCodeRollback }                                                   from '../lambda-code/lambda-code-rollback';
+import { LambdaCodeUpdater }                                                    from '../lambda-code/lambda-code-updater';
+import { LambdaFunctionCode, type Sleep }                                       from '../lambda-code/lambda-function-code';
+import { ReleaseArtifacts }                                                     from '../release-artifacts';
+import type { NewUpdateCycle }                                                  from '../triggers/updater-trigger';
+import { UiBucketUpdater }                                                      from '../ui-bucket-updater';
+import { UpdateCycle }                                                          from '../update-cycle';
+import { EDGE_REGION, type RegionClients, RootStackResources,
+  type UpdaterClients }                                                         from '../updater-clients';
+import type { HttpTriggerEvent }                                                from '../updater-event';
 import {
   toArtifactBucketName,
   toArtifactName,
@@ -28,8 +30,8 @@ import {
   toContentBucketName,
   toDistributionArn,
   toLambdaFunctionArn,
-} from '../updater-identifiers';
-import type { FailedUpdater, ReadyUpdater } from '../updater-runtime';
+}                                                                               from '../updater-identifiers';
+import type { FailedUpdater, ReadyUpdater }                                     from '../updater-runtime';
 
 /** The function of the registry package that reads S3, faked; a suite sets it up per test. */
 export interface RegistryMocks {

@@ -1,10 +1,10 @@
-import type * as CloudFormationSdk        from '@aws-sdk/client-cloudformation';
-import type * as SfnSdk                   from '@aws-sdk/client-sfn';
-import { mockClient, type AwsClientStub } from 'aws-sdk-client-mock';
+import type * as CloudFormationSdk                                              from '@aws-sdk/client-cloudformation';
+import type * as SfnSdk                                                         from '@aws-sdk/client-sfn';
+import { mockClient, type AwsClientStub }                                       from 'aws-sdk-client-mock';
 
-import { toPhysicalResourceId }           from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import type * as LoggerBufferModule       from '../../../runtime/handler-kit/logger-buffer';
-import type * as HandlerModule            from '../handler';
+import { toPhysicalResourceId }                                                 from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import type * as LoggerBufferModule                                             from '../../../runtime/handler-kit/logger-buffer';
+import type * as HandlerModule                                                  from '../handler';
 
 import {
   cfnRequest,
@@ -21,7 +21,7 @@ import {
   US_WEST_2,
   type ConsoleSpies,
   type FakeCfnEndpoint,
-} from './stack-deployer-helpers';
+}                                                                               from './stack-deployer-helpers';
 
 interface LoadedHandlers {
   readonly flush:                jest.SpyInstance;

@@ -6,12 +6,12 @@
  * makes stored entries unreachable.
  */
 
-import { Match, Template }                                         from 'aws-cdk-lib/assertions';
-import * as kms                                                    from 'aws-cdk-lib/aws-kms';
+import { Match, Template }                                      from 'aws-cdk-lib/assertions';
+import * as kms                                                 from 'aws-cdk-lib/aws-kms';
 
-import { ConfigTable }                                             from '../config-table';
+import { ConfigTable }                                          from '../config-table';
 
-import { DATA_TABLE_PROPS, createDataTableStack, propsWithKey }    from './data-table-helpers';
+import { DATA_TABLE_PROPS, createDataTableStack, propsWithKey } from './data-table-helpers';
 
 describe('ConfigTable', () => {
   it('is keyed by string pk and sk and has the indexes gsi1 to gsi3', () => {

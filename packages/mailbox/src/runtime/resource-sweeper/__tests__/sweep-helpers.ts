@@ -3,16 +3,17 @@
  * entry, with the `ServiceTimeout` the deferred-removal construct sends.
  */
 
-import { DeleteCertificateCommand, DescribeCertificateCommand, ListTagsForCertificateCommand } from '@aws-sdk/client-acm';
-import type { ACMClient }                                                                      from '@aws-sdk/client-acm';
-import { CloudFormationClient }                                                                from '@aws-sdk/client-cloudformation';
-import { SFNClient }                                                                           from '@aws-sdk/client-sfn';
-import { LoggerBuffer, ParentStackStatus, toRegion }                                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { CloudFormationCustomResourceEvent, Context }                                     from 'aws-lambda';
-import type { AwsClientStub }                                                                  from 'aws-sdk-client-mock';
+import { DeleteCertificateCommand, DescribeCertificateCommand,
+  ListTagsForCertificateCommand }                                               from '@aws-sdk/client-acm';
+import type { ACMClient }                                                       from '@aws-sdk/client-acm';
+import { CloudFormationClient }                                                 from '@aws-sdk/client-cloudformation';
+import { SFNClient }                                                            from '@aws-sdk/client-sfn';
+import { LoggerBuffer, ParentStackStatus, toRegion }                            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { CloudFormationCustomResourceEvent, Context }                      from 'aws-lambda';
+import type { AwsClientStub }                                                   from 'aws-sdk-client-mock';
 
-import { SweepStarter }                                                                        from '../sweep-starter';
-import { SweepTargetPlanner }                                                                  from '../sweep-target-planner';
+import { SweepStarter }                                                         from '../sweep-starter';
+import { SweepTargetPlanner }                                                   from '../sweep-target-planner';
 
 export const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:mailbox-sweeper-ops-abc123';
 

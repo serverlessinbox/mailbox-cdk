@@ -8,22 +8,22 @@
  * stack renders grants the connection private key.
  */
 
-import { Match, Template }                             from 'aws-cdk-lib/assertions';
-import type * as cdk                                   from 'aws-cdk-lib';
+import { Match, Template }      from 'aws-cdk-lib/assertions';
+import type * as cdk            from 'aws-cdk-lib';
 
-import { resourcesOfType }                             from '../../../__tests__/iam-test-helpers';
-import { fakeMailImportRunner }                        from '../../../resources/lambdas/__tests__/lambda-wrapper-fakes';
-import { ImportJobsQueue }                             from '../../../resources/queues/import-jobs-queue';
-import { Permission }                                  from '../../auth/jmap-scopes';
-import { ApiGateway }                                  from '../api-gateway';
-import { UserApi }                                     from '../user-api';
+import { resourcesOfType }      from '../../../__tests__/iam-test-helpers';
+import { fakeMailImportRunner } from '../../../resources/lambdas/__tests__/lambda-wrapper-fakes';
+import { ImportJobsQueue }      from '../../../resources/queues/import-jobs-queue';
+import { Permission }           from '../../auth/jmap-scopes';
+import { ApiGateway }           from '../api-gateway';
+import { UserApi }              from '../user-api';
 
 import {
   authorizerOfRoute,
   newAdminApiProps,
   newApiStack,
   routeOf,
-} from './apis-helpers';
+}                               from './apis-helpers';
 
 describe('UserApi', () => {
   let stack: cdk.Stack;

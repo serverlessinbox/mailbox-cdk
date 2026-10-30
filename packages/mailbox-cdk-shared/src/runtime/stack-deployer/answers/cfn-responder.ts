@@ -1,8 +1,9 @@
-import { toPhysicalResourceId, type PhysicalResourceId }                              from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { CaughtError }                                                                from '../../../runtime/handler-kit/errors/caught-error';
-import type { AnswerableEvent, CfnEnvelope, CfnRequest, RequestType, SfnInvokeEvent } from '../stack/stack-deployment';
+import { toPhysicalResourceId, type PhysicalResourceId }                        from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { CaughtError }                                                          from '../../../runtime/handler-kit/errors/caught-error';
+import type { AnswerableEvent, CfnEnvelope, CfnRequest, RequestType,
+  SfnInvokeEvent }                                                              from '../stack/stack-deployment';
 
-import { AnswerDeliveryFailure }                                                      from './answer-delivery-failure';
+import { AnswerDeliveryFailure }                                                from './answer-delivery-failure';
 
 // CloudFormation caps the size of a response reason; this leaves headroom.
 const MAX_REASON_LENGTH = 3500;

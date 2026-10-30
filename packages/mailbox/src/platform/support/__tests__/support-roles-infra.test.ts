@@ -6,16 +6,16 @@
  * account, let a tier role be assumed without a case, or let a Lambda tag keys outside the tier tags.
  */
 
-import { renderLiteralText }                    from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { PositionHash }                         from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                             from 'aws-cdk-lib/assertions';
-import * as iam                                 from 'aws-cdk-lib/aws-iam';
-import type { Stack }                           from 'aws-cdk-lib';
-import * as t                                   from 'typanion';
+import { renderLiteralText }                from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { PositionHash }                     from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                         from 'aws-cdk-lib/assertions';
+import * as iam                             from 'aws-cdk-lib/aws-iam';
+import type { Stack }                       from 'aws-cdk-lib';
+import * as t                               from 'typanion';
 
-import { isTemplateValue, resourcesOfType }     from '../../../__tests__/template-resources';
-import { newTestStack }                         from '../../__tests__/platform-helpers';
-import { SupportRolesInfra }                    from '../support-roles-infra';
+import { isTemplateValue, resourcesOfType } from '../../../__tests__/template-resources';
+import { newTestStack }                     from '../../__tests__/platform-helpers';
+import { SupportRolesInfra }                from '../support-roles-infra';
 
 const DIAG_TAG_KEY        = 'serverless-inbox:support:diag';
 const CONFIG_READ_TAG_KEY = 'serverless-inbox:support:config-read';

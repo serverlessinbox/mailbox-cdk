@@ -1,15 +1,15 @@
-import type { IArtifactResolver }                                                               from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription }                                                                 from '@serverlessinbox/mailbox-cdk-shared';
-import * as acm                                                                                 from 'aws-cdk-lib/aws-certificatemanager';
-import { Construct }                                                                            from 'constructs';
+import type { IArtifactResolver }                 from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }                   from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                                   from 'aws-cdk-lib/aws-certificatemanager';
+import { Construct }                              from 'constructs';
 
-import { AuthPolicyName, OAuthClientName }                                                      from '../../contracts/auth-names';
-import type { IAuditEventsQueue }                                                               from '../../resources/queues/audit-events-queue';
-import type { IDataTable }                                                                      from '../../resources/tables/data-tables';
-import { AuthClientConfig, IMailboxAuthProvider }                                               from '../auth/auth-provider';
+import { AuthPolicyName, OAuthClientName }        from '../../contracts/auth-names';
+import type { IAuditEventsQueue }                 from '../../resources/queues/audit-events-queue';
+import type { IDataTable }                        from '../../resources/tables/data-tables';
+import { AuthClientConfig, IMailboxAuthProvider } from '../auth/auth-provider';
 
-import { MailboxUi }                                                                            from './mailbox-ui';
-import type { MailboxUiConfig }                                                                 from './mailbox-ui';
+import { MailboxUi }                              from './mailbox-ui';
+import type { MailboxUiConfig }                   from './mailbox-ui';
 
 /** Props of {@link AdminUi}. */
 export interface AdminUiProps {

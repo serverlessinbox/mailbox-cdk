@@ -1,7 +1,7 @@
-import { BaseQueue, type QueueEncryptionChoice }                             from '@serverlessinbox/mailbox-cdk-shared';
-import { IGrantable }                                                        from 'aws-cdk-lib/aws-iam';
-import { Duration }                                                          from 'aws-cdk-lib';
-import { Construct }                                                         from 'constructs';
+import { BaseQueue, type QueueEncryptionChoice } from '@serverlessinbox/mailbox-cdk-shared';
+import { IGrantable }                            from 'aws-cdk-lib/aws-iam';
+import { Duration }                              from 'aws-cdk-lib';
+import { Construct }                             from 'constructs';
 
 /** Inputs of {@link EmailProcessingQueue}. */
 export interface EmailProcessingQueueProps {

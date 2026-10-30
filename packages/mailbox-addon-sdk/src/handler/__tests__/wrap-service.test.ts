@@ -1,8 +1,8 @@
-import { create }              from '@bufbuild/protobuf';
+import { create }                                                               from '@bufbuild/protobuf';
 
-import { authorizedEvent }     from '../../__tests__/authorized-event-helpers';
-import type { HandlerContext } from '../../caller/index';
-import { wrapService }         from '../wrap-service';
+import { authorizedEvent }                                                      from '../../__tests__/authorized-event-helpers';
+import type { HandlerContext }                                                  from '../../caller/index';
+import { wrapService }                                                          from '../wrap-service';
 
 import {
   GetThingResponseSchema,
@@ -12,8 +12,8 @@ import {
   type GetThingResponse,
   type ListThingsRequest,
   type ListThingsResponse,
-} from './fixtures/thing-service';
-import { loggerDouble, sinkDouble } from './handler-helpers';
+}                                                                               from './fixtures/thing-service';
+import { loggerDouble, sinkDouble }                                             from './handler-helpers';
 
 /*
  * Pins what an addon gets from `wrapService`: a handler for an API Gateway event that serves the methods of a

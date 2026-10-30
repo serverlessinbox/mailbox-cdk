@@ -3,15 +3,15 @@ import {
   applyServerlessInboxBaseTagsWithDeployerType,
   applyServerlessInboxComponentTag,
   applyServerlessInboxEdgeTags,
-} from '@serverlessinbox/mailbox-cdk-shared';
-import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
-import * as cdk                             from 'aws-cdk-lib';
-import { Construct }                        from 'constructs';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared';
+import type { ServerlessInboxDeployerType }                                     from '@serverlessinbox/mailbox-cdk-shared';
+import * as cdk                                                                 from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import { retainOnUpdateOrDelete }           from '../../utils/cfn-resource';
-import { MailboxResourceDescriptions }      from '../../utils/resource-descriptions';
+import { retainOnUpdateOrDelete }                                               from '../../utils/cfn-resource';
+import { MailboxResourceDescriptions }                                          from '../../utils/resource-descriptions';
 
-import { MailboxEdgeConstruct }             from './mailbox-edge-construct';
+import { MailboxEdgeConstruct }                                                 from './mailbox-edge-construct';
 
 /**
  * The values of the edge stack's CloudFormation parameters, one key per parameter. The stack declares

@@ -3,17 +3,18 @@ import {
   ListTagsForResourceCommand,
   RemoveTargetsCommand,
   DeleteRuleCommand,
-} from '@aws-sdk/client-eventbridge';
-import { IAMClient }                                                                            from '@aws-sdk/client-iam';
-import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand }                              from '@aws-sdk/client-lambda';
-import { parseArn, type LoggerBuffer }                                                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+}                                                                               from '@aws-sdk/client-eventbridge';
+import { IAMClient }                                                            from '@aws-sdk/client-iam';
+import { LambdaClient, GetFunctionCommand, DeleteFunctionCommand }              from '@aws-sdk/client-lambda';
+import { parseArn, type LoggerBuffer }                                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { OwnershipCheckedDelete }                                                               from '../ownership-checked-delete';
-import type { StackFailureDetectorRemovalInput, TargetResult, TargetSweeper, WorkerRootStack }  from '../removal';
-import { RootStackMembership }                                                                  from '../root-stack-membership';
-import { TargetResults }                                                                        from '../target-results';
+import { OwnershipCheckedDelete }                                               from '../ownership-checked-delete';
+import type { StackFailureDetectorRemovalInput, TargetResult, TargetSweeper,
+  WorkerRootStack }                                                             from '../removal';
+import { RootStackMembership }                                                  from '../root-stack-membership';
+import { TargetResults }                                                        from '../target-results';
 
-import { OwnedRoleSweep }                                                                       from './owned-role-sweep';
+import { OwnedRoleSweep }                                                       from './owned-role-sweep';
 
 /**
  * Sweeps the parts of the stack-failure detector the input carries, sequentially: rule, then

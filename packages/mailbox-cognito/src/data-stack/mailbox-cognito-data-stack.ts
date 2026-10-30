@@ -2,19 +2,19 @@ import {
   applyServerlessInboxBaseTagsWithDeployerType,
   applyServerlessInboxComponentTag,
   isDevelopmentMode,
-} from '@serverlessinbox/mailbox-cdk-shared';
-import type { ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared';
+import type { ServerlessInboxDeployerType }                                     from '@serverlessinbox/mailbox-cdk-shared';
 import {
   JMAP_SCOPE_DESCRIPTIONS,
   MailboxResourceDescriptions,
-} from '@serverlessinbox/mailbox';
-import * as cognito                  from 'aws-cdk-lib/aws-cognito';
-import * as cdk                      from 'aws-cdk-lib';
-import { Aws, Fn, RemovalPolicy }    from 'aws-cdk-lib';
-import { Construct }                 from 'constructs';
+}                                                                               from '@serverlessinbox/mailbox';
+import * as cognito                                                             from 'aws-cdk-lib/aws-cognito';
+import * as cdk                                                                 from 'aws-cdk-lib';
+import { Aws, Fn, RemovalPolicy }                                               from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import { CognitoScopeToPermissions } from '../user-pool/cognito-scopemap';
-import { MfaMode }                   from '../user-pool/mfa-mode';
+import { CognitoScopeToPermissions }                                            from '../user-pool/cognito-scopemap';
+import { MfaMode }                                                              from '../user-pool/mfa-mode';
 
 import {
   ADMIN_GROUP_NAME,
@@ -23,7 +23,7 @@ import {
   RESOURCE_SERVER_IDENTIFIER,
   USER_GROUP_NAME,
   type MailboxCognitoDataStackParameters,
-} from './mailbox-cognito-data-stack-contract';
+}                                                                               from './mailbox-cognito-data-stack-contract';
 
 /** The CloudFormation parameters of the stack, one per name in the parameter contract. */
 type DeclaredParameters = Readonly<Record<keyof MailboxCognitoDataStackParameters, cdk.CfnParameter>>;

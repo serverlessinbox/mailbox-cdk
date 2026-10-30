@@ -5,14 +5,14 @@ import {
   ExpectedFailure,
   LoggerBuffer,
   readCustomResourceRequest,
-} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { wrapHandler }                            from 'aws-custom-resources';
-import type { CloudFormationCustomResourceEvent } from 'aws-lambda';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { wrapHandler }                                                          from 'aws-custom-resources';
+import type { CloudFormationCustomResourceEvent }                               from 'aws-lambda';
 
-import { loadStarter, loadWorker }                from './config';
-import type { WorkerOutput }                      from './removal';
-import { SweepStarterComposition }                from './sweep-starter-composition';
-import { SweepWorkerComposition }                 from './sweep-worker-composition';
+import { loadStarter, loadWorker }                                              from './config';
+import type { WorkerOutput }                                                    from './removal';
+import { SweepStarterComposition }                                              from './sweep-starter-composition';
+import { SweepWorkerComposition }                                               from './sweep-worker-composition';
 
 // The starter and worker Lambdas are two physical functions sharing this code bundle, but the CDK
 // gives each a different environment — so each loads only the config its own handler needs.

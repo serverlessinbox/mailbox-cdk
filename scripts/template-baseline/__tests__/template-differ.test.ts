@@ -1,5 +1,5 @@
-import type { JsonObject }        from '../../utils/json-value';
-import { TemplateDiffer }         from '../template-differ';
+import type { JsonObject } from '../../utils/json-value';
+import { TemplateDiffer }  from '../template-differ';
 
 /**
  * Pins what the refactor gate reports: every added, removed and changed entry with the exact paths

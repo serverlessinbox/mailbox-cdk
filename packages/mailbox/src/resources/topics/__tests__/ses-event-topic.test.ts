@@ -6,10 +6,10 @@
  * set's event destination, so no grant is asserted here.
  */
 
-import { Template }                                          from 'aws-cdk-lib/assertions';
-import { App, BootstraplessSynthesizer, Stack }              from 'aws-cdk-lib';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
-import { SesEventTopic }                                     from '../ses-event-topic';
+import { SesEventTopic }                        from '../ses-event-topic';
 
 function createStack(): Stack {
   return new Stack(new App(), 'TestStack', {

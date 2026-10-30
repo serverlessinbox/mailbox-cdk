@@ -1,17 +1,18 @@
-import type { IArtifactResolver }                                                              from '@serverlessinbox/artifact-registry-cdk';
-import { buildArtifactKey, buildReleasePointerKey, buildArtifactUrl, buildArtifactBucketName } from '@serverlessinbox/artifact-registry';
-import { HttpMethod }                                                                          from 'aws-cdk-lib/aws-apigatewayv2';
-import * as cdk                                                                                from 'aws-cdk-lib';
-import { Aws }                                                                                 from 'aws-cdk-lib';
-import { Construct }                                                                           from 'constructs';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import { buildArtifactKey, buildReleasePointerKey, buildArtifactUrl,
+  buildArtifactBucketName }                                                     from '@serverlessinbox/artifact-registry';
+import { HttpMethod }                                                           from 'aws-cdk-lib/aws-apigatewayv2';
+import * as cdk                                                                 from 'aws-cdk-lib';
+import { Aws }                                                                  from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import type { AdminApiRouteSpec, IAdminApiAddon }                                              from '../../core/apis/addons';
-import { StackUpdateApiLambda }                                                                from '../../resources/lambdas/stack-update-api-lambda';
-import type { IAuditEventsQueue }                                                              from '../../resources/queues/audit-events-queue';
-import type { IDataTable }                                                                     from '../../resources/tables/data-tables';
+import type { AdminApiRouteSpec, IAdminApiAddon }                               from '../../core/apis/addons';
+import { StackUpdateApiLambda }                                                 from '../../resources/lambdas/stack-update-api-lambda';
+import type { IAuditEventsQueue }                                               from '../../resources/queues/audit-events-queue';
+import type { IDataTable }                                                      from '../../resources/tables/data-tables';
 
-import { DEFAULT_DIST_TAG }                                                                    from './default-dist-tag';
-import { TemplateVersionParam }                                                                from './template-version-param';
+import { DEFAULT_DIST_TAG }                                                     from './default-dist-tag';
+import { TemplateVersionParam }                                                 from './template-version-param';
 
 /** Inputs of `StackUpdateAddon`, as threaded in by `StackUpdateAddonProvider`. */
 export interface StackUpdateAddonProps {

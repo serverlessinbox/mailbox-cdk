@@ -1,9 +1,9 @@
-import { EventSourceMapping }      from 'aws-cdk-lib/aws-lambda';
-import type { IFunction }          from 'aws-cdk-lib/aws-lambda';
-import { Duration }                from 'aws-cdk-lib';
-import type { Construct }          from 'constructs';
+import { EventSourceMapping }  from 'aws-cdk-lib/aws-lambda';
+import type { IFunction }      from 'aws-cdk-lib/aws-lambda';
+import { Duration }            from 'aws-cdk-lib';
+import type { Construct }      from 'constructs';
 
-import type { ISesEventQueue }     from '../queues/ses-event-queue';
+import type { ISesEventQueue } from '../queues/ses-event-queue';
 
 /** Settings of the mapping that feeds SES notifications from their queue to a function. */
 export interface SesNotificationsQueueEventProps {

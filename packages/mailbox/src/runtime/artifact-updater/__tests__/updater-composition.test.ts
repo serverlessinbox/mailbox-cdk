@@ -9,14 +9,14 @@
  * faked so that its arguments can be read. The answers the triggers give are pinned by their own suites.
  */
 
-import { InvokeCommand }      from '@aws-sdk/client-lambda';
-import { ParentStackStatus }  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }         from 'aws-sdk-client-mock';
+import { InvokeCommand }                                                        from '@aws-sdk/client-lambda';
+import { ParentStackStatus }                                                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import { CfnTrigger }         from '../triggers/cfn-trigger';
-import { UpdateCycle }        from '../update-cycle';
-import { EDGE_REGION }        from '../updater-clients';
-import { UpdaterComposition } from '../updater-composition';
+import { CfnTrigger }                                                           from '../triggers/cfn-trigger';
+import { UpdateCycle }                                                          from '../update-cycle';
+import { EDGE_REGION }                                                          from '../updater-clients';
+import { UpdaterComposition }                                                   from '../updater-composition';
 
 import {
   BAD_CONFIG_ERROR,
@@ -26,7 +26,7 @@ import {
   GOOD_ENVIRONMENT,
   httpApiEvent,
   readyRuntime,
-} from './updater-helpers';
+}                                                                               from './updater-helpers';
 
 jest.mock('../update-cycle');
 jest.mock('../triggers/cfn-trigger');

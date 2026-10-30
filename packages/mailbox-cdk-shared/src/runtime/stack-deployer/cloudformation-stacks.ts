@@ -10,15 +10,15 @@ import {
   type Stack,
   type StackEvent,
   type Tag,
-} from '@aws-sdk/client-cloudformation';
+}                                                                               from '@aws-sdk/client-cloudformation';
 
-import type { Region }         from '../../runtime/handler-kit/aws-identifiers';
-import { CaughtError }         from '../../runtime/handler-kit/errors/caught-error';
-import type { LoggerBuffer }   from '../../runtime/handler-kit/logger-buffer';
+import type { Region }                                                          from '../../runtime/handler-kit/aws-identifiers';
+import { CaughtError }                                                          from '../../runtime/handler-kit/errors/caught-error';
+import type { LoggerBuffer }                                                    from '../../runtime/handler-kit/logger-buffer';
 
-import type { OperationInput } from './stack/stack-deployment';
-import { isSwitchedOn }        from './stack/stack-flag';
-import { StackStatus }         from './stack/stack-status';
+import type { OperationInput }                                                  from './stack/stack-deployment';
+import { isSwitchedOn }                                                         from './stack/stack-flag';
+import { StackStatus }                                                          from './stack/stack-status';
 
 const STACK_CAPABILITIES: Capability[] = ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM', 'CAPABILITY_AUTO_EXPAND'];
 

@@ -8,16 +8,17 @@
  * grant renders is pinned by the resource that owns it.
  */
 
-import { statementsForAction }                                                                                              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { VENDOR_ACCOUNT_ID }                                                                                                from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                                                                                         from 'aws-cdk-lib/assertions';
+import { statementsForAction }                                                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { VENDOR_ACCOUNT_ID }                                                    from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                                             from 'aws-cdk-lib/assertions';
 
-import type { IWebSocketBroadcastPublisher }                                                                                from '../../../contracts/websocket-push';
-import { Permission }                                                                                                       from '../../../core/auth/jmap-scopes';
-import { JmapApiLambda }                                                                                                    from '../jmap-api-lambda';
+import type { IWebSocketBroadcastPublisher }                                    from '../../../contracts/websocket-push';
+import { Permission }                                                           from '../../../core/auth/jmap-scopes';
+import { JmapApiLambda }                                                        from '../jmap-api-lambda';
 
-import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataBlobStore, fakeDataTable, fakeIdentityProvisioner, fakeQueue } from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                                                                                from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataBlobStore,
+  fakeDataTable, fakeIdentityProvisioner, fakeQueue }                           from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                                    from './lambda-wrapper-helpers';
 
 function synthesize(oauthProtectedResourceUrl?: string) {
   const { stack, artifactResolver } = arrangeWrapperStack();

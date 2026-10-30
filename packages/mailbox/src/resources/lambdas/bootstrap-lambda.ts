@@ -1,15 +1,16 @@
-import type { IArtifactResolver }                                                                   from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda, ServerlessInboxTagKeys, StackIdentity, rootStackRequestTagConditions }           from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack, VendorLink }                                                               from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement }                                                                          from 'aws-cdk-lib/aws-iam';
-import type { IReceiptRuleSet }                                                                     from 'aws-cdk-lib/aws-ses';
-import { Aws, Duration }                                                                            from 'aws-cdk-lib';
-import { Construct }                                                                                from 'constructs';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda, ServerlessInboxTagKeys, StackIdentity,
+  rootStackRequestTagConditions }                                               from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack, VendorLink }                                           from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }                                                      from 'aws-cdk-lib/aws-iam';
+import type { IReceiptRuleSet }                                                 from 'aws-cdk-lib/aws-ses';
+import { Aws, Duration }                                                        from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import type { SesReceivingMode }                                                                    from '../../contracts/ses-receiving-mode';
-import type { IDnsZone }                                                                            from '../../core/edge/dns-zone';
-import type { IAuthKeyStoreTable }                                                                  from '../tables/auth-key-store-table';
-import type { IDataTable }                                                                          from '../tables/data-tables';
+import type { SesReceivingMode }                                                from '../../contracts/ses-receiving-mode';
+import type { IDnsZone }                                                        from '../../core/edge/dns-zone';
+import type { IAuthKeyStoreTable }                                              from '../tables/auth-key-store-table';
+import type { IDataTable }                                                      from '../tables/data-tables';
 
 /**
  * The inputs the bootstrap Lambda runs with: its timeout, the tables and SES rule set it configures,

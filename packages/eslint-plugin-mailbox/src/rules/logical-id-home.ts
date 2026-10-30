@@ -1,9 +1,9 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree }    from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 
-import { AllowListMatcher }                                from '../model/allow-list-matcher';
-import { logicalIdAllowList }                              from '../model/logical-id-allow-list';
+import { AllowListMatcher }                             from '../model/allow-list-matcher';
+import { logicalIdAllowList }                           from '../model/logical-id-allow-list';
 
-import { createRule }                                      from './create-rule';
+import { createRule }                                   from './create-rule';
 
 // R4: overrideLogicalId is written by a Stack or NestedStack class, or by an allow-listed file.
 

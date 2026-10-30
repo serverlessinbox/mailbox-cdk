@@ -6,21 +6,21 @@
  * are pinned by those aspects; here only the values the stack passes to them are.
  */
 
-import { DEVELOPMENT_CONTEXT_KEY }                     from '@serverlessinbox/mailbox-cdk-shared';
-import { Permission }                                  from '@serverlessinbox/mailbox';
-import { JMAP_SCOPE_DESCRIPTIONS }                     from '@serverlessinbox/mailbox';
-import { Match, Template }                             from 'aws-cdk-lib/assertions';
-import { App, BootstraplessSynthesizer, CfnParameter } from 'aws-cdk-lib';
+import { DEVELOPMENT_CONTEXT_KEY }                                              from '@serverlessinbox/mailbox-cdk-shared';
+import { Permission }                                                           from '@serverlessinbox/mailbox';
+import { JMAP_SCOPE_DESCRIPTIONS }                                              from '@serverlessinbox/mailbox';
+import { Match, Template }                                                      from 'aws-cdk-lib/assertions';
+import { App, BootstraplessSynthesizer, CfnParameter }                          from 'aws-cdk-lib';
 
-import { CognitoScope }                                from '../../user-pool/cognito-scopemap';
-import { MfaMode }                                     from '../../user-pool/mfa-mode';
+import { CognitoScope }                                                         from '../../user-pool/cognito-scopemap';
+import { MfaMode }                                                              from '../../user-pool/mfa-mode';
 import {
   ADMIN_GROUP_NAME,
   DEFAULT_PASSWORD_MIN_LENGTH,
   RESOURCE_SERVER_IDENTIFIER,
   USER_GROUP_NAME,
-}                                        from '../mailbox-cognito-data-stack-contract';
-import { MailboxCognitoDataStack }       from '../mailbox-cognito-data-stack';
+}                                                                               from '../mailbox-cognito-data-stack-contract';
+import { MailboxCognitoDataStack }                                              from '../mailbox-cognito-data-stack';
 
 function newDataStack(options: { development?: boolean; terminationProtection?: boolean } = {}): MailboxCognitoDataStack {
   const app = new App();

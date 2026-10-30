@@ -7,20 +7,20 @@
  * and sweeper. The runner's and the sweeper's own settings are tested in their own files.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }              from '@serverlessinbox/artifact-registry-cdk';
-import type { QueueEncryptionChoice }                        from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                          from 'aws-cdk-lib/assertions';
-import { AttributeType, Table }                              from 'aws-cdk-lib/aws-dynamodb';
-import * as kms                                              from 'aws-cdk-lib/aws-kms';
-import * as cdk                                              from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                     from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { QueueEncryptionChoice }           from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import { AttributeType, Table }                 from 'aws-cdk-lib/aws-dynamodb';
+import * as kms                                 from 'aws-cdk-lib/aws-kms';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { resourcesOfType }                                   from '../../../__tests__/iam-test-helpers';
-import { fakeDataBlobStore }                                 from '../../../resources/lambdas/__tests__/lambda-wrapper-fakes';
-import { AuthKeyStoreTable }                                 from '../../../resources/tables/auth-key-store-table';
-import { DataTable }                                         from '../../../resources/tables/data-tables';
-import { defaultCfnResource }                                from '../../../utils/cfn-resource';
-import { JobsSection, type JobsSectionProps }                from '../jobs-section';
+import { resourcesOfType }                      from '../../../__tests__/iam-test-helpers';
+import { fakeDataBlobStore }                    from '../../../resources/lambdas/__tests__/lambda-wrapper-fakes';
+import { AuthKeyStoreTable }                    from '../../../resources/tables/auth-key-store-table';
+import { DataTable }                            from '../../../resources/tables/data-tables';
+import { defaultCfnResource }                   from '../../../utils/cfn-resource';
+import { JobsSection, type JobsSectionProps }   from '../jobs-section';
 
 const MAX_RECEIVE_COUNT = 3;
 

@@ -1,14 +1,15 @@
-import type { IArtifactResolver }                                                                          from '@serverlessinbox/artifact-registry-cdk';
-import { TypeScriptLambda, ServerlessInboxTagKeys, rootStackResourceTagConditions, GateOnConditionAspect } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack }                                                                                  from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement }                                                                                 from 'aws-cdk-lib/aws-iam';
-import { Aspects, Aws, Duration }                                                                          from 'aws-cdk-lib';
-import type { CfnCondition }                                                                               from 'aws-cdk-lib';
-import { Construct }                                                                                       from 'constructs';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import { TypeScriptLambda, ServerlessInboxTagKeys,
+  rootStackResourceTagConditions, GateOnConditionAspect }                       from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack }                                                       from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }                                                      from 'aws-cdk-lib/aws-iam';
+import { Aspects, Aws, Duration }                                               from 'aws-cdk-lib';
+import type { CfnCondition }                                                    from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import type { Granularity }                                                                                from '../../contracts/granularity';
-import { MAILBOX_ARTIFACT_PACKAGE }                                                                        from '../../contracts/mailbox-artifact-package';
-import { ArtifactUpdateSchedule }                                                                          from '../events/artifact-update-schedule';
+import type { Granularity }                                                     from '../../contracts/granularity';
+import { MAILBOX_ARTIFACT_PACKAGE }                                             from '../../contracts/mailbox-artifact-package';
+import { ArtifactUpdateSchedule }                                               from '../events/artifact-update-schedule';
 
 /**
  * The release channel, granularity, root stack and schedule the artifact updater tracks. The caller

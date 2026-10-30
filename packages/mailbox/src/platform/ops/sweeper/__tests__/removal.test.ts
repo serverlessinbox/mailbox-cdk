@@ -7,13 +7,13 @@
  * guard keeps a removal from running against a target that is not in the execution input.
  */
 
-import * as sfn                                                           from 'aws-cdk-lib/aws-stepfunctions';
-import { Duration }                                                       from 'aws-cdk-lib';
+import * as sfn                                                                 from 'aws-cdk-lib/aws-stepfunctions';
+import { Duration }                                                             from 'aws-cdk-lib';
 
-import { stateBodyOf }                                                    from '../../../../__tests__/state-machine-helpers';
-import type { CertWorkerInput }                                           from '../../../../runtime/resource-sweeper/removal';
-import { newTestStack }                                                   from '../../../__tests__/platform-helpers';
-import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard }     from '../removal';
+import { stateBodyOf }                                                          from '../../../../__tests__/state-machine-helpers';
+import type { CertWorkerInput }                                                 from '../../../../runtime/resource-sweeper/removal';
+import { newTestStack }                                                         from '../../../__tests__/platform-helpers';
+import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard }           from '../removal';
 
 import {
   nameOfStateWhere,
@@ -22,7 +22,7 @@ import {
   startStateOf,
   stateOf,
   statusTargetOf,
-} from './sweeper-helpers';
+}                                                                               from './sweeper-helpers';
 
 describe('removal chain helpers', () => {
   const retryInterval = Duration.minutes(5);

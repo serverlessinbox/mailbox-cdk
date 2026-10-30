@@ -7,11 +7,11 @@
  * status read fails at deploy time with AccessDenied, which no synth-time check reports.
  */
 
-import { Match, Template }                         from 'aws-cdk-lib/assertions';
+import { Match, Template }                from 'aws-cdk-lib/assertions';
 
-import { createStackWithResolver }                 from '../../../__tests__/stack-helpers-helpers';
-import { actionsOf, allPolicyStatements }          from '../../../cdk-test-support';
-import { StackHelpersLambda }                      from '../stack-helpers-lambda';
+import { createStackWithResolver }        from '../../../__tests__/stack-helpers-helpers';
+import { actionsOf, allPolicyStatements } from '../../../cdk-test-support';
+import { StackHelpersLambda }             from '../stack-helpers-lambda';
 
 describe('StackHelpersLambda', () => {
   const { stack, resolver } = createStackWithResolver();

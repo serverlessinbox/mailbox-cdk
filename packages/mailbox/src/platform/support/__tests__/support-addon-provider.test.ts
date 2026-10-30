@@ -15,7 +15,7 @@ import {
   createAddonContext,
   createSupportTestStack,
   findFunction,
-} from './support-helpers';
+}                               from './support-helpers';
 
 const SUPPORT_API = 'support-api';
 

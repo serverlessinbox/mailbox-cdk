@@ -1,13 +1,14 @@
-import { CaughtError, toAccountId, type AccountId, type LoggerBuffer, type Region, type TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { CaughtError, toAccountId, type AccountId, type LoggerBuffer,
+  type Region, type TenantId }                                                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { decodeBlobId, isSafeBlobPath, parseBlobId }                                               from './blob-id/blob-id-format';
-import { toEncodedBlobId, type EncodedBlobId, type ParsedBlobId }                                  from './blob-id/blob-id';
-import { BlobRequestRejected }                                                                     from './blob-id/blob-request-rejected';
-import { firstHeaderValue, type CloudFrontRequest }                                                from './cloudfront/cloudfront-event';
-import { corsPreflightResponse, errorResponse, type CloudFrontResponse }                           from './cloudfront/cloudfront-responses';
-import { extractAllowedOrigins, extractConfig, type Config }                                       from './config';
-import type { HmacTokenPayload, VerifiedJwt }                                                      from './verifiers/auth-tokens';
-import type { Verifiers }                                                                          from './verifiers/region-bound-verifiers';
+import { decodeBlobId, isSafeBlobPath, parseBlobId }                            from './blob-id/blob-id-format';
+import { toEncodedBlobId, type EncodedBlobId, type ParsedBlobId }               from './blob-id/blob-id';
+import { BlobRequestRejected }                                                  from './blob-id/blob-request-rejected';
+import { firstHeaderValue, type CloudFrontRequest }                             from './cloudfront/cloudfront-event';
+import { corsPreflightResponse, errorResponse, type CloudFrontResponse }        from './cloudfront/cloudfront-responses';
+import { extractAllowedOrigins, extractConfig, type Config }                    from './config';
+import type { HmacTokenPayload, VerifiedJwt }                                   from './verifiers/auth-tokens';
+import type { Verifiers }                                                       from './verifiers/region-bound-verifiers';
 
 /** The JMAP download URL parameters (RFC 8620): `accountId` and `blobId` are required. */
 interface DownloadParams {

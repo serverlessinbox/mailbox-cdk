@@ -1,10 +1,10 @@
-import type { IArtifactResolver }        from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda, StackDeployedEvent }  from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration }                      from 'aws-cdk-lib';
-import { Construct }                     from 'constructs';
+import type { IArtifactResolver }       from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda, StackDeployedEvent } from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                     from 'aws-cdk-lib';
+import { Construct }                    from 'constructs';
 
-import { AuthKeyRefreshSchedule }        from '../events/auth-key-refresh-schedule';
-import type { IAuthKeyStoreTable }       from '../tables/auth-key-store-table';
+import { AuthKeyRefreshSchedule }       from '../events/auth-key-refresh-schedule';
+import type { IAuthKeyStoreTable }      from '../tables/auth-key-store-table';
 
 /**
  * The issuers whose keys are refreshed, the key store table they are written to and the artifact

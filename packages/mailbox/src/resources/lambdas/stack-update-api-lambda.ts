@@ -1,13 +1,13 @@
-import type { IArtifactResolver }                                     from '@serverlessinbox/artifact-registry-cdk';
-import { buildArtifactArn, buildReleasePointerKey }                   from '@serverlessinbox/artifact-registry';
-import { GoLambda }                                                   from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement }                                            from 'aws-cdk-lib/aws-iam';
-import { Duration }                                                   from 'aws-cdk-lib';
-import { Construct }                                                  from 'constructs';
+import type { IArtifactResolver }                   from '@serverlessinbox/artifact-registry-cdk';
+import { buildArtifactArn, buildReleasePointerKey } from '@serverlessinbox/artifact-registry';
+import { GoLambda }                                 from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }                          from 'aws-cdk-lib/aws-iam';
+import { Duration }                                 from 'aws-cdk-lib';
+import { Construct }                                from 'constructs';
 
-import type { ITemplateVersionParam }                                 from '../../contracts/template-version-param';
-import type { IAuditEventsQueue }                                     from '../queues/audit-events-queue';
-import type { IDataTable }                                            from '../tables/data-tables';
+import type { ITemplateVersionParam }               from '../../contracts/template-version-param';
+import type { IAuditEventsQueue }                   from '../queues/audit-events-queue';
+import type { IDataTable }                          from '../tables/data-tables';
 
 /**
  * The root stack, config table, template location and audit queue the stack-update API works against.

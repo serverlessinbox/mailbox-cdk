@@ -5,12 +5,12 @@
  * rule and its target.
  */
 
-import { Template }                                                 from 'aws-cdk-lib/assertions';
-import { Code, Function as LambdaFunction, Runtime }                from 'aws-cdk-lib/aws-lambda';
-import * as cdk                                                     from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer, Duration }                  from 'aws-cdk-lib';
+import { Template }                                  from 'aws-cdk-lib/assertions';
+import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
+import * as cdk                                      from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer, Duration }   from 'aws-cdk-lib';
 
-import { JobSweepSchedule }                                         from '../job-sweep-schedule';
+import { JobSweepSchedule }                          from '../job-sweep-schedule';
 
 function arrangeSchedule(interval: Duration) {
   const stack  = new cdk.Stack(new App(), 'TestStack', {

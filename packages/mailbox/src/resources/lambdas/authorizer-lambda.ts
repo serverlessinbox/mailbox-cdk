@@ -1,12 +1,12 @@
-import type { IArtifactResolver }               from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                             from '@serverlessinbox/mailbox-cdk-shared';
-import type { Pipeline }                        from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration }                             from 'aws-cdk-lib';
-import { Construct }                            from 'constructs';
+import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                from '@serverlessinbox/mailbox-cdk-shared';
+import type { Pipeline }           from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                from 'aws-cdk-lib';
+import { Construct }               from 'constructs';
 
-import type { AuthPolicyName }                  from '../../contracts/auth-names';
-import type { IAuthKeyStoreTable }              from '../tables/auth-key-store-table';
-import type { IDataTable }                      from '../tables/data-tables';
+import type { AuthPolicyName }     from '../../contracts/auth-names';
+import type { IAuthKeyStoreTable } from '../tables/auth-key-store-table';
+import type { IDataTable }         from '../tables/data-tables';
 
 /**
  * The key store and config tables the authorizer reads, the auth policy and anonymous routes it

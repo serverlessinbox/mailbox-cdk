@@ -1,20 +1,20 @@
-import type { IArtifactResolver, RegistryLocation, ResolvedArtifact }            from '@serverlessinbox/artifact-registry-cdk';
-import { ServerlessInboxTagKeys, StackIdentity }                                 from '@serverlessinbox/mailbox-cdk-shared';
-import * as iam                                                                  from 'aws-cdk-lib/aws-iam';
-import * as lambda                                                               from 'aws-cdk-lib/aws-lambda';
-import { Aws, Duration, Fn, Tags }                                               from 'aws-cdk-lib';
-import * as cdk                                                                  from 'aws-cdk-lib';
-import { Construct, IConstruct }                                                 from 'constructs';
+import type { IArtifactResolver, RegistryLocation, ResolvedArtifact }        from '@serverlessinbox/artifact-registry-cdk';
+import { ServerlessInboxTagKeys, StackIdentity }                             from '@serverlessinbox/mailbox-cdk-shared';
+import * as iam                                                              from 'aws-cdk-lib/aws-iam';
+import * as lambda                                                           from 'aws-cdk-lib/aws-lambda';
+import { Aws, Duration, Fn, Tags }                                           from 'aws-cdk-lib';
+import * as cdk                                                              from 'aws-cdk-lib';
+import { Construct, IConstruct }                                             from 'constructs';
 
-import { Granularity }                                                           from '../../contracts/granularity';
-import type { IUiContentDeployTarget, IUiContentUpdater }                        from '../../contracts/ui-content-updater';
-import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider }     from '../../core/apis/addons';
-import { createMailboxPinnedResolver }                                           from '../../mailbox-pinned-resolver';
-import { ArtifactUpdaterLambda }                                                 from '../../resources/lambdas/artifact-updater-lambda';
+import { Granularity }                                                       from '../../contracts/granularity';
+import type { IUiContentDeployTarget, IUiContentUpdater }                    from '../../contracts/ui-content-updater';
+import type { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../core/apis/addons';
+import { createMailboxPinnedResolver }                                       from '../../mailbox-pinned-resolver';
+import { ArtifactUpdaterLambda }                                             from '../../resources/lambdas/artifact-updater-lambda';
 
-import { ArtifactUpdaterAddon }                                                  from './artifact-updater-addon';
-import { DEFAULT_DIST_TAG }                                                      from './default-dist-tag';
-import { TrackedUpdateTriggers }                                                 from './tracked-update-triggers';
+import { ArtifactUpdaterAddon }                                              from './artifact-updater-addon';
+import { DEFAULT_DIST_TAG }                                                  from './default-dist-tag';
+import { TrackedUpdateTriggers }                                             from './tracked-update-triggers';
 
 /**
  * Settings of the {@link AutoUpdater}: which release line to follow, how tightly, and how often

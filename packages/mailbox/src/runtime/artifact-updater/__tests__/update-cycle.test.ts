@@ -12,13 +12,14 @@ import {
   GetResourcesCommand,
   ResourceGroupsTaggingAPIClient,
   type ResourceTagMapping,
-} from '@aws-sdk/client-resource-groups-tagging-api';
-import { ServerlessInboxTagKeys }                                                             from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                                                         from 'aws-sdk-client-mock';
+}                                                                               from '@aws-sdk/client-resource-groups-tagging-api';
+import { ServerlessInboxTagKeys }                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import { MAX_CONCURRENT_RESOURCE_UPDATES }                                                    from '../update-cycle';
+import { MAX_CONCURRENT_RESOURCE_UPDATES }                                      from '../update-cycle';
 
-import { buildUpdaterParts, DISTRIBUTION_ARN, LAMBDA_ARN, lambdaTarget, uiTarget, US_WEST_2 } from './updater-helpers';
+import { buildUpdaterParts, DISTRIBUTION_ARN, LAMBDA_ARN, lambdaTarget,
+  uiTarget, US_WEST_2 }                                                         from './updater-helpers';
 
 jest.mock('../lambda-code/lambda-code-updater');
 jest.mock('../edge-lambda-updater');

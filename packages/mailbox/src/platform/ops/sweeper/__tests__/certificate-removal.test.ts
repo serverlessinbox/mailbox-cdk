@@ -7,8 +7,8 @@
  * the worker has to look at a certificate before it can tell whether this stack owns it.
  */
 
-import { stateBodyOf }  from '../../../../__tests__/state-machine-helpers';
-import { newTestStack } from '../../../__tests__/platform-helpers';
+import { stateBodyOf }                                                          from '../../../../__tests__/state-machine-helpers';
+import { newTestStack }                                                         from '../../../__tests__/platform-helpers';
 
 import {
   newCertificateRemoval,
@@ -20,7 +20,7 @@ import {
   resolveStatements,
   startStateOf,
   stateOf,
-} from './sweeper-helpers';
+}                                                                               from './sweeper-helpers';
 
 describe('CertificateRemoval', () => {
   const anyCertificate = {

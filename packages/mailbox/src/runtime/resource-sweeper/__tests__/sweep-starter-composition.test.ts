@@ -5,14 +5,14 @@
  * while no sweep ever ran.
  */
 
-import { CloudFormationClient, DescribeStacksCommand }                        from '@aws-sdk/client-cloudformation';
-import { SFNClient, ListExecutionsCommand, StartExecutionCommand }            from '@aws-sdk/client-sfn';
-import { LoggerBuffer, toRegion }                                             from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                                         from 'aws-sdk-client-mock';
+import { CloudFormationClient, DescribeStacksCommand }             from '@aws-sdk/client-cloudformation';
+import { SFNClient, ListExecutionsCommand, StartExecutionCommand } from '@aws-sdk/client-sfn';
+import { LoggerBuffer, toRegion }                                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                              from 'aws-sdk-client-mock';
 
-import { SweepStarterComposition }                                            from '../sweep-starter-composition';
+import { SweepStarterComposition }                                 from '../sweep-starter-composition';
 
-import { STATE_MACHINE_ARN, deleteEvent, updateEvent }                        from './sweep-helpers';
+import { STATE_MACHINE_ARN, deleteEvent, updateEvent }             from './sweep-helpers';
 
 const sfnMock = mockClient(SFNClient);
 const cfnMock = mockClient(CloudFormationClient);

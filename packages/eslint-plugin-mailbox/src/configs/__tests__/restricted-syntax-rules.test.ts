@@ -4,10 +4,10 @@
  * matching a flagged form lets an open-ended optional shape back into the codebase unnoticed.
  */
 
-import { Linter }                 from 'eslint';
-import tseslint                   from 'typescript-eslint';
+import { Linter }                from 'eslint';
+import tseslint                  from 'typescript-eslint';
 
-import { restrictedSyntaxRules }  from '../restricted-syntax-rules';
+import { restrictedSyntaxRules } from '../restricted-syntax-rules';
 
 const linter                  = new Linter();
 const config: Linter.Config[] = [

@@ -6,21 +6,21 @@
  * statements are the real `grantEmailBlobWrite` ones, not a fake. Each assertion here is the only guard for its rule.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }          from '@serverlessinbox/artifact-registry-cdk';
-import { Match, Template }                               from 'aws-cdk-lib/assertions';
-import { AttributeType, Table }                          from 'aws-cdk-lib/aws-dynamodb';
-import * as kms                                          from 'aws-cdk-lib/aws-kms';
-import { Bucket }                                        from 'aws-cdk-lib/aws-s3';
-import * as cdk                                          from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { AttributeType, Table }                 from 'aws-cdk-lib/aws-dynamodb';
+import * as kms                                 from 'aws-cdk-lib/aws-kms';
+import { Bucket }                               from 'aws-cdk-lib/aws-s3';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { resourcesOfType }                               from '../../../__tests__/iam-test-helpers';
-import type { IWebSocketBroadcastPublisher }             from '../../../contracts/websocket-push';
-import { DataBlobStore }                                 from '../../buckets/data-blob-store';
-import { ImportJobsQueue }                               from '../../queues/import-jobs-queue';
-import { AuthKeyStoreTable }                             from '../../tables/auth-key-store-table';
-import { DataTable }                                     from '../../tables/data-tables';
-import { MailImportRunnerLambda }                        from '../mail-import-runner-lambda';
+import { resourcesOfType }                      from '../../../__tests__/iam-test-helpers';
+import type { IWebSocketBroadcastPublisher }    from '../../../contracts/websocket-push';
+import { DataBlobStore }                        from '../../buckets/data-blob-store';
+import { ImportJobsQueue }                      from '../../queues/import-jobs-queue';
+import { AuthKeyStoreTable }                    from '../../tables/auth-key-store-table';
+import { DataTable }                            from '../../tables/data-tables';
+import { MailImportRunnerLambda }               from '../mail-import-runner-lambda';
 
 const RUNNER_ENVIRONMENT_NAMES = ['AUTH_KEY_STORE_TABLE_NAME', 'BLOB_STORE_NAME', 'CHANGELOG_TABLE_NAME', 'CONFIG_TABLE_NAME', 'IMPORT_JOBS_QUEUE_URL', 'IMPORT_MESSAGES_PER_SECOND', 'ITEM_TABLE_NAME', 'SERVICE_NAME'];
 const ITEM_TABLE_ACTIONS       = ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem'];

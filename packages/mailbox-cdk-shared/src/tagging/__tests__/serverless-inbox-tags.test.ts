@@ -5,10 +5,10 @@
  * hands to CloudFormation, so a key spelled differently from the one on resources breaks the correlation.
  */
 
-import { Template }                                                                   from 'aws-cdk-lib/assertions';
-import { CfnQueue }                                                                   from 'aws-cdk-lib/aws-sqs';
-import { App, Aws, Stack }                                                            from 'aws-cdk-lib';
-import * as t                                                                         from 'typanion';
+import { Template }                                                             from 'aws-cdk-lib/assertions';
+import { CfnQueue }                                                             from 'aws-cdk-lib/aws-sqs';
+import { App, Aws, Stack }                                                      from 'aws-cdk-lib';
+import * as t                                                                   from 'typanion';
 
 import {
   applyServerlessInboxBaseTags,
@@ -16,7 +16,7 @@ import {
   applyServerlessInboxComponentTag,
   applyServerlessInboxEdgeTags,
   serverlessInboxSubStackTags,
-} from '../serverless-inbox-tags';
+}                                                                               from '../serverless-inbox-tags';
 
 const STACK_GUID = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
 

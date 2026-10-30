@@ -4,10 +4,12 @@
  * outcome is the status Step Functions branches on. The sweepers are fakes.
  */
 
-import { InvalidOwnInput, LoggerBuffer }                                                                                                                                              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { InvalidOwnInput, LoggerBuffer }                                        from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { CertRemovalInput, EdgeFunctionRemovalInput, StackFailureDetectorRemovalInput, StackFailureDetectorRemovalTarget, SweeperRoleRemovalInput, TargetResult, TargetSweeper } from '../removal';
-import { SweepWorker }                                                                                                                                                                from '../sweep-worker';
+import type { CertRemovalInput, EdgeFunctionRemovalInput,
+  StackFailureDetectorRemovalInput, StackFailureDetectorRemovalTarget,
+  SweeperRoleRemovalInput, TargetResult, TargetSweeper }                        from '../removal';
+import { SweepWorker }                                                          from '../sweep-worker';
 
 const SWEPT: TargetResult = { target: 'cert', status: 'SUCCESS' };
 

@@ -13,22 +13,22 @@
  * rename in the wrapper must fail here.
  */
 
-import { ServerlessInboxTagKeys, StackIdentity, VENDOR_ACCOUNT_ID }                  from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                                                           from 'aws-cdk-lib/assertions';
-import { Table, AttributeType, TableEncryption }                                     from 'aws-cdk-lib/aws-dynamodb';
-import { Function as LambdaFunction }                                                from 'aws-cdk-lib/aws-lambda';
-import { Bucket }                                                                    from 'aws-cdk-lib/aws-s3';
-import type * as cdk                                                                 from 'aws-cdk-lib';
+import { ServerlessInboxTagKeys, StackIdentity, VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                                          from 'aws-cdk-lib/assertions';
+import { Table, AttributeType, TableEncryption }                    from 'aws-cdk-lib/aws-dynamodb';
+import { Function as LambdaFunction }                               from 'aws-cdk-lib/aws-lambda';
+import { Bucket }                                                   from 'aws-cdk-lib/aws-s3';
+import type * as cdk                                                from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }                                         from '../../../contracts/websocket-push';
-import { DataBlobStore }                                                             from '../../buckets/data-blob-store';
-import { AuditEventsQueue }                                                          from '../../queues/audit-events-queue';
-import { EmailSendingQueue }                                                         from '../../queues/email-sending-queue';
-import { DataTable }                                                                 from '../../tables/data-tables';
-import { MailLogTable }                                                              from '../../tables/mail-log-table';
-import { AdminApiLambda }                                                            from '../admin-api-lambda';
+import type { IWebSocketBroadcastPublisher }                        from '../../../contracts/websocket-push';
+import { DataBlobStore }                                            from '../../buckets/data-blob-store';
+import { AuditEventsQueue }                                         from '../../queues/audit-events-queue';
+import { EmailSendingQueue }                                        from '../../queues/email-sending-queue';
+import { DataTable }                                                from '../../tables/data-tables';
+import { MailLogTable }                                             from '../../tables/mail-log-table';
+import { AdminApiLambda }                                           from '../admin-api-lambda';
 
-import { arrangeWrapperStack }                                                       from './lambda-wrapper-helpers';
+import { arrangeWrapperStack }                                      from './lambda-wrapper-helpers';
 
 function rootStackIdOf(stack: cdk.Stack): unknown {
   return stack.resolve(StackIdentity.guid);

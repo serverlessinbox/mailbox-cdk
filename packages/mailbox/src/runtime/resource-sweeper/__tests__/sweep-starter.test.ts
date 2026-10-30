@@ -13,15 +13,15 @@
  *   logged at error level, since a lower level would be discarded at the default log level.
  */
 
-import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
-import type { StackStatus }                            from '@aws-sdk/client-cloudformation';
+import { CloudFormationClient, DescribeStacksCommand }                          from '@aws-sdk/client-cloudformation';
+import type { StackStatus }                                                     from '@aws-sdk/client-cloudformation';
 import {
   SFNClient,
   StartExecutionCommand,
   ListExecutionsCommand,
   StopExecutionCommand,
-} from '@aws-sdk/client-sfn';
-import { mockClient } from 'aws-sdk-client-mock';
+}                                                                               from '@aws-sdk/client-sfn';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
 import {
   PARENT_STACK_ID,
@@ -31,7 +31,7 @@ import {
   createEvent,
   deleteEvent,
   updateEvent,
-} from './sweep-helpers';
+}                                                                               from './sweep-helpers';
 
 const sfnMock = mockClient(SFNClient);
 const cfnMock = mockClient(CloudFormationClient);

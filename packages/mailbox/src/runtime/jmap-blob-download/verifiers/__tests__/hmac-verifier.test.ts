@@ -5,8 +5,8 @@
  * or blob id through; one that read the store on every request would add a DynamoDB read to every download.
  */
 
-import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
-import { mockClient }                     from 'aws-sdk-client-mock';
+import { DynamoDBClient, GetItemCommand }                                       from '@aws-sdk/client-dynamodb';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
 import {
   AUTH_KEY_STORE_TABLE,
@@ -14,8 +14,8 @@ import {
   OTHER_AUTH_KEY_STORE_TABLE,
   sessionTokenOverPayload,
   sessionTokenSignedBy,
-} from '../../__tests__/jmap-blob-download-helpers';
-import { HmacVerifier } from '../hmac-verifier';
+}                                                                               from '../../__tests__/jmap-blob-download-helpers';
+import { HmacVerifier }                                                         from '../hmac-verifier';
 
 const CURRENT_KEY  = Buffer.from('current-signing-key-32-bytes-long', 'utf-8');
 const PREVIOUS_KEY = Buffer.from('previous-signing-key-32-bytes-ok', 'utf-8');

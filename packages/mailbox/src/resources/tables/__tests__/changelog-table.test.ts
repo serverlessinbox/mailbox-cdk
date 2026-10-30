@@ -6,12 +6,12 @@
  * string sort key would break version ordering.
  */
 
-import { Match, Template }                                         from 'aws-cdk-lib/assertions';
-import * as kms                                                    from 'aws-cdk-lib/aws-kms';
+import { Match, Template }                                      from 'aws-cdk-lib/assertions';
+import * as kms                                                 from 'aws-cdk-lib/aws-kms';
 
-import { ChangelogTable }                                          from '../changelog-table';
+import { ChangelogTable }                                       from '../changelog-table';
 
-import { DATA_TABLE_PROPS, createDataTableStack, propsWithKey }    from './data-table-helpers';
+import { DATA_TABLE_PROPS, createDataTableStack, propsWithKey } from './data-table-helpers';
 
 describe('ChangelogTable', () => {
   it('is keyed by string pk and numeric sk, expires entries on x and has no secondary index', () => {

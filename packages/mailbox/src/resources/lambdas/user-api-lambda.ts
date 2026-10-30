@@ -1,15 +1,15 @@
-import type { IArtifactResolver }    from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                  from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration }                  from 'aws-cdk-lib';
-import { Construct }                 from 'constructs';
+import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                from 'aws-cdk-lib';
+import { Construct }               from 'constructs';
 
-import type { ScopeMap }             from '../../core/auth/jmap-scopes';
-import type { IAuditEventsQueue }    from '../queues/audit-events-queue';
-import type { IImportJobsQueue }     from '../queues/import-jobs-queue';
-import type { IAuthKeyStoreTable }   from '../tables/auth-key-store-table';
-import type { IDataTable }           from '../tables/data-tables';
+import type { ScopeMap }           from '../../core/auth/jmap-scopes';
+import type { IAuditEventsQueue }  from '../queues/audit-events-queue';
+import type { IImportJobsQueue }   from '../queues/import-jobs-queue';
+import type { IAuthKeyStoreTable } from '../tables/auth-key-store-table';
+import type { IDataTable }         from '../tables/data-tables';
 
-import type { IMailImportRunner }    from './mail-import-runner-lambda';
+import type { IMailImportRunner }  from './mail-import-runner-lambda';
 
 /**
  * The tables, queues, runner, artifact resolver and OAuth scope map the user-api Lambda is wired to. The caller

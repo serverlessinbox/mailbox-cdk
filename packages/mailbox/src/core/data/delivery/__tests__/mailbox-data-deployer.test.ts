@@ -18,10 +18,10 @@ import {
   TEST_ACCOUNT,
   TEST_REGION,
   newDeployerTestStack,
-} from '../../../../__tests__/deployer-test-helpers';
-import type { TableRole }                from '../../../../runtime/data-override-resolver/resource-properties-contract';
-import { MailboxDataDeployer }           from '../mailbox-data-deployer';
-import type { MailboxDataDeployerProps } from '../mailbox-data-deployer';
+}                                                             from '../../../../__tests__/deployer-test-helpers';
+import type { TableRole }                                     from '../../../../runtime/data-override-resolver/resource-properties-contract';
+import { MailboxDataDeployer }                                from '../mailbox-data-deployer';
+import type { MailboxDataDeployerProps }                      from '../mailbox-data-deployer';
 
 const DEPLOYER_RESOURCE_TYPE            = 'Custom::MailboxDataDeployer';
 const RESOLVER_RESOURCE_TYPE            = 'Custom::MailboxDataOverrideResolver';

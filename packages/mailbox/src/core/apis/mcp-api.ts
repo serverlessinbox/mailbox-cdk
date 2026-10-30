@@ -6,16 +6,16 @@ import {
   ApiMapping,
   HttpApi,
   HttpMethod,
-} from 'aws-cdk-lib/aws-apigatewayv2';
-import * as acm                          from 'aws-cdk-lib/aws-certificatemanager';
-import * as lambda                       from 'aws-cdk-lib/aws-lambda';
-import { Aws }                           from 'aws-cdk-lib';
-import { Construct }                     from 'constructs';
+}                                 from 'aws-cdk-lib/aws-apigatewayv2';
+import * as acm                   from 'aws-cdk-lib/aws-certificatemanager';
+import * as lambda                from 'aws-cdk-lib/aws-lambda';
+import { Aws }                    from 'aws-cdk-lib';
+import { Construct }              from 'constructs';
 
-import { McpApiLambda }                  from '../../resources/lambdas/mcp-api-lambda';
-import type { ScopeMap }                 from '../auth/jmap-scopes';
+import { McpApiLambda }           from '../../resources/lambdas/mcp-api-lambda';
+import type { ScopeMap }          from '../auth/jmap-scopes';
 
-import { ApiCustomDomain }               from './api-custom-domain';
+import { ApiCustomDomain }        from './api-custom-domain';
 
 /** Inputs of {@link McpApi}: the JMAP API it fronts, the authorizer and certificate it reuses, and its domain. */
 export interface McpApiProps {

@@ -1,7 +1,8 @@
-import type { IArtifactResolver }                                                                     from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription, PublicStaticAssetsBucket, StaticContentDeployer, StaticContentSource } from '@serverlessinbox/mailbox-cdk-shared';
-import { HttpLambdaAuthorizer }                                                                       from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpLambdaIntegration, HttpUrlIntegration }                                                  from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription, PublicStaticAssetsBucket, StaticContentDeployer,
+  StaticContentSource }                                                         from '@serverlessinbox/mailbox-cdk-shared';
+import { HttpLambdaAuthorizer }                                                 from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpLambdaIntegration, HttpUrlIntegration }                            from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
   ApiMapping,
   CorsHttpMethod,
@@ -9,28 +10,28 @@ import {
   HttpMethod,
   IHttpApi,
   IHttpStage,
-} from 'aws-cdk-lib/aws-apigatewayv2';
-import type { CorsPreflightOptions }                                          from 'aws-cdk-lib/aws-apigatewayv2';
-import type { IFunction }                                                     from 'aws-cdk-lib/aws-lambda';
-import { Duration, Aws, CfnResource }                                         from 'aws-cdk-lib';
-import { Construct }                                                          from 'constructs';
-import type { IConstruct }                                                    from 'constructs';
+}                                                                               from 'aws-cdk-lib/aws-apigatewayv2';
+import type { CorsPreflightOptions }                                            from 'aws-cdk-lib/aws-apigatewayv2';
+import type { IFunction }                                                       from 'aws-cdk-lib/aws-lambda';
+import { Duration, Aws, CfnResource }                                           from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
+import type { IConstruct }                                                      from 'constructs';
 
-import { AuthPolicyName }                                                     from '../../contracts/auth-names';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl }     from '../../contracts/websocket-push';
-import type { IDataBlobStore }                                                from '../../resources/buckets/data-blob-store';
-import { AuthorizerLambda }                                                   from '../../resources/lambdas/authorizer-lambda';
-import type { IIdentityProvisioner }                                          from '../../resources/lambdas/identity-provisioner-lambda';
-import { JmapApiLambda }                                                      from '../../resources/lambdas/jmap-api-lambda';
-import type { IAuditEventsQueue }                                             from '../../resources/queues/audit-events-queue';
-import type { IEmailSendingQueue }                                            from '../../resources/queues/email-sending-queue';
-import type { IAuthKeyStoreTable }                                            from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                                                    from '../../resources/tables/data-tables';
-import { IMailboxAuthProvider }                                               from '../auth/auth-provider';
+import { AuthPolicyName }                                                       from '../../contracts/auth-names';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl }       from '../../contracts/websocket-push';
+import type { IDataBlobStore }                                                  from '../../resources/buckets/data-blob-store';
+import { AuthorizerLambda }                                                     from '../../resources/lambdas/authorizer-lambda';
+import type { IIdentityProvisioner }                                            from '../../resources/lambdas/identity-provisioner-lambda';
+import { JmapApiLambda }                                                        from '../../resources/lambdas/jmap-api-lambda';
+import type { IAuditEventsQueue }                                               from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }                                              from '../../resources/queues/email-sending-queue';
+import type { IAuthKeyStoreTable }                                              from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                                                      from '../../resources/tables/data-tables';
+import { IMailboxAuthProvider }                                                 from '../auth/auth-provider';
 
-import type { IJmapApiAddon }                                                 from './addons';
-import { ApiCustomDomain }                                                    from './api-custom-domain';
-import type { ApiCustomDomainProps, ILogicalIdPin }                           from './api-custom-domain';
+import type { IJmapApiAddon }                                                   from './addons';
+import { ApiCustomDomain }                                                      from './api-custom-domain';
+import type { ApiCustomDomainProps, ILogicalIdPin }                             from './api-custom-domain';
 
 /**
  * Inputs of {@link JmapApi}: the tables, queues and blob store its handler Lambda works on, the

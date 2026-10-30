@@ -1,8 +1,8 @@
-import { CloudFormationClient, DescribeStacksCommand }                      from '@aws-sdk/client-cloudformation';
-import { mockClient }                                                       from 'aws-sdk-client-mock';
+import { CloudFormationClient, DescribeStacksCommand }                          from '@aws-sdk/client-cloudformation';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import { toPhysicalResourceId }                                             from '../../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { ParentStackStatus }                                                from '../../../../runtime/handler-kit/custom-resource/parent-stack-status';
+import { toPhysicalResourceId }                                                 from '../../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { ParentStackStatus }                                                    from '../../../../runtime/handler-kit/custom-resource/parent-stack-status';
 import {
   defaultLevelLogger,
   fakeCfnEndpoint,
@@ -15,10 +15,10 @@ import {
   US_WEST_2,
   type ConsoleSpies,
   type FakeCfnEndpoint,
-} from '../../__tests__/stack-deployer-helpers';
-import type { OperationInput }                                              from '../../stack/stack-deployment';
-import { CfnResponder }                                                     from '../cfn-responder';
-import { UpdateRollbackAnswerer, type FailedRequest, type SubStackOutputs } from '../update-rollback-answerer';
+}                                                                               from '../../__tests__/stack-deployer-helpers';
+import type { OperationInput }                                                  from '../../stack/stack-deployment';
+import { CfnResponder }                                                         from '../cfn-responder';
+import { UpdateRollbackAnswerer, type FailedRequest, type SubStackOutputs }     from '../update-rollback-answerer';
 
 const OLD_OUTPUTS           = { TableName: 'items-old' };
 const FAILURE               = 'Stack deployer check failed';

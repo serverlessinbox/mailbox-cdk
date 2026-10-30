@@ -9,16 +9,16 @@
  * assertions are the only guard.
  */
 
-import { Match, Template }                           from 'aws-cdk-lib/assertions';
-import { HttpMethod }                                from 'aws-cdk-lib/aws-apigatewayv2';
-import type { IFunction }                            from 'aws-cdk-lib/aws-lambda';
-import * as cdk                                      from 'aws-cdk-lib';
+import { Match, Template }                                                      from 'aws-cdk-lib/assertions';
+import { HttpMethod }                                                           from 'aws-cdk-lib/aws-apigatewayv2';
+import type { IFunction }                                                       from 'aws-cdk-lib/aws-lambda';
+import * as cdk                                                                 from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }         from '../../../contracts/websocket-push';
-import type { IAdminApiAddon }                       from '../addons';
-import { AdminApi }                                  from '../admin-api';
-import type { AdminApiProps }                        from '../admin-api';
-import { ApiGateway }                                from '../api-gateway';
+import type { IWebSocketBroadcastPublisher }                                    from '../../../contracts/websocket-push';
+import type { IAdminApiAddon }                                                  from '../addons';
+import { AdminApi }                                                             from '../admin-api';
+import type { AdminApiProps }                                                   from '../admin-api';
+import { ApiGateway }                                                           from '../api-gateway';
 
 import {
   authorizerOfRoute,
@@ -26,7 +26,7 @@ import {
   newAdminApiProps,
   newApiStack,
   routeOf,
-} from './apis-helpers';
+}                                                                               from './apis-helpers';
 
 describe('AdminApi', () => {
   let stack: cdk.Stack;

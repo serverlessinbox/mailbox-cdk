@@ -1,18 +1,18 @@
-import { PositionHash, rootStackResourceTagConditions, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack }                                              from '@serverlessinbox/mailbox-cdk-shared';
-import * as iam                                                        from 'aws-cdk-lib/aws-iam';
-import { Fn, Aws, Stack, Duration }                                    from 'aws-cdk-lib';
-import { Construct }                                                   from 'constructs';
+import { PositionHash, rootStackResourceTagConditions, StackIdentity }          from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack }                                                       from '@serverlessinbox/mailbox-cdk-shared';
+import * as iam                                                                 from 'aws-cdk-lib/aws-iam';
+import { Fn, Aws, Stack, Duration }                                             from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import type { ISupportRoles }                                          from '../../contracts/support-roles';
+import type { ISupportRoles }                                                   from '../../contracts/support-roles';
 
 import {
   ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS,
   SUPPORT_CONFIG_READ_TIER,
   SUPPORT_DIAG_TIER,
   SUPPORT_TIERS,
-} from './support-tiers';
-import type { SupportTier } from './support-tiers';
+}                                                                               from './support-tiers';
+import type { SupportTier }                                                     from './support-tiers';
 
 const SUPPORT_ROLE_MAX_SESSION_DURATION = Duration.seconds(3600);
 const HOP_ROLE_SLUG                     = 'hop';

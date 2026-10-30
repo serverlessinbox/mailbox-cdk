@@ -7,14 +7,14 @@
  * The push API is a fake, so this suite pins only what the broadcast Lambda passes to it.
  */
 
-import { Template }                                                                  from 'aws-cdk-lib/assertions';
+import { Template }                                               from 'aws-cdk-lib/assertions';
 
-import type { IWebSocketPushApi }                                                    from '../../../contracts/websocket-push';
-import { WebSocketBroadcastLambda }                                                  from '../websocket-broadcast-lambda';
+import type { IWebSocketPushApi }                                 from '../../../contracts/websocket-push';
+import { WebSocketBroadcastLambda }                               from '../websocket-broadcast-lambda';
 
-import { expectGrantedOnceTo, fakeDataTable, fakeWebSocketTable }                    from './lambda-wrapper-fakes';
-import type { GrantSpy }                                                             from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                                         from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataTable, fakeWebSocketTable } from './lambda-wrapper-fakes';
+import type { GrantSpy }                                          from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                      from './lambda-wrapper-helpers';
 
 const FAKE_MANAGEMENT_ENDPOINT = 'https://fake.execute-api.us-west-2.amazonaws.com/prod';
 

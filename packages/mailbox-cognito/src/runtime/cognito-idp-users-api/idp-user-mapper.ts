@@ -1,10 +1,11 @@
-import type { AdminGetUserCommandOutput, AttributeType, UserStatusType, UserType } from '@aws-sdk/client-cognito-identity-provider';
-import { timestampFromDate }                                                       from '@bufbuild/protobuf/wkt';
-import { create }                                                                  from '@bufbuild/protobuf';
+import type { AdminGetUserCommandOutput, AttributeType, UserStatusType,
+  UserType }                                                                    from '@aws-sdk/client-cognito-identity-provider';
+import { timestampFromDate }                                                    from '@bufbuild/protobuf/wkt';
+import { create }                                                               from '@bufbuild/protobuf';
 
-import { toUsername, type Username }                                               from '../shared/cognito-identifiers';
+import { toUsername, type Username }                                            from '../shared/cognito-identifiers';
 
-import { IdpUserSchema, type IdpUser }                                             from './generated/idp_users_pb';
+import { IdpUserSchema, type IdpUser }                                          from './generated/idp_users_pb';
 
 const UNKNOWN_USERNAME = toUsername('unknown');
 

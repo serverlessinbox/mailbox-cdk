@@ -1,12 +1,12 @@
-import type { QueueEncryptionChoice }                                from '@serverlessinbox/mailbox-cdk-shared';
-import { TableEncryption }                                           from 'aws-cdk-lib/aws-dynamodb';
+import type { QueueEncryptionChoice }      from '@serverlessinbox/mailbox-cdk-shared';
+import { TableEncryption }                 from 'aws-cdk-lib/aws-dynamodb';
 
-import type { BlobStoreEncryptionProps }                             from '../resources/buckets/blob-store';
-import type { DynamoTableEncryptionProps }                           from '../resources/tables/data-table-props';
+import type { BlobStoreEncryptionProps }   from '../resources/buckets/blob-store';
+import type { DynamoTableEncryptionProps } from '../resources/tables/data-table-props';
 
-import type { MailboxKmsConfig }                                     from './kms';
-import { MailboxKmsMode }                                            from './mailbox-kms-mode';
-import { MailboxKmsResource }                                        from './mailbox-kms-resource';
+import type { MailboxKmsConfig }           from './kms';
+import { MailboxKmsMode }                  from './mailbox-kms-mode';
+import { MailboxKmsResource }              from './mailbox-kms-resource';
 
 /** How each kind of data resource is encrypted, as the resources take it: tables, blob store and queue defaults. */
 export interface MailboxEncryptionPlan {

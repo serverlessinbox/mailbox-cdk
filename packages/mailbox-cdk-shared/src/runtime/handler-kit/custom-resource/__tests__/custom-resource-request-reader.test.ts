@@ -5,8 +5,8 @@
  * type and read a physical id only where the variant has one.
  */
 
-import { InvalidOwnInput }            from '../../errors/invalid-own-input';
-import { readCustomResourceRequest }  from '../custom-resource-request-reader';
+import { InvalidOwnInput }           from '../../errors/invalid-own-input';
+import { readCustomResourceRequest } from '../custom-resource-request-reader';
 
 const IDS = {
   StackId:           'arn:aws:cloudformation:us-east-1:123456789012:stack/test/guid',

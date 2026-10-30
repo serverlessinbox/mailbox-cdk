@@ -1,6 +1,6 @@
-import type { MailboxAuthorizationConfig }  from '@serverlessinbox/mailbox';
-import type { IUserPool }                   from 'aws-cdk-lib/aws-cognito';
-import type { IFunction }                   from 'aws-cdk-lib/aws-lambda';
+import type { MailboxAuthorizationConfig } from '@serverlessinbox/mailbox';
+import type { IUserPool }                  from 'aws-cdk-lib/aws-cognito';
+import type { IFunction }                  from 'aws-cdk-lib/aws-lambda';
 
 /**
  * What the users API needs from a Cognito user pool: which pool it is, the permission to administer the users

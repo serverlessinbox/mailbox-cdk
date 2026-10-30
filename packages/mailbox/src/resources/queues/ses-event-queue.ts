@@ -1,10 +1,10 @@
-import { BaseQueue, type QueueEncryptionChoice }                         from '@serverlessinbox/mailbox-cdk-shared';
-import { IGrantable, PolicyStatement, ServicePrincipal }                 from 'aws-cdk-lib/aws-iam';
-import { IKey }                                                          from 'aws-cdk-lib/aws-kms';
-import { SqsSubscription }                                               from 'aws-cdk-lib/aws-sns-subscriptions';
-import { ITopic }                                                        from 'aws-cdk-lib/aws-sns';
-import { Aws, Duration }                                                 from 'aws-cdk-lib';
-import { Construct }                                                     from 'constructs';
+import { BaseQueue, type QueueEncryptionChoice }         from '@serverlessinbox/mailbox-cdk-shared';
+import { IGrantable, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { IKey }                                          from 'aws-cdk-lib/aws-kms';
+import { SqsSubscription }                               from 'aws-cdk-lib/aws-sns-subscriptions';
+import { ITopic }                                        from 'aws-cdk-lib/aws-sns';
+import { Aws, Duration }                                 from 'aws-cdk-lib';
+import { Construct }                                     from 'constructs';
 
 /** Inputs of {@link SesEventQueue}. */
 export interface SesEventQueueProps {

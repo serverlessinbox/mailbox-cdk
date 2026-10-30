@@ -11,21 +11,21 @@
  * live distribution.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }         from '@serverlessinbox/artifact-registry-cdk';
-import { ServerlessInboxTagKeys }                       from '@serverlessinbox/mailbox-cdk-shared';
-import { Capture, Match, Template }                     from 'aws-cdk-lib/assertions';
-import * as acm                                         from 'aws-cdk-lib/aws-certificatemanager';
-import * as dynamodb                                    from 'aws-cdk-lib/aws-dynamodb';
-import * as iam                                         from 'aws-cdk-lib/aws-iam';
-import * as cdk                                         from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { ServerlessInboxTagKeys }               from '@serverlessinbox/mailbox-cdk-shared';
+import { Capture, Match, Template }             from 'aws-cdk-lib/assertions';
+import * as acm                                 from 'aws-cdk-lib/aws-certificatemanager';
+import * as dynamodb                            from 'aws-cdk-lib/aws-dynamodb';
+import * as iam                                 from 'aws-cdk-lib/aws-iam';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { AuthPolicyName, OAuthClientName }              from '../../../contracts/auth-names';
-import { UiBucket }                                     from '../../../resources/buckets/ui-bucket';
-import { AuditEventsQueue }                             from '../../../resources/queues/audit-events-queue';
-import { DataTable }                                    from '../../../resources/tables/data-tables';
-import { MailboxUi }                                    from '../mailbox-ui';
-import type { MailboxUiProps }                          from '../mailbox-ui';
+import { AuthPolicyName, OAuthClientName }      from '../../../contracts/auth-names';
+import { UiBucket }                             from '../../../resources/buckets/ui-bucket';
+import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
+import { DataTable }                            from '../../../resources/tables/data-tables';
+import { MailboxUi }                            from '../mailbox-ui';
+import type { MailboxUiProps }                  from '../mailbox-ui';
 
 /** CloudFront's managed CachingDisabled policy. */
 const CACHING_DISABLED_POLICY_ID = '4135ea2d-6df8-44a3-9df3-4b5a84be39ad';

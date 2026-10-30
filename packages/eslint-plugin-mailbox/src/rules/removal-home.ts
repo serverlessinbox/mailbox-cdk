@@ -1,6 +1,6 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree }    from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 
-import { createRule }                                      from './create-rule';
+import { createRule }                                   from './create-rule';
 
 // R5: a resource-removal implementation lives in platform/ops/sweeper/ only. A class that implements
 // IResourceRemoval (bare or qualified), or a file that defines grantStatements() next to a PolicyStatement,

@@ -1,16 +1,16 @@
-import type { IArtifactResolver }                                              from '@serverlessinbox/artifact-registry-cdk';
-import type { QueueEncryptionChoice, ServerlessInboxDeployerType }             from '@serverlessinbox/mailbox-cdk-shared';
-import { ComponentDescription, applyServerlessInboxComponentTag }              from '@serverlessinbox/mailbox-cdk-shared';
-import type { IBucket }                                                        from 'aws-cdk-lib/aws-s3';
-import { Aws, Fn }                                                             from 'aws-cdk-lib';
-import { Construct }                                                           from 'constructs';
+import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
+import type { QueueEncryptionChoice, ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
+import { ComponentDescription, applyServerlessInboxComponentTag }  from '@serverlessinbox/mailbox-cdk-shared';
+import type { IBucket }                                            from 'aws-cdk-lib/aws-s3';
+import { Aws, Fn }                                                 from 'aws-cdk-lib';
+import { Construct }                                               from 'constructs';
 
-import type { IDataBlobStore }                                                 from '../../resources/buckets/data-blob-store';
-import type { IAuditEventsQueue }                                              from '../../resources/queues/audit-events-queue';
-import type { IDataTable }                                                     from '../../resources/tables/data-tables';
+import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
+import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
+import type { IDataTable }                                         from '../../resources/tables/data-tables';
 
-import { AuditWriting }                                                        from './audit-writing';
-import { MailboxDataDeployer }                                                 from './delivery/mailbox-data-deployer';
+import { AuditWriting }                                            from './audit-writing';
+import { MailboxDataDeployer }                                     from './delivery/mailbox-data-deployer';
 
 /** Derives the S3-safe form of a stack name at deploy time. */
 export interface IS3SafeStackNameResolver {

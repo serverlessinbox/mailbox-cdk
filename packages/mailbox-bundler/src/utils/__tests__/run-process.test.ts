@@ -1,8 +1,8 @@
-import { mkdtemp, realpath, rm }  from 'fs/promises';
-import { tmpdir }                 from 'os';
-import { join }                   from 'path';
+import { mkdtemp, realpath, rm } from 'fs/promises';
+import { tmpdir }                from 'os';
+import { join }                  from 'path';
 
-import { runWithInheritedStdio }  from '../run-process';
+import { runWithInheritedStdio } from '../run-process';
 
 describe('runWithInheritedStdio', () => {
   it('resolves with 0 when the child exits cleanly', async () => {

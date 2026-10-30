@@ -1,19 +1,20 @@
-import { isDevelopmentMode, removalPolicyForRetainedResources }                           from '@serverlessinbox/mailbox-cdk-shared';
-import { applyServerlessInboxBaseTagsWithDeployerType, applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ServerlessInboxDeployerType }                                               from '@serverlessinbox/mailbox-cdk-shared';
-import * as cdk                                                                           from 'aws-cdk-lib';
-import { Construct }                                                                      from 'constructs';
+import { isDevelopmentMode, removalPolicyForRetainedResources }                 from '@serverlessinbox/mailbox-cdk-shared';
+import { applyServerlessInboxBaseTagsWithDeployerType,
+  applyServerlessInboxComponentTag }                                            from '@serverlessinbox/mailbox-cdk-shared';
+import type { ServerlessInboxDeployerType }                                     from '@serverlessinbox/mailbox-cdk-shared';
+import * as cdk                                                                 from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import { BlobStore }                                                                      from '../../resources/buckets/blob-store';
-import { AuditLogTable }                                                                  from '../../resources/tables/auditlog-table';
-import { ChangelogTable }                                                                 from '../../resources/tables/changelog-table';
-import { ConfigTable }                                                                    from '../../resources/tables/config-table';
-import { ItemTable }                                                                      from '../../resources/tables/item-table';
-import { MailFeedbackTable }                                                              from '../../resources/tables/mailfeedback-table';
-import { defaultCfnResource }                                                             from '../../utils/cfn-resource';
-import { MailboxResourceDescriptions }                                                    from '../../utils/resource-descriptions';
-import type { MailboxKmsConfig }                                                          from '../kms';
-import { MailboxEncryption }                                                              from '../mailbox-encryption';
+import { BlobStore }                                                            from '../../resources/buckets/blob-store';
+import { AuditLogTable }                                                        from '../../resources/tables/auditlog-table';
+import { ChangelogTable }                                                       from '../../resources/tables/changelog-table';
+import { ConfigTable }                                                          from '../../resources/tables/config-table';
+import { ItemTable }                                                            from '../../resources/tables/item-table';
+import { MailFeedbackTable }                                                    from '../../resources/tables/mailfeedback-table';
+import { defaultCfnResource }                                                   from '../../utils/cfn-resource';
+import { MailboxResourceDescriptions }                                          from '../../utils/resource-descriptions';
+import type { MailboxKmsConfig }                                                from '../kms';
+import { MailboxEncryption }                                                    from '../mailbox-encryption';
 
 /** The values the data stack's template parameters take; the keys are the parameter names. */
 export type MailboxDataStackParameters = {

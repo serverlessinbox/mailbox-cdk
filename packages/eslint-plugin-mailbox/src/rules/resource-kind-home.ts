@@ -1,8 +1,8 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree }    from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 
-import { type CoveredKind, coveredKinds }                  from '../model/covered-kinds';
+import { type CoveredKind, coveredKinds }               from '../model/covered-kinds';
 
-import { createRule }                                      from './create-rule';
+import { createRule }                                   from './create-rule';
 
 // A covered class is created only in resources/<kind>/ of its own kind, under a source root (`/src/`).
 // Classes are matched by name, bare or as a member, not by the module they come from.

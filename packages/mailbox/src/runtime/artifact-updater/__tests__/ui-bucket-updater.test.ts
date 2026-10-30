@@ -7,21 +7,22 @@
  * content operations and the release registry are faked because they read and write S3.
  */
 
-import { CloudFrontClient, TagResourceCommand }                                                      from '@aws-sdk/client-cloudfront';
-import type { S3Client }                                                                             from '@aws-sdk/client-s3';
+import { CloudFrontClient, TagResourceCommand }                                 from '@aws-sdk/client-cloudfront';
+import type { S3Client }                                                        from '@aws-sdk/client-s3';
 import {
   invalidateCloudFront as invalidateCloudFrontFunction,
   LoggerBuffer,
   ServerlessInboxTagKeys,
   type Region,
-} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type * as LambdaRuntime                                                                       from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                                                                from 'aws-sdk-client-mock';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type * as LambdaRuntime                                                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import { ReleaseArtifacts }                                                                          from '../release-artifacts';
-import { UiBucketUpdater }                                                                           from '../ui-bucket-updater';
+import { ReleaseArtifacts }                                                     from '../release-artifacts';
+import { UiBucketUpdater }                                                      from '../ui-bucket-updater';
 
-import { DISTRIBUTION_ARN, EU_WEST_1, fakeUpdaterClients, registryMocks, testConfig, uiTarget }      from './updater-helpers';
+import { DISTRIBUTION_ARN, EU_WEST_1, fakeUpdaterClients, registryMocks,
+  testConfig, uiTarget }                                                        from './updater-helpers';
 
 jest.mock('@serverlessinbox/artifact-registry', () =>
   (jest.requireActual('./updater-helpers') as typeof import('./updater-helpers')).artifactRegistryModuleMock(),

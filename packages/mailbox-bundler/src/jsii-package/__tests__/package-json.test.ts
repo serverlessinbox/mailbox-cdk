@@ -1,8 +1,8 @@
-import { mkdtemp, rm, writeFile }  from 'fs/promises';
-import { tmpdir }                  from 'os';
-import { join }                    from 'path';
+import { mkdtemp, rm, writeFile } from 'fs/promises';
+import { tmpdir }                 from 'os';
+import { join }                   from 'path';
 
-import { readPackageJson }         from '../package-json';
+import { readPackageJson }        from '../package-json';
 
 let packageFolder: string;
 let packageJsonPath: string;

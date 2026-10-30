@@ -1,15 +1,15 @@
-import type { IArtifactResolver }                                      from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription, type QueueEncryptionChoice }            from '@serverlessinbox/mailbox-cdk-shared';
-import { CfnConfigurationSet, CfnConfigurationSetEventDestination }    from 'aws-cdk-lib/aws-ses';
-import { Construct }                                                   from 'constructs';
+import type { IArtifactResolver }                                   from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription, type QueueEncryptionChoice }         from '@serverlessinbox/mailbox-cdk-shared';
+import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cdk-lib/aws-ses';
+import { Construct }                                                from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }     from '../../contracts/websocket-push';
-import type { IDataBlobStore }                                         from '../../resources/buckets/data-blob-store';
-import { SesEventProcessorLambda }                                     from '../../resources/lambdas/ses-event-processor-lambda';
-import type { IAuditEventsQueue }                                      from '../../resources/queues/audit-events-queue';
-import { SesEventQueue }                                               from '../../resources/queues/ses-event-queue';
-import type { IDataTable }                                             from '../../resources/tables/data-tables';
-import { SesEventTopic }                                               from '../../resources/topics/ses-event-topic';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }  from '../../contracts/websocket-push';
+import type { IDataBlobStore }                                      from '../../resources/buckets/data-blob-store';
+import { SesEventProcessorLambda }                                  from '../../resources/lambdas/ses-event-processor-lambda';
+import type { IAuditEventsQueue }                                   from '../../resources/queues/audit-events-queue';
+import { SesEventQueue }                                            from '../../resources/queues/ses-event-queue';
+import type { IDataTable }                                          from '../../resources/tables/data-tables';
+import { SesEventTopic }                                            from '../../resources/topics/ses-event-topic';
 
 /** Props of {@link SesEventProcessing}. */
 export interface SesEventProcessingProps {

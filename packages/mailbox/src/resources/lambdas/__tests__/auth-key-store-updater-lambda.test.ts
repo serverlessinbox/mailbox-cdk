@@ -7,13 +7,13 @@
  * renders are pinned by the table and the triggers, not here.
  */
 
-import { Template }                                         from 'aws-cdk-lib/assertions';
+import { Template }                                   from 'aws-cdk-lib/assertions';
 
-import { AuthKeyRefreshSchedule }                           from '../../events/auth-key-refresh-schedule';
-import { AuthKeyStoreUpdaterLambda }                        from '../auth-key-store-updater-lambda';
+import { AuthKeyRefreshSchedule }                     from '../../events/auth-key-refresh-schedule';
+import { AuthKeyStoreUpdaterLambda }                  from '../auth-key-store-updater-lambda';
 
-import { expectGrantedOnceTo, fakeAuthKeyStoreTable }       from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeAuthKeyStoreTable } from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }          from './lambda-wrapper-helpers';
 
 jest.mock('../../events/auth-key-refresh-schedule');
 

@@ -1,4 +1,4 @@
-import * as t from 'typanion';
+import * as t                                                                   from 'typanion';
 
 import {
   isLogicalResourceId,
@@ -7,7 +7,7 @@ import {
   isResponseUrl,
   isStackId,
   type PhysicalResourceId,
-} from './custom-resource-identifiers';
+}                                                                               from './custom-resource-identifiers';
 
 const requestFields = {
   StackId:           isStackId,

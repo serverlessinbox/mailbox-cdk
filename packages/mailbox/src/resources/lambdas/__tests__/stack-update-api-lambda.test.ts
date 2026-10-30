@@ -8,12 +8,13 @@
  * deploy shows it, and any further statement fails the equality.
  */
 
-import { Template }                                                                from 'aws-cdk-lib/assertions';
+import { Template }                                                             from 'aws-cdk-lib/assertions';
 
-import { StackUpdateApiLambda }                                                    from '../stack-update-api-lambda';
+import { StackUpdateApiLambda }                                                 from '../stack-update-api-lambda';
 
-import { expectGrantedOnceTo, fakeDataTable, fakeQueue, fakeTemplateVersionParam } from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                                       from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataTable, fakeQueue,
+  fakeTemplateVersionParam }                                                    from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                                    from './lambda-wrapper-helpers';
 
 const ROOT_STACK_ARN = 'arn:aws:cloudformation:us-west-2:123456789012:stack/root/id';
 

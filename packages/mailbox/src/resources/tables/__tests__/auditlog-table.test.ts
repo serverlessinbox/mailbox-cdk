@@ -6,12 +6,12 @@
  * here makes stored entries unreachable or keeps them forever.
  */
 
-import { Match, Template }                                         from 'aws-cdk-lib/assertions';
-import * as kms                                                    from 'aws-cdk-lib/aws-kms';
+import { Match, Template }                                      from 'aws-cdk-lib/assertions';
+import * as kms                                                 from 'aws-cdk-lib/aws-kms';
 
-import { AuditLogTable }                                           from '../auditlog-table';
+import { AuditLogTable }                                        from '../auditlog-table';
 
-import { DATA_TABLE_PROPS, createDataTableStack, propsWithKey }    from './data-table-helpers';
+import { DATA_TABLE_PROPS, createDataTableStack, propsWithKey } from './data-table-helpers';
 
 describe('AuditLogTable', () => {
   it('is keyed by string pk and sk and has the indexes gsi1 to gsi3', () => {

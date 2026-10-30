@@ -1,10 +1,10 @@
-import type { IArtifactResolver }    from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                  from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration }                  from 'aws-cdk-lib';
-import { Construct }                 from 'constructs';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }               from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }               from 'aws-cdk-lib';
+import { Construct }              from 'constructs';
 
-import { JobSweepSchedule }          from '../events/job-sweep-schedule';
-import type { IDataTable }           from '../tables/data-tables';
+import { JobSweepSchedule }       from '../events/job-sweep-schedule';
+import type { IDataTable }        from '../tables/data-tables';
 
 /** The table, periods and artifact resolver the job sweeper is wired to. The caller creates the table. */
 export interface JobSweeperLambdaProps {

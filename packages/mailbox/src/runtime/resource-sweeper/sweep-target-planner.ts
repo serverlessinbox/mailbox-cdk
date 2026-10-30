@@ -1,7 +1,8 @@
-import type { CloudFormationCustomResourceEvent }                                                       from 'aws-lambda';
+import type { CloudFormationCustomResourceEvent }                               from 'aws-lambda';
 
-import { REMOVAL_PARTS, SWEPT_ON_DELETE, isRemovalEntry }                                               from './removal';
-import type { RemovalEntry, RemovalId, RemovalPartFields, RemovalPropertiesMap }                        from './removal';
+import { REMOVAL_PARTS, SWEPT_ON_DELETE, isRemovalEntry }                       from './removal';
+import type { RemovalEntry, RemovalId, RemovalPartFields,
+  RemovalPropertiesMap }                                                        from './removal';
 
 /**
  * Decides what a custom-resource request needs to sweep, per registered removal and per part of it;

@@ -6,15 +6,15 @@
  * CloudFront operations are faked: they are owned by the shared modules.
  */
 
-import { CloudFrontClient }                             from '@aws-sdk/client-cloudfront';
-import { S3Client }                                     from '@aws-sdk/client-s3';
+import { CloudFrontClient }                                                     from '@aws-sdk/client-cloudfront';
+import { S3Client }                                                             from '@aws-sdk/client-s3';
 
-import { invalidateCloudFront }                         from '../../../runtime/handler-kit/cloudfront-invalidation';
-import { deletePrefix, deployZipToPrefix, writeObject } from '../../../runtime/handler-kit/content-ops';
-import { ExpectedFailure }                              from '../../../runtime/handler-kit/errors/expected-failure';
-import { InvalidOwnInput }                              from '../../../runtime/handler-kit/errors/invalid-own-input';
-import { LoggerBuffer }                                 from '../../../runtime/handler-kit/logger-buffer';
-import { ContentDeployerRequestHandler }                from '../content-deployer-request-handler';
+import { invalidateCloudFront }                                                 from '../../../runtime/handler-kit/cloudfront-invalidation';
+import { deletePrefix, deployZipToPrefix, writeObject }                         from '../../../runtime/handler-kit/content-ops';
+import { ExpectedFailure }                                                      from '../../../runtime/handler-kit/errors/expected-failure';
+import { InvalidOwnInput }                                                      from '../../../runtime/handler-kit/errors/invalid-own-input';
+import { LoggerBuffer }                                                         from '../../../runtime/handler-kit/logger-buffer';
+import { ContentDeployerRequestHandler }                                        from '../content-deployer-request-handler';
 
 import {
   PHYSICAL_RESOURCE_ID,
@@ -25,7 +25,7 @@ import {
   fakeLambdaContext,
   updateRequest,
   zipSource,
-} from './content-deployer-helpers';
+}                                                                               from './content-deployer-helpers';
 
 jest.mock('../../../runtime/handler-kit/content-ops', () => ({
   deletePrefix:      jest.fn(),

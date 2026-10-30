@@ -1,28 +1,29 @@
-import { CloudFormationClient }                                                                     from '@aws-sdk/client-cloudformation';
-import { CloudFrontClient }                                                                         from '@aws-sdk/client-cloudfront';
-import { LambdaClient }                                                                             from '@aws-sdk/client-lambda';
-import { ResourceGroupsTaggingAPIClient }                                                           from '@aws-sdk/client-resource-groups-tagging-api';
-import { S3Client }                                                                                 from '@aws-sdk/client-s3';
-import { env, LoggerBuffer, ParentStackStatus, type Region }                                        from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import type { CloudFormationCustomResourceEvent, Context }                                          from 'aws-lambda';
-import { setTimeout as sleep }                                                                      from 'node:timers/promises';
+import { CloudFormationClient }                                                 from '@aws-sdk/client-cloudformation';
+import { CloudFrontClient }                                                     from '@aws-sdk/client-cloudfront';
+import { LambdaClient }                                                         from '@aws-sdk/client-lambda';
+import { ResourceGroupsTaggingAPIClient }                                       from '@aws-sdk/client-resource-groups-tagging-api';
+import { S3Client }                                                             from '@aws-sdk/client-s3';
+import { env, LoggerBuffer, ParentStackStatus, type Region }                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import type { CloudFormationCustomResourceEvent, Context }                      from 'aws-lambda';
+import { setTimeout as sleep }                                                  from 'node:timers/promises';
 
-import { load }                                                                                     from './config';
-import { EdgeLambdaUpdater }                                                                        from './edge-lambda-updater';
-import { FunctionSmokeTester }                                                                      from './lambda-code/function-smoke-tester';
-import { LambdaCodeRollback }                                                                       from './lambda-code/lambda-code-rollback';
-import { LambdaCodeUpdater }                                                                        from './lambda-code/lambda-code-updater';
-import { LambdaFunctionCode }                                                                       from './lambda-code/lambda-function-code';
-import { ReleaseArtifacts }                                                                         from './release-artifacts';
-import { CfnTrigger }                                                                               from './triggers/cfn-trigger';
-import { HttpTrigger }                                                                              from './triggers/http-trigger';
-import { ScheduledTrigger }                                                                         from './triggers/scheduled-trigger';
-import type { TriggerBuilder }                                                                      from './triggers/trigger-detector';
-import { UiBucketUpdater }                                                                          from './ui-bucket-updater';
-import { UpdateCycle }                                                                              from './update-cycle';
-import { EDGE_REGION, type RegionClients, RootStackResources, type UpdaterClients }                 from './updater-clients';
-import type { HttpTriggerEvent }                                                                    from './updater-event';
-import type { ReadyUpdater, UpdaterRuntime }                                                        from './updater-runtime';
+import { load }                                                                 from './config';
+import { EdgeLambdaUpdater }                                                    from './edge-lambda-updater';
+import { FunctionSmokeTester }                                                  from './lambda-code/function-smoke-tester';
+import { LambdaCodeRollback }                                                   from './lambda-code/lambda-code-rollback';
+import { LambdaCodeUpdater }                                                    from './lambda-code/lambda-code-updater';
+import { LambdaFunctionCode }                                                   from './lambda-code/lambda-function-code';
+import { ReleaseArtifacts }                                                     from './release-artifacts';
+import { CfnTrigger }                                                           from './triggers/cfn-trigger';
+import { HttpTrigger }                                                          from './triggers/http-trigger';
+import { ScheduledTrigger }                                                     from './triggers/scheduled-trigger';
+import type { TriggerBuilder }                                                  from './triggers/trigger-detector';
+import { UiBucketUpdater }                                                      from './ui-bucket-updater';
+import { UpdateCycle }                                                          from './update-cycle';
+import { EDGE_REGION, type RegionClients, RootStackResources,
+  type UpdaterClients }                                                         from './updater-clients';
+import type { HttpTriggerEvent }                                                from './updater-event';
+import type { ReadyUpdater, UpdaterRuntime }                                    from './updater-runtime';
 
 /**
  * Builds what one invocation works with, from the runtime the entry point loaded once per cold start: the

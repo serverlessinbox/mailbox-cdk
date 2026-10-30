@@ -1,12 +1,12 @@
-import type { IArtifactResolver }          from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                        from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement, Effect }         from 'aws-cdk-lib/aws-iam';
-import { Aws, Duration, Stack }            from 'aws-cdk-lib';
-import { Construct }                       from 'constructs';
+import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
+import { Aws, Duration, Stack }    from 'aws-cdk-lib';
+import { Construct }               from 'constructs';
 
-import type { ISupportRoles }              from '../../contracts/support-roles';
-import type { IAuditEventsQueue }          from '../queues/audit-events-queue';
-import type { IDataTable }                 from '../tables/data-tables';
+import type { ISupportRoles }      from '../../contracts/support-roles';
+import type { IAuditEventsQueue }  from '../queues/audit-events-queue';
+import type { IDataTable }         from '../tables/data-tables';
 
 /**
  * The support roles the Lambda opens and closes, the config table and audit queue it writes to, the

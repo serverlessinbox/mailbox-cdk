@@ -5,16 +5,16 @@
  * timeout and memory, the stack-failed rule that targets the function, and the policies attached to the supplied role.
  */
 
-import { Template }                             from 'aws-cdk-lib/assertions';
-import * as iam                                 from 'aws-cdk-lib/aws-iam';
-import type * as cdk                            from 'aws-cdk-lib';
-import * as t                                   from 'typanion';
+import { Template }                   from 'aws-cdk-lib/assertions';
+import * as iam                       from 'aws-cdk-lib/aws-iam';
+import type * as cdk                  from 'aws-cdk-lib';
+import * as t                         from 'typanion';
 
-import { resourcesOfType }                      from '../../../__tests__/template-resources';
-import { defaultCfnResource }                   from '../../../utils/cfn-resource';
-import { StackFailureDetectorLambda }           from '../stack-failure-detector-lambda';
+import { resourcesOfType }            from '../../../__tests__/template-resources';
+import { defaultCfnResource }         from '../../../utils/cfn-resource';
+import { StackFailureDetectorLambda } from '../stack-failure-detector-lambda';
 
-import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
+import { arrangeWrapperStack }        from './lambda-wrapper-helpers';
 
 const isPolicyProperties = t.isPartial({
   Roles: t.isOptional(t.isArray(t.isPartial({ Ref: t.isString() }))),

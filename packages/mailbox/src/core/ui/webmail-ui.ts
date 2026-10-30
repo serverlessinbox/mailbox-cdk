@@ -1,15 +1,15 @@
-import type { IArtifactResolver }                                                                from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription }                                                                  from '@serverlessinbox/mailbox-cdk-shared';
-import type * as acm                                                                             from 'aws-cdk-lib/aws-certificatemanager';
-import type { Construct, IDependable }                                                           from 'constructs';
+import type { IArtifactResolver }                      from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }                        from '@serverlessinbox/mailbox-cdk-shared';
+import type * as acm                                   from 'aws-cdk-lib/aws-certificatemanager';
+import type { Construct, IDependable }                 from 'constructs';
 
-import { AuthPolicyName, OAuthClientName }                                                       from '../../contracts/auth-names';
-import type { IAuditEventsQueue }                                                                from '../../resources/queues/audit-events-queue';
-import type { IDataTable }                                                                       from '../../resources/tables/data-tables';
-import type { AuthClientConfig, IMailboxAuthProvider }                                           from '../auth/auth-provider';
-import { Permission }                                                                            from '../auth/jmap-scopes';
+import { AuthPolicyName, OAuthClientName }             from '../../contracts/auth-names';
+import type { IAuditEventsQueue }                      from '../../resources/queues/audit-events-queue';
+import type { IDataTable }                             from '../../resources/tables/data-tables';
+import type { AuthClientConfig, IMailboxAuthProvider } from '../auth/auth-provider';
+import { Permission }                                  from '../auth/jmap-scopes';
 
-import { MailboxUi }                                                                             from './mailbox-ui';
+import { MailboxUi }                                   from './mailbox-ui';
 
 /** Props of {@link WebmailUi}. */
 export interface WebmailUiProps {

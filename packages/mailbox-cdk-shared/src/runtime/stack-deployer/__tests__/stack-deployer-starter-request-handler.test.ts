@@ -1,10 +1,10 @@
-import { SFNClient, StartExecutionCommand }          from '@aws-sdk/client-sfn';
-import { mockClient }                                from 'aws-sdk-client-mock';
+import { SFNClient, StartExecutionCommand }                                     from '@aws-sdk/client-sfn';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import { CfnResponder }                              from '../answers/cfn-responder';
-import { StackDeployerStarterRequestHandler }        from '../stack-deployer-starter-request-handler';
-import { StackDeployerStarter }                      from '../stack-deployer-starter';
-import { StackDeploymentEventReader }                from '../stack/stack-deployment-event-reader';
+import { CfnResponder }                                                         from '../answers/cfn-responder';
+import { StackDeployerStarterRequestHandler }                                   from '../stack-deployer-starter-request-handler';
+import { StackDeployerStarter }                                                 from '../stack-deployer-starter';
+import { StackDeploymentEventReader }                                           from '../stack/stack-deployment-event-reader';
 
 import {
   cfnRequest,
@@ -14,7 +14,7 @@ import {
   silenceConsole,
   STATE_MACHINE_ARN,
   type ConsoleSpies,
-} from './stack-deployer-helpers';
+}                                                                               from './stack-deployer-helpers';
 
 /**
  * Pins what happens to an event before the starter acts on it: it is read, the dispatch line and the

@@ -1,8 +1,8 @@
-import { EventSourceMapping }               from 'aws-cdk-lib/aws-lambda';
-import type { IFunction }                   from 'aws-cdk-lib/aws-lambda';
-import type { Construct }                   from 'constructs';
+import { EventSourceMapping }            from 'aws-cdk-lib/aws-lambda';
+import type { IFunction }                from 'aws-cdk-lib/aws-lambda';
+import type { Construct }                from 'constructs';
 
-import type { IImportJobsQueueConsumer }    from '../queues/import-jobs-queue';
+import type { IImportJobsQueueConsumer } from '../queues/import-jobs-queue';
 
 /** Settings of the mapping that feeds import jobs from the import-jobs queue to the runner. */
 export interface ImportJobsQueueEventProps {

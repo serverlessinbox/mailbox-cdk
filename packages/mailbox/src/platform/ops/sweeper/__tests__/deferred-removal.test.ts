@@ -8,17 +8,17 @@
  * and its service timeout stops a starter that dies without answering from holding the stack for an hour.
  */
 
-import { Template }                                                    from 'aws-cdk-lib/assertions';
-import * as iam                                                        from 'aws-cdk-lib/aws-iam';
-import * as lambda                                                     from 'aws-cdk-lib/aws-lambda';
-import { Duration }                                                    from 'aws-cdk-lib';
-import * as t                                                          from 'typanion';
+import { Template }                                      from 'aws-cdk-lib/assertions';
+import * as iam                                          from 'aws-cdk-lib/aws-iam';
+import * as lambda                                       from 'aws-cdk-lib/aws-lambda';
+import { Duration }                                      from 'aws-cdk-lib';
+import * as t                                            from 'typanion';
 
-import { isTemplateValue, resourcesOfType }                            from '../../../../__tests__/template-resources';
-import { newTestStack }                                                from '../../../__tests__/platform-helpers';
-import { DeferredRemoval }                                             from '../deferred-removal';
+import { isTemplateValue, resourcesOfType }              from '../../../../__tests__/template-resources';
+import { newTestStack }                                  from '../../../__tests__/platform-helpers';
+import { DeferredRemoval }                               from '../deferred-removal';
 
-import { newCertificateRemoval, newEdgeFunctionRemoval }               from './sweeper-helpers';
+import { newCertificateRemoval, newEdgeFunctionRemoval } from './sweeper-helpers';
 
 const isDeferredRemovalProperties = t.isRecord(isTemplateValue);
 

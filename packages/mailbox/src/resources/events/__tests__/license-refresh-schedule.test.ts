@@ -5,12 +5,12 @@
  * built from the given hour and minute, so a swapped field would move the refresh to a different time.
  */
 
-import { Match, Template }                           from 'aws-cdk-lib/assertions';
-import { Code, Function, Runtime }                   from 'aws-cdk-lib/aws-lambda';
-import { App, BootstraplessSynthesizer, Stack }      from 'aws-cdk-lib';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Code, Function, Runtime }              from 'aws-cdk-lib/aws-lambda';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
-import { defaultCfnResource }                        from '../../../utils/cfn-resource';
-import { LicenseRefreshSchedule }                    from '../license-refresh-schedule';
+import { defaultCfnResource }                   from '../../../utils/cfn-resource';
+import { LicenseRefreshSchedule }               from '../license-refresh-schedule';
 
 describe('LicenseRefreshSchedule', () => {
   let targetId: string;

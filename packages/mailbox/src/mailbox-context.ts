@@ -1,21 +1,21 @@
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
 import {
   MailboxArtifactResolverFactory,
   ServerlessInboxTagKeys,
   applyServerlessInboxBaseTags,
   resolveDeployerType,
   resolveVendorAccountIds,
-} from '@serverlessinbox/mailbox-cdk-shared';
-import type { ServerlessInboxDeployerType, VendorLink } from '@serverlessinbox/mailbox-cdk-shared';
-import { Aws }                                          from 'aws-cdk-lib';
-import type { Construct }                               from 'constructs';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared';
+import type { ServerlessInboxDeployerType, VendorLink }                         from '@serverlessinbox/mailbox-cdk-shared';
+import { Aws }                                                                  from 'aws-cdk-lib';
+import type { Construct }                                                       from 'constructs';
 
-import { MAILBOX_ARTIFACT_PACKAGE }                     from './contracts/mailbox-artifact-package';
-import { MailboxEncryption }                            from './core/mailbox-encryption';
-import type { MailboxEncryptionPlan }                   from './core/mailbox-encryption';
-import { loadMailboxArtifactVersions }                  from './mailbox-artifact-versions';
-import type { MailboxProps }                            from './mailbox-props';
-import { loadMailboxRegistryRecord }                    from './mailbox-registry-record';
+import { MAILBOX_ARTIFACT_PACKAGE }                                             from './contracts/mailbox-artifact-package';
+import { MailboxEncryption }                                                    from './core/mailbox-encryption';
+import type { MailboxEncryptionPlan }                                           from './core/mailbox-encryption';
+import { loadMailboxArtifactVersions }                                          from './mailbox-artifact-versions';
+import type { MailboxProps }                                                    from './mailbox-props';
+import { loadMailboxRegistryRecord }                                            from './mailbox-registry-record';
 
 /** The `MailboxProps` fields the foundation is resolved from. */
 type MailboxContextProps = Pick<MailboxProps, 'artifactResolver' | 'kms'>;

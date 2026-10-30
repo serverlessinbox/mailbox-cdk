@@ -7,19 +7,19 @@
  * blob endpoint can read.
  */
 
-import type { IArtifactResolver }                from '@serverlessinbox/artifact-registry-cdk';
-import { renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Match, Template }                       from 'aws-cdk-lib/assertions';
-import { Table }                                 from 'aws-cdk-lib/aws-dynamodb';
-import * as route53                              from 'aws-cdk-lib/aws-route53';
-import type { Stack }                            from 'aws-cdk-lib';
-import { Construct }                             from 'constructs';
-import * as t                                    from 'typanion';
+import type { IArtifactResolver }                     from '@serverlessinbox/artifact-registry-cdk';
+import { renderWithTokens, statementsForAction }      from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Match, Template }                            from 'aws-cdk-lib/assertions';
+import { Table }                                      from 'aws-cdk-lib/aws-dynamodb';
+import * as route53                                   from 'aws-cdk-lib/aws-route53';
+import type { Stack }                                 from 'aws-cdk-lib';
+import { Construct }                                  from 'constructs';
+import * as t                                         from 'typanion';
 
 import {
   TEST_ACCOUNT,
   newDeployerTestStack,
-} from '../../../__tests__/deployer-test-helpers';
+}                                                     from '../../../__tests__/deployer-test-helpers';
 import { AuthKeyStoreTable, type IAuthKeyStoreTable } from '../../../resources/tables/auth-key-store-table';
 import { DataTable }                                  from '../../../resources/tables/data-tables';
 import { MailboxDomains }                             from '../../domains/mailbox-domains';

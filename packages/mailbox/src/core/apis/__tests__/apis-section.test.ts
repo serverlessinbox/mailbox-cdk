@@ -8,31 +8,31 @@
  * the custom domains, which are unique per account and region and so cannot be replaced next to their old
  * selves.
  */
-import { ArtifactZone, PinnedArtifactResolver }                                        from '@serverlessinbox/artifact-registry-cdk';
-import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }                                   from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                                                             from 'aws-cdk-lib/assertions';
-import * as acm                                                                        from 'aws-cdk-lib/aws-certificatemanager';
-import { Table, AttributeType, TableEncryption }                                       from 'aws-cdk-lib/aws-dynamodb';
-import { Function as LambdaFunction }                                                  from 'aws-cdk-lib/aws-lambda';
-import { Bucket }                                                                      from 'aws-cdk-lib/aws-s3';
-import * as cdk                                                                        from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer, CfnResource, TagManager }                      from 'aws-cdk-lib';
-import type { Construct }                                                              from 'constructs';
+import { ArtifactZone, PinnedArtifactResolver }                       from '@serverlessinbox/artifact-registry-cdk';
+import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }                  from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                                            from 'aws-cdk-lib/assertions';
+import * as acm                                                       from 'aws-cdk-lib/aws-certificatemanager';
+import { Table, AttributeType, TableEncryption }                      from 'aws-cdk-lib/aws-dynamodb';
+import { Function as LambdaFunction }                                 from 'aws-cdk-lib/aws-lambda';
+import { Bucket }                                                     from 'aws-cdk-lib/aws-s3';
+import * as cdk                                                       from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer, CfnResource, TagManager }     from 'aws-cdk-lib';
+import type { Construct }                                             from 'constructs';
 
-import { DataBlobStore }                                                               from '../../../resources/buckets/data-blob-store';
-import { fakeMailImportRunner }                                                        from '../../../resources/lambdas/__tests__/lambda-wrapper-fakes';
-import { AuditEventsQueue }                                                            from '../../../resources/queues/audit-events-queue';
-import { EmailSendingQueue }                                                           from '../../../resources/queues/email-sending-queue';
-import { ImportJobsQueue }                                                             from '../../../resources/queues/import-jobs-queue';
-import { AuthKeyStoreTable }                                                           from '../../../resources/tables/auth-key-store-table';
-import { DataTable }                                                                   from '../../../resources/tables/data-tables';
-import { MailLogTable }                                                                from '../../../resources/tables/mail-log-table';
-import { AuthMethod }                                                                  from '../../auth/auth-method';
-import type { IMailboxAuthProvider }                                                   from '../../auth/auth-provider';
-import { MailboxDomains }                                                              from '../../domains/mailbox-domains';
-import type { IAdminApiAddon, IAdminApiAddonProvider, IJmapApiAddon }                  from '../addons';
-import { ApisSection }                                                                 from '../apis-section';
-import type { ApisEndpointsProps, ApisSectionProps, IApisEdgeInputs }                  from '../apis-section';
+import { DataBlobStore }                                              from '../../../resources/buckets/data-blob-store';
+import { fakeMailImportRunner }                                       from '../../../resources/lambdas/__tests__/lambda-wrapper-fakes';
+import { AuditEventsQueue }                                           from '../../../resources/queues/audit-events-queue';
+import { EmailSendingQueue }                                          from '../../../resources/queues/email-sending-queue';
+import { ImportJobsQueue }                                            from '../../../resources/queues/import-jobs-queue';
+import { AuthKeyStoreTable }                                          from '../../../resources/tables/auth-key-store-table';
+import { DataTable }                                                  from '../../../resources/tables/data-tables';
+import { MailLogTable }                                               from '../../../resources/tables/mail-log-table';
+import { AuthMethod }                                                 from '../../auth/auth-method';
+import type { IMailboxAuthProvider }                                  from '../../auth/auth-provider';
+import { MailboxDomains }                                             from '../../domains/mailbox-domains';
+import type { IAdminApiAddon, IAdminApiAddonProvider, IJmapApiAddon } from '../addons';
+import { ApisSection }                                                from '../apis-section';
+import type { ApisEndpointsProps, ApisSectionProps, IApisEdgeInputs } from '../apis-section';
 
 /** What a test varies of the section: the optional JMAP hooks of the auth provider and the further admin-api addon providers. */
 interface SectionOptions {

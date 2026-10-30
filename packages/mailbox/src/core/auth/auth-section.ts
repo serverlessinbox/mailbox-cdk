@@ -1,27 +1,27 @@
-import type { IArtifactResolver }                                                            from '@serverlessinbox/artifact-registry-cdk';
-import { applyServerlessInboxComponentTag }                                                  from '@serverlessinbox/mailbox-cdk-shared';
-import type { VendorLink }                                                                   from '@serverlessinbox/mailbox-cdk-shared';
-import type { IReceiptRuleSet }                                                              from 'aws-cdk-lib/aws-ses';
-import { Construct, DependencyGroup }                                                        from 'constructs';
-import type { IDependable }                                                                  from 'constructs';
+import type { IArtifactResolver }                                      from '@serverlessinbox/artifact-registry-cdk';
+import { applyServerlessInboxComponentTag }                            from '@serverlessinbox/mailbox-cdk-shared';
+import type { VendorLink }                                             from '@serverlessinbox/mailbox-cdk-shared';
+import type { IReceiptRuleSet }                                        from 'aws-cdk-lib/aws-ses';
+import { Construct, DependencyGroup }                                  from 'constructs';
+import type { IDependable }                                            from 'constructs';
 
-import type { SesReceivingMode }                                                             from '../../contracts/ses-receiving-mode';
-import type { IDataBlobStore }                                                               from '../../resources/buckets/data-blob-store';
-import { IdentityProvisionerLambda }                                                         from '../../resources/lambdas/identity-provisioner-lambda';
-import type { IIdentityProvisioner }                                                         from '../../resources/lambdas/identity-provisioner-lambda';
-import type { IAuditEventsQueue }                                                            from '../../resources/queues/audit-events-queue';
-import type { IEmailSendingQueue }                                                           from '../../resources/queues/email-sending-queue';
-import type { IAuthKeyStoreTable }                                                           from '../../resources/tables/auth-key-store-table';
-import type { DynamoTableEncryptionProps }                                                   from '../../resources/tables/data-table-props';
-import type { IDataTable }                                                                   from '../../resources/tables/data-tables';
-import type { IDnsZone }                                                                     from '../edge/dns-zone';
-import type { IOAuthUi }                                                                     from '../ui/ui-section';
+import type { SesReceivingMode }                                       from '../../contracts/ses-receiving-mode';
+import type { IDataBlobStore }                                         from '../../resources/buckets/data-blob-store';
+import { IdentityProvisionerLambda }                                   from '../../resources/lambdas/identity-provisioner-lambda';
+import type { IIdentityProvisioner }                                   from '../../resources/lambdas/identity-provisioner-lambda';
+import type { IAuditEventsQueue }                                      from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }                                     from '../../resources/queues/email-sending-queue';
+import type { IAuthKeyStoreTable }                                     from '../../resources/tables/auth-key-store-table';
+import type { DynamoTableEncryptionProps }                             from '../../resources/tables/data-table-props';
+import type { IDataTable }                                             from '../../resources/tables/data-tables';
+import type { IDnsZone }                                               from '../edge/dns-zone';
+import type { IOAuthUi }                                               from '../ui/ui-section';
 
-import type { OAuthAuthorizationCodeClientConfig, OAuthClientsConfig }                       from './auth-bootstrap-config';
-import { AuthKeyStore }                                                                      from './auth-key-store';
-import type { IMailboxAuthProvider }                                                         from './auth-provider';
-import { Bootstrap }                                                                         from './bootstrap';
-import { OAuthFlow }                                                                         from './oauth-flow';
+import type { OAuthAuthorizationCodeClientConfig, OAuthClientsConfig } from './auth-bootstrap-config';
+import { AuthKeyStore }                                                from './auth-key-store';
+import type { IMailboxAuthProvider }                                   from './auth-provider';
+import { Bootstrap }                                                   from './bootstrap';
+import { OAuthFlow }                                                   from './oauth-flow';
 
 /** What {@link AuthSection} uses of the data section. */
 export interface IAuthDataInputs {

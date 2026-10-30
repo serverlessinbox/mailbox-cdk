@@ -1,8 +1,8 @@
-import { LambdaFunction }   from 'aws-cdk-lib/aws-events-targets';
-import { Rule, Schedule }   from 'aws-cdk-lib/aws-events';
-import type { IFunction }   from 'aws-cdk-lib/aws-lambda';
-import { Duration }         from 'aws-cdk-lib';
-import type { Construct }   from 'constructs';
+import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
+import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
+import type { IFunction } from 'aws-cdk-lib/aws-lambda';
+import { Duration }       from 'aws-cdk-lib';
+import type { Construct } from 'constructs';
 
 /** Settings of the schedule that periodically sweeps stale import jobs and expired connections. */
 export interface JobSweepScheduleProps {

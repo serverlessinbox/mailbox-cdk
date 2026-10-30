@@ -1,17 +1,17 @@
-import type { IArtifactResolver }                                    from '@serverlessinbox/artifact-registry-cdk';
-import type { QueueEncryptionChoice }                                from '@serverlessinbox/mailbox-cdk-shared';
-import { applyServerlessInboxComponentTag }                          from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration }                                                  from 'aws-cdk-lib';
-import { Construct }                                                 from 'constructs';
+import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
+import type { QueueEncryptionChoice }                              from '@serverlessinbox/mailbox-cdk-shared';
+import { applyServerlessInboxComponentTag }                        from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                                                from 'aws-cdk-lib';
+import { Construct }                                               from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }   from '../../contracts/websocket-push';
-import type { IDataBlobStore }                                       from '../../resources/buckets/data-blob-store';
-import { JobSweeperLambda }                                          from '../../resources/lambdas/job-sweeper-lambda';
-import { MailImportRunnerLambda }                                    from '../../resources/lambdas/mail-import-runner-lambda';
-import type { IMailImportRunner }                                    from '../../resources/lambdas/mail-import-runner-lambda';
-import { ImportJobsQueue, type IImportJobsQueueConsumer }            from '../../resources/queues/import-jobs-queue';
-import type { IAuthKeyStoreTable }                                   from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                                           from '../../resources/tables/data-tables';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
+import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
+import { JobSweeperLambda }                                        from '../../resources/lambdas/job-sweeper-lambda';
+import { MailImportRunnerLambda }                                  from '../../resources/lambdas/mail-import-runner-lambda';
+import type { IMailImportRunner }                                  from '../../resources/lambdas/mail-import-runner-lambda';
+import { ImportJobsQueue, type IImportJobsQueueConsumer }          from '../../resources/queues/import-jobs-queue';
+import type { IAuthKeyStoreTable }                                 from '../../resources/tables/auth-key-store-table';
+import type { IDataTable }                                         from '../../resources/tables/data-tables';
 
 /** What {@link JobsSection} uses of the data section. */
 export interface IJobsDataInputs {
