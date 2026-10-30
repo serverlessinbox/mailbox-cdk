@@ -98,7 +98,9 @@ describe('Mailbox OAuth client wiring', () => {
 
       expect(mailbox.urls.webmailUi).toBeUndefined();
       expect(bootstrap.Properties?.oauthClients).not.toHaveProperty('webmailUi');
-      expect(functionsByEnvironment(template, 'OAUTH_HANDLER_CONFIG')).toHaveLength(1);
+      expect(functionsByEnvironment(template, 'SERVICE_NAME', 'jmap-api')).toHaveLength(1);
+      expect(functionsByEnvironment(template, 'SERVICE_NAME', 'user-api')).toHaveLength(1);
+      expect(functionsByEnvironment(template, 'OAUTH_HANDLER_CONFIG')).toHaveLength(2);
     });
   });
 

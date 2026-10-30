@@ -14,6 +14,7 @@ import type * as cdk                                   from 'aws-cdk-lib';
 import { resourcesOfType }                             from '../../../__tests__/iam-test-helpers';
 import { fakeMailImportRunner }                        from '../../../resources/lambdas/__tests__/lambda-wrapper-fakes';
 import { ImportJobsQueue }                             from '../../../resources/queues/import-jobs-queue';
+import { Permission }                                  from '../../auth/jmap-scopes';
 import { ApiGateway }                                  from '../api-gateway';
 import { UserApi }                                     from '../user-api';
 
@@ -33,7 +34,9 @@ describe('UserApi', () => {
     const importJobsQueue                                                                   = new ImportJobsQueue(stack, 'import-jobs-queue', { encryption: { kind: 'aws-managed' } });
     const mailImportRunner                                                                  = fakeMailImportRunner('mail-import-runner');
 
-    return { configTable, itemTable, auditEventsQueue, authKeyStoreTable, importJobsQueue, mailImportRunner, artifactResolver };
+    const scopeMap                                                                          = { 'mail-reader': [Permission.MAIL_READ] };
+
+    return { configTable, itemTable, auditEventsQueue, authKeyStoreTable, importJobsQueue, mailImportRunner, artifactResolver, scopeMap };
   }
 
   function mountedUserApi(): UserApi {

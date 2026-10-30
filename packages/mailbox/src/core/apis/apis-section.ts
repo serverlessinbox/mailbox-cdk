@@ -201,6 +201,7 @@ export class ApisSection extends Construct {
       props.data.auditEventsQueue,
       props.auth.authKeyStoreTable,
       props.artifactResolver,
+      props.authProvider.scopeMap,
       props.jobs,
     );
 
@@ -358,6 +359,7 @@ export class ApisSection extends Construct {
     auditEventsQueue: IAuditEventsQueue,
     authKeyStoreTable: IAuthKeyStoreTable,
     artifactResolver: IArtifactResolver,
+    scopeMap: ScopeMap,
     jobs: IApisJobsInputs,
   ): UserApi {
     return new UserApi(this, 'user-api', {
@@ -368,6 +370,7 @@ export class ApisSection extends Construct {
       importJobsQueue:  jobs.importJobsQueue,
       mailImportRunner: jobs.mailImportRunner,
       artifactResolver,
+      scopeMap,
     });
   }
 

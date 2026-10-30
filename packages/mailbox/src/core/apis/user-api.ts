@@ -11,10 +11,11 @@ import type { IAuditEventsQueue }  from '../../resources/queues/audit-events-que
 import type { IImportJobsQueue }   from '../../resources/queues/import-jobs-queue';
 import type { IAuthKeyStoreTable } from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }         from '../../resources/tables/data-tables';
+import type { ScopeMap }           from '../auth/jmap-scopes';
 
 import type { ApiRoute, IApiArea } from './api-area';
 
-/** Inputs of {@link UserApi}: the tables, queues, runner and resolver its Lambda and authorizer use. */
+/** Inputs of {@link UserApi}: the tables, queues, runner, resolver and OAuth scope map its Lambda and authorizer use. */
 export interface UserApiProps {
   readonly configTable:       IDataTable;
   readonly itemTable:         IDataTable;
@@ -23,6 +24,7 @@ export interface UserApiProps {
   readonly importJobsQueue:   IImportJobsQueue;
   readonly mailImportRunner:  IMailImportRunner;
   readonly artifactResolver:  IArtifactResolver;
+  readonly scopeMap:          ScopeMap;
 }
 
 /**
@@ -44,6 +46,7 @@ export class UserApi extends Construct implements IApiArea {
       importJobsQueue:   props.importJobsQueue,
       mailImportRunner:  props.mailImportRunner,
       artifactResolver:  props.artifactResolver,
+      scopeMap:          props.scopeMap,
     });
 
     const authorizerLambda = new AuthorizerLambda(this, 'lambda-authorizer', {

@@ -13,6 +13,8 @@ import { AttributeType, Table }                 from 'aws-cdk-lib/aws-dynamodb';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
+import { Permission }                           from '../../../core/auth/jmap-scopes';
+import type { ScopeMap }                        from '../../../core/auth/jmap-scopes';
 import { AuditEventsQueue }                     from '../../queues/audit-events-queue';
 import { ImportJobsQueue }                      from '../../queues/import-jobs-queue';
 import { AuthKeyStoreTable }                    from '../../tables/auth-key-store-table';
@@ -39,6 +41,8 @@ describe('UserApiLambda', () => {
   }
 
   function synthesize(): Template {
+    const scopeMap: ScopeMap = { 'mail-reader': [Permission.MAIL_READ, Permission.ACCOUNT_READ] };
+
     const configTable       = dataTable('config-table');
     const itemTable         = dataTable('item-table');
     const auditEventsQueue  = new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } });
@@ -62,6 +66,7 @@ describe('UserApiLambda', () => {
       importJobsQueue,
       mailImportRunner,
       artifactResolver,
+      scopeMap,
     });
 
     itemTableArnOf   = stack.resolve(itemTable.tableArn);
@@ -89,7 +94,20 @@ describe('UserApiLambda', () => {
           AUTH_KEY_STORE_TABLE_NAME:        Match.anyValue(),
           IMPORT_JOBS_QUEUE_URL:            Match.anyValue(),
           MAIL_IMPORT_RUNNER_FUNCTION_NAME: 'mail-import-runner',
+          OAUTH_HANDLER_CONFIG:             Match.anyValue(),
           SERVICE_NAME:                     'user-api',
+        }),
+      },
+    });
+  });
+
+  it('hands the function the auth provider scope map as the OAUTH_HANDLER_CONFIG JSON', () => {
+    const template = synthesize();
+
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.objectLike({
+          OAUTH_HANDLER_CONFIG: '{"scopeMap":{"mail-reader":["mail/read","account/read"]}}',
         }),
       },
     });
