@@ -30,7 +30,7 @@ describe('UserApi', () => {
 
   function userApiProps() {
     const { configTable, itemTable, auditEventsQueue, authKeyStoreTable, artifactResolver } = newAdminApiProps(stack);
-    const importJobsQueue                                                                   = new ImportJobsQueue(stack, 'import-jobs-queue');
+    const importJobsQueue                                                                   = new ImportJobsQueue(stack, 'import-jobs-queue', { encryption: { kind: 'aws-managed' } });
     const mailImportRunner                                                                  = fakeMailImportRunner('mail-import-runner');
 
     return { configTable, itemTable, auditEventsQueue, authKeyStoreTable, importJobsQueue, mailImportRunner, artifactResolver };

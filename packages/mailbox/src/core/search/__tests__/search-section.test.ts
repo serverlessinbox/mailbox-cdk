@@ -32,6 +32,7 @@ function synthSection(stack: Stack): SearchSection {
       changelogTable: dataTable('changelog-table'),
       blobStore:      new DataBlobStore(new Bucket(stack, 'blob-store')),
     },
+    queueEncryption:  { kind: 'aws-managed' },
   });
   Template.fromStack(stack);
   return section;

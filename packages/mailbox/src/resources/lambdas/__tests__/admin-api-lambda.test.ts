@@ -58,8 +58,8 @@ describe('AdminApiLambda IAM scoping', () => {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
     const blobStore                   = new DataBlobStore(new Bucket(stack, 'blob-store'));
-    const emailSubmissionQueue        = new EmailSendingQueue(stack, 'email-submission-queue');
-    const auditEventsQueue            = new AuditEventsQueue(stack, 'audit-events-queue');
+    const emailSubmissionQueue        = new EmailSendingQueue(stack, 'email-submission-queue', { encryption: { kind: 'aws-managed' } });
+    const auditEventsQueue            = new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } });
     const identityProvisionerFunction = LambdaFunction.fromFunctionArn(
       stack,
       'identity-provisioner-ref',

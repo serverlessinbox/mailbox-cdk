@@ -32,7 +32,7 @@ interface SynthesizedAddon {
 function newAddon(stack: Stack, distTag?: string): StackUpdateAddon {
   return new StackUpdateAddon(stack, 'stack-update-addon', {
     configTable:      new DataTable(dynamodb.Table.fromTableArn(stack, 'config-table', 'arn:aws:dynamodb:us-west-2:123456789012:table/config')),
-    auditEventsQueue: new AuditEventsQueue(stack, 'audit-queue'),
+    auditEventsQueue: new AuditEventsQueue(stack, 'audit-queue', { encryption: { kind: 'aws-managed' } }),
     artifactResolver: newArtifactResolver(stack),
     templateName:     'mailbox-standard',
     templateVersion:  '1.0.0',

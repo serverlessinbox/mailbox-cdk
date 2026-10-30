@@ -1,5 +1,5 @@
 import type { IArtifactResolver }                                                                              from '@serverlessinbox/artifact-registry-cdk';
-import type { VendorLink }                                                                                     from '@serverlessinbox/mailbox-cdk-shared';
+import type { QueueEncryptionChoice, VendorLink }                                                              from '@serverlessinbox/mailbox-cdk-shared';
 import { ServerlessInboxResourceGroup, setStackNameBase, StackHelpers }                                        from '@serverlessinbox/mailbox-cdk-shared';
 import * as cdk                                                                                                from 'aws-cdk-lib';
 import { Construct }                                                                                           from 'constructs';
@@ -12,7 +12,6 @@ import type { MailboxEnabledUis }                                               
 import { EdgeSection }                                                                                         from './core/edge/edge-section';
 import { EmailSection }                                                                                        from './core/email/email-section';
 import { JobsSection }                                                                                         from './core/jobs/jobs-section';
-import type { MailboxEncryptionPlan }                                                                          from './core/mailbox-encryption';
 import { SearchSection }                                                                                       from './core/search/search-section';
 import { UiSection }                                                                                           from './core/ui/ui-section';
 import { MailboxContext }                                                                                      from './mailbox-context';
@@ -56,16 +55,16 @@ export class Mailbox extends Construct {
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
 
-    const context                                                                                              = this.resolveContext(props);
-    const { artifactResolver, deployerType, vendorLink, encryptionPlan: { queues: queueProps, dynamoTables } } = context;
-    const enabledUis                                                                                           = { adminUi: props.enableAdminUi ?? true, webmailUi: props.enableWebmailUi ?? true };
+    const context                                                                                           = this.resolveContext(props);
+    const { artifactResolver, deployerType, vendorLink, encryptionPlan: { queueEncryption, dynamoTables } } = context;
+    const enabledUis                                                                                        = { adminUi: props.enableAdminUi ?? true, webmailUi: props.enableWebmailUi ?? true };
 
     // Every other section reads the data tables, queues and blob store, so data comes first.
     const data = new DataSection(this, 'data', {
       artifactResolver,
       deployerType,
       stackHelpers: StackHelpers.getOrCreate(this, artifactResolver),
-      queueProps,
+      queueEncryption,
     });
     setStackNameBase(this, data.mainStackNameBase);
 
@@ -73,7 +72,7 @@ export class Mailbox extends Construct {
     const addressing = this.resolveAddressing(props, enabledUis);
 
     // Receives, sends and processes mail on top of the data stores; auth needs its queue and SES settings.
-    const email = new EmailSection(this, 'email', { artifactResolver, data, queueProps, dynamoTables });
+    const email = new EmailSection(this, 'email', { artifactResolver, data, queueEncryption, dynamoTables });
 
     // Key store and identity provisioning, which need data and email. The bootstrap that registers
     // the OAuth clients waits for the UIs (`auth.addBootstrap` below).
@@ -88,7 +87,7 @@ export class Mailbox extends Construct {
       adminUiUrl: addressing.urls.adminUi,
     });
 
-    const jobs = new JobsSection(this, 'jobs', { queueProps, artifactResolver, data, auth });
+    const jobs = new JobsSection(this, 'jobs', { queueEncryption, artifactResolver, data, auth });
 
     // Edge sub-stack and certificates, which need the auth key store and the addressing. The CDN and
     // DNS records need the UIs and APIs, so they are added later.
@@ -151,7 +150,7 @@ export class Mailbox extends Construct {
     // The bootstrap registers the UIs' OAuth clients, so it needs the UIs and the edge.
     auth.addBootstrap({ email, ui, edge, sesReceivingMode: props.enableReceiving });
 
-    this.addStandaloneSections(artifactResolver, data, queueProps, edge, addressing, vendorLink, props.sendStackFailures);
+    this.addStandaloneSections(artifactResolver, data, queueEncryption, edge, addressing, vendorLink, props.sendStackFailures);
 
     this.urls         = addressing.urls;
     this.certificates = { edge: edge.edgeCertificate, regional: edge.regionalCertificate };
@@ -172,13 +171,13 @@ export class Mailbox extends Construct {
   private addStandaloneSections(
     artifactResolver: IArtifactResolver,
     data: DataSection,
-    queueProps: MailboxEncryptionPlan['queues'],
+    queueEncryption: QueueEncryptionChoice,
     edge: EdgeSection,
     addressing: MailboxAddressing,
     vendorLink: VendorLink,
     sendStackFailures: MailboxProps['sendStackFailures'],
   ): void {
-    new SearchSection(this, 'search', { artifactResolver, data, queueProps });
+    new SearchSection(this, 'search', { artifactResolver, data, queueEncryption });
 
     new OpsSection(this, 'ops', {
       artifactResolver, data, edge,

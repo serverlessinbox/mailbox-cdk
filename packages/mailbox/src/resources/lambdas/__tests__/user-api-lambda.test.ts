@@ -41,9 +41,9 @@ describe('UserApiLambda', () => {
   function synthesize(): Template {
     const configTable       = dataTable('config-table');
     const itemTable         = dataTable('item-table');
-    const auditEventsQueue  = new AuditEventsQueue(stack, 'audit-events-queue');
+    const auditEventsQueue  = new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } });
     const authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store-table');
-    const importJobsQueue   = new ImportJobsQueue(stack, 'import-jobs-queue');
+    const importJobsQueue   = new ImportJobsQueue(stack, 'import-jobs-queue', { encryption: { kind: 'aws-managed' } });
     mailImportRunner        = fakeMailImportRunner('mail-import-runner');
     const artifactResolver  = new PinnedArtifactResolver({
       packages:         {

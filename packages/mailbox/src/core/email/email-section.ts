@@ -1,5 +1,5 @@
 import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
-import type { BaseQueueProps }                                     from '@serverlessinbox/mailbox-cdk-shared';
+import type { QueueEncryptionChoice }                              from '@serverlessinbox/mailbox-cdk-shared';
 import { applyServerlessInboxComponentTag }                        from '@serverlessinbox/mailbox-cdk-shared';
 import type { IBucket }                                            from 'aws-cdk-lib/aws-s3';
 import type { IReceiptRuleSet }                                    from 'aws-cdk-lib/aws-ses';
@@ -35,7 +35,7 @@ export interface IEmailDataInputs {
 export interface EmailSectionProps {
   readonly artifactResolver: IArtifactResolver;
   readonly data:             IEmailDataInputs;
-  readonly queueProps?:      Partial<BaseQueueProps>;
+  readonly queueEncryption:  QueueEncryptionChoice;
   readonly dynamoTables:     DynamoTableEncryptionProps;
 }
 
@@ -65,7 +65,7 @@ export class EmailSection extends Construct {
       blobStore:         data.blobStore,
       auditEventsQueue:  data.auditEventsQueue,
       artifactResolver:  props.artifactResolver,
-      queueProps:        props.queueProps,
+      queueEncryption:   props.queueEncryption,
     });
 
     this.emailSending = new EmailSending(this, 'email-sending', {
@@ -75,7 +75,7 @@ export class EmailSection extends Construct {
       blobStore:        data.blobStore,
       artifactResolver: props.artifactResolver,
       sesConfigSetName: this.sesEventProcessing.sesConfigSetName,
-      queueProps:       props.queueProps,
+      queueEncryption:  props.queueEncryption,
     });
 
     // SES receipt rules and the email-processing queue they feed. Built before the email-processor
@@ -83,7 +83,7 @@ export class EmailSection extends Construct {
     const sesRules = new SesRules(this, 'ses-rules', {
       blobStoreBucket:  data.blobStoreBucket,
       artifactResolver: props.artifactResolver,
-      queueProps:       props.queueProps,
+      queueEncryption:  props.queueEncryption,
     });
 
     this.mailLogTable = new MailLogTable(this, 'mail-log-table', props.dynamoTables);

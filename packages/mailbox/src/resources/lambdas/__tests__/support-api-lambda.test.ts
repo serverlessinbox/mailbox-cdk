@@ -39,7 +39,7 @@ function synthesize(): SynthesizedSupportApi {
   new SupportApiLambda(stack, 'support-api', {
     supportRoles:     roles,
     configTable:      new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
-    auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+    auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
     artifactResolver,
     vendorAccountIds: [VENDOR_ACCOUNT],
   });

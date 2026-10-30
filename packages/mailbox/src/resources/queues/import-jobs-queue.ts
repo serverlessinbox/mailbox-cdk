@@ -1,12 +1,12 @@
-import { BaseQueue, type BaseQueueProps }   from '@serverlessinbox/mailbox-cdk-shared';
-import type { IGrantable }                  from 'aws-cdk-lib/aws-iam';
-import { Duration }                         from 'aws-cdk-lib';
-import { Construct }                        from 'constructs';
+import { BaseQueue, type QueueEncryptionChoice } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IGrantable }                       from 'aws-cdk-lib/aws-iam';
+import { Duration }                              from 'aws-cdk-lib';
+import { Construct }                             from 'constructs';
 
 /** Props of {@link ImportJobsQueue}. */
 export interface ImportJobsQueueProps {
-  /** Optional default props applied to the queue and its DLQ (e.g. encryption). */
-  readonly queueProps?: Partial<BaseQueueProps>;
+  /** The encryption of the queue and its DLQ. */
+  readonly encryption: QueueEncryptionChoice;
 }
 
 /**
@@ -37,16 +37,14 @@ export interface IImportJobsQueueConsumer extends IImportJobsQueue {
  * consumer's event source mapping.
  */
 export class ImportJobsQueue extends BaseQueue implements IImportJobsQueueConsumer {
-  constructor(scope: Construct, id: string, props: ImportJobsQueueProps = {}) {
-    const queueProps = props.queueProps ?? {};
-
+  constructor(scope: Construct, id: string, props: ImportJobsQueueProps) {
     const dlq = new BaseQueue(scope, `${id}-dlq`, {
-      ...queueProps,
+      encryption:      props.encryption,
       retentionPeriod: Duration.days(14),
     });
 
     super(scope, id, {
-      ...queueProps,
+      encryption:      props.encryption,
       deadLetterQueue: {
         queue:           dlq,
         maxReceiveCount: 3,

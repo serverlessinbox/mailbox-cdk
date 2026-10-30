@@ -88,7 +88,7 @@ describe('ApisSection', () => {
         auditLogTable:     dataTable('audit-log-table'),
         mailFeedbackTable: dataTable('mail-feedback-table'),
         blobStore:         new DataBlobStore(new Bucket(stack, 'blob-store')),
-        auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue'),
+        auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
       },
       auth:       {
         authKeyStoreTable:   new AuthKeyStoreTable(stack, 'auth-key-store-table'),
@@ -99,7 +99,7 @@ describe('ApisSection', () => {
         ),
       },
       email:      {
-        submissionQueue:  new EmailSendingQueue(stack, 'email-submission-queue'),
+        submissionQueue:  new EmailSendingQueue(stack, 'email-submission-queue', { encryption: { kind: 'aws-managed' } }),
         sesRuleSetName:   'rule-set',
         sesConfigSetName: 'config-set',
         mailLogTable:     new MailLogTable(stack, 'mail-log-table', { encryption: TableEncryption.AWS_MANAGED }),
@@ -126,7 +126,7 @@ describe('ApisSection', () => {
       mailboxDomains: new MailboxDomains({ domainName: 'example.com' }),
       edge:           {},
       ui:             { adminUiOrigins: [], webmailUiOrigins: [] },
-      jobs:           { importJobsQueue: new ImportJobsQueue(stack, 'import-jobs-queue'), mailImportRunner: fakeMailImportRunner('mail-import-runner') },
+      jobs:           { importJobsQueue: new ImportJobsQueue(stack, 'import-jobs-queue', { encryption: { kind: 'aws-managed' } }), mailImportRunner: fakeMailImportRunner('mail-import-runner') },
       ...overrides,
     };
   }

@@ -76,7 +76,7 @@ function arrangeRunner(encrypted: boolean) {
     configTable:       dataTable(stack, 'config-table'),
     changelogTable:    dataTable(stack, 'changelog-table'),
     blobStore:         new DataBlobStore(new Bucket(stack, 'blob-bucket')),
-    importJobsQueue:   new ImportJobsQueue(stack, 'import-jobs-queue'),
+    importJobsQueue:   new ImportJobsQueue(stack, 'import-jobs-queue', { encryption: { kind: 'aws-managed' } }),
     authKeyStoreTable: new AuthKeyStoreTable(stack, 'auth-key-store', key),
   });
 

@@ -80,7 +80,7 @@ export function newAdminApiAddonContext(stack: Stack): AdminApiAddonContext {
   };
   return {
     artifactResolver: newArtifactResolver(stack),
-    auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+    auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
     auditLogTable:    newDataTable(stack, 'audit-log-table'),
     configTable:      newDataTable(stack, 'config-table'),
     identityProvisioner,

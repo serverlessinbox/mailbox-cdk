@@ -51,7 +51,7 @@ describe('WebmailUi', () => {
       configTable:      new DataTable(new dynamodb.Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       })),
-      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
       authProvider:     createAuthProvider(),
       jmapUrl:          'https://jmap.example.com',
       userApiUrl:       'https://api.example.com/user',

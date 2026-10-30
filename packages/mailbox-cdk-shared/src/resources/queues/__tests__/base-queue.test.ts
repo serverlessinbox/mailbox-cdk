@@ -1,9 +1,9 @@
 /**
- * BaseQueue default tests.
+ * BaseQueue tests.
  *
- * Pins the defaults every Mailbox queue inherits (visibility timeout, long polling, encryption
- * choice, generated name); a regression changes queue behaviour for all queues that do not override
- * them, such as messages reappearing before a consumer finishes.
+ * Pins the defaults every Mailbox queue inherits (visibility timeout, long polling, generated name), the
+ * encryption each QueueEncryptionChoice variant produces, and the grants; a regression changes queue
+ * behaviour for every queue, such as messages reappearing before a consumer finishes.
  */
 
 import { Match, Template }                         from 'aws-cdk-lib/assertions';
@@ -17,6 +17,7 @@ import { PositionHash }                            from '../../../naming/positio
 import { StackIdentity }                           from '../../../naming/stack-identity';
 import { BaseQueue }                               from '../base-queue';
 import type { BaseQueueProps }                     from '../base-queue';
+import type { QueueEncryptionChoice }              from '../queue-encryption';
 
 interface GrantedQueue {
   readonly template: Template;
@@ -24,14 +25,23 @@ interface GrantedQueue {
   readonly keyId:    string;
 }
 
-/** A role given the `grant` of a queue that is encrypted with a customer-managed key when `withKey` is set. */
-function grantOnQueue(grant: 'grantSend' | 'grantConsume', withKey: boolean): GrantedQueue {
-  const stack = new cdk.Stack(new App(), 'TestStack', {
+const AWS_MANAGED: QueueEncryptionChoice = { kind: 'aws-managed' };
+const UNENCRYPTED: QueueEncryptionChoice = { kind: 'unencrypted' };
+
+function newStack(): cdk.Stack {
+  return new cdk.Stack(new App(), 'TestStack', {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
+}
+
+/** A role given the `grant` of a queue that is encrypted with a customer-managed key when `withKey` is set. */
+function grantOnQueue(grant: 'grantSend' | 'grantConsume', withKey: boolean): GrantedQueue {
+  const stack = newStack();
   const key   = new kms.Key(stack, 'TestKey');
-  const queue = new BaseQueue(stack, 'jobs', withKey ? { encryptionMasterKey: key } : {});
+  const queue = new BaseQueue(stack, 'jobs', {
+    encryption: withKey ? { kind: 'kms', key } : AWS_MANAGED,
+  });
   const role  = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
 
   queue[grant](role);
@@ -43,26 +53,29 @@ function grantOnQueue(grant: 'grantSend' | 'grantConsume', withKey: boolean): Gr
   };
 }
 
-function queueTemplate(props?: BaseQueueProps, keyProps?: kms.KeyProps): Template {
-  const stack               = new cdk.Stack(new App(), 'TestStack', {
-    env:         { account: '123456789012', region: 'us-west-2' },
-    synthesizer: new BootstraplessSynthesizer(),
-  });
-  const encryptionMasterKey = keyProps ? new kms.Key(stack, 'TestKey', keyProps) : undefined;
-  new BaseQueue(stack, 'jobs', { ...props, ...(encryptionMasterKey ? { encryptionMasterKey } : {}) });
+function queueTemplate(encryption: QueueEncryptionChoice, props: Omit<BaseQueueProps, 'encryption'> = {}): Template {
+  const stack = newStack();
+  new BaseQueue(stack, 'jobs', { ...props, encryption });
+  return Template.fromStack(stack);
+}
+
+function kmsQueueTemplate(): Template {
+  const stack = newStack();
+  const key   = new kms.Key(stack, 'TestKey');
+  new BaseQueue(stack, 'jobs', { encryption: { kind: 'kms', key } });
   return Template.fromStack(stack);
 }
 
 describe('BaseQueue', () => {
   it('defaults to a 6 minute visibility timeout and 20 second long polling', () => {
-    queueTemplate().hasResourceProperties('AWS::SQS::Queue', {
+    queueTemplate(AWS_MANAGED).hasResourceProperties('AWS::SQS::Queue', {
       VisibilityTimeout:             360,
       ReceiveMessageWaitTimeSeconds: 20,
     });
   });
 
   it('uses the given visibility timeout and wait time instead of the defaults', () => {
-    queueTemplate({
+    queueTemplate(AWS_MANAGED, {
       visibilityTimeout:      Duration.minutes(2),
       receiveMessageWaitTime: Duration.seconds(5),
     }).hasResourceProperties('AWS::SQS::Queue', {
@@ -72,12 +85,9 @@ describe('BaseQueue', () => {
   });
 
   it('names the queue after its own position in the tree and the install', () => {
-    const stack = new cdk.Stack(new App(), 'TestStack', {
-      env:         { account: '123456789012', region: 'us-west-2' },
-      synthesizer: new BootstraplessSynthesizer(),
-    });
+    const stack = newStack();
     const group = new Construct(stack, 'group');
-    new BaseQueue(group, 'jobs');
+    new BaseQueue(group, 'jobs', { encryption: AWS_MANAGED });
 
     Template.fromStack(stack).hasResourceProperties('AWS::SQS::Queue', {
       QueueName: {
@@ -87,35 +97,40 @@ describe('BaseQueue', () => {
   });
 
   it('keeps an explicit queue name', () => {
-    queueTemplate({ queueName: 'explicit-name' }).hasResourceProperties('AWS::SQS::Queue', {
+    queueTemplate(AWS_MANAGED, { queueName: 'explicit-name' }).hasResourceProperties('AWS::SQS::Queue', {
       QueueName: 'explicit-name',
     });
   });
 
   it('generates the same name when the caller passes queueName: undefined', () => {
-    const generated     = queueTemplate().toJSON();
-    const withUndefined = queueTemplate({ queueName: undefined }).toJSON();
+    const generated     = queueTemplate(AWS_MANAGED).toJSON();
+    const withUndefined = queueTemplate(AWS_MANAGED, { queueName: undefined }).toJSON();
 
     expect(JSON.stringify(generated)).toContain('QueueName');
     expect(withUndefined).toEqual(generated);
   });
 
-  it('encrypts with the SQS-managed KMS key by default', () => {
-    queueTemplate().hasResourceProperties('AWS::SQS::Queue', { KmsMasterKeyId: 'alias/aws/sqs' });
+  it('encrypts with SQS-managed encryption for the aws-managed choice', () => {
+    queueTemplate(AWS_MANAGED).hasResourceProperties('AWS::SQS::Queue', { SqsManagedSseEnabled: true });
   });
 
-  it('encrypts with the SQS-managed KMS key when the caller passes encryption: undefined', () => {
-    queueTemplate({ encryption: undefined }).hasResourceProperties('AWS::SQS::Queue', { KmsMasterKeyId: 'alias/aws/sqs' });
+  it('leaves the queue unencrypted for the unencrypted choice', () => {
+    const queue = queueTemplate(UNENCRYPTED).findResources('AWS::SQS::Queue');
+
+    for (const resource of Object.values(queue)) {
+      expect(resource.Properties).not.toHaveProperty('KmsMasterKeyId');
+      expect(resource.Properties).not.toHaveProperty('SqsManagedSseEnabled', true);
+    }
   });
 
-  it('encrypts with the given KMS key when one is supplied', () => {
-    queueTemplate({}, {}).hasResourceProperties('AWS::SQS::Queue', {
+  it('encrypts with the given KMS key for the kms choice', () => {
+    kmsQueueTemplate().hasResourceProperties('AWS::SQS::Queue', {
       KmsMasterKeyId: Match.objectLike({ 'Fn::GetAtt': [Match.stringLikeRegexp('^TestKey'), 'Arn'] }),
     });
   });
 
   it('denies every SQS action on requests that are not sent over TLS', () => {
-    const template  = queueTemplate();
+    const template  = queueTemplate(AWS_MANAGED);
     const [queueId] = Object.keys(template.findResources('AWS::SQS::Queue'));
 
     template.hasResourceProperties('AWS::SQS::QueuePolicy', {

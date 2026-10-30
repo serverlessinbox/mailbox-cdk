@@ -18,7 +18,7 @@ import type { SynthesizedLambda }                    from './lambda-wrapper-help
 
 function synthesize(): { lambda: SynthesizedLambda; queueUrl: unknown } {
   const { stack, artifactResolver } = arrangeWrapperStack();
-  const emailProcessorQueue         = new EmailProcessingQueue(stack, 'email-processing-queue');
+  const emailProcessorQueue         = new EmailProcessingQueue(stack, 'email-processing-queue', { encryption: { kind: 'aws-managed' } });
 
   new SesReceiptForwarderLambda(stack, 'ses-receipt-forwarder', { emailProcessorQueue, artifactResolver });
 

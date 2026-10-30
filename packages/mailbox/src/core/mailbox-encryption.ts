@@ -1,6 +1,5 @@
-import type { BaseQueueProps }                                       from '@serverlessinbox/mailbox-cdk-shared';
+import type { QueueEncryptionChoice }                                from '@serverlessinbox/mailbox-cdk-shared';
 import { TableEncryption }                                           from 'aws-cdk-lib/aws-dynamodb';
-import { QueueEncryption }                                           from 'aws-cdk-lib/aws-sqs';
 
 import type { BlobStoreEncryptionProps }                             from '../resources/buckets/blob-store';
 import type { DynamoTableEncryptionProps }                           from '../resources/tables/data-table-props';
@@ -13,11 +12,8 @@ import { MailboxKmsResource }                                        from './mai
 export interface MailboxEncryptionPlan {
   readonly blobStore:    BlobStoreEncryptionProps;
   readonly dynamoTables: DynamoTableEncryptionProps;
-  /**
-   * Default props for queues created via BaseQueue.
-   * - `undefined` means "use BaseQueue defaults".
-   */
-  readonly queues?: Partial<BaseQueueProps>;
+  /** The encryption every queue is created with. */
+  readonly queueEncryption: QueueEncryptionChoice;
 }
 
 /**
@@ -30,9 +26,9 @@ export class MailboxEncryption {
   /** The plan for `config`; a resource that needs a customer-managed key and has none fails the synth. */
   public static plan(config?: MailboxKmsConfig): MailboxEncryptionPlan {
     return {
-      dynamoTables: MailboxEncryption.dynamoTablesPlan(config),
-      queues:       MailboxEncryption.queuesPlan(config),
-      blobStore:    MailboxEncryption.blobStorePlan(config),
+      dynamoTables:    MailboxEncryption.dynamoTablesPlan(config),
+      queueEncryption: MailboxEncryption.queueEncryptionPlan(config),
+      blobStore:       MailboxEncryption.blobStorePlan(config),
     };
   }
 
@@ -52,20 +48,20 @@ export class MailboxEncryption {
     return { encryption: TableEncryption.CUSTOMER_MANAGED, encryptionKey: key };
   }
 
-  private static queuesPlan(config?: MailboxKmsConfig): Partial<BaseQueueProps> | undefined {
+  private static queueEncryptionPlan(config?: MailboxKmsConfig): QueueEncryptionChoice {
     if (MailboxEncryption.isExcluded(MailboxKmsResource.SQS, config)) {
-      return { encryption: QueueEncryption.UNENCRYPTED };
+      return { kind: 'unencrypted' };
     }
 
     if (MailboxEncryption.modeOf(config) === MailboxKmsMode.AWS_MANAGED) {
-      return undefined;
+      return { kind: 'aws-managed' };
     }
 
     const key = config?.perResource?.queues ?? config?.key;
     if (!key) {
       throw new Error("MailboxProps.kms.mode is 'customer-managed' but no SQS KMS key was provided");
     }
-    return { encryption: QueueEncryption.KMS, encryptionMasterKey: key };
+    return { kind: 'kms', key };
   }
 
   private static blobStorePlan(config?: MailboxKmsConfig): BlobStoreEncryptionProps {

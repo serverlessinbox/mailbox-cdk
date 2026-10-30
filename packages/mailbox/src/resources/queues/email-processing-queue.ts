@@ -1,13 +1,12 @@
-import { BaseQueue, type BaseQueueProps }                                    from '@serverlessinbox/mailbox-cdk-shared';
+import { BaseQueue, type QueueEncryptionChoice }                             from '@serverlessinbox/mailbox-cdk-shared';
 import { IGrantable }                                                        from 'aws-cdk-lib/aws-iam';
-import { QueueEncryption }                                                   from 'aws-cdk-lib/aws-sqs';
 import { Duration }                                                          from 'aws-cdk-lib';
 import { Construct }                                                         from 'constructs';
 
 /** Inputs of {@link EmailProcessingQueue}. */
 export interface EmailProcessingQueueProps {
-  /** Only `encryptionMasterKey` is read: with it the queues are KMS-encrypted, without it SQS-managed. */
-  readonly queueProps?: Pick<BaseQueueProps, 'encryptionMasterKey'>;
+  /** The encryption of the queue and its DLQ. */
+  readonly encryption: QueueEncryptionChoice;
 }
 
 /**
@@ -41,19 +40,14 @@ export interface IEmailProcessingQueueConsumer extends IEmailProcessingQueue {
  * Not responsible for wiring the consumer's event source mapping.
  */
 export class EmailProcessingQueue extends BaseQueue implements IEmailProcessingQueueConsumer {
-  constructor(scope: Construct, id: string, props: EmailProcessingQueueProps = {}) {
-    const encryptionMasterKey = props.queueProps?.encryptionMasterKey;
-    const encryption          = encryptionMasterKey ? QueueEncryption.KMS : QueueEncryption.SQS_MANAGED;
-
+  constructor(scope: Construct, id: string, props: EmailProcessingQueueProps) {
     const dlq = new BaseQueue(scope, `${id}-dlq`, {
-      encryption,
-      encryptionMasterKey,
+      encryption:      props.encryption,
       retentionPeriod: Duration.days(14),
     });
 
     super(scope, id, {
-      encryption,
-      encryptionMasterKey,
+      encryption:        props.encryption,
       visibilityTimeout: Duration.minutes(6),
       deadLetterQueue:   {
         queue:           dlq,

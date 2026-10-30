@@ -18,7 +18,7 @@ function arrangeEvent() {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
-  const queue  = new ImportJobsQueue(stack, 'import-jobs-queue');
+  const queue  = new ImportJobsQueue(stack, 'import-jobs-queue', { encryption: { kind: 'aws-managed' } });
   const target = new LambdaFunction(stack, 'runner', {
     runtime: Runtime.NODEJS_20_X,
     handler: 'index.handler',

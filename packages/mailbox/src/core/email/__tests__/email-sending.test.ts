@@ -1,16 +1,17 @@
 /**
  * EmailSending wires the email-submissions queue to the `email-sender` Lambda. These tests pin the
- * wiring this construct owns: the exposed queue is the one the Lambda consumes, the caller's queue
- * props reach that queue, and the WebSocket capability reaches the Lambda. A break here leaves
+ * wiring this construct owns: the exposed queue is the one the Lambda consumes, the encryption the
+ * caller passes reaches that queue, and the WebSocket capability reaches the Lambda. A break here leaves
  * submissions enqueued that nothing sends, or a sender that never publishes WebSocket updates.
  */
 import { ArtifactZone, PinnedArtifactResolver }    from '@serverlessinbox/artifact-registry-cdk';
 import type { IArtifactResolver }                  from '@serverlessinbox/artifact-registry-cdk';
+import type { QueueEncryptionChoice }              from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                         from 'aws-cdk-lib/assertions';
 import { Table, AttributeType }                    from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket }                                  from 'aws-cdk-lib/aws-s3';
 import * as cdk                                    from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer, Duration } from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }           from 'aws-cdk-lib';
 
 import type { IWebSocketBroadcastPublisher }       from '../../../contracts/websocket-push';
 import { DataBlobStore }                           from '../../../resources/buckets/data-blob-store';
@@ -24,7 +25,9 @@ function createStack(): cdk.Stack {
   });
 }
 
-function createProps(stack: cdk.Stack, queueProps?: EmailSendingProps['queueProps']): EmailSendingProps {
+const AWS_MANAGED: QueueEncryptionChoice = { kind: 'aws-managed' };
+
+function createProps(stack: cdk.Stack, queueEncryption: QueueEncryptionChoice): EmailSendingProps {
   const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
     packages:         { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
     location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
@@ -41,14 +44,14 @@ function createProps(stack: cdk.Stack, queueProps?: EmailSendingProps['queueProp
     blobStore:      new DataBlobStore(new Bucket(stack, 'blob-store')),
     artifactResolver,
     sesConfigSetName: 'test-config-set',
-    queueProps,
+    queueEncryption,
   };
 }
 
 describe('EmailSending', () => {
   it('feeds the Lambda from the queue it exposes as submissionQueue', () => {
     const stack = createStack();
-    const sut   = new EmailSending(stack, 'email-sending', createProps(stack));
+    const sut   = new EmailSending(stack, 'email-sending', createProps(stack, AWS_MANAGED));
 
     const template                    = Template.fromStack(stack);
     const submissionQueueArn: unknown = stack.resolve(sut.submissionQueue.queueArn);
@@ -58,21 +61,19 @@ describe('EmailSending', () => {
     });
   });
 
-  it('applies the caller\'s queue props to the submissions queue', () => {
+  it('applies the encryption it is given to the submissions queue and its dead-letter queue', () => {
     const stack = createStack();
-    new EmailSending(stack, 'email-sending', createProps(stack, { retentionPeriod: Duration.days(3) }));
+    new EmailSending(stack, 'email-sending', createProps(stack, { kind: 'unencrypted' }));
 
     const template = Template.fromStack(stack);
 
-    template.hasResourceProperties('AWS::SQS::Queue', {
-      MessageRetentionPeriod: 259200,
-      VisibilityTimeout:      360,
-    });
+    template.resourceCountIs('AWS::SQS::Queue', 2);
+    template.allResourcesProperties('AWS::SQS::Queue', { SqsManagedSseEnabled: false });
   });
 
   it('enableWebSocketPublishing sets the broadcaster function name on the sender Lambda', () => {
     const stack                                     = createStack();
-    const sut                                       = new EmailSending(stack, 'email-sending', createProps(stack));
+    const sut                                       = new EmailSending(stack, 'email-sending', createProps(stack, AWS_MANAGED));
     const broadcaster: IWebSocketBroadcastPublisher = {
       functionName: 'broadcaster-function',
       grantInvoke:  () => undefined,

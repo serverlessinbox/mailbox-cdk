@@ -1,12 +1,12 @@
-import { BaseQueue, type BaseQueueProps }                                    from '@serverlessinbox/mailbox-cdk-shared';
+import { BaseQueue, type QueueEncryptionChoice }                             from '@serverlessinbox/mailbox-cdk-shared';
 import type { IGrantable }                                                   from 'aws-cdk-lib/aws-iam';
 import { Duration }                                                          from 'aws-cdk-lib';
 import { Construct }                                                         from 'constructs';
 
 /** Props of {@link AuditEventsQueue}. */
 export interface AuditEventsQueueProps {
-  /** Optional default props applied to the queue and its DLQ (e.g. encryption). */
-  readonly queueProps?: Partial<BaseQueueProps>;
+  /** The encryption of the queue and its DLQ. */
+  readonly encryption: QueueEncryptionChoice;
 }
 
 /**
@@ -48,16 +48,14 @@ export interface IAuditEventsQueueConsumer extends IAuditEventsQueue {
  * Not responsible for wiring the consumer's event source mapping.
  */
 export class AuditEventsQueue extends BaseQueue implements IAuditEventsQueueConsumer {
-  constructor(scope: Construct, id: string, props: AuditEventsQueueProps = {}) {
-    const queueProps = props.queueProps ?? {};
-
+  constructor(scope: Construct, id: string, props: AuditEventsQueueProps) {
     const dlq = new BaseQueue(scope, `${id}-dlq`, {
-      ...queueProps,
+      encryption:      props.encryption,
       retentionPeriod: Duration.days(14),
     });
 
     super(scope, id, {
-      ...queueProps,
+      encryption:        props.encryption,
       visibilityTimeout: Duration.minutes(5),
       deadLetterQueue:   {
         queue:           dlq,

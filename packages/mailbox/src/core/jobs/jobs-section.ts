@@ -1,5 +1,5 @@
 import type { IArtifactResolver }                                    from '@serverlessinbox/artifact-registry-cdk';
-import type { BaseQueueProps }                                       from '@serverlessinbox/mailbox-cdk-shared';
+import type { QueueEncryptionChoice }                                from '@serverlessinbox/mailbox-cdk-shared';
 import { applyServerlessInboxComponentTag }                          from '@serverlessinbox/mailbox-cdk-shared';
 import { Duration }                                                  from 'aws-cdk-lib';
 import { Construct }                                                 from 'constructs';
@@ -27,8 +27,8 @@ export interface IJobsAuthInputs {
 
 /** Props of {@link JobsSection}. */
 export interface JobsSectionProps {
-  /** SQS defaults from the Mailbox encryption plan, applied to the import-jobs queue and its DLQ. */
-  readonly queueProps?:      Partial<BaseQueueProps>;
+  /** The encryption of the import-jobs queue and its DLQ, from the Mailbox encryption plan. */
+  readonly queueEncryption:  QueueEncryptionChoice;
   readonly artifactResolver: IArtifactResolver;
   readonly data:             IJobsDataInputs;
   readonly auth:             IJobsAuthInputs;
@@ -49,7 +49,7 @@ export class JobsSection extends Construct {
     super(scope, id);
     applyServerlessInboxComponentTag(this, 'data');
 
-    this.importJobsQueue = new ImportJobsQueue(this, 'import-jobs-queue', { queueProps: props.queueProps });
+    this.importJobsQueue = new ImportJobsQueue(this, 'import-jobs-queue', { encryption: props.queueEncryption });
 
     this.mailImportRunner = new MailImportRunnerLambda(this, 'mail-import-runner', {
       artifactResolver:  props.artifactResolver,

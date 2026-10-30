@@ -28,7 +28,7 @@ export function createSupportTestStack(context?: Record<string, unknown>): Suppo
   return {
     stack,
     configTable:      newDataTable(stack, 'config-table'),
-    auditEventsQueue: new AuditEventsQueue(stack, 'audit-queue'),
+    auditEventsQueue: new AuditEventsQueue(stack, 'audit-queue', { encryption: { kind: 'aws-managed' } }),
     artifactResolver: newArtifactResolver(stack, '1.0.0'),
   };
 }

@@ -42,7 +42,7 @@ describe('MailboxUi', () => {
       configTable:              new DataTable(new dynamodb.Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       })),
-      auditEventsQueue:         new AuditEventsQueue(stack, 'audit-events-queue'),
+      auditEventsQueue:         new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
       authPolicyName:           AuthPolicyName.ADMIN_API,
       oauthClientName:          OAuthClientName.ADMIN_UI,
       artifactResolver:         new PinnedArtifactResolver({

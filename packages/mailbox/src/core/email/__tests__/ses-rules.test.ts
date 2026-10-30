@@ -32,6 +32,7 @@ describe('SesRules', () => {
 
     sut = new SesRules(stack, 'ses-rules', {
       blobStoreBucket:  blobStore,
+      queueEncryption:  { kind: 'aws-managed' },
       artifactResolver: new PinnedArtifactResolver({
         packages:         { 'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
         location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },

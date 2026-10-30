@@ -97,8 +97,8 @@ export function newAdminApiProps(stack: cdk.Stack, overrides: Partial<AdminApiPr
     mailLogTable:         new MailLogTable(inputs, 'mail-log-table', { encryption: TableEncryption.AWS_MANAGED }),
     authKeyStoreTable:    new AuthKeyStoreTable(inputs, 'auth-key-store-table'),
     blobStore:            new DataBlobStore(new Bucket(inputs, 'blob-store')),
-    emailSubmissionQueue: new EmailSendingQueue(inputs, 'email-submission-queue'),
-    auditEventsQueue:     new AuditEventsQueue(inputs, 'audit-events-queue'),
+    emailSubmissionQueue: new EmailSendingQueue(inputs, 'email-submission-queue', { encryption: { kind: 'aws-managed' } }),
+    auditEventsQueue:     new AuditEventsQueue(inputs, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
     artifactResolver:     new PinnedArtifactResolver({
       packages:         {
         'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },

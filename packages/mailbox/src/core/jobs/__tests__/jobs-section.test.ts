@@ -8,10 +8,10 @@
  */
 
 import { ArtifactZone, PinnedArtifactResolver }              from '@serverlessinbox/artifact-registry-cdk';
+import type { QueueEncryptionChoice }                        from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                          from 'aws-cdk-lib/assertions';
 import { AttributeType, Table }                              from 'aws-cdk-lib/aws-dynamodb';
 import * as kms                                              from 'aws-cdk-lib/aws-kms';
-import { QueueEncryption }                                   from 'aws-cdk-lib/aws-sqs';
 import * as cdk                                              from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                     from 'aws-cdk-lib';
 
@@ -59,9 +59,15 @@ function dataTable(stack: cdk.Stack, id: string): DataTable {
   }));
 }
 
-function sectionProps(stack: cdk.Stack, authKeyStoreTable: AuthKeyStoreTable, queueProps?: JobsSectionProps['queueProps']): JobsSectionProps {
+const AWS_MANAGED: QueueEncryptionChoice = { kind: 'aws-managed' };
+
+function sectionProps(
+  stack: cdk.Stack,
+  authKeyStoreTable: AuthKeyStoreTable,
+  queueEncryption: QueueEncryptionChoice = AWS_MANAGED,
+): JobsSectionProps {
   return {
-    queueProps,
+    queueEncryption,
     artifactResolver: resolverFor(stack),
     data:             {
       itemTable:      dataTable(stack, 'item-table'),
@@ -94,7 +100,7 @@ describe('JobsSection', () => {
     const stack = createStack();
     const key   = new kms.Key(stack, 'TestKey');
     new JobsSection(stack, 'jobs', sectionProps(stack, new AuthKeyStoreTable(stack, 'auth-key-store'), {
-      encryption: QueueEncryption.KMS, encryptionMasterKey: key,
+      kind: 'kms', key,
     }));
 
     Template.fromStack(stack).resourcePropertiesCountIs('AWS::SQS::Queue', {

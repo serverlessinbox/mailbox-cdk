@@ -53,8 +53,8 @@ describe('JmapApi', () => {
       changelogTable:       dataTable(stack, 'changelog-table'),
       authKeyStoreTable:    new AuthKeyStoreTable(stack, 'auth-key-store-table'),
       blobStore:            new DataBlobStore(new Bucket(stack, 'blob-store')),
-      emailSubmissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
-      auditEventsQueue:     new AuditEventsQueue(stack, 'audit-events-queue'),
+      emailSubmissionQueue: new EmailSendingQueue(stack, 'email-submission-queue', { encryption: { kind: 'aws-managed' } }),
+      auditEventsQueue:     new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
       cdnHost:              'cdn.example.com',
       artifactResolver:     new PinnedArtifactResolver({
         packages:         {

@@ -60,11 +60,11 @@ describe('AuthSection', () => {
         configTable:      dataTable('config-table'),
         itemTable:        dataTable('item-table'),
         changelogTable:   dataTable('changelog-table'),
-        auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+        auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
         blobStore:        new DataBlobStore(new Bucket(stack, 'blob-store')),
       },
       email:        {
-        submissionQueue:  new EmailSendingQueue(stack, 'email-submission-queue'),
+        submissionQueue:  new EmailSendingQueue(stack, 'email-submission-queue', { encryption: { kind: 'aws-managed' } }),
         sesConfigSetName: 'config-set',
       },
       vendorLink:   { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },

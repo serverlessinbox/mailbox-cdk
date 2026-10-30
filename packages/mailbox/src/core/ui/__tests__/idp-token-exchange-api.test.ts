@@ -37,7 +37,7 @@ describe('IdpTokenExchangeApi', () => {
       configTable:      new DataTable(new dynamodb.Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       })),
-      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
       authPolicyName:   AuthPolicyName.JMAP_API,
       oauthClientName:  OAuthClientName.WEBMAIL_UI,
       dependsOn,

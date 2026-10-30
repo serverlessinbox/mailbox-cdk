@@ -30,7 +30,7 @@ describe('IdpTokenExchangeLambda', () => {
   function newLambda(dependsOn?: CfnResource[]): IdpTokenExchangeLambda {
     return new IdpTokenExchangeLambda(stack, 'idp-token-exchange', {
       configTable:      new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
-      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
       authPolicyName:   AuthPolicyName.JMAP_API,
       oauthClientName:  OAuthClientName.WEBMAIL_UI,
       artifactResolver,

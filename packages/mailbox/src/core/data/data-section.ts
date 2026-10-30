@@ -1,5 +1,5 @@
 import type { IArtifactResolver }                                              from '@serverlessinbox/artifact-registry-cdk';
-import type { BaseQueueProps, ServerlessInboxDeployerType }                    from '@serverlessinbox/mailbox-cdk-shared';
+import type { QueueEncryptionChoice, ServerlessInboxDeployerType }             from '@serverlessinbox/mailbox-cdk-shared';
 import { ComponentDescription, applyServerlessInboxComponentTag }              from '@serverlessinbox/mailbox-cdk-shared';
 import type { IBucket }                                                        from 'aws-cdk-lib/aws-s3';
 import { Aws, Fn }                                                             from 'aws-cdk-lib';
@@ -22,7 +22,7 @@ export interface DataSectionProps {
   readonly artifactResolver: IArtifactResolver;
   readonly deployerType:     ServerlessInboxDeployerType;
   readonly stackHelpers:     IS3SafeStackNameResolver;
-  readonly queueProps?:      Partial<BaseQueueProps>;
+  readonly queueEncryption:  QueueEncryptionChoice;
 }
 
 /** The retained data resources, the audit writer, and the S3-safe stack names. */
@@ -75,7 +75,7 @@ export class DataSection extends Construct {
     const auditWriting = new AuditWriting(this, 'audit-writing', {
       auditLogTable:    this.auditLogTable,
       artifactResolver: props.artifactResolver,
-      queueProps:       props.queueProps,
+      queueEncryption:  props.queueEncryption,
     });
 
     this.auditEventsQueue = auditWriting.auditEventsQueue;

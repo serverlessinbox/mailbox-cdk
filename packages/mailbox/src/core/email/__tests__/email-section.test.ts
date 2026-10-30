@@ -38,9 +38,10 @@ function newSection(stack: Stack): EmailSection {
       mailFeedbackTable: dataTable('mail-feedback-table'),
       blobStore:         new DataBlobStore(bucket),
       blobStoreBucket:   bucket,
-      auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue'),
+      auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
     },
     dynamoTables:     { encryption: TableEncryption.AWS_MANAGED },
+    queueEncryption:  { kind: 'aws-managed' },
   });
 }
 

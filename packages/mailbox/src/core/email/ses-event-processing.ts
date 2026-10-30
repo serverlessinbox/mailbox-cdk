@@ -1,5 +1,5 @@
 import type { IArtifactResolver }                                      from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription, type BaseQueueProps }                   from '@serverlessinbox/mailbox-cdk-shared';
+import { ComponentDescription, type QueueEncryptionChoice }            from '@serverlessinbox/mailbox-cdk-shared';
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination }    from 'aws-cdk-lib/aws-ses';
 import { Construct }                                                   from 'constructs';
 
@@ -21,8 +21,8 @@ export interface SesEventProcessingProps {
   readonly auditEventsQueue:  IAuditEventsQueue;
   readonly artifactResolver:  IArtifactResolver;
 
-  /** Optional default props applied to all queues created by this construct (e.g. encryption). */
-  readonly queueProps?: Partial<BaseQueueProps>;
+  /** The encryption of the SES event queue. */
+  readonly queueEncryption: QueueEncryptionChoice;
 }
 
 /**
@@ -40,11 +40,10 @@ export class SesEventProcessing extends Construct {
 
     const sesEventTopic = new SesEventTopic(this, 'ses-notifications-topic');
 
-    // SNS cannot be granted use of the AWS-managed SQS key (alias/aws/sqs), so a queue encrypted
-    // with it never receives the topic's messages.
+    // A customer-managed key needs a key policy that lets the topic deliver; SesEventQueue adds it.
     const sesEventQueue = new SesEventQueue(this, 'ses-event-queue', {
       topic:      sesEventTopic,
-      queueProps: props.queueProps,
+      encryption: props.queueEncryption,
     });
 
     const cfnConfigSet    = new CfnConfigurationSet(this, 'ses-configuration-set', {});
