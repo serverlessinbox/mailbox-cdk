@@ -25,12 +25,13 @@ carries the shared lint configuration that the repository's `eslint.config.cjs` 
 | `mailbox/kit-isolation` | `mailbox-cdk-shared` never imports the `mailbox` package |
 | `mailbox/plan-labels` | No plan labels or change narration in comments |
 | `mailbox/align` | `=` and `:` are aligned in groups of consecutive lines |
+| `mailbox/import-layout` | Imports fit a column-80 lane: a wide import is wrapped with its names packed, and `from` is aligned across each run of adjacent imports |
 | `mailbox/iam-statement-home` | IAM statements only in `resources/`, `grants/` and the allow-list |
 | `mailbox/logical-id-home` | `overrideLogicalId` only in a Stack class or on the allow-list |
 | `mailbox/removal-home` | Resource-removal implementations only in `platform/ops/sweeper/` |
 | `mailbox/resource-kind-home` | A covered resource class is created only in the `resources/` folder of its kind |
 
-The first five rules apply to every TypeScript file. The last four apply to the source scope.
+The first six rules apply to every TypeScript file. The last four apply to the source scope.
 
 ## Solution design
 
@@ -92,7 +93,7 @@ module.exports = [
 | Export | Purpose |
 |---|---|
 | `configs.recommended(options)` | The flat configs for the repository; options are `tsconfigRootDir` and `extraConfigs` |
-| `rules` | The nine rules above, by name |
+| `rules` | The ten rules above, by name |
 | `meta` | The plugin name and version |
 | `@serverlessinbox/eslint-plugin-mailbox/register` | Registers `ts-node` so the plugin loads from TypeScript source |
 
