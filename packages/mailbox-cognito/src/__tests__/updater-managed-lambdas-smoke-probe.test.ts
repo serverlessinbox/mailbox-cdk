@@ -40,10 +40,11 @@ function sourceFolderOf(artifactName: string): string {
 }
 
 const dataTableStub = {
-  tableName:      'stub-table',
-  tableArn:       'arn:aws:dynamodb:us-west-2:123456789012:table/stub-table',
-  grantRead:      () => undefined,
-  grantReadWrite: () => undefined,
+  tableName:           'stub-table',
+  tableArn:            'arn:aws:dynamodb:us-west-2:123456789012:table/stub-table',
+  grantRead:           () => undefined,
+  grantReadWrite:      () => undefined,
+  grantConditionCheck: () => undefined,
 };
 
 function adminApiAddonContextOf(artifactResolver: IArtifactResolver): AdminApiAddonContext {
