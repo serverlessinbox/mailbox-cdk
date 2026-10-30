@@ -84,7 +84,6 @@ describe('BucketAutoEmptyRequestHandler', () => {
       ['no bucketName', readCustomResourceRequest(fakeDeleteEvent({}))],
       ['a blank bucketName', readCustomResourceRequest(fakeDeleteEvent({ bucketName: '   ' }))],
       ['a bucketName that is not a string', readCustomResourceRequest(fakeDeleteEvent({ bucketName: 123 }))],
-      ['no resource properties', readCustomResourceRequest({ ...fakeDeleteEvent({}), ResourceProperties: undefined })],
     ])('fails a Delete with %s, saying the bucket cannot be checked', async (_title, request) => {
       const failure: unknown = await requestHandler.handle(request, deadline).catch((error: unknown) => error);
 

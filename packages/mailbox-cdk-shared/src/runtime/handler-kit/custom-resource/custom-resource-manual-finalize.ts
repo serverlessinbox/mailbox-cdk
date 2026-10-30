@@ -13,13 +13,13 @@ export interface ManualFinalizeResourceProperties {
 }
 
 /**
- * The fields of a CloudFormation custom-resource request that the break-glass block reads, each optional because
- * an event that is not a real request, such as a smoke-test probe, carries none of them.
+ * The fields of a CloudFormation custom-resource request that the break-glass block reads. Every one is required:
+ * the event is a validated request, and the block cannot answer a ResponseURL it does not have.
  */
-export interface ManualFinalizeEvent extends Partial<Unbranded<Pick<CustomResourceRequest, 'RequestType' | 'RequestId' | 'LogicalResourceId'>>> {
-  ResponseURL?:        string;
-  StackId?:            StackId;
-  ResourceProperties?: ManualFinalizeResourceProperties;
+export interface ManualFinalizeEvent extends Unbranded<Pick<CustomResourceRequest, 'RequestType' | 'RequestId' | 'LogicalResourceId'>> {
+  ResponseURL:        string;
+  StackId:            StackId;
+  ResourceProperties: ManualFinalizeResourceProperties;
 }
 
 /**
@@ -39,28 +39,23 @@ export interface EmitManualFinalizeOptions {
  *
  * The block is written with raw console.log, never through a LoggerBuffer: a hung resource never reaches a flush,
  * so buffered lines would never be visible to the operator reading CloudWatch.
- *
- * An event without a ResponseURL is not a real CloudFormation request, such as a smoke-test probe, and writes nothing.
  */
 export function emitManualFinalize(event: ManualFinalizeEvent, options?: EmitManualFinalizeOptions): void {
   const { physicalResourceId, service } = options ?? {};
-  if (!event.ResponseURL) {
-    return;
-  }
 
   const finalizationBody = JSON.stringify({
     Status:             'SUCCESS',
-    PhysicalResourceId: physicalResourceId ?? event.LogicalResourceId ?? 'unknown',
+    PhysicalResourceId: physicalResourceId ?? event.LogicalResourceId,
     StackId:            event.StackId,
     RequestId:          event.RequestId,
     LogicalResourceId:  event.LogicalResourceId,
   });
 
   const requestFields = [
-    `stack=${event.ResourceProperties?.stackName ?? event.LogicalResourceId ?? 'unknown'}`,
-    `logical=${event.LogicalResourceId ?? 'unknown'}`,
-    `type=${event.RequestType ?? 'unknown'}`,
-    `requestId=${event.RequestId ?? 'unknown'}`,
+    `stack=${event.ResourceProperties.stackName ?? event.LogicalResourceId}`,
+    `logical=${event.LogicalResourceId}`,
+    `type=${event.RequestType}`,
+    `requestId=${event.RequestId}`,
   ];
   if (service) {
     requestFields.push(`service=${service}`);

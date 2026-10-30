@@ -14,7 +14,7 @@ export const isSmokeTestProbeShape = t.isObject({ serverlessInboxSmokeTest: t.is
 /**
  * Smoke test probe payload.
  */
-export type SmokeTestProbe = Partial<t.InferType<typeof isSmokeTestProbeShape>>;
+export type SmokeTestProbe = t.InferType<typeof isSmokeTestProbeShape>;
 
 /**
  * Smoke test response payload.

@@ -68,8 +68,8 @@ export class ContentDeployerRequestHandler {
   private readProperties(request: CustomResourceRequest): ContentDeployerResourceProperties {
     this.logger.debug('CustomResource event received', { requestType: request.RequestType });
 
-    const properties       = request.ResourceProperties ?? {};
-    const errors: string[] = [];
+    const properties: unknown = request.ResourceProperties;
+    const errors: string[]    = [];
     if (!isContentDeployerResourceProperties(properties, { errors })) {
       throw new InvalidOwnInput('Invalid ResourceProperties', errors, properties);
     }

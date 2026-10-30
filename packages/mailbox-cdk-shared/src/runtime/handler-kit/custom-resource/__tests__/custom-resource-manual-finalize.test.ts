@@ -1,7 +1,7 @@
 /**
  * Pins the MANUAL_FINALIZE block an operator copies from CloudWatch to release a hung custom resource: the greppable
- * lines, the curl that answers SUCCESS to the ResponseURL, and the silence for an event that is not a real request.
- * A changed line format breaks the operator's grep, and a wrong body leaves the resource hung.
+ * lines and the curl that answers SUCCESS to the ResponseURL. A changed line format breaks the operator's grep, and a
+ * wrong body leaves the resource hung.
  */
 
 import { toPhysicalResourceId, toStackId } from '../custom-resource-identifiers';
@@ -54,15 +54,9 @@ describe('emitManualFinalize', () => {
     expect(loggedLines()[2]).toContain('"PhysicalResourceId":"MyResource"');
   });
 
-  it('falls back to the logical resource id for the stack and to unknown for fields the event lacks', () => {
-    emitManualFinalize({ ResponseURL: 'https://example.com/response', LogicalResourceId: 'MyResource' });
+  it('falls back to the logical resource id for the stack when the properties carry no stack name', () => {
+    emitManualFinalize({ ...cfnEvent, ResourceProperties: {} });
 
-    expect(loggedLines()[0]).toBe('MANUAL_FINALIZE stack=MyResource logical=MyResource type=unknown requestId=unknown');
-  });
-
-  it('writes nothing for an event without a ResponseURL', () => {
-    emitManualFinalize({ ...cfnEvent, ResponseURL: undefined });
-
-    expect(consoleLogSpy).not.toHaveBeenCalled();
+    expect(loggedLines()[0]).toBe('MANUAL_FINALIZE stack=MyResource logical=MyResource type=Delete requestId=request-1');
   });
 });

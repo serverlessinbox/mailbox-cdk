@@ -56,7 +56,7 @@ export class CfnTrigger implements UpdaterTrigger<void> {
     const answerCloudFormation     = wrapHandler(async (event) => {
       const request = readCustomResourceRequest(event);
 
-      emitManualFinalize({ ...event, StackId: request.StackId }, { service: this.serviceName });
+      emitManualFinalize(request, { service: this.serviceName });
       return this.answerRequest(request, cycleFailures);
     });
     await answerCloudFormation(this.event, this.context, () => undefined);

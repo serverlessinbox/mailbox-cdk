@@ -19,7 +19,7 @@ interface IdpUserFields {
 }
 
 /** The fields of a fetched user that the mapper reads, each of which may be missing from what Cognito returned. */
-type FetchedUser = Partial<Pick<AdminGetUserCommandOutput, 'Username' | 'Enabled' | 'UserStatus' | 'UserCreateDate' | 'UserLastModifiedDate' | 'UserAttributes'>>;
+type FetchedUser = Pick<AdminGetUserCommandOutput, 'Username' | 'Enabled' | 'UserStatus' | 'UserCreateDate' | 'UserLastModifiedDate' | 'UserAttributes'>;
 
 /** Maps the users Cognito reports, in a list or on a fetch, to the `IdpUser` the API returns. */
 export class IdpUserMapper {

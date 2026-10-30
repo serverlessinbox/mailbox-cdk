@@ -33,7 +33,7 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
 
   const logger = new LoggerBuffer(config.serviceName, config.logLevel);
 
-  emitManualFinalize({ ...event, StackId: request.StackId }, { service: config.serviceName });
+  emitManualFinalize(request, { service: config.serviceName });
 
   try {
     if (request.RequestType === 'Delete') {

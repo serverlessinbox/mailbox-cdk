@@ -30,7 +30,7 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
     return BootstrapUserAnswers.withPasswordMarker(badConfigAnswer.PhysicalResourceId);
   }
 
-  emitManualFinalize({ ...event, StackId: request.StackId }, { service: config.serviceName });
+  emitManualFinalize(request, { service: config.serviceName });
 
   const logger                = new LoggerBuffer(config.serviceName, config.logLevel);
   const requestHandler        = new BootstrapUserRequestHandler(new UserEnsurer(cognito, logger), logger);

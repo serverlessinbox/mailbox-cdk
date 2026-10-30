@@ -30,7 +30,7 @@ import { starterHandler, workerHandler }                                        
 import { SweepStarter }                                                                          from '../sweep-starter';
 import { SweepWorker }                                                                           from '../sweep-worker';
 
-import { createEvent, lambdaContext, updateEvent, answerCertificateRemoval }                     from './sweep-helpers';
+import { lambdaContext, updateEvent, answerCertificateRemoval }                                  from './sweep-helpers';
 
 // wrapHandler PUTs the CFN response over real `https`; captureCfnResponse routes it into memory.
 jest.mock('https', () => ({ request: jest.fn() }));
@@ -65,14 +65,15 @@ describe('starterHandler logger scope', () => {
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
     jest.spyOn(console, 'info').mockImplementation(() => undefined);
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    const consoleDebug           = jest.spyOn(console, 'debug').mockImplementation(() => undefined);
-    const eventWithoutProperties = createEvent();
-    Reflect.deleteProperty(eventWithoutProperties, 'ResourceProperties');
+    const consoleDebug = jest.spyOn(console, 'debug').mockImplementation(() => undefined);
+    // An old removal entry with a non-string cert ARN passes the request reader and fails in the planner, inside the starter.
+    const failingUpdate = updateEvent();
+    Reflect.set(failingUpdate, 'OldResourceProperties', { cert: { certArn: 123 } });
 
     await starterHandler(updateEvent(), lambdaContext());
     expect(consoleDebug).not.toHaveBeenCalled();
 
-    await starterHandler(eventWithoutProperties, lambdaContext());
+    await starterHandler(failingUpdate, lambdaContext());
 
     const invocationStarts = consoleDebug.mock.calls.filter(([message]) => message === 'Starter invoked');
     expect(invocationStarts).toHaveLength(1);
