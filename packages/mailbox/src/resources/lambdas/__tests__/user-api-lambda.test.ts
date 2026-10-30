@@ -14,8 +14,12 @@ import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import { AuditEventsQueue }                     from '../../queues/audit-events-queue';
+import { ImportJobsQueue }                      from '../../queues/import-jobs-queue';
+import { AuthKeyStoreTable }                    from '../../tables/auth-key-store-table';
 import { DataTable }                            from '../../tables/data-tables';
 import { UserApiLambda }                        from '../user-api-lambda';
+
+import { fakeMailImportRunner }                 from './lambda-wrapper-fakes';
 
 const ITEM_TABLE_ACTIONS: string[]   = ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem'];
 const CONFIG_TABLE_ACTIONS: string[] = ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query'];
@@ -25,6 +29,7 @@ describe('UserApiLambda', () => {
   let stack: cdk.Stack;
   let itemTableArnOf: unknown;
   let configTableArnOf: unknown;
+  let mailImportRunner: ReturnType<typeof fakeMailImportRunner>;
 
   function dataTable(id: string): DataTable {
     return new DataTable(new Table(stack, id, {
@@ -34,10 +39,13 @@ describe('UserApiLambda', () => {
   }
 
   function synthesize(): Template {
-    const configTable      = dataTable('config-table');
-    const itemTable        = dataTable('item-table');
-    const auditEventsQueue = new AuditEventsQueue(stack, 'audit-events-queue');
-    const artifactResolver = new PinnedArtifactResolver({
+    const configTable       = dataTable('config-table');
+    const itemTable         = dataTable('item-table');
+    const auditEventsQueue  = new AuditEventsQueue(stack, 'audit-events-queue');
+    const authKeyStoreTable = new AuthKeyStoreTable(stack, 'auth-key-store-table');
+    const importJobsQueue   = new ImportJobsQueue(stack, 'import-jobs-queue');
+    mailImportRunner        = fakeMailImportRunner('mail-import-runner');
+    const artifactResolver  = new PinnedArtifactResolver({
       packages:         {
         'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
         'mailbox-go':  { version: '1.0.0', zone: ArtifactZone.REGIONAL },
@@ -46,7 +54,15 @@ describe('UserApiLambda', () => {
       deploymentRegion: stack.region,
     });
 
-    new UserApiLambda(stack, 'user-api', { configTable, itemTable, auditEventsQueue, artifactResolver });
+    new UserApiLambda(stack, 'user-api', {
+      configTable,
+      itemTable,
+      auditEventsQueue,
+      authKeyStoreTable,
+      importJobsQueue,
+      mailImportRunner,
+      artifactResolver,
+    });
 
     itemTableArnOf   = stack.resolve(itemTable.tableArn);
     configTableArnOf = stack.resolve(configTable.tableArn);
@@ -67,10 +83,13 @@ describe('UserApiLambda', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       Environment: {
         Variables: Match.objectEquals({
-          CONFIG_TABLE_NAME:      Match.anyValue(),
-          ITEM_TABLE_NAME:        Match.anyValue(),
-          AUDIT_EVENTS_QUEUE_URL: Match.anyValue(),
-          SERVICE_NAME:           'user-api',
+          CONFIG_TABLE_NAME:                Match.anyValue(),
+          ITEM_TABLE_NAME:                  Match.anyValue(),
+          AUDIT_EVENTS_QUEUE_URL:           Match.anyValue(),
+          AUTH_KEY_STORE_TABLE_NAME:        Match.anyValue(),
+          IMPORT_JOBS_QUEUE_URL:            Match.anyValue(),
+          MAIL_IMPORT_RUNNER_FUNCTION_NAME: 'mail-import-runner',
+          SERVICE_NAME:                     'user-api',
         }),
       },
     });
@@ -104,5 +123,34 @@ describe('UserApiLambda', () => {
         Statement: Match.arrayWith([Match.objectLike({ Action: AUDIT_QUEUE_ACTION })]),
       },
     });
+  });
+
+  it('grants a condition check on the item table ARN only', () => {
+    const template = synthesize();
+
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([Match.objectLike({ Action: 'dynamodb:ConditionCheckItem', Resource: itemTableArnOf })]),
+      },
+    });
+  });
+
+  it('reads the connection public key only, by its partition key condition', () => {
+    const template = synthesize();
+
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([Match.objectLike({
+          Action:    'dynamodb:GetItem',
+          Condition: { 'ForAllValues:StringEquals': { 'dynamodb:LeadingKeys': ['connection-key-public'] } },
+        })]),
+      },
+    });
+  });
+
+  it('grants invoke on the mail-import runner', () => {
+    synthesize();
+
+    expect(mailImportRunner.grantInvoke).toHaveBeenCalledTimes(1);
   });
 });

@@ -3,7 +3,8 @@
  * the resource-type check, and the allowlist of IAM wildcards that cannot be scoped by tag or name.
  */
 
-import * as t from 'typanion';
+import type { Template } from 'aws-cdk-lib/assertions';
+import * as t            from 'typanion';
 
 const isCloudFormationTags = t.isArray(t.isObject({
   Key:   t.isString(),
@@ -75,4 +76,16 @@ export function readTags(resource: CloudFormationResource): CloudFormationTag[] 
 
 export function isResourceOfType(resource: CloudFormationResource, type: string): boolean {
   return resource.Type === type;
+}
+
+/**
+ * The properties of every resource of one CloudFormation type in the template, each as the caller types them. The
+ * synthesized JSON is untyped, so the caller states the properties it reads.
+ */
+export function resourcesOfType<T extends object>(template: Template, type: string): T[] {
+  const json: Record<string, unknown> = template.toJSON();
+  const resources                     = (json.Resources ?? {}) as Record<string, CloudFormationResource>;
+  return Object.values(resources)
+    .filter((resource) => isResourceOfType(resource, type))
+    .map((resource) => (resource.Properties ?? {}) as T);
 }

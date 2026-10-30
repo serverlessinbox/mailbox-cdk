@@ -16,7 +16,7 @@ function grantSpy(): GrantSpy {
 
 /** Stands in for the `IDataTable` of a config, item, changelog or mail-feedback table. */
 export function fakeDataTable(name: string) {
-  return { tableName: name, tableArn: `arn:fake:${name}`, grantRead: grantSpy(), grantReadWrite: grantSpy() };
+  return { tableName: name, tableArn: `arn:fake:${name}`, grantRead: grantSpy(), grantReadWrite: grantSpy(), grantConditionCheck: grantSpy() };
 }
 
 /** Stands in for the `IMailLogTable`. */
@@ -68,6 +68,11 @@ export function fakeQueue(name: string) {
 /** Stands in for the `IIdentityProvisioner`. */
 export function fakeIdentityProvisioner(name: string) {
   return { functionArn: `arn:fake:${name}`, functionName: name, grantInvoke: grantSpy() };
+}
+
+/** Stands in for the `IMailImportRunner`. */
+export function fakeMailImportRunner(name: string) {
+  return { functionName: name, grantInvoke: grantSpy() };
 }
 
 /** Stands in for the `ITemplateVersionParam`. */

@@ -7,8 +7,10 @@ import { Construct }                                                            
 import type { IWebSocketBroadcastPublisher }                                                from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                                              from '../../resources/buckets/data-blob-store';
 import type { IIdentityProvisioner }                                                        from '../../resources/lambdas/identity-provisioner-lambda';
+import type { IMailImportRunner }                                                           from '../../resources/lambdas/mail-import-runner-lambda';
 import type { IAuditEventsQueue }                                                           from '../../resources/queues/audit-events-queue';
 import type { IEmailSendingQueue }                                                          from '../../resources/queues/email-sending-queue';
+import type { IImportJobsQueue }                                                            from '../../resources/queues/import-jobs-queue';
 import type { IAuthKeyStoreTable }                                                          from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }                                                                  from '../../resources/tables/data-tables';
 import type { IMailLogTable }                                                               from '../../resources/tables/mail-log-table';
@@ -68,6 +70,12 @@ export interface IApisUiInputs {
   readonly webmailUiOrigins: string[];
 }
 
+/** What {@link ApisSection.addEndpoints} uses of the jobs section. */
+export interface IApisJobsInputs {
+  readonly importJobsQueue:  IImportJobsQueue;
+  readonly mailImportRunner: IMailImportRunner;
+}
+
 /** Props of {@link ApisSection}: what the addons and the API endpoints are built from. */
 export interface ApisSectionProps {
   readonly artifactResolver: IArtifactResolver;
@@ -98,6 +106,8 @@ export interface ApisEndpointsProps {
   readonly mailboxDomains: IMailboxDomainNames;
   readonly edge:           IApisEdgeInputs;
   readonly ui:             IApisUiInputs;
+  /** The mail-import queue and runner, from the jobs section. */
+  readonly jobs: IApisJobsInputs;
   /** Origins allowed to call the admin API and the JMAP API cross-origin, besides the UIs'. */
   readonly extraAllowedOrigins?: string[];
   /** Whether to add the MCP API; it needs the edge section's regional certificate. */
@@ -191,6 +201,7 @@ export class ApisSection extends Construct {
       props.data.auditEventsQueue,
       props.auth.authKeyStoreTable,
       props.artifactResolver,
+      props.jobs,
     );
 
     const mcpApi = props.enableMcp
@@ -347,12 +358,15 @@ export class ApisSection extends Construct {
     auditEventsQueue: IAuditEventsQueue,
     authKeyStoreTable: IAuthKeyStoreTable,
     artifactResolver: IArtifactResolver,
+    jobs: IApisJobsInputs,
   ): UserApi {
     return new UserApi(this, 'user-api', {
       configTable,
       itemTable,
       auditEventsQueue,
       authKeyStoreTable,
+      importJobsQueue:  jobs.importJobsQueue,
+      mailImportRunner: jobs.mailImportRunner,
       artifactResolver,
     });
   }

@@ -20,8 +20,10 @@ import { App, BootstraplessSynthesizer, CfnResource, TagManager }               
 import type { Construct }                                                              from 'constructs';
 
 import { DataBlobStore }                                                               from '../../../resources/buckets/data-blob-store';
+import { fakeMailImportRunner }                                                        from '../../../resources/lambdas/__tests__/lambda-wrapper-fakes';
 import { AuditEventsQueue }                                                            from '../../../resources/queues/audit-events-queue';
 import { EmailSendingQueue }                                                           from '../../../resources/queues/email-sending-queue';
+import { ImportJobsQueue }                                                             from '../../../resources/queues/import-jobs-queue';
 import { AuthKeyStoreTable }                                                           from '../../../resources/tables/auth-key-store-table';
 import { DataTable }                                                                   from '../../../resources/tables/data-tables';
 import { MailLogTable }                                                                from '../../../resources/tables/mail-log-table';
@@ -124,6 +126,7 @@ describe('ApisSection', () => {
       mailboxDomains: new MailboxDomains({ domainName: 'example.com' }),
       edge:           {},
       ui:             { adminUiOrigins: [], webmailUiOrigins: [] },
+      jobs:           { importJobsQueue: new ImportJobsQueue(stack, 'import-jobs-queue'), mailImportRunner: fakeMailImportRunner('mail-import-runner') },
       ...overrides,
     };
   }

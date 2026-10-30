@@ -32,6 +32,12 @@ export interface IDataTable {
    * mutates the table — prefer {@link grantRead} for anything that only reads.
    */
   grantReadWrite(grantee: IGrantable): void;
+
+  /**
+   * Grants `grantee` `dynamodb:ConditionCheckItem` on the table ARN only, so a transaction can assert an
+   * item's state without writing it.
+   */
+  grantConditionCheck(grantee: IGrantable): void;
 }
 
 /**
@@ -70,6 +76,14 @@ export class DataTable implements IDataTable {
         'dynamodb:DeleteItem',
       ],
       resourceArns: this.tableAndIndexArns(),
+    });
+  }
+
+  public grantConditionCheck(grantee: IGrantable): void {
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['dynamodb:ConditionCheckItem'],
+      resourceArns: [this.table.tableArn],
     });
   }
 

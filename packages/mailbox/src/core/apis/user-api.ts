@@ -5,19 +5,23 @@ import { Construct }               from 'constructs';
 
 import { AuthPolicyName }          from '../../contracts/auth-names';
 import { AuthorizerLambda }        from '../../resources/lambdas/authorizer-lambda';
+import type { IMailImportRunner }  from '../../resources/lambdas/mail-import-runner-lambda';
 import { UserApiLambda }           from '../../resources/lambdas/user-api-lambda';
 import type { IAuditEventsQueue }  from '../../resources/queues/audit-events-queue';
+import type { IImportJobsQueue }   from '../../resources/queues/import-jobs-queue';
 import type { IAuthKeyStoreTable } from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }         from '../../resources/tables/data-tables';
 
 import type { ApiRoute, IApiArea } from './api-area';
 
-/** Inputs of {@link UserApi}: the tables, queue and resolver its Lambda and authorizer use. */
+/** Inputs of {@link UserApi}: the tables, queues, runner and resolver its Lambda and authorizer use. */
 export interface UserApiProps {
   readonly configTable:       IDataTable;
   readonly itemTable:         IDataTable;
   readonly auditEventsQueue:  IAuditEventsQueue;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
+  readonly importJobsQueue:   IImportJobsQueue;
+  readonly mailImportRunner:  IMailImportRunner;
   readonly artifactResolver:  IArtifactResolver;
 }
 
@@ -33,10 +37,13 @@ export class UserApi extends Construct implements IApiArea {
     super(scope, id);
 
     const handler = new UserApiLambda(this, 'handler', {
-      configTable:      props.configTable,
-      itemTable:        props.itemTable,
-      auditEventsQueue: props.auditEventsQueue,
-      artifactResolver: props.artifactResolver,
+      configTable:       props.configTable,
+      itemTable:         props.itemTable,
+      auditEventsQueue:  props.auditEventsQueue,
+      authKeyStoreTable: props.authKeyStoreTable,
+      importJobsQueue:   props.importJobsQueue,
+      mailImportRunner:  props.mailImportRunner,
+      artifactResolver:  props.artifactResolver,
     });
 
     const authorizerLambda = new AuthorizerLambda(this, 'lambda-authorizer', {

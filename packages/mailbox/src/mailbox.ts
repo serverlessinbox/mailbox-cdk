@@ -1,3 +1,5 @@
+import type { IArtifactResolver }                                                                              from '@serverlessinbox/artifact-registry-cdk';
+import type { VendorLink }                                                                                     from '@serverlessinbox/mailbox-cdk-shared';
 import { ServerlessInboxResourceGroup, setStackNameBase, StackHelpers }                                        from '@serverlessinbox/mailbox-cdk-shared';
 import * as cdk                                                                                                from 'aws-cdk-lib';
 import { Construct }                                                                                           from 'constructs';
@@ -10,6 +12,7 @@ import type { MailboxEnabledUis }                                               
 import { EdgeSection }                                                                                         from './core/edge/edge-section';
 import { EmailSection }                                                                                        from './core/email/email-section';
 import { JobsSection }                                                                                         from './core/jobs/jobs-section';
+import type { MailboxEncryptionPlan }                                                                          from './core/mailbox-encryption';
 import { SearchSection }                                                                                       from './core/search/search-section';
 import { UiSection }                                                                                           from './core/ui/ui-section';
 import { MailboxContext }                                                                                      from './mailbox-context';
@@ -66,9 +69,6 @@ export class Mailbox extends Construct {
     });
     setStackNameBase(this, data.mainStackNameBase);
 
-    // Mail-import queue, encrypted with the same plan as the data queues.
-    new JobsSection(this, 'jobs', { queueProps });
-
     // Fixes the domain names and URLs up front, since the sections below embed them.
     const addressing = this.resolveAddressing(props, enabledUis);
 
@@ -87,6 +87,8 @@ export class Mailbox extends Construct {
       domainName: addressing.domains.domainName,
       adminUiUrl: addressing.urls.adminUi,
     });
+
+    const jobs = new JobsSection(this, 'jobs', { queueProps, artifactResolver, data, auth });
 
     // Edge sub-stack and certificates, which need the auth key store and the addressing. The CDN and
     // DNS records need the UIs and APIs, so they are added later.
@@ -135,7 +137,7 @@ export class Mailbox extends Construct {
     const endpoints = apis.addEndpoints({
       artifactResolver, authProvider: props.authProvider, data, auth, email, vendorLink,
       cdnHost:        blobCdn.host,
-      mailboxDomains: addressing.domains, edge, ui,
+      mailboxDomains: addressing.domains, edge, ui, jobs,
       extraAllowedOrigins: props.extraAllowedOrigins,
       enableMcp:           props.enableMcp,
     });
@@ -149,17 +151,7 @@ export class Mailbox extends Construct {
     // The bootstrap registers the UIs' OAuth clients, so it needs the UIs and the edge.
     auth.addBootstrap({ email, ui, edge, sesReceivingMode: props.enableReceiving });
 
-    // Full-text search needs only the data stores, so nothing else waits on it.
-    new SearchSection(this, 'search', { artifactResolver, data, queueProps });
-
-    // Platform zone: license refresh, stack-failure detection and cleanup of retained resources.
-    // The cleanup targets edge resources, so it is built after the edge.
-    new OpsSection(this, 'ops', {
-      artifactResolver, data, edge,
-      domainName:        addressing.domains.domainName,
-      vendorAccountIds:  vendorLink.vendorAccountIds,
-      sendStackFailures: props.sendStackFailures,
-    });
+    this.addStandaloneSections(artifactResolver, data, queueProps, edge, addressing, vendorLink, props.sendStackFailures);
 
     this.urls         = addressing.urls;
     this.certificates = { edge: edge.edgeCertificate, regional: edge.regionalCertificate };
@@ -170,6 +162,30 @@ export class Mailbox extends Construct {
     // Per-region AWS Resource Group collecting all resources tagged with this deployment's
     // root-stack (this is the main stack, so root-stack = AWS::StackName).
     new ServerlessInboxResourceGroup(this, 'resource-group');
+  }
+
+  /**
+   * The two sections nothing else reads, so the constructor keeps no reference to either. Nothing waits on search
+   * or ops. Search needs only the data stores. Ops (license refresh, stack-failure detection, cleanup of retained
+   * edge resources) comes after the edge, because the cleanup targets edge resources.
+   */
+  private addStandaloneSections(
+    artifactResolver: IArtifactResolver,
+    data: DataSection,
+    queueProps: MailboxEncryptionPlan['queues'],
+    edge: EdgeSection,
+    addressing: MailboxAddressing,
+    vendorLink: VendorLink,
+    sendStackFailures: MailboxProps['sendStackFailures'],
+  ): void {
+    new SearchSection(this, 'search', { artifactResolver, data, queueProps });
+
+    new OpsSection(this, 'ops', {
+      artifactResolver, data, edge,
+      domainName:       addressing.domains.domainName,
+      vendorAccountIds: vendorLink.vendorAccountIds,
+      sendStackFailures,
+    });
   }
 
   /** Rejects invalid `extraAllowedOrigins` before anything is built, then resolves the context the sections share. */
