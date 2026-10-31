@@ -9,13 +9,14 @@
 import { Template }                                                  from 'aws-cdk-lib/assertions';
 
 import { AuthPolicyName }                                            from '../../../contracts/auth-names';
+import { Permission }                                                from '../../../core/auth/jmap-scopes';
 import { AuthorizerLambda }                                          from '../authorizer-lambda';
 import type { AuthorizerLambdaProps }                                from '../authorizer-lambda';
 
 import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataTable } from './lambda-wrapper-fakes';
 import { arrangeWrapperStack, onlyLambdaOf }                         from './lambda-wrapper-helpers';
 
-type OptionalProps = Pick<AuthorizerLambdaProps, 'anonymousRoutes' | 'principalLookup'>;
+type OptionalProps = Partial<Pick<AuthorizerLambdaProps, 'anonymousRoutes' | 'principalLookup' | 'scopeMap'>>;
 
 function synthesize(optional: OptionalProps = {}) {
   const { stack, artifactResolver } = arrangeWrapperStack();
@@ -28,6 +29,7 @@ function synthesize(optional: OptionalProps = {}) {
     authPolicyName: AuthPolicyName.ADMIN_API,
     serviceName:    'jmap',
     pipeline:       'jmap',
+    scopeMap:       {},
     ...optional,
   });
 
@@ -48,6 +50,12 @@ describe('AuthorizerLambda', () => {
 
   it('passes an empty anonymous route list when none is given', () => {
     expect(synthesize().environment).toMatchObject({ ALLOW_ANONYMOUS_ROUTES: '' });
+  });
+
+  it('passes the provider scope map to the handler as OAUTH_SCOPE_MAP', () => {
+    const scopeMap = { 'mail.read': [Permission.MAIL_READ_ITEMS] };
+
+    expect(synthesize({ scopeMap }).environment).toMatchObject({ OAUTH_SCOPE_MAP: JSON.stringify(scopeMap) });
   });
 
   it('requests read on the key store table for itself', () => {

@@ -17,6 +17,7 @@ import type { IEmailSendingQueue }                                 from '../../r
 import type { IAuthKeyStoreTable }                                 from '../../resources/tables/auth-key-store-table';
 import type { IDataTable }                                         from '../../resources/tables/data-tables';
 import type { IMailLogTable }                                      from '../../resources/tables/mail-log-table';
+import type { ScopeMap }                                           from '../auth/jmap-scopes';
 
 import type { IAdminApiAddon }                                     from './addons';
 import type { ApiRoute, IApiArea }                                 from './api-area';
@@ -38,6 +39,7 @@ export interface AdminApiProps {
   readonly auditEventsQueue:     IAuditEventsQueue;
   readonly artifactResolver:     IArtifactResolver;
   readonly identityProvisioner:  IIdentityProvisioner;
+  readonly scopeMap:             ScopeMap;
 
   /** Optional addons that mount extra endpoints on this Admin API (e.g. provider-specific APIs). */
   readonly addons?: IAdminApiAddon[];
@@ -143,6 +145,7 @@ export class AdminApi extends Construct implements IApiArea {
       configTable:       props.configTable,
       artifactResolver:  props.artifactResolver,
       authPolicyName:    AuthPolicyName.ADMIN_API,
+      scopeMap:          props.scopeMap,
       serviceName:       'authorizer-admin-api',
       pipeline:          'admin',
     });
@@ -157,6 +160,7 @@ export class AdminApi extends Construct implements IApiArea {
       artifactResolver:  props.artifactResolver,
       authPolicyName:    AuthPolicyName.ADMIN_API,
       principalLookup:   true,
+      scopeMap:          props.scopeMap,
       serviceName:       'authorizer-admin-api-lookup',
       pipeline:          'admin',
     });

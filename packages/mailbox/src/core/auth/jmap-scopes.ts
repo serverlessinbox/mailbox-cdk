@@ -1,29 +1,41 @@
 /**
- * What a client may do against the JMAP API. The enum value of each permission is its OAuth scope
- * name.
+ * What a client may do against the JMAP API. Each permission's enum value is a JMAP right
+ * (`mail/readItems`).
  *
  * An auth provider maps the scopes it issues to these permissions (`scopeMap`), and a JMAP OAuth
  * client is provisioned with the permissions it needs, so give a client only the permissions it uses.
  */
 export enum Permission {
-  /** Read emails. */
-  MAIL_READ = 'mail/read',
-  /** Write emails. */
-  MAIL_WRITE = 'mail/write',
-  /** Send emails. */
-  MAIL_SEND = 'mail/send',
-  /** Read the account. */
-  ACCOUNT_READ = 'account/read',
-  /** Read aliases. */
-  ALIAS_READ = 'alias/read',
-  /** Write aliases. */
-  ALIAS_WRITE = 'alias/write',
-  /** Read the user. */
-  USER_READ = 'user/read',
+  /** Read the items of a mailbox. */
+  MAIL_READ_ITEMS = 'mail/readItems',
+  /** Add items to a mailbox. */
+  MAIL_ADD_ITEMS = 'mail/addItems',
+  /** Remove items from a mailbox. */
+  MAIL_REMOVE_ITEMS = 'mail/removeItems',
+  /** Set the seen flag on items. */
+  MAIL_SET_SEEN = 'mail/setSeen',
+  /** Set keywords on items. */
+  MAIL_SET_KEYWORDS = 'mail/setKeywords',
+  /** Create child mailboxes. */
+  MAIL_CREATE_CHILD = 'mail/createChild',
+  /** Rename mailboxes. */
+  MAIL_RENAME = 'mail/rename',
+  /** Delete mailboxes. */
+  MAIL_DELETE = 'mail/delete',
+  /** Submit emails for sending. */
+  MAIL_SUBMIT = 'mail/submit',
+
   /** Read contacts. */
   CONTACTS_READ = 'contacts/read',
-  /** Write contacts. */
+  /** Write contacts (JMAP `mayWrite`). */
   CONTACTS_WRITE = 'contacts/write',
+  /** Delete contacts. */
+  CONTACTS_DELETE = 'contacts/delete',
+
+  /** Read the user's preferences. */
+  USER_READ = 'user/read',
+  /** Write the user's preferences. */
+  USER_WRITE = 'user/write',
 
   /** Administrative access. */
   ADMIN = 'admin',
@@ -37,14 +49,19 @@ export type ScopeMap = Record<string, Permission[]>;
 
 /** A human-readable description for each {@link Permission}. */
 export const JMAP_SCOPE_DESCRIPTIONS: Record<Permission, string> = {
-  [Permission.MAIL_READ]:      'Read emails',
-  [Permission.MAIL_WRITE]:     'Write emails',
-  [Permission.MAIL_SEND]:      'Send emails',
-  [Permission.ACCOUNT_READ]:   'Read account',
-  [Permission.ALIAS_READ]:     'Read aliases',
-  [Permission.ALIAS_WRITE]:    'Write aliases',
-  [Permission.USER_READ]:      'Read user',
-  [Permission.CONTACTS_READ]:  'Read contacts',
-  [Permission.CONTACTS_WRITE]: 'Write contacts',
-  [Permission.ADMIN]:          'Admin access',
+  [Permission.MAIL_READ_ITEMS]:   'Read mailbox items',
+  [Permission.MAIL_ADD_ITEMS]:    'Add mailbox items',
+  [Permission.MAIL_REMOVE_ITEMS]: 'Remove mailbox items',
+  [Permission.MAIL_SET_SEEN]:     'Set seen flag',
+  [Permission.MAIL_SET_KEYWORDS]: 'Set keywords',
+  [Permission.MAIL_CREATE_CHILD]: 'Create mailboxes',
+  [Permission.MAIL_RENAME]:       'Rename mailboxes',
+  [Permission.MAIL_DELETE]:       'Delete mailboxes',
+  [Permission.MAIL_SUBMIT]:       'Send emails',
+  [Permission.CONTACTS_READ]:     'Read contacts',
+  [Permission.CONTACTS_WRITE]:    'Write contacts',
+  [Permission.CONTACTS_DELETE]:   'Delete contacts',
+  [Permission.USER_READ]:         'Read user',
+  [Permission.USER_WRITE]:        'Write user',
+  [Permission.ADMIN]:             'Admin access',
 };

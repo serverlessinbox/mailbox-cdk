@@ -5,6 +5,7 @@ import { Duration }                from 'aws-cdk-lib';
 import { Construct }               from 'constructs';
 
 import type { AuthPolicyName }     from '../../contracts/auth-names';
+import type { ScopeMap }           from '../../core/auth/jmap-scopes';
 import type { IAuthKeyStoreTable } from '../tables/auth-key-store-table';
 import type { IDataTable }         from '../tables/data-tables';
 
@@ -26,6 +27,9 @@ export interface AuthorizerLambdaProps {
 
   /** When true, the function resolves the principal and returns it in the authorizer context; absent or false leaves it off. The function always receives the setting, as `on` or `off`. */
   readonly principalLookup?: boolean;
+
+  /** The provider's scope map; the function receives it as JSON in OAUTH_SCOPE_MAP. */
+  readonly scopeMap: ScopeMap;
 
   /** SERVICE_NAME for this physical function; distinguishes it from other AuthorizerLambda instances sharing the 'authorizer' lambdaId. */
   readonly serviceName: string;
@@ -53,6 +57,7 @@ export class AuthorizerLambda extends GoLambda {
         AUTH_POLICY_NAME:          props.authPolicyName,
         ALLOW_ANONYMOUS_ROUTES:    (props.anonymousRoutes ?? []).join(','),
         PRINCIPAL_LOOKUP:          props.principalLookup ? 'on' : 'off',
+        OAUTH_SCOPE_MAP:           JSON.stringify(props.scopeMap),
       },
     });
 

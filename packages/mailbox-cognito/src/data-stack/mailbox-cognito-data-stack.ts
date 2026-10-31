@@ -4,16 +4,13 @@ import {
   isDevelopmentMode,
 }                                                                               from '@serverlessinbox/mailbox-cdk-shared';
 import type { ServerlessInboxDeployerType }                                     from '@serverlessinbox/mailbox-cdk-shared';
-import {
-  JMAP_SCOPE_DESCRIPTIONS,
-  MailboxResourceDescriptions,
-}                                                                               from '@serverlessinbox/mailbox';
+import { MailboxResourceDescriptions }                                          from '@serverlessinbox/mailbox';
 import * as cognito                                                             from 'aws-cdk-lib/aws-cognito';
 import * as cdk                                                                 from 'aws-cdk-lib';
 import { Aws, Fn, RemovalPolicy }                                               from 'aws-cdk-lib';
 import { Construct }                                                            from 'constructs';
 
-import { CognitoScopeToPermissions }                                            from '../user-pool/cognito-scopemap';
+import { CognitoScope, CognitoScopeDescriptions }                               from '../user-pool/cognito-scopemap';
 import { MfaMode }                                                              from '../user-pool/mfa-mode';
 
 import {
@@ -193,15 +190,15 @@ export class MailboxCognitoDataStack extends cdk.Stack {
     cfnDomain.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
   }
 
-  // The scopes are fixed in the template at build time, from `CognitoScopeToPermissions`.
+  // The scope names are fixed in the template at build time, from `CognitoScope`.
   private createResourceServer(cfnPool: cognito.CfnUserPool): void {
     new cognito.CfnUserPoolResourceServer(this, 'user-pool-resource-server', {
       userPoolId: cfnPool.ref,
       identifier: RESOURCE_SERVER_IDENTIFIER,
       name:       'JMAP API',
-      scopes:     Object.entries(CognitoScopeToPermissions).map(([scope, permissions]) => ({
-        scopeName:        scope,
-        scopeDescription: JMAP_SCOPE_DESCRIPTIONS[permissions[0]] ?? scope,
+      scopes:     Object.values(CognitoScope).map((cognitoScope) => ({
+        scopeName:        cognitoScope,
+        scopeDescription: CognitoScopeDescriptions[cognitoScope],
       })),
     });
   }

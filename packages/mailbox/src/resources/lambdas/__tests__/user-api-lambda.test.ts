@@ -41,7 +41,7 @@ describe('UserApiLambda', () => {
   }
 
   function synthesize(): Template {
-    const scopeMap: ScopeMap = { 'mail-reader': [Permission.MAIL_READ, Permission.ACCOUNT_READ] };
+    const scopeMap: ScopeMap = { 'mail-reader': [Permission.MAIL_READ_ITEMS] };
 
     const configTable       = dataTable('config-table');
     const itemTable         = dataTable('item-table');
@@ -107,7 +107,7 @@ describe('UserApiLambda', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       Environment: {
         Variables: Match.objectLike({
-          OAUTH_HANDLER_CONFIG: '{"scopeMap":{"mail-reader":["mail/read","account/read"]}}',
+          OAUTH_HANDLER_CONFIG: '{"scopeMap":{"mail-reader":["mail/readItems"]}}',
         }),
       },
     });

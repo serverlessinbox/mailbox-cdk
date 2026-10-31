@@ -10,7 +10,7 @@
  * on the bootstrap custom resource that writes the row it reads.
  */
 
-import { Template }                                      from 'aws-cdk-lib/assertions';
+import { Match, Template }                               from 'aws-cdk-lib/assertions';
 import * as cdk                                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
 
@@ -30,7 +30,7 @@ describe('Mailbox OAuth client wiring', () => {
   function createAuthProvider() {
     return createMockAuthProvider({
       jmapClientId: 'test-webmail-ui',
-      scopeMap:     { 'mail.read': [Permission.MAIL_READ] },
+      scopeMap:     { 'mail.read': [Permission.MAIL_READ_ITEMS] },
     });
   }
 
@@ -101,6 +101,21 @@ describe('Mailbox OAuth client wiring', () => {
       expect(functionsByEnvironment(template, 'SERVICE_NAME', 'jmap-api')).toHaveLength(1);
       expect(functionsByEnvironment(template, 'SERVICE_NAME', 'user-api')).toHaveLength(1);
       expect(functionsByEnvironment(template, 'OAUTH_HANDLER_CONFIG')).toHaveLength(2);
+    });
+  });
+
+  describe('authorizer Lambdas', () => {
+    it.each([
+      ['authorizer-jmap-api'],
+      ['authorizer-user-api'],
+      ['authorizer-admin-api'],
+      ['authorizer-admin-api-lookup'],
+    ])('gives %s the provider scope map as OAUTH_SCOPE_MAP', (serviceName) => {
+      const { template } = synthesize();
+
+      template.hasResourceProperties('AWS::Lambda::Function', {
+        Environment: { Variables: Match.objectLike({ SERVICE_NAME: serviceName, OAUTH_SCOPE_MAP: JSON.stringify(createAuthProvider().scopeMap) }) },
+      });
     });
   });
 

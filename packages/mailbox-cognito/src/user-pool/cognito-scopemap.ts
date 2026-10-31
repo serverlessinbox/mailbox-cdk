@@ -1,6 +1,6 @@
 import { Permission } from '@serverlessinbox/mailbox';
 
-/** The scope names of the Cognito resource server, one per mailbox permission. */
+/** The scope names of the Cognito resource server. The set is fixed: no permission adds a scope. */
 export enum CognitoScope {
   MAIL_READ = 'mail.read',
   MAIL_WRITE = 'mail.write',
@@ -14,25 +14,41 @@ export enum CognitoScope {
   ADMIN = 'admin',
 }
 
-/** The Cognito scope that grants each mailbox permission. */
-export const PermissionToCognitoScope: Record<Permission, CognitoScope> = {
-  [Permission.MAIL_READ]:      CognitoScope.MAIL_READ,
-  [Permission.MAIL_WRITE]:     CognitoScope.MAIL_WRITE,
-  [Permission.MAIL_SEND]:      CognitoScope.MAIL_SEND,
-  [Permission.ACCOUNT_READ]:   CognitoScope.ACCOUNT_READ,
-  [Permission.ALIAS_READ]:     CognitoScope.ALIAS_READ,
-  [Permission.ALIAS_WRITE]:    CognitoScope.ALIAS_WRITE,
-  [Permission.USER_READ]:      CognitoScope.USER_READ,
-  [Permission.CONTACTS_READ]:  CognitoScope.CONTACTS_READ,
-  [Permission.CONTACTS_WRITE]: CognitoScope.CONTACTS_WRITE,
-  [Permission.ADMIN]:          CognitoScope.ADMIN,
+/**
+ * The rights each Cognito scope grants, in the order of `CognitoScope`. An IdP scope is mapped straight to
+ * rights here; the mapping is the Cognito provider's, and the rights vocabulary is shared with every provider.
+ */
+export const CognitoScopeToPermissions: Record<CognitoScope, Permission[]> = {
+  [CognitoScope.MAIL_READ]:      [Permission.MAIL_READ_ITEMS],
+  [CognitoScope.MAIL_WRITE]:     [
+    Permission.MAIL_ADD_ITEMS,
+    Permission.MAIL_REMOVE_ITEMS,
+    Permission.MAIL_SET_SEEN,
+    Permission.MAIL_SET_KEYWORDS,
+    Permission.MAIL_CREATE_CHILD,
+    Permission.MAIL_RENAME,
+    Permission.MAIL_DELETE,
+  ],
+  [CognitoScope.MAIL_SEND]:      [Permission.MAIL_SUBMIT],
+  [CognitoScope.ACCOUNT_READ]:   [],
+  [CognitoScope.ALIAS_READ]:     [],
+  [CognitoScope.ALIAS_WRITE]:    [],
+  [CognitoScope.USER_READ]:      [Permission.USER_READ, Permission.USER_WRITE],
+  [CognitoScope.CONTACTS_READ]:  [Permission.CONTACTS_READ],
+  [CognitoScope.CONTACTS_WRITE]: [Permission.CONTACTS_WRITE, Permission.CONTACTS_DELETE],
+  [CognitoScope.ADMIN]:          [Permission.ADMIN],
 };
 
-/** The mailbox permissions each Cognito scope grants; the inverse of `PermissionToCognitoScope`, in the order of `CognitoScope`. */
-// cast: Object.fromEntries yields an index-signature type; the keys are exactly the values of CognitoScope.
-export const CognitoScopeToPermissions = Object.fromEntries(
-  Object.values(CognitoScope).map((scope) => [
-    scope,
-    Object.values(Permission).filter((permission) => PermissionToCognitoScope[permission] === scope),
-  ]),
-) as Record<CognitoScope, Permission[]>;
+/** The description each Cognito scope carries on the resource server. */
+export const CognitoScopeDescriptions: Record<CognitoScope, string> = {
+  [CognitoScope.MAIL_READ]:      'Read emails',
+  [CognitoScope.MAIL_WRITE]:     'Write emails',
+  [CognitoScope.MAIL_SEND]:      'Send emails',
+  [CognitoScope.ACCOUNT_READ]:   'Read account',
+  [CognitoScope.ALIAS_READ]:     'Read aliases',
+  [CognitoScope.ALIAS_WRITE]:    'Write aliases',
+  [CognitoScope.USER_READ]:      'Read user',
+  [CognitoScope.CONTACTS_READ]:  'Read contacts',
+  [CognitoScope.CONTACTS_WRITE]: 'Write contacts',
+  [CognitoScope.ADMIN]:          'Admin access',
+};

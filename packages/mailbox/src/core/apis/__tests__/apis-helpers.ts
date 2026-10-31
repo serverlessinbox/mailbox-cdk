@@ -116,6 +116,7 @@ export function newAdminApiProps(stack: cdk.Stack, overrides: Partial<AdminApiPr
     sesConfigSetName:     'test-config-set',
     systemSenderAddress:  'noreply@example.com',
     vendorLink:           { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
+    scopeMap:             {},
     ...overrides,
   };
 }

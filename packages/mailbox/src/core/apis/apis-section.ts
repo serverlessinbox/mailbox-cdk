@@ -194,6 +194,7 @@ export class ApisSection extends Construct {
       props.artifactResolver,
       props.vendorLink,
       `noreply@${props.mailboxDomains.domainName}`,
+      props.authProvider.scopeMap,
     );
 
     const userApi = this.addUserApi(
@@ -330,6 +331,7 @@ export class ApisSection extends Construct {
     artifactResolver: IArtifactResolver,
     vendorLink: VendorLink,
     systemSenderAddress: string,
+    scopeMap: ScopeMap,
   ): AdminApi {
     return new AdminApi(this, 'admin', {
       configTable:          data.configTable,
@@ -344,6 +346,7 @@ export class ApisSection extends Construct {
       artifactResolver,
       identityProvisioner: auth.identityProvisioner,
       vendorLink,
+      scopeMap,
 
       addons: adminApiAddons,
 

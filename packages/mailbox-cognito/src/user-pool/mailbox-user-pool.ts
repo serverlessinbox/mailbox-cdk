@@ -33,7 +33,7 @@ import { loadMailboxCognitoRegistryRecord }                                     
 import { CognitoBootstrapUserLambda }                                           from '../resources/lambdas/bootstrap-user-lambda';
 import type { BootstrapUserProperties }                                         from '../runtime/bootstrap-user/properties';
 
-import { CognitoScope, CognitoScopeToPermissions, PermissionToCognitoScope }    from './cognito-scopemap';
+import { CognitoScope, CognitoScopeToPermissions }                              from './cognito-scopemap';
 import { DynamicClientRegistrationMode }                                        from './dynamic-client-registration-mode';
 import type { MailboxUserPoolAdminUiConfig }                                    from './mailbox-user-pool-admin-ui-config';
 import type { MfaMode }                                                         from './mfa-mode';
@@ -565,7 +565,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   private createOAuthClient(params: GenerateClientParams): AuthClientConfig {
     const isClientCredentials = params.flow === OAuthFlow.CLIENT_CREDENTIALS;
     const clientKey           = slugifyLabel(params.name);
-    const requestScopeList    = params.permissions.map((permission: Permission) => this.toOAuthScope(permission));
+    const requestScopeList    = [...new Set(params.permissions.map((permission: Permission) => this.toOAuthScope(permission)))];
 
     const cfnClient = new cognito.CfnUserPoolClient(this, `user-pool-client-${clientKey}`, {
       userPoolId:                      this.userPool.userPoolId,
@@ -648,7 +648,14 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   }
 
   private toOAuthScope(permission: Permission): string {
-    return this.toOAuthScopeName(PermissionToCognitoScope[permission]);
+    const containingScopes = Object.values(CognitoScope)
+      .filter((cognitoScope: CognitoScope) => CognitoScopeToPermissions[cognitoScope].includes(permission));
+    const [cognitoScope]   = containingScopes;
+    if (containingScopes.length !== 1 || cognitoScope === undefined) {
+      throw new Error(`Right ${permission} is in ${containingScopes.length} Cognito scopes of CognitoScopeToPermissions (${containingScopes.join(', ') || 'none'}); a right must be in exactly one.`);
+    }
+
+    return this.toOAuthScopeName(cognitoScope);
   }
 
   private toOAuthScopeName(cognitoScope: CognitoScope): string {

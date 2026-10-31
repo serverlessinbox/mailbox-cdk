@@ -145,7 +145,16 @@ export class MySecuredMailboxStack extends Stack {
     const importer = authProvider.provisionHeadlessClient({
       name: 'importer',
       audiences: [UserPoolAudience.JMAP_API],
-      permissions: [Permission.MAIL_READ, Permission.MAIL_WRITE],
+      permissions: [
+        Permission.MAIL_READ_ITEMS,
+        Permission.MAIL_ADD_ITEMS,
+        Permission.MAIL_REMOVE_ITEMS,
+        Permission.MAIL_SET_SEEN,
+        Permission.MAIL_SET_KEYWORDS,
+        Permission.MAIL_CREATE_CHILD,
+        Permission.MAIL_RENAME,
+        Permission.MAIL_DELETE,
+      ],
     });
 
     new Mailbox(this, 'Mailbox', { authProvider });

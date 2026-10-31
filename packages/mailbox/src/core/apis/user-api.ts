@@ -54,6 +54,7 @@ export class UserApi extends Construct implements IApiArea {
       configTable:       props.configTable,
       artifactResolver:  props.artifactResolver,
       authPolicyName:    AuthPolicyName.JMAP_API,
+      scopeMap:          props.scopeMap,
       serviceName:       'authorizer-user-api',
       pipeline:          'jmap',
     });

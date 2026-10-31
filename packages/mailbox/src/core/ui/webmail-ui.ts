@@ -79,11 +79,15 @@ export class WebmailUi extends MailboxUi {
 
     const uiHost                           = this.distributionDomainName;
     const webmailPermissions: Permission[] = [
-      Permission.MAIL_READ,
-      Permission.MAIL_WRITE,
-      Permission.MAIL_SEND,
-      Permission.ACCOUNT_READ,
-      Permission.ALIAS_READ,
+      Permission.MAIL_READ_ITEMS,
+      Permission.MAIL_ADD_ITEMS,
+      Permission.MAIL_REMOVE_ITEMS,
+      Permission.MAIL_SET_SEEN,
+      Permission.MAIL_SET_KEYWORDS,
+      Permission.MAIL_CREATE_CHILD,
+      Permission.MAIL_RENAME,
+      Permission.MAIL_DELETE,
+      Permission.MAIL_SUBMIT,
       Permission.USER_READ,
       Permission.CONTACTS_READ,
       Permission.CONTACTS_WRITE,

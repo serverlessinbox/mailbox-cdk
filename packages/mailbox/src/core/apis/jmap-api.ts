@@ -107,6 +107,7 @@ export class JmapApi extends Construct {
       artifactResolver:  props.artifactResolver,
       authPolicyName:    AuthPolicyName.JMAP_API,
       anonymousRoutes:   ['GET /.well-known/jmap'],
+      scopeMap:          props.authProvider.scopeMap,
       serviceName:       'authorizer-jmap-api',
       pipeline:          'jmap',
     });

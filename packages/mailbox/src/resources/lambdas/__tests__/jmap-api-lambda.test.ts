@@ -42,7 +42,7 @@ function synthesize(oauthProtectedResourceUrl?: string) {
     apiBaseUrl: 'https://jmap.example.com',
     artifactResolver,
     identityProvisioner,
-    scopeMap:         { 'mail.read': [Permission.MAIL_READ] },
+    scopeMap:         { 'mail.read': [Permission.MAIL_READ_ITEMS] },
     vendorAccountIds: [VENDOR_ACCOUNT_ID],
     oauthProtectedResourceUrl,
   });
@@ -71,7 +71,7 @@ describe('JmapApiLambda', () => {
         IDENTITY_PROVISIONER_FUNCTION_NAME: 'identity-provisioner',
         CDN_HOST:                           'cdn.example.com',
         API_BASE_URL:                       'https://jmap.example.com',
-        OAUTH_HANDLER_CONFIG:               JSON.stringify({ scopeMap: { 'mail.read': [Permission.MAIL_READ] } }),
+        OAUTH_HANDLER_CONFIG:               JSON.stringify({ scopeMap: { 'mail.read': [Permission.MAIL_READ_ITEMS] } }),
       });
     });
 

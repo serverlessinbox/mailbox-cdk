@@ -22,6 +22,7 @@ import type { IOAuthUi }                                          from '../../ui
 import { AuthMethod }                                             from '../auth-method';
 import type { AuthPolicyConfig, IMailboxAuthProvider }            from '../auth-provider';
 import { AuthSection }                                            from '../auth-section';
+import { Permission, ScopeMap }                                   from '../jmap-scopes';
 
 describe('AuthSection', () => {
   let stack: cdk.Stack;
@@ -32,14 +33,14 @@ describe('AuthSection', () => {
 
   const adminApiWithGroups: AuthPolicyConfig = { audiences: ['admin-api'], requireAnyOfGroups: ['admins'] };
 
-  function newSection(adminApi: AuthPolicyConfig = adminApiWithGroups): AuthSection {
+  function newSection(adminApi: AuthPolicyConfig = adminApiWithGroups, scopeMap: ScopeMap = {}): AuthSection {
     const authProvider: IMailboxAuthProvider = {
-      issuer:                  'https://example.com/issuer',
-      tokenEndpoint:           'https://example.com/token',
-      authorizationEndpoint:   'https://example.com/authorize',
-      authMethod:              AuthMethod.HEADER,
-      usePkce:                 false,
-      scopeMap:                {},
+      issuer:                'https://example.com/issuer',
+      tokenEndpoint:         'https://example.com/token',
+      authorizationEndpoint: 'https://example.com/authorize',
+      authMethod:            AuthMethod.HEADER,
+      usePkce:               false,
+      scopeMap,
       policies:                { adminApi, jmapApi: { audiences: ['jmap-api'] } },
       provisionAdminApiClient: () => ({ clientId: 'admin-client', requestScopeList: [], groups: [] }),
       provisionJmapApiClient:  () => ({ clientId: 'webmail-client', requestScopeList: [], groups: [] }),
@@ -144,6 +145,26 @@ describe('AuthSection', () => {
     });
 
     Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', { hostedZoneId: 'Z0TESTZONE' });
+  });
+
+  it('sends no scope map in the bootstrap auth policy rows', () => {
+    const section = newSection(adminApiWithGroups, {
+      'si/admin':     [Permission.ADMIN],
+      'si/mail.read': [Permission.MAIL_READ_ITEMS],
+    });
+
+    section.addBootstrap({
+      email: { sesRuleSet: new ReceiptRuleSet(stack, 'ses-rule-set', {}) },
+      ui:    {},
+      edge:  {},
+    });
+
+    Template.fromStack(stack).hasResourceProperties('Custom::Bootstrap', {
+      authPolicies: Match.objectLike({
+        adminApi: Match.objectLike({ scopeMap: Match.absent() }),
+        jmapApi:  Match.objectLike({ scopeMap: Match.absent() }),
+      }),
+    });
   });
 
   describe('Admin API admin groups', () => {

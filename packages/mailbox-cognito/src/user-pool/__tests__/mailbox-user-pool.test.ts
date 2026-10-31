@@ -9,19 +9,20 @@
  * refused by the API only at runtime, so these tests pin the synthesized clients and the policies.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import { Permission }                            from '@serverlessinbox/mailbox';
-import { Match, Template }                       from 'aws-cdk-lib/assertions';
-import * as lambda                               from 'aws-cdk-lib/aws-lambda';
-import * as route53                              from 'aws-cdk-lib/aws-route53';
-import { App, BootstraplessSynthesizer, Stack }  from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver }    from '@serverlessinbox/artifact-registry-cdk';
+import { Permission }                              from '@serverlessinbox/mailbox';
+import { Match, Template }                         from 'aws-cdk-lib/assertions';
+import * as lambda                                 from 'aws-cdk-lib/aws-lambda';
+import * as route53                                from 'aws-cdk-lib/aws-route53';
+import { App, BootstraplessSynthesizer, Stack }    from 'aws-cdk-lib';
 
-import { CognitoIdpUsersAdminApiAddon }          from '../../cognito-idp-users-addon';
-import { JmapOAuthAddon }                        from '../../jmap-oauth-addon';
-import { DynamicClientRegistrationMode }         from '../dynamic-client-registration-mode';
-import { MailboxUserPool, MailboxUserPoolProps } from '../mailbox-user-pool';
-import { MfaMode }                               from '../mfa-mode';
-import { UserPoolAudience }                      from '../user-pool-audience';
+import { CognitoIdpUsersAdminApiAddon }            from '../../cognito-idp-users-addon';
+import { JmapOAuthAddon }                          from '../../jmap-oauth-addon';
+import { CognitoScope, CognitoScopeToPermissions } from '../cognito-scopemap';
+import { DynamicClientRegistrationMode }           from '../dynamic-client-registration-mode';
+import { MailboxUserPool, MailboxUserPoolProps }   from '../mailbox-user-pool';
+import { MfaMode }                                 from '../mfa-mode';
+import { UserPoolAudience }                        from '../user-pool-audience';
 
 const PINNED_VERSION = '0.0.1-test';
 
@@ -227,7 +228,7 @@ describe('MailboxUserPool UI client provisioning', () => {
 
     pool.provisionJmapApiClient({
       name:         'webmail-ui',
-      permissions:  [Permission.MAIL_READ],
+      permissions:  [Permission.MAIL_READ_ITEMS],
       callbackUrls: ['https://w.example.com/cb'],
       logoutUrls:   ['https://w.example.com/'],
     });
@@ -256,7 +257,7 @@ describe('MailboxUserPool UI client provisioning', () => {
 
     const client = pool.provisionJmapApiClient({
       name:         'webmail-ui',
-      permissions:  [Permission.MAIL_READ, Permission.MAIL_SEND],
+      permissions:  [Permission.MAIL_READ_ITEMS, Permission.MAIL_SUBMIT],
       callbackUrls: ['https://w.example.com/cb'],
       logoutUrls:   ['https://w.example.com/'],
     });
@@ -267,11 +268,92 @@ describe('MailboxUserPool UI client provisioning', () => {
     });
   });
 
+  it('requests the Cognito scope that contains each right, and that scope once for several rights of it', () => {
+    const { pool, stack } = createUserPool();
+
+    const client = pool.provisionJmapApiClient({
+      name:         'webmail-ui',
+      permissions:  [Permission.MAIL_ADD_ITEMS, Permission.MAIL_DELETE],
+      callbackUrls: ['https://w.example.com/cb'],
+      logoutUrls:   ['https://w.example.com/'],
+    });
+
+    expect(client.requestScopeList).toEqual(['si/mail.write']);
+    Template.fromStack(stack).hasResourceProperties('AWS::Cognito::UserPoolClient', {
+      AllowedOAuthScopes: ['openid', 'email', 'profile', 'si/mail.write'],
+    });
+  });
+
+  it('requests the webmail client\'s Cognito scopes as before rights, less si/account.read and si/alias.read', () => {
+    const { pool } = createUserPool();
+
+    const client = pool.provisionJmapApiClient({
+      name:         'webmail-ui',
+      permissions:  [
+        Permission.MAIL_READ_ITEMS,
+        Permission.MAIL_ADD_ITEMS,
+        Permission.MAIL_REMOVE_ITEMS,
+        Permission.MAIL_SET_SEEN,
+        Permission.MAIL_SET_KEYWORDS,
+        Permission.MAIL_CREATE_CHILD,
+        Permission.MAIL_RENAME,
+        Permission.MAIL_DELETE,
+        Permission.MAIL_SUBMIT,
+        Permission.USER_READ,
+        Permission.CONTACTS_READ,
+        Permission.CONTACTS_WRITE,
+      ],
+      callbackUrls: ['https://w.example.com/cb'],
+      logoutUrls:   ['https://w.example.com/'],
+    });
+
+    expect(client.requestScopeList).toEqual([
+      'si/mail.read',
+      'si/mail.write',
+      'si/mail.send',
+      'si/user.read',
+      'si/contacts.read',
+      'si/contacts.write',
+    ]);
+  });
+
+  it('maps the USER_WRITE right to si/user.read, the scope whose rights contain it', () => {
+    const { pool } = createUserPool();
+
+    const client = pool.provisionJmapApiClient({ name: 'contacts-ui', permissions: [Permission.USER_WRITE], callbackUrls: [], logoutUrls: [] });
+
+    expect(client.requestScopeList).toEqual(['si/user.read']);
+  });
+
+  it('throws at synth when the scope table names no Cognito scope for a right', () => {
+    const { pool }                                    = createUserPool();
+    const mailReadRights                              = CognitoScopeToPermissions[CognitoScope.MAIL_READ];
+    CognitoScopeToPermissions[CognitoScope.MAIL_READ] = [];
+    try {
+      expect(() => pool.provisionJmapApiClient({ name: 'webmail-ui', permissions: [Permission.MAIL_READ_ITEMS], callbackUrls: [], logoutUrls: [] }))
+        .toThrow(/is in 0 Cognito scopes/);
+    } finally {
+      CognitoScopeToPermissions[CognitoScope.MAIL_READ] = mailReadRights;
+    }
+  });
+
+  it('throws at synth when the scope table names two Cognito scopes for a right', () => {
+    const { pool }                                    = createUserPool();
+    const mailSendRights                              = CognitoScopeToPermissions[CognitoScope.MAIL_SEND];
+    CognitoScopeToPermissions[CognitoScope.MAIL_SEND] = [...mailSendRights, Permission.MAIL_READ_ITEMS];
+    try {
+      expect(() => pool.provisionJmapApiClient({ name: 'webmail-ui', permissions: [Permission.MAIL_READ_ITEMS], callbackUrls: [], logoutUrls: [] }))
+        .toThrow(/is in 2 Cognito scopes/);
+    } finally {
+      CognitoScopeToPermissions[CognitoScope.MAIL_SEND] = mailSendRights;
+    }
+  });
+
   it('registers each UI client as an audience of its own API only', () => {
     const { pool } = createUserPool();
 
     const adminClient = pool.provisionAdminApiClient({ name: 'admin-ui', callbackUrls: [], logoutUrls: [] });
-    const jmapClient  = pool.provisionJmapApiClient({ name: 'webmail-ui', permissions: [Permission.MAIL_READ], callbackUrls: [], logoutUrls: [] });
+    const jmapClient  = pool.provisionJmapApiClient({ name: 'webmail-ui', permissions: [Permission.MAIL_READ_ITEMS], callbackUrls: [], logoutUrls: [] });
 
     expect(pool.policies.adminApi.audiences).toEqual([adminClient.clientId]);
     expect(pool.policies.jmapApi.audiences).toEqual([jmapClient.clientId]);
@@ -305,7 +387,7 @@ describe('MailboxUserPool headless client provisioning', () => {
   it('creates a client-credentials client with a secret, its scopes and no sign-in URLs', () => {
     const { pool, stack } = createUserPool();
 
-    pool.provisionHeadlessClient({ name: 'sweeper', audiences: [UserPoolAudience.JMAP_API], permissions: [Permission.MAIL_READ] });
+    pool.provisionHeadlessClient({ name: 'sweeper', audiences: [UserPoolAudience.JMAP_API], permissions: [Permission.MAIL_READ_ITEMS] });
 
     Template.fromStack(stack).hasResourceProperties('AWS::Cognito::UserPoolClient', {
       ClientName:         'mailbox-client-sweeper',
@@ -320,7 +402,7 @@ describe('MailboxUserPool headless client provisioning', () => {
   it('registers the client as an audience of the listed APIs only', () => {
     const { pool } = createUserPool();
 
-    const client = pool.provisionHeadlessClient({ name: 'sweeper', audiences: [UserPoolAudience.JMAP_API], permissions: [Permission.MAIL_READ] });
+    const client = pool.provisionHeadlessClient({ name: 'sweeper', audiences: [UserPoolAudience.JMAP_API], permissions: [Permission.MAIL_READ_ITEMS] });
 
     expect(pool.policies.jmapApi.audiences).toEqual([client.clientId]);
     expect(pool.policies.adminApi.audiences).toEqual([]);
@@ -330,7 +412,7 @@ describe('MailboxUserPool headless client provisioning', () => {
     const { pool } = createUserPool();
     const audience = 'adminApi' as UserPoolAudience;
 
-    const client = pool.provisionHeadlessClient({ name: 'sweeper', audiences: [audience], permissions: [Permission.MAIL_READ] });
+    const client = pool.provisionHeadlessClient({ name: 'sweeper', audiences: [audience], permissions: [Permission.MAIL_READ_ITEMS] });
 
     expect(pool.policies.adminApi.audiences).toEqual([client.clientId]);
     expect(pool.policies.jmapApi.audiences).toEqual([]);
@@ -339,8 +421,8 @@ describe('MailboxUserPool headless client provisioning', () => {
   it('returns the existing client when the name is provisioned again and registers the audiences it is now listed for', () => {
     const { pool, stack } = createUserPool();
 
-    const first  = pool.provisionHeadlessClient({ name: 'sweeper', audiences: [UserPoolAudience.JMAP_API], permissions: [Permission.MAIL_READ] });
-    const second = pool.provisionHeadlessClient({ name: 'sweeper', audiences: [UserPoolAudience.ADMIN_API], permissions: [Permission.MAIL_READ] });
+    const first  = pool.provisionHeadlessClient({ name: 'sweeper', audiences: [UserPoolAudience.JMAP_API], permissions: [Permission.MAIL_READ_ITEMS] });
+    const second = pool.provisionHeadlessClient({ name: 'sweeper', audiences: [UserPoolAudience.ADMIN_API], permissions: [Permission.MAIL_READ_ITEMS] });
 
     expect(second).toBe(first);
     expect(pool.policies.adminApi.audiences).toEqual([first.clientId]);
@@ -365,7 +447,7 @@ describe('MailboxUserPool authorization', () => {
     const { pool } = createUserPool({ authorization: { adminGroups: ['ops'], userGroups: ['staff'] } });
 
     const adminClient = pool.provisionAdminApiClient({ name: 'admin-ui', callbackUrls: [], logoutUrls: [] });
-    const jmapClient  = pool.provisionJmapApiClient({ name: 'webmail-ui', permissions: [Permission.MAIL_READ], callbackUrls: [], logoutUrls: [] });
+    const jmapClient  = pool.provisionJmapApiClient({ name: 'webmail-ui', permissions: [Permission.MAIL_READ_ITEMS], callbackUrls: [], logoutUrls: [] });
 
     expect(pool.policies.adminApi.requireAnyOfGroups).toEqual(['ops']);
     expect(adminClient.groups).toEqual(['ops']);
@@ -376,7 +458,7 @@ describe('MailboxUserPool authorization', () => {
   it('prefixes every scope in the scope map with the resource server and maps it to its permission', () => {
     const { pool } = createUserPool();
 
-    expect(pool.scopeMap['si/mail.read']).toEqual([Permission.MAIL_READ]);
+    expect(pool.scopeMap['si/mail.read']).toEqual([Permission.MAIL_READ_ITEMS]);
     expect(pool.scopeMap['si/admin']).toEqual([Permission.ADMIN]);
     expect(Object.keys(pool.scopeMap).every(scope => scope.startsWith('si/'))).toBe(true);
   });

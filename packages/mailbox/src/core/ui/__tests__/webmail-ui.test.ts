@@ -91,11 +91,15 @@ describe('WebmailUi', () => {
     expect(provisionJmapApiClient).toHaveBeenCalledWith({
       name:         'webmail-ui',
       permissions:  [
-        Permission.MAIL_READ,
-        Permission.MAIL_WRITE,
-        Permission.MAIL_SEND,
-        Permission.ACCOUNT_READ,
-        Permission.ALIAS_READ,
+        Permission.MAIL_READ_ITEMS,
+        Permission.MAIL_ADD_ITEMS,
+        Permission.MAIL_REMOVE_ITEMS,
+        Permission.MAIL_SET_SEEN,
+        Permission.MAIL_SET_KEYWORDS,
+        Permission.MAIL_CREATE_CHILD,
+        Permission.MAIL_RENAME,
+        Permission.MAIL_DELETE,
+        Permission.MAIL_SUBMIT,
         Permission.USER_READ,
         Permission.CONTACTS_READ,
         Permission.CONTACTS_WRITE,
@@ -105,13 +109,12 @@ describe('WebmailUi', () => {
     });
   });
 
-  it('never grants admin or alias write to the webmail client', () => {
+  it('never grants admin to the webmail client', () => {
     createWebmailUi();
 
     const [request] = provisionJmapApiClient.mock.calls[0];
 
     expect(request.permissions).not.toContain(Permission.ADMIN);
-    expect(request.permissions).not.toContain(Permission.ALIAS_WRITE);
   });
 
   it('deploys the Webmail UI bundle published by the mailbox-webmail-ui artifact', () => {
