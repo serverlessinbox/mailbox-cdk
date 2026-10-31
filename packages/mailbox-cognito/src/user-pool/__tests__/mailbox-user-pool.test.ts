@@ -300,6 +300,7 @@ describe('MailboxUserPool UI client provisioning', () => {
         Permission.MAIL_DELETE,
         Permission.MAIL_SUBMIT,
         Permission.PREFERENCES_READ,
+        Permission.PREFERENCES_WRITE,
         Permission.IMPORT_READ,
         Permission.IMPORT_WRITE,
         Permission.CONTACTS_READ,
@@ -313,18 +314,28 @@ describe('MailboxUserPool UI client provisioning', () => {
       'si/mail.read',
       'si/mail.write',
       'si/mail.send',
-      'si/user.read',
+      'si/preferences.read',
+      'si/preferences.write',
       'si/contacts.read',
       'si/contacts.write',
     ]);
+    expect(client.requestScopeList).not.toContain('si/user.read');
   });
 
-  it('maps the PREFERENCES_WRITE right to si/user.read, the scope whose rights contain it', () => {
+  it('maps the PREFERENCES_WRITE right to si/preferences.write, the only scope whose rights contain it', () => {
     const { pool } = createUserPool();
 
     const client = pool.provisionJmapApiClient({ name: 'contacts-ui', permissions: [Permission.PREFERENCES_WRITE], callbackUrls: [], logoutUrls: [] });
 
-    expect(client.requestScopeList).toEqual(['si/user.read']);
+    expect(client.requestScopeList).toEqual(['si/preferences.write']);
+  });
+
+  it('maps the PREFERENCES_READ right to si/preferences.read, never to the deprecated si/user.read that also contains it', () => {
+    const { pool } = createUserPool();
+
+    const client = pool.provisionJmapApiClient({ name: 'prefs-reader', permissions: [Permission.PREFERENCES_READ], callbackUrls: [], logoutUrls: [] });
+
+    expect(client.requestScopeList).toEqual(['si/preferences.read']);
   });
 
   it('throws at synth when the scope table names no Cognito scope for a right', () => {

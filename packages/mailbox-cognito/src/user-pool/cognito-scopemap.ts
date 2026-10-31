@@ -9,6 +9,8 @@ export enum CognitoScope {
   ALIAS_READ = 'alias.read',
   ALIAS_WRITE = 'alias.write',
   USER_READ = 'user.read',
+  PREFERENCES_READ = 'preferences.read',
+  PREFERENCES_WRITE = 'preferences.write',
   CONTACTS_READ = 'contacts.read',
   CONTACTS_WRITE = 'contacts.write',
   ADMIN = 'admin',
@@ -19,8 +21,8 @@ export enum CognitoScope {
  * rights here; the mapping is the Cognito provider's, and the rights vocabulary is shared with every provider.
  */
 export const CognitoScopeToPermissions: Record<CognitoScope, Permission[]> = {
-  [CognitoScope.MAIL_READ]:      [Permission.MAIL_READ_ITEMS],
-  [CognitoScope.MAIL_WRITE]:     [
+  [CognitoScope.MAIL_READ]:         [Permission.MAIL_READ_ITEMS],
+  [CognitoScope.MAIL_WRITE]:        [
     Permission.MAIL_ADD_ITEMS,
     Permission.MAIL_REMOVE_ITEMS,
     Permission.MAIL_SET_SEEN,
@@ -31,26 +33,36 @@ export const CognitoScopeToPermissions: Record<CognitoScope, Permission[]> = {
     Permission.IMPORT_READ,
     Permission.IMPORT_WRITE,
   ],
-  [CognitoScope.MAIL_SEND]:      [Permission.MAIL_SUBMIT],
-  [CognitoScope.ACCOUNT_READ]:   [],
-  [CognitoScope.ALIAS_READ]:     [],
-  [CognitoScope.ALIAS_WRITE]:    [],
-  [CognitoScope.USER_READ]:      [Permission.PREFERENCES_READ, Permission.PREFERENCES_WRITE],
-  [CognitoScope.CONTACTS_READ]:  [Permission.CONTACTS_READ],
-  [CognitoScope.CONTACTS_WRITE]: [Permission.CONTACTS_WRITE, Permission.CONTACTS_DELETE],
-  [CognitoScope.ADMIN]:          [Permission.ADMIN],
+  [CognitoScope.MAIL_SEND]:         [Permission.MAIL_SUBMIT],
+  [CognitoScope.ACCOUNT_READ]:      [],
+  [CognitoScope.ALIAS_READ]:        [],
+  [CognitoScope.ALIAS_WRITE]:       [],
+  [CognitoScope.USER_READ]:         [Permission.PREFERENCES_READ],
+  [CognitoScope.PREFERENCES_READ]:  [Permission.PREFERENCES_READ],
+  [CognitoScope.PREFERENCES_WRITE]: [Permission.PREFERENCES_WRITE],
+  [CognitoScope.CONTACTS_READ]:     [Permission.CONTACTS_READ],
+  [CognitoScope.CONTACTS_WRITE]:    [Permission.CONTACTS_WRITE, Permission.CONTACTS_DELETE],
+  [CognitoScope.ADMIN]:             [Permission.ADMIN],
 };
+
+/**
+ * Scopes that stay defined on the resource server so tokens and clients that still request them keep working,
+ * and are removed in a later release. A right resolves only to a scope outside this set.
+ */
+export const DeprecatedCognitoScopes: ReadonlySet<CognitoScope> = new Set([CognitoScope.USER_READ]);
 
 /** The description each Cognito scope carries on the resource server. */
 export const CognitoScopeDescriptions: Record<CognitoScope, string> = {
-  [CognitoScope.MAIL_READ]:      'Read emails',
-  [CognitoScope.MAIL_WRITE]:     'Write emails',
-  [CognitoScope.MAIL_SEND]:      'Send emails',
-  [CognitoScope.ACCOUNT_READ]:   'Read account',
-  [CognitoScope.ALIAS_READ]:     'Read aliases',
-  [CognitoScope.ALIAS_WRITE]:    'Write aliases',
-  [CognitoScope.USER_READ]:      'Read user',
-  [CognitoScope.CONTACTS_READ]:  'Read contacts',
-  [CognitoScope.CONTACTS_WRITE]: 'Write contacts',
-  [CognitoScope.ADMIN]:          'Admin access',
+  [CognitoScope.MAIL_READ]:         'Read emails',
+  [CognitoScope.MAIL_WRITE]:        'Write emails',
+  [CognitoScope.MAIL_SEND]:         'Send emails',
+  [CognitoScope.ACCOUNT_READ]:      'Read account',
+  [CognitoScope.ALIAS_READ]:        'Read aliases',
+  [CognitoScope.ALIAS_WRITE]:       'Write aliases',
+  [CognitoScope.USER_READ]:         'Read user',
+  [CognitoScope.PREFERENCES_READ]:  'Read your preferences and client settings',
+  [CognitoScope.PREFERENCES_WRITE]: 'Change your preferences and client settings',
+  [CognitoScope.CONTACTS_READ]:     'Read contacts',
+  [CognitoScope.CONTACTS_WRITE]:    'Write contacts',
+  [CognitoScope.ADMIN]:             'Admin access',
 };
