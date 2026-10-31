@@ -300,6 +300,8 @@ describe('MailboxUserPool UI client provisioning', () => {
         Permission.MAIL_DELETE,
         Permission.MAIL_SUBMIT,
         Permission.PREFERENCES_READ,
+        Permission.IMPORT_READ,
+        Permission.IMPORT_WRITE,
         Permission.CONTACTS_READ,
         Permission.CONTACTS_WRITE,
       ],

@@ -56,6 +56,8 @@ describe('Cognito resource server scopes', () => {
       Permission.MAIL_CREATE_CHILD,
       Permission.MAIL_RENAME,
       Permission.MAIL_DELETE,
+      Permission.IMPORT_READ,
+      Permission.IMPORT_WRITE,
     ]],
     [CognitoScope.MAIL_SEND,     [Permission.MAIL_SUBMIT]],
     [CognitoScope.ACCOUNT_READ,  []],

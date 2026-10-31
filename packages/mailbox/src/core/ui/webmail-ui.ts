@@ -90,6 +90,8 @@ export class WebmailUi extends MailboxUi {
       Permission.MAIL_SUBMIT,
       Permission.PREFERENCES_READ,
       Permission.PREFERENCES_WRITE,
+      Permission.IMPORT_READ,
+      Permission.IMPORT_WRITE,
       Permission.CONTACTS_READ,
       Permission.CONTACTS_WRITE,
     ];

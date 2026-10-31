@@ -37,6 +37,11 @@ export enum Permission {
   /** Change your own preferences and client settings. */
   PREFERENCES_WRITE = 'preferences/write',
 
+  /** List your mail import connections and jobs. */
+  IMPORT_READ = 'import/read',
+  /** Create and run mail imports. */
+  IMPORT_WRITE = 'import/write',
+
   /** Administrative access. */
   ADMIN = 'admin',
 }
@@ -63,5 +68,7 @@ export const JMAP_SCOPE_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.CONTACTS_DELETE]:   'Delete contacts',
   [Permission.PREFERENCES_READ]:  'Read your own preferences and client settings',
   [Permission.PREFERENCES_WRITE]: 'Change your own preferences and client settings',
+  [Permission.IMPORT_READ]:       'List your mail import connections and jobs',
+  [Permission.IMPORT_WRITE]:      'Create and run mail imports',
   [Permission.ADMIN]:             'Admin access',
 };
