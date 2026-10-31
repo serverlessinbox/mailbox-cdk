@@ -32,10 +32,10 @@ export enum Permission {
   /** Delete contacts. */
   CONTACTS_DELETE = 'contacts/delete',
 
-  /** Read the user's preferences. */
-  USER_READ = 'user/read',
-  /** Write the user's preferences. */
-  USER_WRITE = 'user/write',
+  /** Read your own preferences and client settings. */
+  PREFERENCES_READ = 'preferences/read',
+  /** Change your own preferences and client settings. */
+  PREFERENCES_WRITE = 'preferences/write',
 
   /** Administrative access. */
   ADMIN = 'admin',
@@ -61,7 +61,7 @@ export const JMAP_SCOPE_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.CONTACTS_READ]:     'Read contacts',
   [Permission.CONTACTS_WRITE]:    'Write contacts',
   [Permission.CONTACTS_DELETE]:   'Delete contacts',
-  [Permission.USER_READ]:         'Read user',
-  [Permission.USER_WRITE]:        'Write user',
+  [Permission.PREFERENCES_READ]:  'Read your own preferences and client settings',
+  [Permission.PREFERENCES_WRITE]: 'Change your own preferences and client settings',
   [Permission.ADMIN]:             'Admin access',
 };

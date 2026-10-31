@@ -299,7 +299,7 @@ describe('MailboxUserPool UI client provisioning', () => {
         Permission.MAIL_RENAME,
         Permission.MAIL_DELETE,
         Permission.MAIL_SUBMIT,
-        Permission.USER_READ,
+        Permission.PREFERENCES_READ,
         Permission.CONTACTS_READ,
         Permission.CONTACTS_WRITE,
       ],
@@ -317,10 +317,10 @@ describe('MailboxUserPool UI client provisioning', () => {
     ]);
   });
 
-  it('maps the USER_WRITE right to si/user.read, the scope whose rights contain it', () => {
+  it('maps the PREFERENCES_WRITE right to si/user.read, the scope whose rights contain it', () => {
     const { pool } = createUserPool();
 
-    const client = pool.provisionJmapApiClient({ name: 'contacts-ui', permissions: [Permission.USER_WRITE], callbackUrls: [], logoutUrls: [] });
+    const client = pool.provisionJmapApiClient({ name: 'contacts-ui', permissions: [Permission.PREFERENCES_WRITE], callbackUrls: [], logoutUrls: [] });
 
     expect(client.requestScopeList).toEqual(['si/user.read']);
   });

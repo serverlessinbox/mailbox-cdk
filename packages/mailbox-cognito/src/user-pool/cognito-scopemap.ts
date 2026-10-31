@@ -33,7 +33,7 @@ export const CognitoScopeToPermissions: Record<CognitoScope, Permission[]> = {
   [CognitoScope.ACCOUNT_READ]:   [],
   [CognitoScope.ALIAS_READ]:     [],
   [CognitoScope.ALIAS_WRITE]:    [],
-  [CognitoScope.USER_READ]:      [Permission.USER_READ, Permission.USER_WRITE],
+  [CognitoScope.USER_READ]:      [Permission.PREFERENCES_READ, Permission.PREFERENCES_WRITE],
   [CognitoScope.CONTACTS_READ]:  [Permission.CONTACTS_READ],
   [CognitoScope.CONTACTS_WRITE]: [Permission.CONTACTS_WRITE, Permission.CONTACTS_DELETE],
   [CognitoScope.ADMIN]:          [Permission.ADMIN],
