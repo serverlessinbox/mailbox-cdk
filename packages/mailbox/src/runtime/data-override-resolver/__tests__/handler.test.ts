@@ -31,6 +31,7 @@ const RESOLVED: ResolvedTableArns = {
   changelogTableArn:    'arn:aws:dynamodb:eu-west-1:123456789012:table/changelog',
   auditLogTableArn:     'arn:aws:dynamodb:eu-west-1:123456789012:table/auditlog',
   mailFeedbackTableArn: 'arn:aws:dynamodb:eu-west-1:123456789012:table/mailfeedback',
+  patTableArn:          'arn:aws:dynamodb:eu-west-1:123456789012:table/pat',
 };
 
 describe('handler with a valid config', () => {

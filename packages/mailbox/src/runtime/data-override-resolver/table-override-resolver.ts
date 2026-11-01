@@ -41,6 +41,7 @@ export class TableOverrideResolver {
       changelogTableArn:    await this.resolveTable('changelogTable', props),
       auditLogTableArn:     await this.resolveTable('auditLogTable', props),
       mailFeedbackTableArn: await this.resolveTable('mailFeedbackTable', props),
+      patTableArn:          await this.resolveTable('patTable', props),
     };
   }
 

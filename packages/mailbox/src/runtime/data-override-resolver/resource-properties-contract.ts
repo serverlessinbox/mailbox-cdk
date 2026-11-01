@@ -10,7 +10,9 @@ export interface ResourceProperties {
   readonly auditLogTableOverrideArn:     string;
   readonly mailFeedbackTableIncomingArn: string;
   readonly mailFeedbackTableOverrideArn: string;
+  readonly patTableIncomingArn:          string;
+  readonly patTableOverrideArn:          string;
 }
 
 /** The data tables whose ARN the resolver decides, by the role each plays in the mailbox. */
-export type TableRole = 'configTable' | 'itemTable' | 'changelogTable' | 'auditLogTable' | 'mailFeedbackTable';
+export type TableRole = 'configTable' | 'itemTable' | 'changelogTable' | 'auditLogTable' | 'mailFeedbackTable' | 'patTable';

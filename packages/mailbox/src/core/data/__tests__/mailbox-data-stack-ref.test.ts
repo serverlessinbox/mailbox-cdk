@@ -14,6 +14,7 @@ const PROPS: MailboxDataStackRefProps = {
   changelogTableArn:    'arn:aws:dynamodb:us-west-2:111122223333:table/changelog',
   auditLogTableArn:     'arn:aws:dynamodb:us-west-2:111122223333:table/audit-log',
   mailFeedbackTableArn: 'arn:aws:dynamodb:us-west-2:111122223333:table/mail-feedback',
+  patTableArn:          'arn:aws:dynamodb:us-west-2:111122223333:table/pat',
   blobStoreArn:         'arn:aws:s3:::blob-store',
 };
 
@@ -32,6 +33,7 @@ describe('MailboxDataStackRef', () => {
     expect(stack.resolve(ref.changelogTable.tableArn)).toBe(PROPS.changelogTableArn);
     expect(stack.resolve(ref.auditLogTable.tableArn)).toBe(PROPS.auditLogTableArn);
     expect(stack.resolve(ref.mailFeedbackTable.tableArn)).toBe(PROPS.mailFeedbackTableArn);
+    expect(stack.resolve(ref.patTable.tableArn)).toBe(PROPS.patTableArn);
   });
 
   it('exposes the blob store bucket raw and as the grant handle over that same bucket', () => {

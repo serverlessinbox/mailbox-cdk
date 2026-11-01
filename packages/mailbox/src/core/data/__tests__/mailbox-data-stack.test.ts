@@ -14,12 +14,38 @@ import { DEVELOPMENT_CONTEXT_KEY }              from '@serverlessinbox/mailbox-c
 import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import { Key }                                  from 'aws-cdk-lib/aws-kms';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
+import * as t                                   from 'typanion';
 
+import { resourcesOfType }                      from '../../../__tests__/template-resources';
 import type { MailboxKmsConfig }                from '../../kms';
 import { MailboxKmsMode }                       from '../../mailbox-kms-mode';
 import { MailboxDataStack }                     from '../mailbox-data-stack';
 
-const TABLE_LOGICAL_IDS = ['auditLogTable', 'changelogTable', 'configTable', 'itemTable', 'mailFeedbackTable'];
+const TABLE_LOGICAL_IDS = ['auditLogTable', 'changelogTable', 'configTable', 'itemTable', 'mailFeedbackTable', 'patTable'];
+
+/** The properties of a DynamoDB table this file reads: its tags, point-in-time recovery and secondary indexes. */
+const isDynamoTableProperties = t.isPartial({
+  Tags:                             t.isArray(t.isPartial({ Key: t.isString() })),
+  PointInTimeRecoverySpecification: t.isPartial({ PointInTimeRecoveryEnabled: t.isBoolean() }),
+  GlobalSecondaryIndexes:           t.isOptional(t.isArray(t.isPartial({
+    IndexName:  t.isString(),
+    Projection: t.isPartial({ ProjectionType: t.isOptional(t.isString()) }),
+  }))),
+});
+
+/** The DynamoDB table with the given logical id in the template. */
+function tableNamed(template: Template, logicalId: string) {
+  const table = resourcesOfType(template, 'AWS::DynamoDB::Table', isDynamoTableProperties).find((candidate) => candidate.logicalId === logicalId);
+  if (!table) {
+    throw new Error(`no DynamoDB table with logical id ${logicalId} in the template`);
+  }
+  return table;
+}
+
+/** The tags of a table except `Name`, which carries that table's own construct id. */
+function baseTagsOf(table: ReturnType<typeof tableNamed>) {
+  return table.properties.Tags.filter((tag) => tag.Key !== 'Name');
+}
 
 /** Development mode turns on auto-delete of the blob bucket, whose provider is an asset a bootstrapless stack cannot hold. */
 function synthDataStack(options: { readonly development?: boolean; readonly kms?: MailboxKmsConfig } = {}): Template {
@@ -90,6 +116,7 @@ describe('MailboxDataStack template synthesis', () => {
       ['changelogTableArn',    'changelogTable'],
       ['auditLogTableArn',     'auditLogTable'],
       ['mailFeedbackTableArn', 'mailFeedbackTable'],
+      ['patTableArn',          'patTable'],
       ['blobStoreArn',         'blobStore'],
     ])('outputs %s as the ARN of %s', (outputName, logicalId) => {
       synthDataStack().hasOutput(outputName, { Value: { 'Fn::GetAtt': [logicalId, 'Arn'] } });
@@ -138,6 +165,32 @@ describe('MailboxDataStack template synthesis', () => {
       template.allResources('AWS::DynamoDB::Table', { DeletionPolicy: 'Delete', UpdateReplacePolicy: 'Delete' });
       template.hasResource('AWS::S3::Bucket', { DeletionPolicy: 'Delete', UpdateReplacePolicy: 'Delete' });
       template.hasResourceProperties('AWS::S3::Bucket', { VersioningConfiguration: Match.absent() });
+    });
+  });
+
+  describe('token table', () => {
+    it.each([
+      ['production', false],
+      ['development mode', true],
+    ])('keeps the removal policy, point-in-time recovery and tags of the items table in %s', (_title, development) => {
+      const template  = synthDataStack({ development });
+      const patTable  = tableNamed(template, 'patTable');
+      const itemTable = tableNamed(template, 'itemTable');
+
+      expect(patTable.deletionPolicy).toEqual(itemTable.deletionPolicy);
+      expect(patTable.updateReplacePolicy).toEqual(itemTable.updateReplacePolicy);
+      expect(patTable.properties.PointInTimeRecoverySpecification)
+        .toEqual(itemTable.properties.PointInTimeRecoverySpecification);
+      expect(baseTagsOf(patTable)).toEqual(baseTagsOf(itemTable));
+    });
+
+    it('projects keys only in both secondary indexes', () => {
+      const patTable = tableNamed(synthDataStack(), 'patTable');
+
+      expect(patTable.properties.GlobalSecondaryIndexes).toEqual([
+        expect.objectContaining({ IndexName: 'gsi1', Projection: { ProjectionType: 'KEYS_ONLY' } }),
+        expect.objectContaining({ IndexName: 'gsi2', Projection: { ProjectionType: 'KEYS_ONLY' } }),
+      ]);
     });
   });
 

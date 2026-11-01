@@ -46,6 +46,7 @@ const EXPECTED_OFFENDERS: string[] = [
   `AWS::SSM::Parameter|Name|{"Fn::Join":["",["/serverlessinbox/",{"Ref":"AWS::StackName"},"/data-override/configTable"]]}`,
   `AWS::SSM::Parameter|Name|{"Fn::Join":["",["/serverlessinbox/",{"Ref":"AWS::StackName"},"/data-override/itemTable"]]}`,
   `AWS::SSM::Parameter|Name|{"Fn::Join":["",["/serverlessinbox/",{"Ref":"AWS::StackName"},"/data-override/mailFeedbackTable"]]}`,
+  `AWS::SSM::Parameter|Name|{"Fn::Join":["",["/serverlessinbox/",{"Ref":"AWS::StackName"},"/data-override/patTable"]]}`,
 ];
 
 function explicitNamesAfterSynth(underIntermediateConstruct: boolean): Set<string> {

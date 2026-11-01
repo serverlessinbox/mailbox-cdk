@@ -40,6 +40,8 @@ describe('data override resolver resource properties', () => {
     auditLogTableOverrideArn:     'arn:aws:dynamodb:eu-west-1:123456789012:table/auditlog-restored',
     mailFeedbackTableIncomingArn: 'arn:aws:dynamodb:eu-west-1:123456789012:table/mailfeedback',
     mailFeedbackTableOverrideArn: 'arn:aws:dynamodb:eu-west-1:123456789012:table/mailfeedback-restored',
+    patTableIncomingArn:          'arn:aws:dynamodb:eu-west-1:123456789012:table/pat',
+    patTableOverrideArn:          'arn:aws:dynamodb:eu-west-1:123456789012:table/pat-restored',
   } satisfies ResourceProperties;
 
   it('accepts the properties the construct writes, with the keys CloudFormation adds', () => {

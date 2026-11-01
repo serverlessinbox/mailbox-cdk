@@ -9,6 +9,7 @@ import { Construct }                                                            
 import { MAILBOX_ARTIFACT_PACKAGE }                                             from '../../../contracts/mailbox-artifact-package';
 import type { IDataBlobStore }                                                  from '../../../resources/buckets/data-blob-store';
 import { MailboxDataDeployerWorkerLambda }                                      from '../../../resources/lambdas/mailbox-data-deployer-worker-lambda';
+import type { IPatTable }                                                       from '../../../resources/tables/data-pat-table';
 import type { IDataTable }                                                      from '../../../resources/tables/data-tables';
 import { MailboxDataStackRef }                                                  from '../mailbox-data-stack-ref';
 import type { MailboxDataStackParameters }                                      from '../mailbox-data-stack';
@@ -43,6 +44,7 @@ export class MailboxDataDeployer extends Construct {
   public readonly changelogTable: IDataTable;
   public readonly auditLogTable: IDataTable;
   public readonly mailFeedbackTable: IDataTable;
+  public readonly patTable: IPatTable;
 
   /** Grant-scoped handle to `blobStoreBucket`. Forwarded from `MailboxDataStackRef`. */
   public readonly blobStore: IDataBlobStore;
@@ -106,6 +108,7 @@ export class MailboxDataDeployer extends Construct {
         changelogTable:    resource.getAttString('changelogTableArn'),
         auditLogTable:     resource.getAttString('auditLogTableArn'),
         mailFeedbackTable: resource.getAttString('mailFeedbackTableArn'),
+        patTable:          resource.getAttString('patTableArn'),
       },
       artifactResolver: props.artifactResolver,
     });
@@ -117,6 +120,7 @@ export class MailboxDataDeployer extends Construct {
       changelogTableArn:    resolver.effectiveTableArn('changelogTable'),
       auditLogTableArn:     resolver.effectiveTableArn('auditLogTable'),
       mailFeedbackTableArn: resolver.effectiveTableArn('mailFeedbackTable'),
+      patTableArn:          resolver.effectiveTableArn('patTable'),
       blobStoreArn:         resource.getAttString('blobStoreArn'),
     });
 
@@ -125,6 +129,7 @@ export class MailboxDataDeployer extends Construct {
     this.changelogTable    = ref.changelogTable;
     this.auditLogTable     = ref.auditLogTable;
     this.mailFeedbackTable = ref.mailFeedbackTable;
+    this.patTable          = ref.patTable;
     this.blobStore         = ref.blobStore;
     this.blobStoreBucket   = ref.blobStoreBucket;
   }

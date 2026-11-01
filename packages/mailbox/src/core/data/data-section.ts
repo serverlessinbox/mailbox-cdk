@@ -7,6 +7,7 @@ import { Construct }                                               from 'constru
 
 import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
 import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
+import type { IPatTable }                                          from '../../resources/tables/data-pat-table';
 import type { IDataTable }                                         from '../../resources/tables/data-tables';
 
 import { AuditWriting }                                            from './audit-writing';
@@ -39,6 +40,7 @@ export class DataSection extends Construct {
   public readonly changelogTable: IDataTable;
   public readonly auditLogTable: IDataTable;
   public readonly mailFeedbackTable: IDataTable;
+  public readonly patTable: IPatTable;
   public readonly blobStore: IDataBlobStore;
   public readonly blobStoreBucket: IBucket;
   public readonly auditEventsQueue: IAuditEventsQueue;
@@ -71,6 +73,7 @@ export class DataSection extends Construct {
     this.changelogTable    = dataRef.changelogTable;
     this.auditLogTable     = dataRef.auditLogTable;
     this.mailFeedbackTable = dataRef.mailFeedbackTable;
+    this.patTable          = dataRef.patTable;
 
     const auditWriting = new AuditWriting(this, 'audit-writing', {
       auditLogTable:    this.auditLogTable,

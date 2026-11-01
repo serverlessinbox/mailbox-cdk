@@ -50,6 +50,7 @@ const EXPECTED_LOGICAL_IDS: string[] = [
   'mailboxdatadatadeployeroverrideresolverconfigtableoverride8B244E4B',
   'mailboxdatadatadeployeroverrideresolveritemtableoverrideBA1F1473',
   'mailboxdatadatadeployeroverrideresolvermailfeedbacktableoverrideD4990A02',
+  'mailboxdatadatadeployeroverrideresolverpattableoverride463DDE6D',
   'mailboxedgeblobcdnblobdistribution8EDBE4E4',
   'mailboxedgednsadmincnameD0EED4EA',
   'mailboxedgednsapicname8CC46562',
