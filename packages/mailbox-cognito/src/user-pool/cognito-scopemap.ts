@@ -1,6 +1,9 @@
 import { Permission } from '@serverlessinbox/mailbox';
 
-/** The scope names of the Cognito resource server. The set is fixed: no permission adds a scope. */
+/**
+ * The scope names of the Cognito resource server. A scope exists only as a member here, with its entries in
+ * `CognitoScopeToPermissions` and `CognitoScopeDescriptions`; a permission never adds a scope.
+ */
 export enum CognitoScope {
   MAIL_READ = 'mail.read',
   MAIL_WRITE = 'mail.write',
@@ -14,6 +17,7 @@ export enum CognitoScope {
   CONTACTS_READ = 'contacts.read',
   CONTACTS_WRITE = 'contacts.write',
   ADMIN = 'admin',
+  TOKENS_MANAGE = 'tokens.manage',
 }
 
 /**
@@ -43,6 +47,7 @@ export const CognitoScopeToPermissions: Record<CognitoScope, Permission[]> = {
   [CognitoScope.CONTACTS_READ]:     [Permission.CONTACTS_READ],
   [CognitoScope.CONTACTS_WRITE]:    [Permission.CONTACTS_WRITE, Permission.CONTACTS_DELETE],
   [CognitoScope.ADMIN]:             [Permission.ADMIN],
+  [CognitoScope.TOKENS_MANAGE]:     [Permission.TOKENS_MANAGE],
 };
 
 /**
@@ -65,4 +70,5 @@ export const CognitoScopeDescriptions: Record<CognitoScope, string> = {
   [CognitoScope.CONTACTS_READ]:     'Read contacts',
   [CognitoScope.CONTACTS_WRITE]:    'Write contacts',
   [CognitoScope.ADMIN]:             'Admin access',
+  [CognitoScope.TOKENS_MANAGE]:     'Manage your personal access tokens',
 };

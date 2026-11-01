@@ -106,6 +106,7 @@ describe('WebmailUi', () => {
         Permission.IMPORT_WRITE,
         Permission.CONTACTS_READ,
         Permission.CONTACTS_WRITE,
+        Permission.TOKENS_MANAGE,
       ],
       callbackUrls: [`https://${webmailUi.distributionDomainName}/auth/callback`],
       logoutUrls:   [`https://${webmailUi.distributionDomainName}/`],

@@ -42,6 +42,9 @@ export enum Permission {
   /** Create and run mail imports. */
   IMPORT_WRITE = 'import/write',
 
+  /** Create, rotate and revoke your personal access tokens. */
+  TOKENS_MANAGE = 'tokens/manage',
+
   /** Administrative access. */
   ADMIN = 'admin',
 }
@@ -70,5 +73,6 @@ export const JMAP_SCOPE_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.PREFERENCES_WRITE]: 'Change your own preferences and client settings',
   [Permission.IMPORT_READ]:       'List your mail import connections and jobs',
   [Permission.IMPORT_WRITE]:      'Create and run mail imports',
+  [Permission.TOKENS_MANAGE]:     'Create, rotate and revoke your personal access tokens',
   [Permission.ADMIN]:             'Admin access',
 };

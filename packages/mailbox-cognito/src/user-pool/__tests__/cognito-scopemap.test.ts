@@ -26,10 +26,11 @@ const RESOURCE_SERVER_SCOPE_NAMES = [
   'contacts.read',
   'contacts.write',
   'admin',
+  'tokens.manage',
 ];
 
 describe('Cognito resource server scopes', () => {
-  it('keeps exactly the twelve scope names, whatever permissions exist', () => {
+  it('keeps exactly the thirteen scope names, whatever permissions exist', () => {
     expect(Object.keys(CognitoScopeToPermissions)).toEqual(RESOURCE_SERVER_SCOPE_NAMES);
     expect(Object.values(CognitoScope)).toEqual(RESOURCE_SERVER_SCOPE_NAMES);
   });
@@ -48,6 +49,7 @@ describe('Cognito resource server scopes', () => {
       [CognitoScope.CONTACTS_READ]:     'Read contacts',
       [CognitoScope.CONTACTS_WRITE]:    'Write contacts',
       [CognitoScope.ADMIN]:             'Admin access',
+      [CognitoScope.TOKENS_MANAGE]:     'Manage your personal access tokens',
     });
   });
 
@@ -74,6 +76,7 @@ describe('Cognito resource server scopes', () => {
     [CognitoScope.CONTACTS_READ, [Permission.CONTACTS_READ]],
     [CognitoScope.CONTACTS_WRITE, [Permission.CONTACTS_WRITE, Permission.CONTACTS_DELETE]],
     [CognitoScope.ADMIN,         [Permission.ADMIN]],
+    [CognitoScope.TOKENS_MANAGE, [Permission.TOKENS_MANAGE]],
   ])('grants the rights of %s as the mapping table states', (scope, rights) => {
     expect(CognitoScopeToPermissions[scope]).toEqual(rights);
   });

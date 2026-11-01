@@ -305,6 +305,7 @@ describe('MailboxUserPool UI client provisioning', () => {
         Permission.IMPORT_WRITE,
         Permission.CONTACTS_READ,
         Permission.CONTACTS_WRITE,
+        Permission.TOKENS_MANAGE,
       ],
       callbackUrls: ['https://w.example.com/cb'],
       logoutUrls:   ['https://w.example.com/'],
@@ -318,6 +319,7 @@ describe('MailboxUserPool UI client provisioning', () => {
       'si/preferences.write',
       'si/contacts.read',
       'si/contacts.write',
+      'si/tokens.manage',
     ]);
     expect(client.requestScopeList).not.toContain('si/user.read');
   });
@@ -328,6 +330,14 @@ describe('MailboxUserPool UI client provisioning', () => {
     const client = pool.provisionJmapApiClient({ name: 'contacts-ui', permissions: [Permission.PREFERENCES_WRITE], callbackUrls: [], logoutUrls: [] });
 
     expect(client.requestScopeList).toEqual(['si/preferences.write']);
+  });
+
+  it('maps the TOKENS_MANAGE right to si/tokens.manage, the only scope whose rights contain it', () => {
+    const { pool } = createUserPool();
+
+    const client = pool.provisionJmapApiClient({ name: 'token-manager', permissions: [Permission.TOKENS_MANAGE], callbackUrls: [], logoutUrls: [] });
+
+    expect(client.requestScopeList).toEqual(['si/tokens.manage']);
   });
 
   it('maps the PREFERENCES_READ right to si/preferences.read, never to the deprecated si/user.read that also contains it', () => {
