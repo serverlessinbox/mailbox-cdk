@@ -4,6 +4,28 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.5](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.4...v0.5.5) (Wed Oct 28 2026)
+
+### chore
+
+* mailbox-idl pointer ([86d81ae](https://github.com/serverlessinbox/mailbox-cdk/commit/86d81ae2c49142d2a15ea5ae3e0fdacf4dbae8c7))
+
+## [0.5.4](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.3...v0.5.4) (Tue Oct 27 2026)
+
+### fix
+
+* **admin-ui** api-generate uses the shared mailbox-idl tools path ([ff3e69d](https://github.com/serverlessinbox/mailbox-cdk/commit/ff3e69dc3ab92fe6e21d3e4a697e0fed46996979))
+
+### feat
+
+* **mailbox** shared API host with admin and user areas ([c6ef099](https://github.com/serverlessinbox/mailbox-cdk/commit/c6ef09902125d9bebaa34208a01df5a0cc9fb9b4))
+
+* **mailbox** the UIs always get their API URLs ([6a2add1](https://github.com/serverlessinbox/mailbox-cdk/commit/6a2add197352bbe2312b02c2cc194de4ae45a7ea))
+
+### refactor
+
+* **mailbox** webmail config names its JMAP URL jmapUrl ([bcf2b9b](https://github.com/serverlessinbox/mailbox-cdk/commit/bcf2b9bed122397cd2a724e8a5a747848dcca2d3))
+
 ## [0.5.3](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.2...v0.5.3) (Mon Oct 26 2026)
 
 ### docs
