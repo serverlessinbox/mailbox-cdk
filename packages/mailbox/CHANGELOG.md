@@ -4,6 +4,66 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.6](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.5...v0.5.6) (Mon Nov 02 2026)
+
+### fix
+
+* **blob** contact and principal blob ids reject unsafe entity ids ([c4df2e2](https://github.com/serverlessinbox/mailbox-cdk/commit/c4df2e2c99436a8c713914d9c82bb4f628784292))
+
+* **mailbox** enable TTL on the audit-log table ([de5f909](https://github.com/serverlessinbox/mailbox-cdk/commit/de5f90996fa193481a1854321afcdc255b0fca76))
+
+* **iam** grant log-group actions on the log-group ARN ([d042fe2](https://github.com/serverlessinbox/mailbox-cdk/commit/d042fe2e55ec7e0bc4f679ac581f0db9ce7cbe84))
+
+* **mailbox** name the authorizer's denied-token audit events ([0e948d6](https://github.com/serverlessinbox/mailbox-cdk/commit/0e948d6ba31d266dc1136e45ad16afeb4f2af36a))
+
+* **mailbox** allow the key attributes in the token lookup write ([2c23ae1](https://github.com/serverlessinbox/mailbox-cdk/commit/2c23ae11695634e2806f5b828387de6db879033c))
+
+### feat
+
+* **mailbox** import jobs queue ([8f5511c](https://github.com/serverlessinbox/mailbox-cdk/commit/8f5511c4752616ff6d03aade0bf1b9bf2e1041e7))
+
+* **mailbox** item-scoped auth key store grants and optional customer key ([d580fc0](https://github.com/serverlessinbox/mailbox-cdk/commit/d580fc089f6b8db474365ba6b9a4f74a1b44e593))
+
+* **mailbox** dead-letter queue for SES event notifications ([362cac8](https://github.com/serverlessinbox/mailbox-cdk/commit/362cac8539464f95264a682b15cc282e89cae988))
+
+* **mailbox** mail-log table and grants ([b07bd0b](https://github.com/serverlessinbox/mailbox-cdk/commit/b07bd0bb704f8226d2db16089e952314ba25fd91))
+
+* **mailbox** wire the mail import runner and job sweeper ([7f8cf0f](https://github.com/serverlessinbox/mailbox-cdk/commit/7f8cf0fed937ca2c7ab7727e0b3e7527ff5a97a3))
+
+* **mailbox** user-api receives the auth provider scope map ([670c59b](https://github.com/serverlessinbox/mailbox-cdk/commit/670c59b86fc9454c9fe2efb623233a47c863a281))
+
+* **mailbox** the mail-import runner can push websocket state changes ([05a4435](https://github.com/serverlessinbox/mailbox-cdk/commit/05a4435908221b44e627bfeaf91b1f64c11c02a4))
+
+* **mailbox** the artifact updater updates resources concurrently under a fixed cap ([7723d92](https://github.com/serverlessinbox/mailbox-cdk/commit/7723d9215a82cc18588a340b7a5c8f7fbd7fe571))
+
+* **eslint-plugin** align caps the = column at 80 and gives lone entries one space ([7b0a5af](https://github.com/serverlessinbox/mailbox-cdk/commit/7b0a5af97634ede36aaac2933bfaab4c11504031))
+
+* **auth** rights-based permissions and scope maps in auth policies ([077f72b](https://github.com/serverlessinbox/mailbox-cdk/commit/077f72b976cec4a995e1e4abe811345d7f406adf))
+
+* **auth** preferences rights replace user rights ([6d480ef](https://github.com/serverlessinbox/mailbox-cdk/commit/6d480efba9fcb15435ddc8151b35d539361ada80))
+
+* **auth** import rights in the Cognito mail write scope ([9610140](https://github.com/serverlessinbox/mailbox-cdk/commit/9610140c12475eaccba0a970dd528154f4c68195))
+
+* **data** personal access token table in the data stack ([0de3352](https://github.com/serverlessinbox/mailbox-cdk/commit/0de33528437f9219cd0c07722e07309176ee0718))
+
+* **auth** tokens/manage right and its Cognito scope ([dac4d21](https://github.com/serverlessinbox/mailbox-cdk/commit/dac4d21e9bb0060605d8de27065e925918e981a4))
+
+* **mailbox** wire personal access tokens into the Lambdas ([e9bd6e3](https://github.com/serverlessinbox/mailbox-cdk/commit/e9bd6e3bef2aa8bef0c6dcbda86d29827acc4831))
+
+* **mailbox** user-api and job-sweeper can push websocket state changes ([4c4a8fd](https://github.com/serverlessinbox/mailbox-cdk/commit/4c4a8fd1f6c8ec281a0a2e47a5a5229d62a39d88))
+
+### refactor
+
+* **mailbox** rename auth key store import-key grants to connection keys ([c3229fa](https://github.com/serverlessinbox/mailbox-cdk/commit/c3229fa869002e853c662ab002ed96849f66ca5b))
+
+* **mailbox** queue encryption is a union, one behaviour per variant ([7e4dc83](https://github.com/serverlessinbox/mailbox-cdk/commit/7e4dc83f8bf4c77e3f66db0e88b4f1799d63dee6))
+
+* remove the remaining Partial types and forbid Partial in lint ([66a2dc6](https://github.com/serverlessinbox/mailbox-cdk/commit/66a2dc65781c3e734f4d0b455bfed59a1286db18))
+
+### style
+
+* enable import-layout and reformat imports at the column-80 lane ([17dddd6](https://github.com/serverlessinbox/mailbox-cdk/commit/17dddd6fbd2207684e1d5a0015543ac67cca1cd1))
+
 ## [0.5.5](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.4...v0.5.5) (Wed Oct 28 2026)
 
 
