@@ -11,7 +11,7 @@ import type { IAuthKeyStoreTable } from '../tables/auth-key-store-table';
 import type { IPatTable }          from '../tables/data-pat-table';
 import type { IDataTable }         from '../tables/data-tables';
 
-/** What an authorizer needs to accept personal access tokens: the token table, and the queue its token-use audit events go to. */
+/** What an authorizer needs to accept personal access tokens: the token table, and the queue its denied-token audit events go to. */
 export interface AuthorizerPatInputs {
   readonly patTable:         IPatTable;
   readonly auditEventsQueue: IAuditEventsQueue;
