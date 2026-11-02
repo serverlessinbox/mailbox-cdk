@@ -51,7 +51,7 @@ export class DataPatTable implements IPatTable {
       resourceArns: [this.tableArn],
       conditions:   {
         'ForAllValues:StringLike':   { 'dynamodb:LeadingKeys': ['PAT#*'] },
-        'ForAllValues:StringEquals': { 'dynamodb:Attributes': ['lastUsedAt'] },
+        'ForAllValues:StringEquals': { 'dynamodb:Attributes': ['pk', 'sk', 'lastUsedAt'] },
       },
     });
   }

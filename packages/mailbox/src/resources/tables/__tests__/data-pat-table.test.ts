@@ -78,7 +78,7 @@ describe('DataPatTable', () => {
         resources: [TABLE_ARN],
         condition: {
           'ForAllValues:StringLike':   { 'dynamodb:LeadingKeys': ['PAT#*'] },
-          'ForAllValues:StringEquals': { 'dynamodb:Attributes': ['lastUsedAt'] },
+          'ForAllValues:StringEquals': { 'dynamodb:Attributes': ['pk', 'sk', 'lastUsedAt'] },
         },
       },
     ]);
