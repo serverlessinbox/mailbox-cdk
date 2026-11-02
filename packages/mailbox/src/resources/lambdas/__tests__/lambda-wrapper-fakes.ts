@@ -44,6 +44,18 @@ export function fakeWebSocketTable(name: string) {
   return { tableName: name, grantStoreConnection: grantSpy(), grantRemoveConnection: grantSpy(), grantBroadcast: grantSpy() };
 }
 
+/** Stands in for the `IPatTable`. */
+export function fakePatTable(name: string) {
+  return {
+    tableName:                  name,
+    tableArn:                   `arn:fake:${name}`,
+    grantPatLookup:             grantSpy(),
+    grantPatManage:             grantSpy(),
+    grantPatRevokeForPrincipal: grantSpy(),
+    grantPatExpiryNotify:       grantSpy(),
+  };
+}
+
 /** Stands in for the `IDataBlobStore`. */
 export function fakeDataBlobStore(name: string) {
   return {

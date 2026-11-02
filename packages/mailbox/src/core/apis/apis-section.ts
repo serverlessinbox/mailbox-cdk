@@ -12,6 +12,7 @@ import type { IAuditEventsQueue }                                               
 import type { IEmailSendingQueue }                                              from '../../resources/queues/email-sending-queue';
 import type { IImportJobsQueue }                                                from '../../resources/queues/import-jobs-queue';
 import type { IAuthKeyStoreTable }                                              from '../../resources/tables/auth-key-store-table';
+import type { IPatTable }                                                       from '../../resources/tables/data-pat-table';
 import type { IDataTable }                                                      from '../../resources/tables/data-tables';
 import type { IMailLogTable }                                                   from '../../resources/tables/mail-log-table';
 import type { IMailboxAuthProvider }                                            from '../auth/auth-provider';
@@ -32,6 +33,7 @@ import { WebSocketPush }                                                        
 export interface IApisDataInputs {
   readonly configTable:       IDataTable;
   readonly itemTable:         IDataTable;
+  readonly patTable:          IPatTable;
   readonly changelogTable:    IDataTable;
   readonly auditLogTable:     IDataTable;
   readonly mailFeedbackTable: IDataTable;
@@ -198,13 +200,12 @@ export class ApisSection extends Construct {
     );
 
     const userApi = this.addUserApi(
-      props.data.configTable,
-      props.data.itemTable,
-      props.data.auditEventsQueue,
+      props.data,
       props.auth.authKeyStoreTable,
       props.artifactResolver,
       props.authProvider.scopeMap,
       props.jobs,
+      `noreply@${props.mailboxDomains.domainName}`,
     );
 
     const mcpApi = props.enableMcp
@@ -282,6 +283,7 @@ export class ApisSection extends Construct {
     return new JmapApi(this, 'jmap-api', {
       configTable:       data.configTable,
       itemTable:         data.itemTable,
+      patTable:          data.patTable,
       changelogTable:    data.changelogTable,
       authKeyStoreTable: auth.authKeyStoreTable,
       cdnHost,
@@ -336,6 +338,7 @@ export class ApisSection extends Construct {
     return new AdminApi(this, 'admin', {
       configTable:          data.configTable,
       itemTable:            data.itemTable,
+      patTable:             data.patTable,
       auditLogTable:        data.auditLogTable,
       changelogTable:       data.changelogTable,
       mailFeedbackTable:    data.mailFeedbackTable,
@@ -358,18 +361,21 @@ export class ApisSection extends Construct {
   }
 
   private addUserApi(
-    configTable: IDataTable,
-    itemTable: IDataTable,
-    auditEventsQueue: IAuditEventsQueue,
+    data: IApisDataInputs,
     authKeyStoreTable: IAuthKeyStoreTable,
     artifactResolver: IArtifactResolver,
     scopeMap: ScopeMap,
     jobs: IApisJobsInputs,
+    systemSenderAddress: string,
   ): UserApi {
     return new UserApi(this, 'user-api', {
-      configTable,
-      itemTable,
-      auditEventsQueue,
+      configTable:      data.configTable,
+      itemTable:        data.itemTable,
+      patTable:         data.patTable,
+      blobStore:        data.blobStore,
+      changelogTable:   data.changelogTable,
+      auditEventsQueue: data.auditEventsQueue,
+      systemSenderAddress,
       authKeyStoreTable,
       importJobsQueue:  jobs.importJobsQueue,
       mailImportRunner: jobs.mailImportRunner,

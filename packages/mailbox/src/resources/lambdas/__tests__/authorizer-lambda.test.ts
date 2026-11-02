@@ -6,17 +6,18 @@
  * statement each grant renders is pinned by the table that owns it.
  */
 
-import { Template }                                                  from 'aws-cdk-lib/assertions';
+import { Template }                                                             from 'aws-cdk-lib/assertions';
 
-import { AuthPolicyName }                                            from '../../../contracts/auth-names';
-import { Permission }                                                from '../../../core/auth/jmap-scopes';
-import { AuthorizerLambda }                                          from '../authorizer-lambda';
-import type { AuthorizerLambdaProps }                                from '../authorizer-lambda';
+import { AuthPolicyName }                                                       from '../../../contracts/auth-names';
+import { Permission }                                                           from '../../../core/auth/jmap-scopes';
+import { AuthorizerLambda }                                                     from '../authorizer-lambda';
+import type { AuthorizerLambdaProps }                                           from '../authorizer-lambda';
 
-import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataTable } from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                         from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataTable,
+  fakePatTable, fakeQueue }                                                     from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                                    from './lambda-wrapper-helpers';
 
-type OptionalProps = Partial<Pick<AuthorizerLambdaProps, 'anonymousRoutes' | 'principalLookup' | 'scopeMap'>>;
+type OptionalProps = Partial<Pick<AuthorizerLambdaProps, 'anonymousRoutes' | 'principalLookup' | 'scopeMap' | 'personalAccessTokens'>>;
 
 function synthesize(optional: OptionalProps = {}) {
   const { stack, artifactResolver } = arrangeWrapperStack();
@@ -68,6 +69,36 @@ describe('AuthorizerLambda', () => {
     const { lambda, configTable } = synthesize();
 
     expectGrantedOnceTo(configTable.grantRead, lambda);
+  });
+
+  describe('personal access tokens', () => {
+    function withTokens() {
+      const patTable         = fakePatTable('pat-table');
+      const auditEventsQueue = fakeQueue('audit-events');
+
+      return { patTable, auditEventsQueue, ...synthesize({ personalAccessTokens: { patTable, auditEventsQueue } }) };
+    }
+
+    it('passes the token table name and the audit queue URL when tokens are accepted', () => {
+      expect(withTokens().environment).toMatchObject({
+        PAT_TABLE_NAME:         'pat-table',
+        AUDIT_EVENTS_QUEUE_URL: 'https://sqs.fake/audit-events',
+      });
+    });
+
+    it('requests the token lookup grant and the audit queue send grant for itself', () => {
+      const { lambda, patTable, auditEventsQueue } = withTokens();
+
+      expectGrantedOnceTo(patTable.grantPatLookup, lambda);
+      expectGrantedOnceTo(auditEventsQueue.grantSend, lambda);
+    });
+
+    it('sets neither variable when tokens are not accepted', () => {
+      const { environment } = synthesize();
+
+      expect(environment).not.toHaveProperty('PAT_TABLE_NAME');
+      expect(environment).not.toHaveProperty('AUDIT_EVENTS_QUEUE_URL');
+    });
   });
 
   describe('principal lookup', () => {

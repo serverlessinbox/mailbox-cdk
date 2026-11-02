@@ -18,10 +18,10 @@ export interface IPatTable {
   /** Reads and writes token rows, and queries the gsi1 index. */
   grantPatManage(grantee: IGrantable): void;
 
-  /** Queries the gsi1 index, and reads and updates token rows. */
+  /** Queries the gsi1 index, and reads (single and batch) and updates token rows. */
   grantPatRevokeForPrincipal(grantee: IGrantable): void;
 
-  /** Queries the gsi2 index, and reads and updates owner rows under the tenant key prefix. */
+  /** Queries the gsi2 index, and reads (single and batch) and updates owner rows under the tenant key prefix. */
   grantPatExpiryNotify(grantee: IGrantable): void;
 }
 
@@ -77,7 +77,7 @@ export class DataPatTable implements IPatTable {
     });
     Grant.addToPrincipal({
       grantee,
-      actions:      ['dynamodb:GetItem', 'dynamodb:UpdateItem'],
+      actions:      ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:UpdateItem'],
       resourceArns: [this.tableArn],
     });
   }
@@ -90,7 +90,7 @@ export class DataPatTable implements IPatTable {
     });
     Grant.addToPrincipal({
       grantee,
-      actions:      ['dynamodb:GetItem', 'dynamodb:UpdateItem'],
+      actions:      ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:UpdateItem'],
       resourceArns: [this.tableArn],
       conditions:   { 'ForAllValues:StringLike': { 'dynamodb:LeadingKeys': ['TENANT#*PAT_OWNER#*'] } },
     });

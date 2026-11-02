@@ -26,6 +26,7 @@ import { JmapApiLambda }                                                        
 import type { IAuditEventsQueue }                                               from '../../resources/queues/audit-events-queue';
 import type { IEmailSendingQueue }                                              from '../../resources/queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                              from '../../resources/tables/auth-key-store-table';
+import type { IPatTable }                                                       from '../../resources/tables/data-pat-table';
 import type { IDataTable }                                                      from '../../resources/tables/data-tables';
 import { IMailboxAuthProvider }                                                 from '../auth/auth-provider';
 
@@ -46,6 +47,7 @@ export interface JmapApiProps {
   readonly blobStore:            IDataBlobStore;
   readonly emailSubmissionQueue: IEmailSendingQueue;
   readonly auditEventsQueue:     IAuditEventsQueue;
+  readonly patTable:             IPatTable;
 
   readonly cdnHost: string;
   /** Origins allowed by the API's CORS preflight. Without any, no CORS configuration is created. */
@@ -102,14 +104,15 @@ export class JmapApi extends Construct {
     ComponentDescription.describe(this, 'JMAP protocol API — the mail client endpoint for sync, query and message submission.');
 
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
-      authKeyStoreTable: props.authKeyStoreTable,
-      configTable:       props.configTable,
-      artifactResolver:  props.artifactResolver,
-      authPolicyName:    AuthPolicyName.JMAP_API,
-      anonymousRoutes:   ['GET /.well-known/jmap'],
-      scopeMap:          props.authProvider.scopeMap,
-      serviceName:       'authorizer-jmap-api',
-      pipeline:          'jmap',
+      authKeyStoreTable:    props.authKeyStoreTable,
+      configTable:          props.configTable,
+      artifactResolver:     props.artifactResolver,
+      authPolicyName:       AuthPolicyName.JMAP_API,
+      anonymousRoutes:      ['GET /.well-known/jmap'],
+      scopeMap:             props.authProvider.scopeMap,
+      serviceName:          'authorizer-jmap-api',
+      pipeline:             'jmap',
+      personalAccessTokens: { patTable: props.patTable, auditEventsQueue: props.auditEventsQueue },
     });
 
     this.authorizerLambda = lambdaAuthorizer;
@@ -202,7 +205,9 @@ export class JmapApi extends Construct {
   }
 
   private addJmapRoutes(api: HttpApi, lambdaAuthorizer: AuthorizerLambda): void {
-    const authenticatedAuthorizer = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
+    const authenticatedAuthorizer = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer, {
+      resultsCacheTtl: Duration.minutes(5),
+    });
     const anonymousAuthorizer     = new HttpLambdaAuthorizer('authorizer-anonymous', lambdaAuthorizer, {
       identitySource:  [],
       resultsCacheTtl: Duration.seconds(0),

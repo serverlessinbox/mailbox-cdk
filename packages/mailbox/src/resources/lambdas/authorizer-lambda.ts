@@ -6,8 +6,16 @@ import { Construct }               from 'constructs';
 
 import type { AuthPolicyName }     from '../../contracts/auth-names';
 import type { ScopeMap }           from '../../core/auth/jmap-scopes';
+import type { IAuditEventsQueue }  from '../queues/audit-events-queue';
 import type { IAuthKeyStoreTable } from '../tables/auth-key-store-table';
+import type { IPatTable }          from '../tables/data-pat-table';
 import type { IDataTable }         from '../tables/data-tables';
+
+/** What an authorizer needs to accept personal access tokens: the token table, and the queue its token-use audit events go to. */
+export interface AuthorizerPatInputs {
+  readonly patTable:         IPatTable;
+  readonly auditEventsQueue: IAuditEventsQueue;
+}
 
 /**
  * The key store and config tables the authorizer reads, the auth policy and anonymous routes it
@@ -27,6 +35,9 @@ export interface AuthorizerLambdaProps {
 
   /** When true, the function resolves the principal and returns it in the authorizer context; absent or false leaves it off. The function always receives the setting, as `on` or `off`. */
   readonly principalLookup?: boolean;
+
+  /** When present the function accepts personal access tokens; without it, it refuses them. */
+  readonly personalAccessTokens?: AuthorizerPatInputs;
 
   /** The provider's scope map; the function receives it as JSON in OAUTH_SCOPE_MAP. */
   readonly scopeMap: ScopeMap;
@@ -58,10 +69,19 @@ export class AuthorizerLambda extends GoLambda {
         ALLOW_ANONYMOUS_ROUTES:    (props.anonymousRoutes ?? []).join(','),
         PRINCIPAL_LOOKUP:          props.principalLookup ? 'on' : 'off',
         OAUTH_SCOPE_MAP:           JSON.stringify(props.scopeMap),
+        ...(props.personalAccessTokens ? {
+          PAT_TABLE_NAME:         props.personalAccessTokens.patTable.tableName,
+          AUDIT_EVENTS_QUEUE_URL: props.personalAccessTokens.auditEventsQueue.queueUrl,
+        } : {}),
       },
     });
 
     props.authKeyStoreTable.grantReadJwks(this);
     props.configTable.grantRead(this);
+
+    if (props.personalAccessTokens) {
+      props.personalAccessTokens.patTable.grantPatLookup(this);
+      props.personalAccessTokens.auditEventsQueue.grantSend(this);
+    }
   }
 }

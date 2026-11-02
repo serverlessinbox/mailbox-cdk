@@ -34,6 +34,8 @@ import type { IAdminApiAddon, IAdminApiAddonProvider, IJmapApiAddon } from '../a
 import { ApisSection }                                                from '../apis-section';
 import type { ApisEndpointsProps, ApisSectionProps, IApisEdgeInputs } from '../apis-section';
 
+import { patTable }                                                   from './apis-helpers';
+
 /** What a test varies of the section: the optional JMAP hooks of the auth provider and the further admin-api addon providers. */
 interface SectionOptions {
   readonly authProvider?:           Pick<IMailboxAuthProvider, 'createJmapApiAddons' | 'jmapOAuthIssuerUrl'>;
@@ -84,6 +86,7 @@ describe('ApisSection', () => {
       data:       {
         configTable:       dataTable('config-table'),
         itemTable:         dataTable('item-table'),
+        patTable:          patTable(stack, 'pat-table'),
         changelogTable:    dataTable('changelog-table'),
         auditLogTable:     dataTable('audit-log-table'),
         mailFeedbackTable: dataTable('mail-feedback-table'),

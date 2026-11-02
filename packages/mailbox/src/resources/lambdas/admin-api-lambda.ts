@@ -10,6 +10,7 @@ import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }              
 import type { IDataBlobStore }                                                  from '../buckets/data-blob-store';
 import type { IAuditEventsQueue }                                               from '../queues/audit-events-queue';
 import type { IEmailSendingQueue }                                              from '../queues/email-sending-queue';
+import type { IPatTable }                                                       from '../tables/data-pat-table';
 import type { IDataTable }                                                      from '../tables/data-tables';
 import type { IMailLogTable }                                                   from '../tables/mail-log-table';
 
@@ -20,12 +21,14 @@ import type { IIdentityProvisioner }                                            
  * is wired to. The caller creates every resource here; this type only passes them through.
  */
 export interface AdminApiLambdaProps {
-  readonly configTable:          IDataTable;
-  readonly itemTable:            IDataTable;
-  readonly auditLogTable:        IDataTable;
-  readonly changelogTable:       IDataTable;
-  readonly mailFeedbackTable:    IDataTable;
-  readonly mailLogTable:         IMailLogTable;
+  readonly configTable:       IDataTable;
+  readonly itemTable:         IDataTable;
+  readonly auditLogTable:     IDataTable;
+  readonly changelogTable:    IDataTable;
+  readonly mailFeedbackTable: IDataTable;
+  readonly mailLogTable:      IMailLogTable;
+  /** The personal access token table; the offboarding the admin API runs revokes the principal's tokens. */
+  readonly patTable:             IPatTable;
   readonly blobStore:            IDataBlobStore;
   readonly emailSubmissionQueue: IEmailSendingQueue;
   readonly auditEventsQueue:     IAuditEventsQueue;
@@ -62,6 +65,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
         CHANGELOG_TABLE_NAME:               props.changelogTable.tableName,
         MAIL_FEEDBACK_TABLE_NAME:           props.mailFeedbackTable.tableName,
         MAIL_LOG_TABLE_NAME:                props.mailLogTable.tableName,
+        PAT_TABLE_NAME:                     props.patTable.tableName,
         BLOB_STORE_NAME:                    props.blobStore.bucketName,
         EMAIL_SUBMISSION_QUEUE_URL:         props.emailSubmissionQueue.queueUrl,
         SES_CONFIG_SET_NAME:                props.sesConfigSetName,
@@ -95,6 +99,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     props.configTable.grantReadWrite(this);
     props.itemTable.grantReadWrite(this);
     props.changelogTable.grantReadWrite(this);
+    props.patTable.grantPatRevokeForPrincipal(this);
 
     props.auditEventsQueue.grantSend(this);
 

@@ -4,9 +4,11 @@ import { Duration }                from 'aws-cdk-lib';
 import { Construct }               from 'constructs';
 
 import type { ScopeMap }           from '../../core/auth/jmap-scopes';
+import type { IDataBlobStore }     from '../buckets/data-blob-store';
 import type { IAuditEventsQueue }  from '../queues/audit-events-queue';
 import type { IImportJobsQueue }   from '../queues/import-jobs-queue';
 import type { IAuthKeyStoreTable } from '../tables/auth-key-store-table';
+import type { IPatTable }          from '../tables/data-pat-table';
 import type { IDataTable }         from '../tables/data-tables';
 
 import type { IMailImportRunner }  from './mail-import-runner-lambda';
@@ -23,6 +25,11 @@ export interface UserApiLambdaProps {
   readonly importJobsQueue:   IImportJobsQueue;
   readonly mailImportRunner:  IMailImportRunner;
   readonly artifactResolver:  IArtifactResolver;
+  readonly patTable:          IPatTable;
+  readonly blobStore:         IDataBlobStore;
+  readonly changelogTable:    IDataTable;
+  /** System sender email address (e.g. noreply@example.com) that token notices are sent from. */
+  readonly systemSenderAddress: string;
   /** The OAuth scope map; delivered to the Go handler in the OAUTH_HANDLER_CONFIG variable. */
   readonly scopeMap: ScopeMap;
 }
@@ -48,6 +55,10 @@ export class UserApiLambda extends GoLambda {
         IMPORT_JOBS_QUEUE_URL:            props.importJobsQueue.queueUrl,
         MAIL_IMPORT_RUNNER_FUNCTION_NAME: props.mailImportRunner.functionName,
         OAUTH_HANDLER_CONFIG:             JSON.stringify({ scopeMap: props.scopeMap }),
+        PAT_TABLE_NAME:                   props.patTable.tableName,
+        BLOB_STORAGE_NAME:                props.blobStore.bucketName,
+        CHANGELOG_TABLE_NAME:             props.changelogTable.tableName,
+        SYSTEM_SENDER_ADDRESS:            props.systemSenderAddress,
       },
     });
 
@@ -58,5 +69,8 @@ export class UserApiLambda extends GoLambda {
     props.importJobsQueue.grantSend(this);
     props.mailImportRunner.grantInvoke(this);
     props.itemTable.grantConditionCheck(this);
+    props.patTable.grantPatManage(this);
+    props.blobStore.grantEmailBlobWrite(this);
+    props.changelogTable.grantReadWrite(this);
   }
 }

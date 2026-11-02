@@ -15,6 +15,7 @@ import type { IIdentityProvisioner }                               from '../../r
 import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
 import type { IEmailSendingQueue }                                 from '../../resources/queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                 from '../../resources/tables/auth-key-store-table';
+import type { IPatTable }                                          from '../../resources/tables/data-pat-table';
 import type { IDataTable }                                         from '../../resources/tables/data-tables';
 import type { IMailLogTable }                                      from '../../resources/tables/mail-log-table';
 import type { ScopeMap }                                           from '../auth/jmap-scopes';
@@ -32,6 +33,7 @@ export interface AdminApiProps {
   readonly auditLogTable:        IDataTable;
   readonly changelogTable:       IDataTable;
   readonly mailFeedbackTable:    IDataTable;
+  readonly patTable:             IPatTable;
   readonly authKeyStoreTable:    IAuthKeyStoreTable;
   readonly mailLogTable:         IMailLogTable;
   readonly blobStore:            IDataBlobStore;
@@ -127,6 +129,7 @@ export class AdminApi extends Construct implements IApiArea {
       changelogTable:       props.changelogTable,
       mailFeedbackTable:    props.mailFeedbackTable,
       mailLogTable:         props.mailLogTable,
+      patTable:             props.patTable,
       blobStore:            props.blobStore,
       emailSubmissionQueue: props.emailSubmissionQueue,
       auditEventsQueue:     props.auditEventsQueue,
@@ -141,16 +144,17 @@ export class AdminApi extends Construct implements IApiArea {
 
   private createAuthorizer(props: AdminApiProps): HttpLambdaAuthorizer {
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
-      authKeyStoreTable: props.authKeyStoreTable,
-      configTable:       props.configTable,
-      artifactResolver:  props.artifactResolver,
-      authPolicyName:    AuthPolicyName.ADMIN_API,
-      scopeMap:          props.scopeMap,
-      serviceName:       'authorizer-admin-api',
-      pipeline:          'admin',
+      authKeyStoreTable:    props.authKeyStoreTable,
+      configTable:          props.configTable,
+      artifactResolver:     props.artifactResolver,
+      authPolicyName:       AuthPolicyName.ADMIN_API,
+      scopeMap:             props.scopeMap,
+      serviceName:          'authorizer-admin-api',
+      pipeline:             'admin',
+      personalAccessTokens: { patTable: props.patTable, auditEventsQueue: props.auditEventsQueue },
     });
 
-    return new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
+    return new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer, { resultsCacheTtl: Duration.minutes(5) });
   }
 
   private createLookupAuthorizer(props: AdminApiProps): HttpLambdaAuthorizer {

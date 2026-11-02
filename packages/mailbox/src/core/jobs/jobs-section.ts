@@ -9,16 +9,20 @@ import type { IDataBlobStore }                                     from '../../r
 import { JobSweeperLambda }                                        from '../../resources/lambdas/job-sweeper-lambda';
 import { MailImportRunnerLambda }                                  from '../../resources/lambdas/mail-import-runner-lambda';
 import type { IMailImportRunner }                                  from '../../resources/lambdas/mail-import-runner-lambda';
+import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
 import { ImportJobsQueue, type IImportJobsQueueConsumer }          from '../../resources/queues/import-jobs-queue';
 import type { IAuthKeyStoreTable }                                 from '../../resources/tables/auth-key-store-table';
+import type { IPatTable }                                          from '../../resources/tables/data-pat-table';
 import type { IDataTable }                                         from '../../resources/tables/data-tables';
 
 /** What {@link JobsSection} uses of the data section. */
 export interface IJobsDataInputs {
-  readonly itemTable:      IDataTable;
-  readonly configTable:    IDataTable;
-  readonly changelogTable: IDataTable;
-  readonly blobStore:      IDataBlobStore;
+  readonly itemTable:        IDataTable;
+  readonly patTable:         IPatTable;
+  readonly configTable:      IDataTable;
+  readonly changelogTable:   IDataTable;
+  readonly blobStore:        IDataBlobStore;
+  readonly auditEventsQueue: IAuditEventsQueue;
 }
 
 /** What {@link JobsSection} uses of the auth section. */
@@ -33,6 +37,8 @@ export interface JobsSectionProps {
   readonly artifactResolver: IArtifactResolver;
   readonly data:             IJobsDataInputs;
   readonly auth:             IJobsAuthInputs;
+  /** System sender email address (e.g. noreply@example.com) that the sweeper's token expiry notices are sent from. */
+  readonly systemSenderAddress: string;
 }
 
 /**
@@ -67,10 +73,16 @@ export class JobsSection extends Construct {
     this.mailImportRunnerLambda = runner;
 
     new JobSweeperLambda(this, 'job-sweeper', {
-      artifactResolver: props.artifactResolver,
-      itemTable:        props.data.itemTable,
-      sweepInterval:    JobsSection.SWEEP_INTERVAL,
-      staleAfter:       JobsSection.JOB_STALE_AFTER,
+      artifactResolver:    props.artifactResolver,
+      itemTable:           props.data.itemTable,
+      patTable:            props.data.patTable,
+      configTable:         props.data.configTable,
+      changelogTable:      props.data.changelogTable,
+      blobStore:           props.data.blobStore,
+      auditEventsQueue:    props.data.auditEventsQueue,
+      systemSenderAddress: props.systemSenderAddress,
+      sweepInterval:       JobsSection.SWEEP_INTERVAL,
+      staleAfter:          JobsSection.JOB_STALE_AFTER,
     });
   }
 

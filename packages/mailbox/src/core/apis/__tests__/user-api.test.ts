@@ -30,13 +30,19 @@ describe('UserApi', () => {
   let gateway: ApiGateway;
 
   function userApiProps() {
-    const { configTable, itemTable, auditEventsQueue, authKeyStoreTable, artifactResolver } = newAdminApiProps(stack);
+    const {
+      configTable, itemTable, patTable, blobStore, changelogTable, auditEventsQueue, authKeyStoreTable, artifactResolver,
+    } = newAdminApiProps(stack);
     const importJobsQueue  = new ImportJobsQueue(stack, 'import-jobs-queue', { encryption: { kind: 'aws-managed' } });
     const mailImportRunner = fakeMailImportRunner('mail-import-runner');
 
     const scopeMap = { 'mail-reader': [Permission.MAIL_READ_ITEMS] };
 
-    return { configTable, itemTable, auditEventsQueue, authKeyStoreTable, importJobsQueue, mailImportRunner, artifactResolver, scopeMap };
+    return {
+      configTable, itemTable, patTable, blobStore, changelogTable, auditEventsQueue, authKeyStoreTable, importJobsQueue,
+      mailImportRunner, artifactResolver, scopeMap,
+      systemSenderAddress: 'noreply@example.com',
+    };
   }
 
   function mountedUserApi(): UserApi {
@@ -79,6 +85,15 @@ describe('UserApi', () => {
     const { functionEnvironment } = authorizerOfRoute(Template.fromStack(stack), 'POST /user/{proxy+}');
 
     expect(functionEnvironment).toMatchObject({ AUTH_POLICY_NAME: 'JMAP_API', PRINCIPAL_LOOKUP: 'off' });
+  });
+
+  it('gives the user authorizer the token table and caches its answer for 5 minutes', () => {
+    mountedUserApi();
+
+    const { functionEnvironment, cacheTtlSeconds } = authorizerOfRoute(Template.fromStack(stack), 'POST /user/{proxy+}');
+
+    expect(functionEnvironment).toHaveProperty('PAT_TABLE_NAME');
+    expect(cacheTtlSeconds).toBe(300);
   });
 
   it('gives the API stage no access log, so no request body or header is written to the logs', () => {

@@ -87,7 +87,10 @@ export class Mailbox extends Construct {
       adminUiUrl: addressing.urls.adminUi,
     });
 
-    const jobs = new JobsSection(this, 'jobs', { queueEncryption, artifactResolver, data, auth });
+    const jobs = new JobsSection(this, 'jobs', {
+      queueEncryption, artifactResolver, data, auth,
+      systemSenderAddress: `noreply@${addressing.domains.domainName}`,
+    });
 
     // Edge sub-stack and certificates, which need the auth key store and the addressing. The CDN and
     // DNS records need the UIs and APIs, so they are added later.

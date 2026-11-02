@@ -7,21 +7,22 @@
  * and synth, so these assertions are the only guard.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { Match, Template }                      from 'aws-cdk-lib/assertions';
-import { AttributeType, Table }                 from 'aws-cdk-lib/aws-dynamodb';
-import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver }                                 from '@serverlessinbox/artifact-registry-cdk';
+import { Match, Template }                                                      from 'aws-cdk-lib/assertions';
+import { AttributeType, Table }                                                 from 'aws-cdk-lib/aws-dynamodb';
+import * as cdk                                                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                                        from 'aws-cdk-lib';
 
-import { Permission }                           from '../../../core/auth/jmap-scopes';
-import type { ScopeMap }                        from '../../../core/auth/jmap-scopes';
-import { AuditEventsQueue }                     from '../../queues/audit-events-queue';
-import { ImportJobsQueue }                      from '../../queues/import-jobs-queue';
-import { AuthKeyStoreTable }                    from '../../tables/auth-key-store-table';
-import { DataTable }                            from '../../tables/data-tables';
-import { UserApiLambda }                        from '../user-api-lambda';
+import { Permission }                                                           from '../../../core/auth/jmap-scopes';
+import type { ScopeMap }                                                        from '../../../core/auth/jmap-scopes';
+import { AuditEventsQueue }                                                     from '../../queues/audit-events-queue';
+import { ImportJobsQueue }                                                      from '../../queues/import-jobs-queue';
+import { AuthKeyStoreTable }                                                    from '../../tables/auth-key-store-table';
+import { DataTable }                                                            from '../../tables/data-tables';
+import { UserApiLambda }                                                        from '../user-api-lambda';
 
-import { fakeMailImportRunner }                 from './lambda-wrapper-fakes';
+import { expectGrantedOnceTo, fakeDataBlobStore, fakeDataTable,
+  fakeMailImportRunner, fakePatTable }                                          from './lambda-wrapper-fakes';
 
 const ITEM_TABLE_ACTIONS: string[]   = ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem'];
 const CONFIG_TABLE_ACTIONS: string[] = ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query'];
@@ -32,6 +33,10 @@ describe('UserApiLambda', () => {
   let itemTableArnOf: unknown;
   let configTableArnOf: unknown;
   let mailImportRunner: ReturnType<typeof fakeMailImportRunner>;
+  let patTable: ReturnType<typeof fakePatTable>;
+  let blobStore: ReturnType<typeof fakeDataBlobStore>;
+  let changelogTable: ReturnType<typeof fakeDataTable>;
+  let lambda: UserApiLambda;
 
   function dataTable(id: string): DataTable {
     return new DataTable(new Table(stack, id, {
@@ -58,7 +63,11 @@ describe('UserApiLambda', () => {
       deploymentRegion: stack.region,
     });
 
-    new UserApiLambda(stack, 'user-api', {
+    patTable       = fakePatTable('pat-table');
+    blobStore      = fakeDataBlobStore('blob-store');
+    changelogTable = fakeDataTable('changelog-table');
+
+    lambda = new UserApiLambda(stack, 'user-api', {
       configTable,
       itemTable,
       auditEventsQueue,
@@ -66,6 +75,10 @@ describe('UserApiLambda', () => {
       importJobsQueue,
       mailImportRunner,
       artifactResolver,
+      patTable,
+      blobStore,
+      changelogTable,
+      systemSenderAddress: 'noreply@example.com',
       scopeMap,
     });
 
@@ -95,6 +108,10 @@ describe('UserApiLambda', () => {
           IMPORT_JOBS_QUEUE_URL:            Match.anyValue(),
           MAIL_IMPORT_RUNNER_FUNCTION_NAME: 'mail-import-runner',
           OAUTH_HANDLER_CONFIG:             Match.anyValue(),
+          PAT_TABLE_NAME:                   'pat-table',
+          BLOB_STORAGE_NAME:                'blob-store',
+          CHANGELOG_TABLE_NAME:             'changelog-table',
+          SYSTEM_SENDER_ADDRESS:            'noreply@example.com',
           SERVICE_NAME:                     'user-api',
         }),
       },
@@ -164,6 +181,14 @@ describe('UserApiLambda', () => {
         })]),
       },
     });
+  });
+
+  it('requests the token management, email blob write and changelog read-write grants for itself', () => {
+    synthesize();
+
+    expectGrantedOnceTo(patTable.grantPatManage, lambda);
+    expectGrantedOnceTo(blobStore.grantEmailBlobWrite, lambda);
+    expectGrantedOnceTo(changelogTable.grantReadWrite, lambda);
   });
 
   it('grants invoke on the mail-import runner', () => {

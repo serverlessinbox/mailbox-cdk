@@ -7,20 +7,20 @@
  * and sweeper. The runner's and the sweeper's own settings are tested in their own files.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { QueueEncryptionChoice }           from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                             from 'aws-cdk-lib/assertions';
-import { AttributeType, Table }                 from 'aws-cdk-lib/aws-dynamodb';
-import * as kms                                 from 'aws-cdk-lib/aws-kms';
-import * as cdk                                 from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver }       from '@serverlessinbox/artifact-registry-cdk';
+import type { QueueEncryptionChoice }                 from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                   from 'aws-cdk-lib/assertions';
+import { AttributeType, Table }                       from 'aws-cdk-lib/aws-dynamodb';
+import * as kms                                       from 'aws-cdk-lib/aws-kms';
+import * as cdk                                       from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }              from 'aws-cdk-lib';
 
-import { resourcesOfType }                      from '../../../__tests__/iam-test-helpers';
-import { fakeDataBlobStore }                    from '../../../resources/lambdas/__tests__/lambda-wrapper-fakes';
-import { AuthKeyStoreTable }                    from '../../../resources/tables/auth-key-store-table';
-import { DataTable }                            from '../../../resources/tables/data-tables';
-import { defaultCfnResource }                   from '../../../utils/cfn-resource';
-import { JobsSection, type JobsSectionProps }   from '../jobs-section';
+import { resourcesOfType }                            from '../../../__tests__/iam-test-helpers';
+import { fakeDataBlobStore, fakePatTable, fakeQueue } from '../../../resources/lambdas/__tests__/lambda-wrapper-fakes';
+import { AuthKeyStoreTable }                          from '../../../resources/tables/auth-key-store-table';
+import { DataTable }                                  from '../../../resources/tables/data-tables';
+import { defaultCfnResource }                         from '../../../utils/cfn-resource';
+import { JobsSection, type JobsSectionProps }         from '../jobs-section';
 
 const MAX_RECEIVE_COUNT = 3;
 
@@ -68,14 +68,17 @@ function sectionProps(
 ): JobsSectionProps {
   return {
     queueEncryption,
-    artifactResolver: resolverFor(stack),
-    data:             {
-      itemTable:      dataTable(stack, 'item-table'),
-      configTable:    dataTable(stack, 'config-table'),
-      changelogTable: dataTable(stack, 'changelog-table'),
-      blobStore:      fakeDataBlobStore('blob-store'),
+    artifactResolver:    resolverFor(stack),
+    data:                {
+      itemTable:        dataTable(stack, 'item-table'),
+      patTable:         fakePatTable('pat-table'),
+      configTable:      dataTable(stack, 'config-table'),
+      changelogTable:   dataTable(stack, 'changelog-table'),
+      blobStore:        fakeDataBlobStore('blob-store'),
+      auditEventsQueue: fakeQueue('audit-events'),
     },
-    auth:             { authKeyStoreTable },
+    auth:                { authKeyStoreTable },
+    systemSenderAddress: 'noreply@example.com',
   };
 }
 
@@ -147,6 +150,18 @@ describe('JobsSection', () => {
     expect(visibilityTimeout).toBe(360);
     expect(runnerTimeout).toBeLessThan(visibilityTimeout ?? 0);
     expect(staleAfter).toBeGreaterThan((visibilityTimeout ?? 0) * MAX_RECEIVE_COUNT);
+  });
+
+  it('gives the sweeper the token table, the audit queue and the system sender it was passed', () => {
+    const stack = createStack();
+    new JobsSection(stack, 'jobs', sectionProps(stack, new AuthKeyStoreTable(stack, 'auth-key-store')));
+
+    const sweeper = functionWith(Template.fromStack(stack), 'JOB_STALE_AFTER');
+    expect(sweeper.Environment.Variables).toMatchObject({
+      PAT_TABLE_NAME:         'pat-table',
+      AUDIT_EVENTS_QUEUE_URL: 'https://sqs.fake/audit-events',
+      SYSTEM_SENDER_ADDRESS:  'noreply@example.com',
+    });
   });
 
   it('keeps the sweeper timeout below the sweep interval', () => {

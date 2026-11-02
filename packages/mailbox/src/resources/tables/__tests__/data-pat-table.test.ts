@@ -107,7 +107,7 @@ describe('DataPatTable', () => {
         condition: undefined,
       },
       {
-        actions:   ['dynamodb:GetItem', 'dynamodb:UpdateItem'],
+        actions:   ['dynamodb:BatchGetItem', 'dynamodb:GetItem', 'dynamodb:UpdateItem'],
         resources: [TABLE_ARN],
         condition: undefined,
       },
@@ -122,7 +122,7 @@ describe('DataPatTable', () => {
         condition: undefined,
       },
       {
-        actions:   ['dynamodb:GetItem', 'dynamodb:UpdateItem'],
+        actions:   ['dynamodb:BatchGetItem', 'dynamodb:GetItem', 'dynamodb:UpdateItem'],
         resources: [TABLE_ARN],
         condition: { 'ForAllValues:StringLike': { 'dynamodb:LeadingKeys': ['TENANT#*PAT_OWNER#*'] } },
       },

@@ -28,6 +28,7 @@ import { DataTable }                                                from '../../
 import { MailLogTable }                                             from '../../tables/mail-log-table';
 import { AdminApiLambda }                                           from '../admin-api-lambda';
 
+import { expectGrantedOnceTo, fakePatTable }                        from './lambda-wrapper-fakes';
 import { arrangeWrapperStack }                                      from './lambda-wrapper-helpers';
 
 function rootStackIdOf(stack: cdk.Stack): unknown {
@@ -37,8 +38,10 @@ function rootStackIdOf(stack: cdk.Stack): unknown {
 describe('AdminApiLambda IAM scoping', () => {
   let stack: cdk.Stack;
   let lambda: AdminApiLambda;
+  let patTable: ReturnType<typeof fakePatTable>;
 
   beforeEach(() => {
+    patTable          = fakePatTable('pat-table');
     const arrangement = arrangeWrapperStack();
     stack             = arrangement.stack;
 
@@ -73,6 +76,7 @@ describe('AdminApiLambda IAM scoping', () => {
       changelogTable,
       mailFeedbackTable,
       mailLogTable: new MailLogTable(stack, 'mail-log-table', { encryption: TableEncryption.AWS_MANAGED }),
+      patTable,
       blobStore,
       emailSubmissionQueue,
       auditEventsQueue,
@@ -136,6 +140,13 @@ describe('AdminApiLambda IAM scoping', () => {
         },
       });
     }
+  });
+
+  it('sets PAT_TABLE_NAME and requests the principal-revoke grant on the token table for itself', () => {
+    Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ PAT_TABLE_NAME: 'pat-table' }) },
+    });
+    expectGrantedOnceTo(patTable.grantPatRevokeForPrincipal, lambda);
   });
 
   it('sets ROOT_STACK_ID to the stack guid', () => {
