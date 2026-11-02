@@ -8,15 +8,17 @@
  */
 
 import { DynamoDBClient }                                                       from '@aws-sdk/client-dynamodb';
-import { ExpectedFailure, LoggerBuffer, toIssuer }                              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { ExpectedFailure, LoggerBuffer, toIssuer, toTableName, toTenantId }     from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
+import { PAT_SESSION_IDENTITY, toAudience }                                     from '../auth-identifiers';
 import { BlobDownloadAuthorizer }                                               from '../blob-download-authorizer';
 import { BlobRequestRejected }                                                  from '../blob-id/blob-request-rejected';
 import type { CloudFrontRequest }                                               from '../cloudfront/cloudfront-event';
 import { corsPreflightResponse, errorResponse }                                 from '../cloudfront/cloudfront-responses';
-import type { HmacTokenPayload, VerifiedJwt }                                   from '../verifiers/auth-tokens';
+import type { HmacTokenPayload, UsablePatVerdict, VerifiedJwt }                 from '../verifiers/auth-tokens';
 import { HmacVerifier }                                                         from '../verifiers/hmac-verifier';
 import { JwtVerifier }                                                          from '../verifiers/jwt-verifier';
+import { PatVerifier }                                                          from '../verifiers/pat-verifier';
 
 import {
   ACCOUNT_ID,
@@ -35,6 +37,30 @@ import {
 
 const VERIFIED_JWT: VerifiedJwt = { sub: 'user-1', issuer: ISSUER, audience: AUDIENCE };
 const SESSION: HmacTokenPayload = { tenantId: TENANT_ID, issuer: ISSUER, audience: AUDIENCE, sub: 'user-1', accountIds: [ACCOUNT_ID] };
+
+const PAT_TABLE   = toTableName('pat-table');
+const SECRET      = `sipat_${'a'.repeat(49)}`;
+const SECRET_HASH = '83c6bccaea05faee8e7a3ecd1d31a9cf01872c1c4c4811e661085b5a906633e3';
+
+const USABLE_TOKEN: UsablePatVerdict = { usable: true, tenantId: TENANT_ID, tokenId: 'pat_1', expiresAt: Number.MAX_SAFE_INTEGER };
+
+const TOKEN_SESSION: HmacTokenPayload = {
+  tenantId:   TENANT_ID,
+  issuer:     toIssuer(PAT_SESSION_IDENTITY),
+  audience:   toAudience(PAT_SESSION_IDENTITY),
+  sub:        'pat_1',
+  accountIds: [ACCOUNT_ID],
+};
+
+const TOKEN_HEADERS = {
+  'x-auth-key-store-table': AUTH_KEY_STORE_TABLE,
+  'x-region':               'eu-west-1',
+  'x-pat-table':            PAT_TABLE,
+};
+
+function basicOf(password: string): string {
+  return `Basic ${Buffer.from(`token-user:${password}`, 'utf8').toString('base64')}`;
+}
 
 interface DownloadOptions {
   readonly blob?:      string;
@@ -67,6 +93,7 @@ describe('BlobDownloadAuthorizer', () => {
   let verifySignatureOnly: jest.SpyInstance;
   let verifySessionToken: jest.SpyInstance;
   let verifyBlobMac: jest.SpyInstance;
+  let verdict: jest.SpyInstance;
   let consoleError: jest.SpyInstance;
   let flush: jest.SpyInstance;
 
@@ -82,6 +109,7 @@ describe('BlobDownloadAuthorizer', () => {
     verifySignatureOnly = jest.spyOn(JwtVerifier.prototype, 'verifySignatureOnly').mockResolvedValue(VERIFIED_JWT);
     verifySessionToken  = jest.spyOn(HmacVerifier.prototype, 'verifySessionToken').mockResolvedValue(SESSION);
     verifyBlobMac       = jest.spyOn(HmacVerifier.prototype, 'verifyBlobMac').mockResolvedValue(true);
+    verdict             = jest.spyOn(PatVerifier.prototype, 'verdict').mockResolvedValue(USABLE_TOKEN);
     consoleError        = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     jest.spyOn(console, 'info').mockImplementation(() => undefined);
@@ -89,12 +117,116 @@ describe('BlobDownloadAuthorizer', () => {
     flush = jest.spyOn(LoggerBuffer.prototype, 'flush');
 
     logger       = new LoggerBuffer();
-    verifiersFor = jest.fn(() => ({ jwt: new JwtVerifier(dynamodb), hmac: new HmacVerifier(dynamodb) }));
+    verifiersFor = jest.fn(() => ({
+      jwt:  new JwtVerifier(dynamodb),
+      hmac: new HmacVerifier(dynamodb),
+      pat:  new PatVerifier(dynamodb, () => Date.now()),
+    }));
     authorizer   = new BlobDownloadAuthorizer(logger, verifiersFor);
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  describe('a personal access token', () => {
+    beforeEach(() => {
+      verifySessionToken.mockResolvedValue(TOKEN_SESSION);
+    });
+
+    function tokenRequest(options: DownloadOptions = {}): CloudFrontRequest {
+      return downloadRequest({ ...options, request: { authorization: `Bearer ${SECRET}`, customHeaders: TOKEN_HEADERS, ...options.request } });
+    }
+
+    it('serves an email blob to a Bearer secret whose row is usable and whose session was issued to that token', async () => {
+      const request = await authorizer.authorize(tokenRequest());
+
+      expect(verdict).toHaveBeenCalledWith(SECRET, PAT_TABLE);
+      expect(request).toMatchObject({ uri: `/tenants/${TENANT_ID}/accounts/${ACCOUNT_ID}/emails/email-1/document.pdf` });
+    });
+
+    it('accepts the secret as the password of a Basic credential', async () => {
+      const request = await authorizer.authorize(tokenRequest({ request: { authorization: basicOf(SECRET), customHeaders: TOKEN_HEADERS } }));
+
+      expect(verdict).toHaveBeenCalledWith(SECRET, PAT_TABLE);
+      expect(request).toMatchObject({ uri: `/tenants/${TENANT_ID}/accounts/${ACCOUNT_ID}/emails/email-1/document.pdf` });
+    });
+
+    it('refuses a Basic credential that is not a token without falling through to the JWT path', async () => {
+      await expectRejected(tokenRequest({ request: { authorization: basicOf('eyJhbGciOi.payload.signature'), customHeaders: TOKEN_HEADERS } }), 401, 'Missing or invalid Authorization header');
+
+      expect(verifySignatureOnly).not.toHaveBeenCalled();
+      expect(verdict).not.toHaveBeenCalled();
+    });
+
+    it('refuses a secret of the wrong length before any read', async () => {
+      await expectRejected(tokenRequest({ request: { authorization: `Bearer ${SECRET}x`, customHeaders: TOKEN_HEADERS } }), 401, 'Missing or invalid Authorization header');
+
+      expect(verdict).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      { reason: 'not-found' as const },
+      { reason: 'revoked' as const },
+      { reason: 'expired' as const },
+      { reason: 'unparsable' as const },
+    ])('refuses a token whose lookup row is $reason with a 401', async ({ reason }) => {
+      verdict.mockResolvedValueOnce({ usable: false, reason });
+
+      await expectRejected(tokenRequest(), 401, 'Unauthorized');
+    });
+
+    it('refuses a session issued to another token, so a broad token\'s link cannot be used with a narrow token\'s secret', async () => {
+      verifySessionToken.mockResolvedValueOnce({ ...TOKEN_SESSION, sub: 'pat_2' });
+
+      await expectRejected(tokenRequest(), 403, 'Access denied: token mismatch');
+    });
+
+    it('refuses a session that carries a JWT login identity', async () => {
+      verifySessionToken.mockResolvedValueOnce({ ...TOKEN_SESSION, issuer: ISSUER, audience: AUDIENCE });
+
+      await expectRejected(tokenRequest(), 403, 'Access denied: session not issued to a token');
+    });
+
+    it('refuses a session of another tenant', async () => {
+      verifySessionToken.mockResolvedValueOnce({ ...TOKEN_SESSION, tenantId: toTenantId('tenant-2') });
+
+      await expectRejected(tokenRequest(), 403, 'Access denied: tenant mismatch');
+    });
+
+    it('refuses an account the session does not list', async () => {
+      await expectRejected(tokenRequest({ accountId: 'account-2' }), 403, 'Access denied: account not authorized');
+    });
+
+    it('refuses a token request whose origin headers carry no x-pat-table, before any read, and names the header in the log', async () => {
+      const warn = jest.spyOn(LoggerBuffer.prototype, 'warn');
+
+      await expectRejected(tokenRequest({ request: { customHeaders: { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE, 'x-region': 'eu-west-1' } } }), 401, 'Unauthorized');
+
+      expect(verdict).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('x-pat-table'), undefined);
+    });
+
+    it('lets a failed lookup read propagate, so that it is answered as a 500 and is not a refusal', async () => {
+      verdict.mockRejectedValueOnce(new Error('Reading a personal access token lookup row failed: ProvisionedThroughputExceededException'));
+
+      const rejection = authorizer.authorize(tokenRequest());
+
+      await expect(rejection).rejects.toThrow('Reading a personal access token lookup row failed');
+      await expect(rejection).rejects.not.toBeInstanceOf(BlobRequestRejected);
+    });
+
+    it('keeps the secret and its hash out of every log call, on a served request and a refused one', async () => {
+      const logged = (['debug', 'info', 'warn', 'error'] as const).map((level) => jest.spyOn(LoggerBuffer.prototype, level));
+
+      await authorizer.authorize(tokenRequest());
+      verdict.mockResolvedValueOnce({ usable: false, reason: 'revoked' });
+      await expect(authorizer.authorize(tokenRequest())).rejects.toBeInstanceOf(BlobRequestRejected);
+
+      const everyLogCall = JSON.stringify(logged.map((spy) => spy.mock.calls));
+      expect(everyLogCall).not.toContain(SECRET);
+      expect(everyLogCall).not.toContain(SECRET_HASH);
+    });
   });
 
   describe('a CORS preflight', () => {

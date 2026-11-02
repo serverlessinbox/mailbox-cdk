@@ -17,6 +17,8 @@ export type BlobDownloadOriginHeaders = {
   'x-jwt-algorithms':       SupportedAlgorithm;
   /** The origins allowed to download cross-origin, comma-separated; absent when no origin is allowed. */
   'x-allowed-origins'?: string;
+  /** Name of the personal access token lookup table; absent on a template that predates personal access tokens. */
+  'x-pat-table'?: string;
 };
 
 /** Narrows a value to one of the `SUPPORTED_ALGORITHMS`. */

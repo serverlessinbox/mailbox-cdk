@@ -21,3 +21,26 @@ export interface HmacTokenPayload {
   readonly sub:        string;
   readonly accountIds: AccountId[];
 }
+
+/** Why a personal access token's lookup row does not authorize a download. */
+export type PatUnusableReason = 'not-found' | 'revoked' | 'expired' | 'unparsable';
+
+/**
+ * A lookup row that authorizes a download: the tenant and token it names, and when it stops authorizing, as the
+ * row's `expiresAt` in epoch milliseconds.
+ */
+export interface UsablePatVerdict {
+  readonly usable:    true;
+  readonly tenantId:  TenantId;
+  readonly tokenId:   string;
+  readonly expiresAt: number;
+}
+
+/** A lookup row, or the absence of one, that does not authorize a download. */
+export interface UnusablePatVerdict {
+  readonly usable: false;
+  readonly reason: PatUnusableReason;
+}
+
+/** The verdict on one presented personal access token secret. */
+export type PatVerdict = UsablePatVerdict | UnusablePatVerdict;

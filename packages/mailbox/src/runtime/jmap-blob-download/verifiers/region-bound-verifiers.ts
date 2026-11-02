@@ -3,11 +3,16 @@ import type { Region }         from '@serverlessinbox/mailbox-cdk-shared/lambda-
 
 import { HmacVerifier }        from './hmac-verifier';
 import { JwtVerifier }         from './jwt-verifier';
+import { PatVerifier }         from './pat-verifier';
 
-/** The verifiers of the credentials a blob download carries, reading their keys from one auth key store. */
+/**
+ * The verifiers of the credentials a blob download carries: the JWT and the session token read their keys from the
+ * auth key store, and a personal access token reads its lookup row from the personal access token table.
+ */
 export interface Verifiers {
   readonly jwt:  JwtVerifier;
   readonly hmac: HmacVerifier;
+  readonly pat:  PatVerifier;
 }
 
 /**
@@ -31,7 +36,11 @@ export class RegionBoundVerifiers {
     }
 
     const dynamodb           = this.createDynamoDBClient(region);
-    const created: Verifiers = { jwt: new JwtVerifier(dynamodb), hmac: new HmacVerifier(dynamodb) };
+    const created: Verifiers = {
+      jwt:  new JwtVerifier(dynamodb),
+      hmac: new HmacVerifier(dynamodb),
+      pat:  new PatVerifier(dynamodb, () => Date.now()),
+    };
     this.verifiersByRegion.set(region, created);
     return created;
   }

@@ -5,7 +5,12 @@ import { BlobDownloadAuthorizer }                       from './blob-download-au
 import { readOriginRequest }                            from './cloudfront/cloudfront-event';
 import { RegionBoundVerifiers }                         from './verifiers/region-bound-verifiers';
 
-const verifiers = new RegionBoundVerifiers((region) => new DynamoDBClient({ region }));
+// Bounds each read, so a slow cross-region table fails the request instead of holding it until the function times out.
+const verifiers = new RegionBoundVerifiers((region) => new DynamoDBClient({
+  region,
+  maxAttempts:    2,
+  requestHandler: { connectionTimeout: 1000, requestTimeout: 2000 },
+}));
 
 /**
  * Lambda@Edge origin-request handler that authorizes blob downloads (JMAP download URL, RFC 8620): an allowed
