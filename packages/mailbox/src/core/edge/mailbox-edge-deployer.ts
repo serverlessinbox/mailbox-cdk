@@ -13,6 +13,7 @@ import { JmapBlobDownloadLambda }                                               
 import { MailboxEdgeDeployerWorkerLambda }                                      from '../../resources/lambdas/mailbox-edge-deployer-worker-lambda';
 import { EdgeFunctionRole }                                                     from '../../resources/roles/edge-function-role';
 import type { IAuthKeyStoreTable }                                              from '../../resources/tables/auth-key-store-table';
+import type { IPatTable }                                                       from '../../resources/tables/data-pat-table';
 import type { IDataTable }                                                      from '../../resources/tables/data-tables';
 import type { IMailboxDomainNames }                                             from '../domains/mailbox-domains';
 
@@ -39,6 +40,9 @@ export interface MailboxEdgeDeployerProps {
    * ARN is passed to the edge stack as a template parameter.
    */
   readonly authKeyStoreTable: IAuthKeyStoreTable;
+
+  /** Regional personal access token table. Lookup-row read access is granted to the jmap-blob-download role. */
+  readonly patTable: IPatTable;
 
   /** Product/stack version used for tagging edge resources. */
   readonly productVersion: string;
@@ -81,7 +85,7 @@ export class MailboxEdgeDeployer extends Construct {
 
     // Scopes the functions and replica log groups, which are named from the edge stack name, and the hashed stack's resource group.
     const edgeStackNamePattern = `${Aws.STACK_NAME}-edge-*`;
-    this.jmapBlobDownloadRole  = new EdgeFunctionRole(this, 'jmap-blob-download-role', { authKeyStoreTable: props.authKeyStoreTable, edgeStackNamePattern });
+    this.jmapBlobDownloadRole  = new EdgeFunctionRole(this, 'jmap-blob-download-role', { authKeyStoreTable: props.authKeyStoreTable, patTable: props.patTable, edgeStackNamePattern });
     const edgeStack            = new DeployedStack(Stack.of(this).formatArn({
       service:      'cloudformation',
       region:       MailboxEdgeDeployer.EDGE_REGION,

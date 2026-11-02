@@ -21,6 +21,7 @@ import {
   newDeployerTestStack,
 }                                                     from '../../../__tests__/deployer-test-helpers';
 import { AuthKeyStoreTable, type IAuthKeyStoreTable } from '../../../resources/tables/auth-key-store-table';
+import { DataPatTable }                               from '../../../resources/tables/data-pat-table';
 import { DataTable }                                  from '../../../resources/tables/data-tables';
 import { MailboxDomains }                             from '../../domains/mailbox-domains';
 import { MailboxEdgeDeployer }                        from '../mailbox-edge-deployer';
@@ -101,6 +102,7 @@ function synthDeployer(
     itemTable:         dataTable(stack, 'item-table', ITEM_TABLE_ARN),
     configTable:       dataTable(stack, 'config-table', CONFIG_TABLE_ARN),
     authKeyStoreTable: authKeyStoreTable(stack, 'auth-key-store-table'),
+    patTable:          new DataPatTable(Table.fromTableArn(stack, 'pat-table', 'arn:aws:dynamodb:us-west-2:111122223333:table/pat-table')),
     productVersion:    '1.2.3',
     logGroupName:      'test-log-group',
     deployerType:      'cfn',

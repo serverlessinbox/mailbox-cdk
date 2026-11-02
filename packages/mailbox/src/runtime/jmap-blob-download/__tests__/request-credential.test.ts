@@ -29,6 +29,17 @@ describe('CredentialReader', () => {
     expect(readAuthorization(`Bearer ${SECRET}`)).toEqual({ kind: 'pat', secret: SECRET });
   });
 
+  it('reads a lowercase bearer scheme with a personal access token secret as a personal access token', () => {
+    expect(readAuthorization(`bearer ${SECRET}`)).toEqual({ kind: 'pat', secret: SECRET });
+  });
+
+  it('refuses a lowercase bearer scheme with a JWT, as the JWT path always has', () => {
+    expect(readAuthorization('bearer eyJhbGciOi.payload.signature')).toEqual({
+      kind:   'refused',
+      reason: 'no Bearer token or Basic credential',
+    });
+  });
+
   it('reads the password of a Basic credential as a personal access token, ignoring the username', () => {
     expect(readAuthorization(basic(SECRET, 'anyone'))).toEqual({ kind: 'pat', secret: SECRET });
   });

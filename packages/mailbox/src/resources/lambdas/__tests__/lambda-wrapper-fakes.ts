@@ -50,6 +50,7 @@ export function fakePatTable(name: string) {
     tableName:                  name,
     tableArn:                   `arn:fake:${name}`,
     grantPatLookup:             grantSpy(),
+    grantPatEdgeLookup:         grantSpy(),
     grantPatManage:             grantSpy(),
     grantPatRevokeForPrincipal: grantSpy(),
     grantPatExpiryNotify:       grantSpy(),

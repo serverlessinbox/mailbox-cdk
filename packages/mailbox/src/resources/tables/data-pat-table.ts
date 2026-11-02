@@ -15,6 +15,9 @@ export interface IPatTable {
   /** Reads a token row by its key, and updates only its `lastUsedAt` attribute on it. */
   grantPatLookup(grantee: IGrantable): void;
 
+  /** Reads a token row by its key for the blob download edge function: `GetItem` only, on `PAT#` keys, and only the attributes the verdict reads. */
+  grantPatEdgeLookup(grantee: IGrantable): void;
+
   /** Reads and writes token rows, and queries the gsi1 index. */
   grantPatManage(grantee: IGrantable): void;
 
@@ -52,6 +55,18 @@ export class DataPatTable implements IPatTable {
       conditions:   {
         'ForAllValues:StringLike':   { 'dynamodb:LeadingKeys': ['PAT#*'] },
         'ForAllValues:StringEquals': { 'dynamodb:Attributes': ['pk', 'sk', 'lastUsedAt'] },
+      },
+    });
+  }
+
+  public grantPatEdgeLookup(grantee: IGrantable): void {
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['dynamodb:GetItem'],
+      resourceArns: [this.tableArn],
+      conditions:   {
+        'ForAllValues:StringLike':   { 'dynamodb:LeadingKeys': ['PAT#*'] },
+        'ForAllValues:StringEquals': { 'dynamodb:Attributes': ['pk', 'sk', 'tenantId', 'tokenId', 'expiresAt', 'revokedAt'] },
       },
     });
   }

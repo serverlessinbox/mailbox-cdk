@@ -8,6 +8,12 @@ export const PAT_SECRET_LENGTH = 55;
 
 const BASIC_PREFIX = 'basic ';
 
+/** A Bearer-shaped `Authorization` header: its scheme as sent, and the one token after it. */
+interface BearerCredential {
+  readonly scheme: string;
+  readonly token:  string;
+}
+
 /**
  * The credential a request presents: a personal access token secret, a JWT, or nothing the authorizer accepts.
  * A refused credential carries the reason for the log, never the credential itself.
@@ -24,17 +30,20 @@ export type AcceptedCredential = Exclude<RequestCredential, { readonly kind: 're
  * Reads the credential from the `Authorization` header. A Bearer token that starts with the personal access token
  * prefix, or a Basic credential whose password does, is a personal access token secret; any other Bearer token is a
  * JWT; any other Basic credential is refused, and so is a secret of the wrong length. A personal access token secret
- * is checked here, before any read, so that junk never reaches the table.
+ * is checked here, before any read, so that junk never reaches the table. The Bearer scheme matches case-insensitively for a personal access token; a JWT needs the exact `Bearer` scheme.
  */
 export class CredentialReader {
   public read(request: CloudFrontRequest): RequestCredential {
     const header = firstHeaderValue(request.headers, 'authorization') ?? '';
 
-    const bearerToken = this.bearerToken(header);
-    if (bearerToken !== undefined) {
-      return bearerToken.startsWith(PAT_SECRET_PREFIX)
-        ? this.patCredential(bearerToken)
-        : { kind: 'jwt', token: bearerToken };
+    const bearer = this.bearerToken(header);
+    if (bearer !== undefined && bearer.scheme.toLowerCase() === 'bearer') {
+      if (bearer.token.startsWith(PAT_SECRET_PREFIX)) {
+        return this.patCredential(bearer.token);
+      }
+      if (bearer.scheme === 'Bearer') {
+        return { kind: 'jwt', token: bearer.token };
+      }
     }
 
     const basicPassword = this.basicPassword(header);
@@ -47,12 +56,12 @@ export class CredentialReader {
     return this.patCredential(basicPassword);
   }
 
-  private bearerToken(header: string): string | undefined {
+  private bearerToken(header: string): BearerCredential | undefined {
     const parts = header.split(' ');
-    if (parts.length !== 2 || parts[0] !== 'Bearer' || !parts[1]) {
+    if (parts.length !== 2 || !parts[1]) {
       return undefined;
     }
-    return parts[1];
+    return { scheme: parts[0], token: parts[1] };
   }
 
   private basicPassword(header: string): string | undefined {

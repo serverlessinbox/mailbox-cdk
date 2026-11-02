@@ -11,6 +11,7 @@ import * as cdk                           from 'aws-cdk-lib';
 import { Construct }                      from 'constructs';
 
 import type { IAuthKeyStoreTable }        from '../../resources/tables/auth-key-store-table';
+import type { IPatTable }                 from '../../resources/tables/data-pat-table';
 import type { BlobDownloadOriginHeaders } from '../../runtime/jmap-blob-download/cloudfront/origin-headers';
 
 /** A custom domain with the us-east-1 ACM certificate that covers it. */
@@ -23,6 +24,8 @@ export interface CdnCustomDomain {
 export interface CdnProps {
   readonly blobStore:         IBucket;
   readonly authKeyStoreTable: IAuthKeyStoreTable;
+  /** The personal access token table the authorizer reads token rows from; its name is handed to the function as a header. */
+  readonly patTable: IPatTable;
 
   /** Origins allowed to download cross-origin with credentials. Unset or empty allows none: no CORS headers are answered. */
   readonly allowedOrigins?: string[];
@@ -96,6 +99,7 @@ export class Cdn extends Construct {
       'x-auth-key-store-table': props.authKeyStoreTable.tableName,
       'x-region':               cdk.Aws.REGION,
       'x-jwt-algorithms':       'RS256',
+      'x-pat-table':            props.patTable.tableName,
       ...(props.allowedOrigins && props.allowedOrigins.length > 0
         ? { 'x-allowed-origins': props.allowedOrigins.join(',') }
         : {}),

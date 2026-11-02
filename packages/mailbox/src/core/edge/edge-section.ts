@@ -10,6 +10,7 @@ import { Construct }                                                            
 
 import type { MailboxCertificateOverrides }                                     from '../../mailbox-props';
 import type { IAuthKeyStoreTable }                                              from '../../resources/tables/auth-key-store-table';
+import type { IPatTable }                                                       from '../../resources/tables/data-pat-table';
 import type { IDataTable }                                                      from '../../resources/tables/data-tables';
 import { MailboxDns }                                                           from '../domains/mailbox-dns';
 import type { MailboxDnsCnameTargets }                                          from '../domains/mailbox-dns';
@@ -27,6 +28,8 @@ export interface IEdgeDataInputs {
   readonly itemTable:   IDataTable;
   /** The raw bucket the CDN fronts. */
   readonly blobStoreBucket: IBucket;
+  /** The personal access token table; its name is handed to the CDN's authorizer, and its lookup rows are read by the edge role. */
+  readonly patTable: IPatTable;
 }
 
 /** What {@link EdgeSection} uses of the auth section. */
@@ -148,6 +151,7 @@ export class EdgeSection extends Construct {
       itemTable:         props.data.itemTable,
       configTable:       props.data.configTable,
       authKeyStoreTable: props.auth.authKeyStoreTable,
+      patTable:          props.data.patTable,
       productVersion:    props.productVersion,
       deployerType:      props.deployerType,
       logGroupName:      PipelineLogGroup.getOrCreate(this, 'jmap').logGroupName,
@@ -173,6 +177,7 @@ export class EdgeSection extends Construct {
     const cdn = new Cdn(this, 'blob-cdn', {
       blobStore:               this.props.data.blobStoreBucket,
       authKeyStoreTable:       this.props.auth.authKeyStoreTable,
+      patTable:                this.props.data.patTable,
       allowedOrigins:          allowedOrigins.length > 0 ? allowedOrigins : undefined,
       jmapBlobDownloadVersion: this.edgeStack.jmapBlobDownloadVersion,
       customDomain:            this.blobCdnCustomDomain(),

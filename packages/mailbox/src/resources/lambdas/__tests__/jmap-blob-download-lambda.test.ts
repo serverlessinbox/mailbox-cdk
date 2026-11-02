@@ -39,6 +39,7 @@ function synthesizeFunction(versionId: string | undefined): Template {
 }
 
 describe('JmapBlobDownloadLambda', () => {
+
   it('renders the function from the resolved artifact, the given role and the given log group', () => {
     const template = synthesizeFunction('abc123');
 
@@ -64,6 +65,12 @@ describe('JmapBlobDownloadLambda', () => {
         { Key: ServerlessInboxTagKeys.autoUpdateType, Value: 'edge' },
       ]),
     });
+  });
+
+  it('sets the function timeout to ten seconds', () => {
+    const template = synthesizeFunction('abc123');
+
+    template.hasResourceProperties('AWS::Lambda::Function', { Timeout: 10 });
   });
 
   it('describes the published version by the artifact version, so a new artifact version publishes a new Lambda version', () => {

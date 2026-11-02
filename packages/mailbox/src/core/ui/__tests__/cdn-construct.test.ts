@@ -6,6 +6,7 @@ import * as s3                           from 'aws-cdk-lib/aws-s3';
 import * as cdk                          from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
+import { fakePatTable }                  from '../../../resources/lambdas/__tests__/lambda-wrapper-fakes';
 import type { IAuthKeyStoreTable }       from '../../../resources/tables/auth-key-store-table';
 import { Cdn, type CdnProps }            from '../cdn-construct';
 
@@ -54,6 +55,7 @@ function synthesizeCdn(overrides: Partial<CdnProps> = {}): SynthesizedCdn {
   const cdn   = new Cdn(stack, 'blob-cdn', {
     blobStore:               s3.Bucket.fromBucketName(stack, 'blob-store', 'blob-bucket'),
     authKeyStoreTable:       fakeAuthKeyStoreTable('auth-key-store-table'),
+    patTable:                fakePatTable('pat-table'),
     jmapBlobDownloadVersion: lambda.Version.fromVersionArn(stack, 'edge-version', EDGE_VERSION_ARN),
     ...overrides,
   });
@@ -71,11 +73,13 @@ function hasOriginHeader(headerName: string, headerValue: unknown): object {
 }
 
 describe('Cdn', () => {
+
   describe('origin headers for the authorizer', () => {
     it.each([
       ['x-auth-key-store-table', 'auth-key-store-table'],
       ['x-region', { Ref: 'AWS::Region' }],
       ['x-jwt-algorithms', 'RS256'],
+      ['x-pat-table', 'pat-table'],
     ])('sets %s', (headerName, headerValue) => {
       const { template } = synthesizeCdn();
 

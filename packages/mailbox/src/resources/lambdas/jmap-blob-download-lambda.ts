@@ -5,6 +5,7 @@ import * as lambda               from 'aws-cdk-lib/aws-lambda';
 import type * as logs            from 'aws-cdk-lib/aws-logs';
 import type * as s3              from 'aws-cdk-lib/aws-s3';
 import { Aws, CfnCondition, Fn } from 'aws-cdk-lib';
+import { Duration }              from 'aws-cdk-lib';
 import { Construct }             from 'constructs';
 
 import { defaultCfnResource }    from '../../utils/cfn-resource';
@@ -52,6 +53,7 @@ export class JmapBlobDownloadLambda extends lambda.Function {
       code:        lambda.Code.fromBucket(props.artifactBucket, props.artifact.key, props.artifact.versionId),
       role:        props.role,
       memorySize:  512,
+      timeout:     Duration.seconds(10),
       description: `Serverless Inbox Mailbox: jmap-blob-download Lambda@Edge (${Aws.STACK_NAME})`,
       logGroup:    props.logGroup,
     });

@@ -37,6 +37,7 @@ const TABLE_ARN = 'arn:aws:dynamodb:us-west-2:123456789012:table/pat';
 
 const GRANT_METHODS: readonly GrantMethod[] = [
   'grantPatLookup',
+  'grantPatEdgeLookup',
   'grantPatManage',
   'grantPatRevokeForPrincipal',
   'grantPatExpiryNotify',
@@ -79,6 +80,19 @@ describe('DataPatTable', () => {
         condition: {
           'ForAllValues:StringLike':   { 'dynamodb:LeadingKeys': ['PAT#*'] },
           'ForAllValues:StringEquals': { 'dynamodb:Attributes': ['pk', 'sk', 'lastUsedAt'] },
+        },
+      },
+    ]);
+  });
+
+  it('grantPatEdgeLookup reads a token row by its PAT key and no other row, only the attributes the verdict reads', () => {
+    expect(grantedStatements('grantPatEdgeLookup')).toEqual([
+      {
+        actions:   ['dynamodb:GetItem'],
+        resources: [TABLE_ARN],
+        condition: {
+          'ForAllValues:StringLike':   { 'dynamodb:LeadingKeys': ['PAT#*'] },
+          'ForAllValues:StringEquals': { 'dynamodb:Attributes': ['pk', 'sk', 'tenantId', 'tokenId', 'expiresAt', 'revokedAt'] },
         },
       },
     ]);
