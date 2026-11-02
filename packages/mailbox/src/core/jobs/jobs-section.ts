@@ -53,6 +53,7 @@ export class JobsSection extends Construct {
   public readonly mailImportRunner: IMailImportRunner;
 
   private readonly mailImportRunnerLambda: IWebSocketPushTarget;
+  private readonly jobSweeperLambda:        IWebSocketPushTarget;
 
   constructor(scope: Construct, id: string, props: JobsSectionProps) {
     super(scope, id);
@@ -72,7 +73,7 @@ export class JobsSection extends Construct {
     this.mailImportRunner       = runner;
     this.mailImportRunnerLambda = runner;
 
-    new JobSweeperLambda(this, 'job-sweeper', {
+    this.jobSweeperLambda = new JobSweeperLambda(this, 'job-sweeper', {
       artifactResolver:    props.artifactResolver,
       itemTable:           props.data.itemTable,
       patTable:            props.data.patTable,
@@ -86,8 +87,9 @@ export class JobsSection extends Construct {
     });
   }
 
-  /** Enables WebSocket push emission from the mail-import runner's ChangeTracker. */
+  /** Enables WebSocket push emission from the mail-import runner's and the job sweeper's ChangeTracker. */
   public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
     this.mailImportRunnerLambda.enableWebSocketPush(broadcaster);
+    this.jobSweeperLambda.enableWebSocketPush(broadcaster);
   }
 }

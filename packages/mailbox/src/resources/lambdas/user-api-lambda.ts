@@ -1,17 +1,18 @@
-import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration }                from 'aws-cdk-lib';
-import { Construct }               from 'constructs';
+import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                                                from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                                                from 'aws-cdk-lib';
+import { Construct }                                               from 'constructs';
 
-import type { ScopeMap }           from '../../core/auth/jmap-scopes';
-import type { IDataBlobStore }     from '../buckets/data-blob-store';
-import type { IAuditEventsQueue }  from '../queues/audit-events-queue';
-import type { IImportJobsQueue }   from '../queues/import-jobs-queue';
-import type { IAuthKeyStoreTable } from '../tables/auth-key-store-table';
-import type { IPatTable }          from '../tables/data-pat-table';
-import type { IDataTable }         from '../tables/data-tables';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
+import type { ScopeMap }                                           from '../../core/auth/jmap-scopes';
+import type { IDataBlobStore }                                     from '../buckets/data-blob-store';
+import type { IAuditEventsQueue }                                  from '../queues/audit-events-queue';
+import type { IImportJobsQueue }                                   from '../queues/import-jobs-queue';
+import type { IAuthKeyStoreTable }                                 from '../tables/auth-key-store-table';
+import type { IPatTable }                                          from '../tables/data-pat-table';
+import type { IDataTable }                                         from '../tables/data-tables';
 
-import type { IMailImportRunner }  from './mail-import-runner-lambda';
+import type { IMailImportRunner }                                  from './mail-import-runner-lambda';
 
 /**
  * The tables, queues, runner, artifact resolver and OAuth scope map the user-api Lambda is wired to. The caller
@@ -40,7 +41,7 @@ export interface UserApiLambdaProps {
  * connection public key, send on the import-jobs queue, invoke of the mail-import runner and the condition check the
  * start transaction uses.
  */
-export class UserApiLambda extends GoLambda {
+export class UserApiLambda extends GoLambda implements IWebSocketPushTarget {
   constructor(scope: Construct, id: string, props: UserApiLambdaProps) {
     super(scope, id, {
       lambdaId:         'user-api',
@@ -72,5 +73,10 @@ export class UserApiLambda extends GoLambda {
     props.patTable.grantPatManage(this);
     props.blobStore.grantEmailBlobWrite(this);
     props.changelogTable.grantReadWrite(this);
+  }
+
+  public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {
+    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this);
   }
 }

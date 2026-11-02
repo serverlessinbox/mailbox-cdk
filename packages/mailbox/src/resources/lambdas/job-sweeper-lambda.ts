@@ -1,13 +1,14 @@
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }               from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration }               from 'aws-cdk-lib';
-import { Construct }              from 'constructs';
+import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                                                from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                                                from 'aws-cdk-lib';
+import { Construct }                                               from 'constructs';
 
-import type { IDataBlobStore }    from '../buckets/data-blob-store';
-import { JobSweepSchedule }       from '../events/job-sweep-schedule';
-import type { IAuditEventsQueue } from '../queues/audit-events-queue';
-import type { IPatTable }         from '../tables/data-pat-table';
-import type { IDataTable }        from '../tables/data-tables';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
+import type { IDataBlobStore }                                     from '../buckets/data-blob-store';
+import { JobSweepSchedule }                                        from '../events/job-sweep-schedule';
+import type { IAuditEventsQueue }                                  from '../queues/audit-events-queue';
+import type { IPatTable }                                          from '../tables/data-pat-table';
+import type { IDataTable }                                         from '../tables/data-tables';
 
 /** The table, periods and artifact resolver the job sweeper is wired to. The caller creates the table. */
 export interface JobSweeperLambdaProps {
@@ -30,7 +31,7 @@ export interface JobSweeperLambdaProps {
  * The job sweeper: on a schedule, terminalises stale import and export jobs, and removes connections whose
  * time has run out, and sends the expiry notices of personal access tokens.
  */
-export class JobSweeperLambda extends GoLambda {
+export class JobSweeperLambda extends GoLambda implements IWebSocketPushTarget {
   constructor(scope: Construct, id: string, props: JobSweeperLambdaProps) {
     super(scope, id, {
       lambdaId:         'job-sweeper',
@@ -59,5 +60,10 @@ export class JobSweeperLambda extends GoLambda {
     props.auditEventsQueue.grantSend(this);
 
     new JobSweepSchedule(this, 'sweep-schedule', { target: this, interval: props.sweepInterval });
+  }
+
+  public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {
+    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
+    broadcaster.grantInvoke(this);
   }
 }

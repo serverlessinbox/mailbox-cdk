@@ -38,4 +38,26 @@ describe('Mailbox mail-import runner WebSocket push', () => {
     expect(runners).toHaveLength(1);
     expect(runners[0].Environment.Variables).toHaveProperty('WEBSOCKET_BROADCAST_FUNCTION_NAME');
   });
+
+  it.each([
+    ['user-api', 'MAIL_IMPORT_RUNNER_FUNCTION_NAME'],
+    ['job-sweeper', 'JOB_STALE_AFTER'],
+  ])('gives the %s function the broadcaster name in its environment', (_name, marker) => {
+    const app   = new App({
+      context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT },
+    });
+    const stack = new cdk.Stack(app, 'TestMailboxWebSocketPushNotice', {
+      env:         { account: '123456789012', region: 'us-west-2' },
+      synthesizer: new BootstraplessSynthesizer(),
+    });
+
+    new Mailbox(stack, 'mailbox', {
+      authProvider: createMockAuthProvider(),
+    });
+
+    const functions = resourcesOfType<FunctionProperties>(Template.fromStack(stack), 'AWS::Lambda::Function')
+      .filter((properties) => marker in properties.Environment.Variables);
+    expect(functions).toHaveLength(1);
+    expect(functions[0].Environment.Variables).toHaveProperty('WEBSOCKET_BROADCAST_FUNCTION_NAME');
+  });
 });

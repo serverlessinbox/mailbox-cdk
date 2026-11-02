@@ -217,6 +217,7 @@ export class ApisSection extends Construct {
 
     jmapApi.enableWebSocketPublishing(webSocketPush.webSocketUrl, webSocketPush.broadcaster);
     adminApi.enableWebSocketPublishing(webSocketPush.broadcaster);
+    userApi.enableWebSocketPublishing(webSocketPush.broadcaster);
 
     gateway.domainLogicalIdPin?.overrideLogicalId('Mailboxadminapidomain8793AE5D');
     jmapApi.domainLogicalIdPin?.overrideLogicalId('Mailboxjmapapidomain47B62A36');

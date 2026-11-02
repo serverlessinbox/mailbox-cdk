@@ -12,6 +12,7 @@ import * as cdk                                                                 
 import { App, BootstraplessSynthesizer, Duration }                              from 'aws-cdk-lib';
 
 import { resourcesOfType }                                                      from '../../../__tests__/iam-test-helpers';
+import type { IWebSocketBroadcastPublisher }                                    from '../../../contracts/websocket-push';
 import { DataTable }                                                            from '../../tables/data-tables';
 import { JobSweeperLambda }                                                     from '../job-sweeper-lambda';
 
@@ -30,7 +31,7 @@ interface FunctionProperties {
   readonly MemorySize:  number;
 }
 
-function arrangeSweeper() {
+function arrangeSweeper(broadcaster?: IWebSocketBroadcastPublisher) {
   const stack            = new cdk.Stack(new App(), 'TestStack', {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
@@ -63,6 +64,10 @@ function arrangeSweeper() {
     sweepInterval:       Duration.minutes(15),
     staleAfter:          Duration.hours(2),
   });
+
+  if (broadcaster) {
+    lambda.enableWebSocketPush(broadcaster);
+  }
 
   return { stack, lambda, template: Template.fromStack(stack), itemTable, patTable, configTable, changelogTable, blobStore, auditEventsQueue };
 }
@@ -124,6 +129,15 @@ describe('JobSweeperLambda', () => {
         Statement: Match.arrayWith([Match.objectLike({ Action: ITEM_TABLE_ACTIONS, Resource: Match.arrayWith([itemTableArn]) })]),
       },
     });
+  });
+
+  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the broadcaster grant itself invokable', () => {
+    const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
+
+    const { lambda, template } = arrangeSweeper(broadcaster);
+
+    expect(sweeperProperties(template).Environment.Variables).toMatchObject({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcast-fn' });
+    expect(broadcaster.grantInvoke).toHaveBeenCalledWith(lambda);
   });
 
   it('registers a schedule that invokes it every 15 minutes', () => {

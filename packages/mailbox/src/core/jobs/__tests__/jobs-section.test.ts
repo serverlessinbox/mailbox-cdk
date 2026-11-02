@@ -175,16 +175,19 @@ describe('JobsSection', () => {
     expect(sweeper.Timeout).toBeLessThan(sweepInterval);
   });
 
-  it('enables WebSocket push on the runner: the broadcaster is in its environment and the runner is granted the invoke', () => {
+  it('enables WebSocket push on the runner and the sweeper: the broadcaster is in their environments and each is granted the invoke', () => {
     const stack       = createStack();
     const section     = new JobsSection(stack, 'jobs', sectionProps(stack, new AuthKeyStoreTable(stack, 'auth-key-store')));
     const grantInvoke = jest.fn();
 
     section.enableWebSocketPublishing({ functionName: 'broadcaster-function', grantInvoke });
 
-    const runner = functionWith(Template.fromStack(stack), 'IMPORT_MESSAGES_PER_SECOND');
+    const template = Template.fromStack(stack);
+    const runner   = functionWith(template, 'IMPORT_MESSAGES_PER_SECOND');
+    const sweeper  = functionWith(template, 'JOB_STALE_AFTER');
     expect(runner.Environment.Variables.WEBSOCKET_BROADCAST_FUNCTION_NAME).toBe('broadcaster-function');
-    expect(grantInvoke).toHaveBeenCalledTimes(1);
+    expect(sweeper.Environment.Variables.WEBSOCKET_BROADCAST_FUNCTION_NAME).toBe('broadcaster-function');
+    expect(grantInvoke).toHaveBeenCalledTimes(2);
     expect(grantInvoke).toHaveBeenCalledWith(section.mailImportRunner);
   });
 });
