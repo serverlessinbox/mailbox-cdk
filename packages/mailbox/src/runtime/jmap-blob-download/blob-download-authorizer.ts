@@ -167,10 +167,8 @@ export class BlobDownloadAuthorizer {
   ): Promise<HmacTokenPayload> {
     const patTable = this.requirePatTable(config);
 
-    const [verdict, session] = await Promise.all([
-      verifiers.pat.verdict(secret, patTable),
-      this.verifySession(verifiers.hmac, sessionToken, config),
-    ]);
+    const session = await this.verifySession(verifiers.hmac, sessionToken, config);
+    const verdict = await verifiers.pat.verdict(secret, patTable);
     this.requireUsable(verdict);
     this.requireAccountAccess(session, params.accountId, blob);
     this.requireTokenBinding(verdict, session);

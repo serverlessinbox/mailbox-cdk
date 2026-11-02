@@ -159,6 +159,14 @@ describe('BlobDownloadAuthorizer', () => {
       expect(verdict).not.toHaveBeenCalled();
     });
 
+    it('refuses an invalid session with a well-formed secret before any token-table read', async () => {
+      verifySessionToken.mockResolvedValueOnce(null);
+
+      await expectRejected(tokenRequest(), 403, 'Access denied: invalid auth token');
+
+      expect(verdict).not.toHaveBeenCalled();
+    });
+
     it('refuses a secret of the wrong length before any read', async () => {
       await expectRejected(tokenRequest({ request: { authorization: `Bearer ${SECRET}x`, customHeaders: TOKEN_HEADERS } }), 401, 'Missing or invalid Authorization header');
 
