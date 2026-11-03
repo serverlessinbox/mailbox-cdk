@@ -4,6 +4,36 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.6](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.5...v0.5.6) (Mon Nov 02 2026)
+
+### test
+
+* **mailbox-cognito** IDataTable fakes implement grantConditionCheck ([5c0c70e](https://github.com/serverlessinbox/mailbox-cdk/commit/5c0c70efb206931fcae53cbbc2d370c4e3b7cc60))
+
+### refactor
+
+* remove the remaining Partial types and forbid Partial in lint ([66a2dc6](https://github.com/serverlessinbox/mailbox-cdk/commit/66a2dc65781c3e734f4d0b455bfed59a1286db18))
+
+### feat
+
+* **eslint-plugin** align caps the = column at 80 and gives lone entries one space ([7b0a5af](https://github.com/serverlessinbox/mailbox-cdk/commit/7b0a5af97634ede36aaac2933bfaab4c11504031))
+
+* **auth** rights-based permissions and scope maps in auth policies ([077f72b](https://github.com/serverlessinbox/mailbox-cdk/commit/077f72b976cec4a995e1e4abe811345d7f406adf))
+
+* **auth** preferences rights replace user rights ([6d480ef](https://github.com/serverlessinbox/mailbox-cdk/commit/6d480efba9fcb15435ddc8151b35d539361ada80))
+
+* **auth** import rights in the Cognito mail write scope ([9610140](https://github.com/serverlessinbox/mailbox-cdk/commit/9610140c12475eaccba0a970dd528154f4c68195))
+
+* **auth** tokens/manage right and its Cognito scope ([dac4d21](https://github.com/serverlessinbox/mailbox-cdk/commit/dac4d21e9bb0060605d8de27065e925918e981a4))
+
+### style
+
+* enable import-layout and reformat imports at the column-80 lane ([17dddd6](https://github.com/serverlessinbox/mailbox-cdk/commit/17dddd6fbd2207684e1d5a0015543ac67cca1cd1))
+
+### fix
+
+* **auth** a read scope no longer grants preferences write ([5aaa14b](https://github.com/serverlessinbox/mailbox-cdk/commit/5aaa14bd1d0186d9b7195763d38622a8c480e044))
+
 ## [0.5.5](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.4...v0.5.5) (Wed Oct 28 2026)
 
 
