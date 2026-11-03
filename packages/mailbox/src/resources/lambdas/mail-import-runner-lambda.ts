@@ -39,13 +39,12 @@ export interface MailImportRunnerLambdaProps {
 export class MailImportRunnerLambda extends GoLambda implements IMailImportRunner, IWebSocketPushTarget {
   constructor(scope: Construct, id: string, props: MailImportRunnerLambdaProps) {
     super(scope, id, {
-      lambdaId:                     'mail-import-runner',
-      pipeline:                     'mail-in',
-      artifactResolver:             props.artifactResolver,
-      timeout:                      Duration.minutes(5),
-      memorySize:                   1024,
-      reservedConcurrentExecutions: 3,
-      environment:                  {
+      lambdaId:         'mail-import-runner',
+      pipeline:         'mail-in',
+      artifactResolver: props.artifactResolver,
+      timeout:          Duration.minutes(5),
+      memorySize:       1024,
+      environment:      {
         ITEM_TABLE_NAME:            props.itemTable.tableName,
         CONFIG_TABLE_NAME:          props.configTable.tableName,
         CHANGELOG_TABLE_NAME:       props.changelogTable.tableName,

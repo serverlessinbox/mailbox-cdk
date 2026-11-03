@@ -1,9 +1,9 @@
 /// <reference types="jest" />
 
 /**
- * MailImportRunnerLambda tests: the environment the runner is given, the grants it gives itself and its reserved
- * concurrency and timeout. The grants are read from the synthesized template with the real resources, so the blob
- * statements are the real `grantEmailBlobWrite` ones, not a fake. Each assertion here is the only guard for its rule.
+ * MailImportRunnerLambda tests: the environment the runner is given, the grants it gives itself and its timeout.
+ * The grants are read from the synthesized template with the real resources, so the blob statements are the real
+ * `grantEmailBlobWrite` ones, not a fake. Each assertion here is the only guard for its rule.
  */
 
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
@@ -26,10 +26,9 @@ const RUNNER_ENVIRONMENT_NAMES = ['AUTH_KEY_STORE_TABLE_NAME', 'BLOB_STORE_NAME'
 const ITEM_TABLE_ACTIONS       = ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem'];
 
 interface FunctionProperties {
-  readonly Environment:                   { readonly Variables: Record<string, string> };
-  readonly Timeout:                       number;
-  readonly MemorySize:                    number;
-  readonly ReservedConcurrentExecutions?: number;
+  readonly Environment: { readonly Variables: Record<string, string> };
+  readonly Timeout:     number;
+  readonly MemorySize:  number;
 }
 
 interface PolicyStatement {
@@ -114,11 +113,10 @@ describe('MailImportRunnerLambda', () => {
     expect(variables.IMPORT_MESSAGES_PER_SECOND).toBe('5');
   });
 
-  it('runs with reserved concurrency 3, a 5 minute timeout and 1024 MB of memory', () => {
+  it('runs with a 5 minute timeout and 1024 MB of memory', () => {
     const { template } = arrangeRunner(false);
 
     const runner = runnerProperties(template);
-    expect(runner.ReservedConcurrentExecutions).toBe(3);
     expect(runner.Timeout).toBe(300);
     expect(runner.MemorySize).toBe(1024);
   });
