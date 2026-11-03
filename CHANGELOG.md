@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.8](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.7...v0.5.8) (Tue Nov 03 2026)
+
+### chore
+
+* Idl pointer ([93f2554](https://github.com/serverlessinbox/mailbox-cdk/commit/93f255467bf448bede0987689c54456e4898dd44))
+
 ## [0.5.7](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.6...v0.5.7) (Tue Nov 03 2026)
 
 ### feat
