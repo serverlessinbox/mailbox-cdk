@@ -157,7 +157,7 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       ...(withRegistration
         ? { registration_endpoint: `${props.apiBaseUrl}${REGISTRATION_PATH}` }
         : {}),
-      scopes_supported:                      ['openid', 'email', 'profile', 'offline_access'],
+      scopes_supported:                      ['openid', 'email', 'profile', 'offline_access', 'si/mail.read', 'si/mail.write', 'si/mail.send', 'si/contacts.read', 'si/contacts.write'],
       response_types_supported:              ['code'],
       response_modes_supported:              ['query'],
       grant_types_supported:                 ['authorization_code', 'refresh_token'],

@@ -27,6 +27,8 @@ import { bodyOf, mockIdentityProvisioner, rawRequestEvent, requestEvent,
 
 const LOOPBACK_REDIRECT_URI = 'http://127.0.0.1/cb';
 
+const EVERY_GRANT = 'openid email profile si/mail.read si/mail.write si/mail.send si/contacts.read si/contacts.write';
+
 const ANY_NUMBER: unknown             = expect.any(Number);
 const MENTIONS_REDIRECT_URIS: unknown = expect.stringContaining('redirect_uris');
 
@@ -74,7 +76,7 @@ describe('ClientRegistration', () => {
         redirect_uris:              ['http://127.0.0.1:4321/cb'],
         token_endpoint_auth_method: 'none',
         client_name:                'My App',
-        scope:                      'openid email profile',
+        scope:                      EVERY_GRANT,
       });
       expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(1);
       expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)[0].args[0].input).toMatchObject({
@@ -84,7 +86,7 @@ describe('ClientRegistration', () => {
         CallbackURLs:   ['http://127.0.0.1:4321/cb'],
       });
       expect(sentRequests(lambdaMock).map((request) => request.kind)).toEqual(['RESOLVE_TENANT', 'DCR_CHECK', 'DCR_PERSIST']);
-      expect(sentRequests(lambdaMock)[2]).toMatchObject({ clientId: 'new-client-id', scope: 'openid email profile' });
+      expect(sentRequests(lambdaMock)[2]).toMatchObject({ clientId: 'new-client-id', scope: EVERY_GRANT });
     });
 
     it('reads a base64 encoded body', async () => {
@@ -96,29 +98,30 @@ describe('ClientRegistration', () => {
       expect(answer.statusCode).toBe(201);
     });
 
-    it('registers the scopes it asks of Cognito, without offline_access, and answers with them', async () => {
+    it('grants the identity scope asked and every mail scope when no mail scope is asked, without offline_access', async () => {
       mockIdentityProvisioner(lambdaMock, {});
 
       const answer = await registration.register(requestEvent({ redirect_uris: [LOOPBACK_REDIRECT_URI], scope: 'openid offline_access' }));
 
-      expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)[0].args[0].input.AllowedOAuthScopes).toEqual(['openid']);
-      expect(bodyOf(answer)).toMatchObject({ scope: 'openid' });
+      expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)[0].args[0].input.AllowedOAuthScopes).toEqual([
+        'openid', 'si/mail.read', 'si/mail.write', 'si/mail.send', 'si/contacts.read', 'si/contacts.write',
+      ]);
+      expect(bodyOf(answer)).toMatchObject({ scope: 'openid si/mail.read si/mail.write si/mail.send si/contacts.read si/contacts.write' });
     });
 
-    // Cognito rejects a client that is allowed OAuth flows and has no allowed scopes, so a request that reduces
-    // to no scope once offline_access is dropped must be granted the default scope.
+    // A request that reduces to no scope once offline_access is dropped is granted the identity and mail scopes.
     it.each([
       { asks: 'only offline_access', scope: 'offline_access' },
       { asks: 'an empty string', scope: '' },
       { asks: 'whitespace only', scope: '   ' },
-    ])('grants the default scope when the request asks for $asks', async ({ scope }) => {
+    ])('grants the identity and mail scopes when the request asks for $asks', async ({ scope }) => {
       mockIdentityProvisioner(lambdaMock, {});
 
       const answer = await registration.register(requestEvent({ redirect_uris: [LOOPBACK_REDIRECT_URI], scope }));
 
       expect(answer.statusCode).toBe(201);
-      expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)[0].args[0].input.AllowedOAuthScopes).toEqual(['openid', 'email', 'profile']);
-      expect(bodyOf(answer)).toMatchObject({ scope: 'openid email profile' });
+      expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)[0].args[0].input.AllowedOAuthScopes).toEqual(EVERY_GRANT.split(' '));
+      expect(bodyOf(answer)).toMatchObject({ scope: EVERY_GRANT });
     });
 
     it.each([
@@ -152,6 +155,25 @@ describe('ClientRegistration', () => {
     });
   });
 
+  describe('the scope a new registration is granted', () => {
+    it('grants a client that asks for one mail scope exactly that scope', async () => {
+      mockIdentityProvisioner(lambdaMock, {});
+
+      await registration.register(requestEvent({ redirect_uris: [LOOPBACK_REDIRECT_URI], scope: 'si/mail.read' }));
+
+      expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)[0].args[0].input.AllowedOAuthScopes).toEqual(['si/mail.read']);
+    });
+
+    it('logs the number of dropped scopes and never their text', async () => {
+      mockIdentityProvisioner(lambdaMock, {});
+
+      await registration.register(requestEvent({ redirect_uris: [LOOPBACK_REDIRECT_URI], scope: 'openid si/mail.read si/admin phone' }));
+
+      expect(warnLog).toHaveBeenCalledWith('jmap_oauth_dcr_scopes_dropped', { tenantId: 'tenant-1', count: 2 });
+      expect(JSON.stringify(warnLog.mock.calls)).not.toContain('si/admin');
+    });
+  });
+
   describe('a duplicate or over-cap request', () => {
     it('answers 201 with the existing client and its scope for a duplicate, without calling Cognito', async () => {
       mockIdentityProvisioner(lambdaMock, { dcrCheck: { status: 'dedup_hit', clientId: 'existing-client', scope: 'openid email' } });
@@ -164,12 +186,13 @@ describe('ClientRegistration', () => {
       expect(cognitoMock.commandCalls(DeleteUserPoolClientCommand)).toHaveLength(0);
     });
 
-    it('answers a duplicate that carries no scope with the default scope', async () => {
+    it('answers a duplicate that carries no scope with the identity scopes, without calling Cognito', async () => {
       mockIdentityProvisioner(lambdaMock, { dcrCheck: { status: 'dedup_hit', clientId: 'existing-client' } });
 
       const answer = await registration.register(requestEvent({ redirect_uris: [LOOPBACK_REDIRECT_URI] }));
 
-      expect(bodyOf(answer)).toMatchObject({ client_id: 'existing-client', scope: 'openid email profile offline_access' });
+      expect(bodyOf(answer)).toMatchObject({ client_id: 'existing-client', scope: 'openid email profile' });
+      expect(cognitoMock.commandCalls(CreateUserPoolClientCommand)).toHaveLength(0);
     });
 
     it('answers 429 invalid_client_metadata when the tenant is over its cap, without calling Cognito', async () => {
@@ -242,7 +265,7 @@ describe('ClientRegistration', () => {
       expect(bodyOf(answer)).toMatchObject({ error: 'invalid_client_metadata' });
       expect(errorLog).toHaveBeenCalledWith(
         'jmap_oauth_dcr_cognito_create_failed',
-        expect.objectContaining({ requestedScope: undefined, cognitoScopes: ['openid', 'email', 'profile'] }),
+        expect.objectContaining({ requestedScope: undefined, cognitoScopes: EVERY_GRANT.split(' ') }),
       );
     });
 

@@ -2,7 +2,7 @@ import { CaughtError, type LoggerBuffer, type TenantId }                  from '
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 
 import type { ClientId, UserPoolId }                                      from '../shared/cognito-identifiers';
-import { toScope, type Scope }                                            from '../shared/identity-identifiers';
+import type { Scope }                                                     from '../shared/identity-identifiers';
 import type { IdentityProvisionerClient }                                 from '../shared/identity-provisioner-client';
 import type { DcrPersistResponse }                                        from '../shared/identity-provisioner-contract';
 
@@ -10,14 +10,10 @@ import type { CognitoUserPoolClientManager }                              from '
 import { isClientRegistrationRequest, type ClientRegistrationRequest }    from './dcr.validation';
 import type { RedirectUriPolicy }                                         from './redirect-uri';
 import { RegistrationAnswers }                                            from './registration-answers';
-import { SUPPORTED_SCOPES }                                               from './supported-scopes';
+import { ScopePolicy }                                                    from './scope-policy';
+import { IDENTITY_SCOPES }                                                from './supported-scopes';
 
 const DEFAULT_CLIENT_NAME = 'Unnamed JMAP Client';
-
-/** The scope granted when a client asks for none, or for none that Cognito can bind. */
-const DEFAULT_SCOPE = SUPPORTED_SCOPES.join(' ');
-
-const OFFLINE_ACCESS_SCOPE = 'offline_access';
 
 const INVALID_PARAMETER_EXCEPTION = 'InvalidParameterException';
 
@@ -72,7 +68,12 @@ export class ClientRegistration {
   }
 
   private async registerNewClient(tenantId: TenantId, request: ClientRegistrationRequest, clientName: string): Promise<APIGatewayProxyStructuredResultV2> {
-    const cognitoScopes = this.cognitoScopesOf(request.scope);
+    const dropped = ScopePolicy.droppedCount(request.scope);
+    if (dropped > 0) {
+      this.logger.warn('jmap_oauth_dcr_scopes_dropped', { tenantId, count: dropped });
+    }
+
+    const cognitoScopes = ScopePolicy.grantFor(request.scope);
 
     let clientId: ClientId;
     try {
@@ -123,24 +124,6 @@ export class ClientRegistration {
     return undefined;
   }
 
-  /**
-   * The scopes Cognito is asked to allow, never empty. `CreateUserPoolClient` is called with
-   * `AllowedOAuthFlowsUserPoolClient: true`, and Cognito then rejects an empty `AllowedOAuthScopes`. A request
-   * for no scope, or only for `offline_access`, reduces to nothing; RFC 7591 §3.2.1 lets the server substitute a
-   * value and report the granted one, so the default scope is granted instead.
-   */
-  private cognitoScopesOf(requested: string | undefined): Scope[] {
-    const fromRequest = this.withoutOfflineAccess(requested?.trim() || DEFAULT_SCOPE);
-    return fromRequest.length > 0 ? fromRequest : this.withoutOfflineAccess(DEFAULT_SCOPE);
-  }
-
-  private withoutOfflineAccess(scope: string): Scope[] {
-    return scope
-      .split(' ')
-      .filter((token) => token.length > 0 && token !== OFFLINE_ACCESS_SCOPE)
-      .map(toScope);
-  }
-
   private answerRegistered(request: ClientRegistrationRequest, clientId: string, scope: string, clientName: string): APIGatewayProxyStructuredResultV2 {
     return RegistrationAnswers.created({
       client_id:                  clientId,
@@ -160,7 +143,7 @@ export class ClientRegistration {
     scope: string | undefined,
   ): APIGatewayProxyStructuredResultV2 {
     this.logger.info('jmap_oauth_dcr_dedup_hit', { tenantId, clientId });
-    return this.answerRegistered(request, clientId, scope ?? DEFAULT_SCOPE, clientName);
+    return this.answerRegistered(request, clientId, scope ?? IDENTITY_SCOPES.join(' '), clientName);
   }
 
   // RFC 7591 §3.2.2: a registration error is HTTP 400. Cognito rejects a metadata value it will not accept
