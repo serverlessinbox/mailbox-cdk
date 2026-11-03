@@ -7,10 +7,10 @@ import {
   type LoggerBuffer,
   type ParsedArn,
   type TableName,
-} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { ResourceProperties, TableRole }                            from './resource-properties-contract';
-import { isResourceProperties }                                          from './resource-properties';
+import type { ResourceProperties, TableRole }                                   from './resource-properties-contract';
+import { isResourceProperties }                                                 from './resource-properties';
 
 /** The effective table ARN of each role, under the attribute name `<role>Arn` the custom resource answers CloudFormation with. */
 export type ResolvedTableArns = { readonly [R in TableRole as `${R}Arn`]: string };
@@ -41,6 +41,7 @@ export class TableOverrideResolver {
       changelogTableArn:    await this.resolveTable('changelogTable', props),
       auditLogTableArn:     await this.resolveTable('auditLogTable', props),
       mailFeedbackTableArn: await this.resolveTable('mailFeedbackTable', props),
+      patTableArn:          await this.resolveTable('patTable', props),
     };
   }
 

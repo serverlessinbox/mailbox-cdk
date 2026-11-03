@@ -51,7 +51,7 @@ describe('WebmailUi', () => {
       configTable:      new DataTable(new dynamodb.Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       })),
-      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
       authProvider:     createAuthProvider(),
       jmapUrl:          'https://jmap.example.com',
       userApiUrl:       'https://api.example.com/user',
@@ -91,27 +91,34 @@ describe('WebmailUi', () => {
     expect(provisionJmapApiClient).toHaveBeenCalledWith({
       name:         'webmail-ui',
       permissions:  [
-        Permission.MAIL_READ,
-        Permission.MAIL_WRITE,
-        Permission.MAIL_SEND,
-        Permission.ACCOUNT_READ,
-        Permission.ALIAS_READ,
-        Permission.USER_READ,
+        Permission.MAIL_READ_ITEMS,
+        Permission.MAIL_ADD_ITEMS,
+        Permission.MAIL_REMOVE_ITEMS,
+        Permission.MAIL_SET_SEEN,
+        Permission.MAIL_SET_KEYWORDS,
+        Permission.MAIL_CREATE_CHILD,
+        Permission.MAIL_RENAME,
+        Permission.MAIL_DELETE,
+        Permission.MAIL_SUBMIT,
+        Permission.PREFERENCES_READ,
+        Permission.PREFERENCES_WRITE,
+        Permission.IMPORT_READ,
+        Permission.IMPORT_WRITE,
         Permission.CONTACTS_READ,
         Permission.CONTACTS_WRITE,
+        Permission.TOKENS_MANAGE,
       ],
       callbackUrls: [`https://${webmailUi.distributionDomainName}/auth/callback`],
       logoutUrls:   [`https://${webmailUi.distributionDomainName}/`],
     });
   });
 
-  it('never grants admin or alias write to the webmail client', () => {
+  it('never grants admin to the webmail client', () => {
     createWebmailUi();
 
     const [request] = provisionJmapApiClient.mock.calls[0];
 
     expect(request.permissions).not.toContain(Permission.ADMIN);
-    expect(request.permissions).not.toContain(Permission.ALIAS_WRITE);
   });
 
   it('deploys the Webmail UI bundle published by the mailbox-webmail-ui artifact', () => {

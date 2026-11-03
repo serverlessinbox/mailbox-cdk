@@ -7,13 +7,14 @@
  * stacks' pools, and a plain StringEquals on the multivalued aws:TagKeys silently denies every tag write.
  */
 
-import { actionsOf, allPolicyStatements, sharedSubStackTagKeys, sharedWorkerServiceName, statementsForAction, tagKeysOf } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson }                                                                                       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { IArtifactObject, IDeployedStack }                                                                           from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                                                                                       from 'aws-cdk-lib/assertions';
+import { actionsOf, allPolicyStatements, sharedSubStackTagKeys,
+  sharedWorkerServiceName, statementsForAction, tagKeysOf }                     from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson }                                             from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { IArtifactObject, IDeployedStack }                                 from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                                             from 'aws-cdk-lib/assertions';
 
-import { newDeployerTestStack }                                                                                           from '../../../data-stack/__tests__/cognito-deployer-helpers';
-import { MailboxCognitoDataDeployerWorkerLambda }                                                                         from '../mailbox-cognito-data-deployer-worker-lambda';
+import { newDeployerTestStack }                                                 from '../../../data-stack/__tests__/cognito-deployer-helpers';
+import { MailboxCognitoDataDeployerWorkerLambda }                               from '../mailbox-cognito-data-deployer-worker-lambda';
 
 const ROOT_STACK                    = { name: 'given-root-stack', id: 'given-root-guid' };
 const deployedStack: IDeployedStack = { grantLifecycle: jest.fn(), grantTemplateRead: jest.fn(), grantDescribe: jest.fn() };
@@ -40,9 +41,9 @@ function synthWorker(): { readonly worker: MailboxCognitoDataDeployerWorkerLambd
   const { stack, artifactResolver } = newDeployerTestStack();
   const worker                      = new MailboxCognitoDataDeployerWorkerLambda(stack, 'worker', {
     artifactResolver,
-    template:      dataTemplate,
+    template: dataTemplate,
     deployedStack,
-    rootStack:     ROOT_STACK,
+    rootStack: ROOT_STACK,
   });
   return { worker, template: Template.fromStack(stack) };
 }

@@ -7,19 +7,20 @@
  * certificates and functions of other stacks, and one that is too narrow fails the edge deployment.
  */
 
-import { renderWithTokens, sharedWorkerServiceName, statementsForAction, tagKeysOf } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { IArtifactObject, IDeployedStack }                                      from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                                                  from 'aws-cdk-lib/assertions';
-import { Role }                                                                      from 'aws-cdk-lib/aws-iam';
+import { renderWithTokens, sharedWorkerServiceName, statementsForAction,
+  tagKeysOf }                                                                   from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { IArtifactObject, IDeployedStack }                                 from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                                             from 'aws-cdk-lib/assertions';
+import { Role }                                                                 from 'aws-cdk-lib/aws-iam';
 
 import {
   TEST_ACCOUNT,
   newDeployerTestStack,
-} from '../../../__tests__/deployer-test-helpers';
-import { MailboxEdgeDeployerWorkerLambda }           from '../mailbox-edge-deployer-worker-lambda';
-import type { MailboxEdgeDeployerWorkerLambdaProps } from '../mailbox-edge-deployer-worker-lambda';
+}                                                                               from '../../../__tests__/deployer-test-helpers';
+import { MailboxEdgeDeployerWorkerLambda }                                      from '../mailbox-edge-deployer-worker-lambda';
+import type { MailboxEdgeDeployerWorkerLambdaProps }                            from '../mailbox-edge-deployer-worker-lambda';
 
-import { ownedByRootStack }                          from './lambda-wrapper-helpers';
+import { ownedByRootStack }                                                     from './lambda-wrapper-helpers';
 
 const EDGE_REGION                 = 'us-east-1';
 const JMAP_BLOB_DOWNLOAD_ROLE_ARN = 'arn:aws:iam::111122223333:role/test-role';

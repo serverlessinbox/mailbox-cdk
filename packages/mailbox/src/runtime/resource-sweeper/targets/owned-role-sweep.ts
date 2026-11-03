@@ -1,10 +1,11 @@
-import { DeleteRoleCommand, DeleteRolePolicyCommand, IAMClient, ListRoleTagsCommand } from '@aws-sdk/client-iam';
-import { CaughtError, parseArn, type LoggerBuffer }                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { DeleteRoleCommand, DeleteRolePolicyCommand, IAMClient,
+  ListRoleTagsCommand }                                                         from '@aws-sdk/client-iam';
+import { CaughtError, parseArn, type LoggerBuffer }                             from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { OwnershipCheckedDelete }                                                     from '../ownership-checked-delete';
-import type { TargetResult, WorkerRootStack }                                         from '../removal';
-import type { RootStackMembership }                                                   from '../root-stack-membership';
-import type { TargetResults }                                                         from '../target-results';
+import { OwnershipCheckedDelete }                                               from '../ownership-checked-delete';
+import type { TargetResult, WorkerRootStack }                                   from '../removal';
+import type { RootStackMembership }                                             from '../root-stack-membership';
+import type { TargetResults }                                                   from '../target-results';
 
 /**
  * Deletes one IAM role of this stack once the root stack owns it: its one named inline policy, then the role.

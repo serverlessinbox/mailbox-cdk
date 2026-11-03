@@ -1,10 +1,10 @@
-import { App, Stack }                     from 'aws-cdk-lib';
-import { Construct }                      from 'constructs';
+import { App, Stack }                 from 'aws-cdk-lib';
+import { Construct }                  from 'constructs';
 
-import { PositionHash }                   from '../position-hash';
-import { makePhysicalName }               from '../resource-names';
-import { MAX_ROOT_STACK_NAME_LENGTH }     from '../root-stack-name-limit';
-import { StackIdentity }                  from '../stack-identity';
+import { PositionHash }               from '../position-hash';
+import { makePhysicalName }           from '../resource-names';
+import { MAX_ROOT_STACK_NAME_LENGTH } from '../root-stack-name-limit';
+import { StackIdentity }              from '../stack-identity';
 
 /**
  * Pins the physical-name scheme `<root stack name>-<suffix slug>-<position hash>-<guid prefix>`. The root

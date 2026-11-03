@@ -1,20 +1,20 @@
-import { StackIdentity, rootStackResourceTagConditions } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStackConditions }                      from '@serverlessinbox/mailbox-cdk-shared';
-import * as iam                                          from 'aws-cdk-lib/aws-iam';
-import * as lambda                                       from 'aws-cdk-lib/aws-lambda';
-import * as sfn                                          from 'aws-cdk-lib/aws-stepfunctions';
-import { Aws, Duration }                                 from 'aws-cdk-lib';
-import { Construct }                                     from 'constructs';
+import { StackIdentity, rootStackResourceTagConditions }                        from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStackConditions }                                             from '@serverlessinbox/mailbox-cdk-shared';
+import * as iam                                                                 from 'aws-cdk-lib/aws-iam';
+import * as lambda                                                              from 'aws-cdk-lib/aws-lambda';
+import * as sfn                                                                 from 'aws-cdk-lib/aws-stepfunctions';
+import { Aws, Duration }                                                        from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
 import type {
   StackFailureDetectorRemovalTarget,
   StackFailureDetectorWorkerInput,
-} from '../../../runtime/resource-sweeper/removal';
-import { DETECTOR_ROLE_NAME_PREFIX }                                  from '../stack-failure-detection-infra';
-import type { StackFailureDetectorSweepTargets }                      from '../stack-failure-detection';
+}                                                                               from '../../../runtime/resource-sweeper/removal';
+import { DETECTOR_ROLE_NAME_PREFIX }                                            from '../stack-failure-detection-infra';
+import type { StackFailureDetectorSweepTargets }                                from '../stack-failure-detection';
 
-import { buildWorkerRetryLoop, targetAt, withTargetPresenceGuard }    from './removal';
-import type { IResourceRemoval, WorkerPayloadTemplate }               from './removal';
+import { buildWorkerRetryLoop, targetAt, withTargetPresenceGuard }              from './removal';
+import type { IResourceRemoval, WorkerPayloadTemplate }                         from './removal';
 
 /** Inputs of {@link StackFailureDetectorRemoval}: the detector's sweep targets and the grace period before they are swept. */
 export interface StackFailureDetectorRemovalProps extends StackFailureDetectorSweepTargets {

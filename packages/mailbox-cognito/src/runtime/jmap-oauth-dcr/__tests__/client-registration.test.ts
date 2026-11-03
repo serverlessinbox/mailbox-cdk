@@ -11,18 +11,19 @@ import {
   CognitoIdentityProviderClient,
   CreateUserPoolClientCommand,
   DeleteUserPoolClientCommand,
-} from '@aws-sdk/client-cognito-identity-provider';
-import { InvokeCommand, LambdaClient }                                                  from '@aws-sdk/client-lambda';
-import { LoggerBuffer, toFunctionName }                                                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                                                   from 'aws-sdk-client-mock';
+}                                                                               from '@aws-sdk/client-cognito-identity-provider';
+import { InvokeCommand, LambdaClient }                                          from '@aws-sdk/client-lambda';
+import { LoggerBuffer, toFunctionName }                                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import { toUserPoolId }                                                                 from '../../shared/cognito-identifiers';
-import { IdentityProvisionerClient }                                                    from '../../shared/identity-provisioner-client';
-import { ClientRegistration }                                                           from '../client-registration';
-import { CognitoUserPoolClientManager }                                                 from '../cognito-client';
-import { RedirectUriPolicy }                                                            from '../redirect-uri';
+import { toUserPoolId }                                                         from '../../shared/cognito-identifiers';
+import { IdentityProvisionerClient }                                            from '../../shared/identity-provisioner-client';
+import { ClientRegistration }                                                   from '../client-registration';
+import { CognitoUserPoolClientManager }                                         from '../cognito-client';
+import { RedirectUriPolicy }                                                    from '../redirect-uri';
 
-import { bodyOf, mockIdentityProvisioner, rawRequestEvent, requestEvent, sentRequests } from './jmap-oauth-dcr-helpers';
+import { bodyOf, mockIdentityProvisioner, rawRequestEvent, requestEvent,
+  sentRequests }                                                                from './jmap-oauth-dcr-helpers';
 
 const LOOPBACK_REDIRECT_URI = 'http://127.0.0.1/cb';
 

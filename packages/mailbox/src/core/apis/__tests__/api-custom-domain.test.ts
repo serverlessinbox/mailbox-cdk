@@ -8,12 +8,12 @@
  * on its certificate fails the deploy, not the synth, so these assertions are the only guard.
  */
 
-import { Match, Template }                         from 'aws-cdk-lib/assertions';
-import * as acm                                    from 'aws-cdk-lib/aws-certificatemanager';
-import * as cdk                                    from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }           from 'aws-cdk-lib';
+import { Match, Template }               from 'aws-cdk-lib/assertions';
+import * as acm                          from 'aws-cdk-lib/aws-certificatemanager';
+import * as cdk                          from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
-import { ApiCustomDomain }                         from '../api-custom-domain';
+import { ApiCustomDomain }               from '../api-custom-domain';
 
 describe('ApiCustomDomain', () => {
   let stack: cdk.Stack;

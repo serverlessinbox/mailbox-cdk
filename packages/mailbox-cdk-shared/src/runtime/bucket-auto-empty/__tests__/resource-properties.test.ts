@@ -3,7 +3,8 @@
  * `bucketName` is not a string, and must tolerate the extra keys CloudFormation adds, such as `ServiceToken`.
  */
 
-import { isBucketAutoEmptyDeletionProperties, isBucketAutoEmptyResourceProperties } from '../resource-properties';
+import { isBucketAutoEmptyDeletionProperties,
+  isBucketAutoEmptyResourceProperties } from '../resource-properties';
 
 describe('isBucketAutoEmptyDeletionProperties', () => {
   it('accepts a bucketName beside the keys CloudFormation adds', () => {

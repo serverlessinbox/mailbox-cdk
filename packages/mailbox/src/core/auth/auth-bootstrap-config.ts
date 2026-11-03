@@ -5,13 +5,13 @@ import { OAuthFlow }                                     from './oauth-flow';
 /** OIDC provider configuration needed by the token exchange + UI flows. */
 export interface OidcProviderConfig {
   /** URL of the provider's token endpoint. */
-  readonly tokenEndpoint:         string;
+  readonly tokenEndpoint: string;
   /** URL of the provider's authorization endpoint. */
   readonly authorizationEndpoint: string;
   /** How the OAuth client authenticates at the token endpoint. */
-  readonly authMethod:            AuthMethod;
+  readonly authMethod: AuthMethod;
   /** Whether the authorization code flow uses PKCE. */
-  readonly usePkce:               boolean;
+  readonly usePkce: boolean;
 }
 
 /** The auth policy of each API. */

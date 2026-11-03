@@ -9,20 +9,20 @@
  * grants is pinned to the scope it is meant to have.
  */
 
-import type { IArtifactResolver }                                                    from '@serverlessinbox/artifact-registry-cdk';
-import { statementsForAction }                                                       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { VENDOR_ACCOUNT_ID, ServerlessInboxTagKeys, StackIdentity }                  from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                                                           from 'aws-cdk-lib/assertions';
-import { ReceiptRuleSet }                                                            from 'aws-cdk-lib/aws-ses';
-import * as cdk                                                                      from 'aws-cdk-lib';
+import type { IArtifactResolver }                                    from '@serverlessinbox/artifact-registry-cdk';
+import { statementsForAction }                                       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { VENDOR_ACCOUNT_ID, ServerlessInboxTagKeys, StackIdentity }  from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                                           from 'aws-cdk-lib/assertions';
+import { ReceiptRuleSet }                                            from 'aws-cdk-lib/aws-ses';
+import * as cdk                                                      from 'aws-cdk-lib';
 
-import { SesReceivingMode }                                                          from '../../../contracts/ses-receiving-mode';
-import type { IDnsZone }                                                             from '../../../core/edge/dns-zone';
-import { BootstrapLambda }                                                           from '../bootstrap-lambda';
-import type { BootstrapLambdaProps }                                                 from '../bootstrap-lambda';
+import { SesReceivingMode }                                          from '../../../contracts/ses-receiving-mode';
+import type { IDnsZone }                                             from '../../../core/edge/dns-zone';
+import { BootstrapLambda }                                           from '../bootstrap-lambda';
+import type { BootstrapLambdaProps }                                 from '../bootstrap-lambda';
 
-import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataTable }                 from './lambda-wrapper-fakes';
-import { arrangeWrapperStack }                                                       from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataTable } from './lambda-wrapper-fakes';
+import { arrangeWrapperStack }                                       from './lambda-wrapper-helpers';
 
 describe('BootstrapLambda', () => {
   let stack: cdk.Stack;
@@ -141,7 +141,7 @@ describe('BootstrapLambda', () => {
     it('requests read-write on the auth-key-store table for itself', () => {
       const bootstrap = newBootstrap();
 
-      expectGrantedOnceTo(authKeyStoreTable.grantReadWrite, bootstrap);
+      expectGrantedOnceTo(authKeyStoreTable.grantManageHmac, bootstrap);
     });
 
     it('requests read-write on the config table for itself', () => {

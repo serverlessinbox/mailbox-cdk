@@ -1,28 +1,34 @@
-import type { IArtifactResolver }                                                                   from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda, ServerlessInboxTagKeys, StackIdentity, rootStackRequestTagConditions }           from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack, VendorLink }                                                               from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement, Effect }                                                                  from 'aws-cdk-lib/aws-iam';
-import { Aws, Duration }                                                                            from 'aws-cdk-lib';
-import { Construct }                                                                                from 'constructs';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda, ServerlessInboxTagKeys, StackIdentity,
+  rootStackRequestTagConditions }                                               from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack, VendorLink }                                           from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement, Effect }                                              from 'aws-cdk-lib/aws-iam';
+import { Aws, Duration }                                                        from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }                                  from '../../contracts/websocket-push';
-import type { IDataBlobStore }                                                                      from '../buckets/data-blob-store';
-import type { IAuditEventsQueue }                                                                   from '../queues/audit-events-queue';
-import type { IEmailSendingQueue }                                                                  from '../queues/email-sending-queue';
-import type { IDataTable }                                                                          from '../tables/data-tables';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }              from '../../contracts/websocket-push';
+import type { IDataBlobStore }                                                  from '../buckets/data-blob-store';
+import type { IAuditEventsQueue }                                               from '../queues/audit-events-queue';
+import type { IEmailSendingQueue }                                              from '../queues/email-sending-queue';
+import type { IPatTable }                                                       from '../tables/data-pat-table';
+import type { IDataTable }                                                      from '../tables/data-tables';
+import type { IMailLogTable }                                                   from '../tables/mail-log-table';
 
-import type { IIdentityProvisioner }                                                                from './identity-provisioner-lambda';
+import type { IIdentityProvisioner }                                            from './identity-provisioner-lambda';
 
 /**
  * The tables, queues, bucket, identity provisioner and SES and vendor settings the admin-api Lambda
  * is wired to. The caller creates every resource here; this type only passes them through.
  */
 export interface AdminApiLambdaProps {
-  readonly configTable:          IDataTable;
-  readonly itemTable:            IDataTable;
-  readonly auditLogTable:        IDataTable;
-  readonly changelogTable:       IDataTable;
-  readonly mailFeedbackTable:    IDataTable;
+  readonly configTable:       IDataTable;
+  readonly itemTable:         IDataTable;
+  readonly auditLogTable:     IDataTable;
+  readonly changelogTable:    IDataTable;
+  readonly mailFeedbackTable: IDataTable;
+  readonly mailLogTable:      IMailLogTable;
+  /** The personal access token table; the offboarding the admin API runs revokes the principal's tokens. */
+  readonly patTable:             IPatTable;
   readonly blobStore:            IDataBlobStore;
   readonly emailSubmissionQueue: IEmailSendingQueue;
   readonly auditEventsQueue:     IAuditEventsQueue;
@@ -58,6 +64,8 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
         AUDIT_EVENTS_QUEUE_URL:             props.auditEventsQueue.queueUrl,
         CHANGELOG_TABLE_NAME:               props.changelogTable.tableName,
         MAIL_FEEDBACK_TABLE_NAME:           props.mailFeedbackTable.tableName,
+        MAIL_LOG_TABLE_NAME:                props.mailLogTable.tableName,
+        PAT_TABLE_NAME:                     props.patTable.tableName,
         BLOB_STORE_NAME:                    props.blobStore.bucketName,
         EMAIL_SUBMISSION_QUEUE_URL:         props.emailSubmissionQueue.queueUrl,
         SES_CONFIG_SET_NAME:                props.sesConfigSetName,
@@ -86,10 +94,12 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
 
     props.auditLogTable.grantRead(this);
     props.mailFeedbackTable.grantRead(this);
+    props.mailLogTable.grantRead(this);
 
     props.configTable.grantReadWrite(this);
     props.itemTable.grantReadWrite(this);
     props.changelogTable.grantReadWrite(this);
+    props.patTable.grantPatRevokeForPrincipal(this);
 
     props.auditEventsQueue.grantSend(this);
 

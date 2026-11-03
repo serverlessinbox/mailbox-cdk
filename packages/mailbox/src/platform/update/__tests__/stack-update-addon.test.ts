@@ -6,18 +6,18 @@
  * the region it was synthesized in.
  */
 
-import { getAttLogicalId }                                              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Match, Template }                                              from 'aws-cdk-lib/assertions';
-import * as dynamodb                                                    from 'aws-cdk-lib/aws-dynamodb';
-import type { Stack }                                                   from 'aws-cdk-lib';
-import * as t                                                           from 'typanion';
+import { getAttLogicalId }                                         from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Match, Template }                                         from 'aws-cdk-lib/assertions';
+import * as dynamodb                                               from 'aws-cdk-lib/aws-dynamodb';
+import type { Stack }                                              from 'aws-cdk-lib';
+import * as t                                                      from 'typanion';
 
-import { isTemplateValue, resourcesOfType }                             from '../../../__tests__/template-resources';
-import { routeOf }                                                      from '../../../core/apis/__tests__/apis-helpers';
-import { AuditEventsQueue }                                             from '../../../resources/queues/audit-events-queue';
-import { DataTable }                                                    from '../../../resources/tables/data-tables';
-import { newArtifactResolver, newTestStack, synthesizeOnAdminApi }      from '../../__tests__/platform-helpers';
-import { StackUpdateAddon }                                             from '../stack-update-addon';
+import { isTemplateValue, resourcesOfType }                        from '../../../__tests__/template-resources';
+import { routeOf }                                                 from '../../../core/apis/__tests__/apis-helpers';
+import { AuditEventsQueue }                                        from '../../../resources/queues/audit-events-queue';
+import { DataTable }                                               from '../../../resources/tables/data-tables';
+import { newArtifactResolver, newTestStack, synthesizeOnAdminApi } from '../../__tests__/platform-helpers';
+import { StackUpdateAddon }                                        from '../stack-update-addon';
 
 const REGION   = { Ref: 'AWS::Region' };
 const STACK_ID = { Ref: 'AWS::StackId' };
@@ -32,7 +32,7 @@ interface SynthesizedAddon {
 function newAddon(stack: Stack, distTag?: string): StackUpdateAddon {
   return new StackUpdateAddon(stack, 'stack-update-addon', {
     configTable:      new DataTable(dynamodb.Table.fromTableArn(stack, 'config-table', 'arn:aws:dynamodb:us-west-2:123456789012:table/config')),
-    auditEventsQueue: new AuditEventsQueue(stack, 'audit-queue'),
+    auditEventsQueue: new AuditEventsQueue(stack, 'audit-queue', { encryption: { kind: 'aws-managed' } }),
     artifactResolver: newArtifactResolver(stack),
     templateName:     'mailbox-standard',
     templateVersion:  '1.0.0',

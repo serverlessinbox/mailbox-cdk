@@ -19,6 +19,7 @@ export const INCOMING_ARNS: Record<TableRole, string> = {
   changelogTable:    tableArn('incoming-changelog'),
   auditLogTable:     tableArn('incoming-auditlog'),
   mailFeedbackTable: tableArn('incoming-mailfeedback'),
+  patTable:          tableArn('incoming-pat'),
 };
 
 /**
@@ -38,6 +39,8 @@ export const PROPERTIES_WITHOUT_OVERRIDES: ResourceProperties & { ServiceToken: 
   auditLogTableOverrideArn:     INCOMING_ARNS.auditLogTable,
   mailFeedbackTableIncomingArn: INCOMING_ARNS.mailFeedbackTable,
   mailFeedbackTableOverrideArn: INCOMING_ARNS.mailFeedbackTable,
+  patTableIncomingArn:          INCOMING_ARNS.patTable,
+  patTableOverrideArn:          INCOMING_ARNS.patTable,
 };
 
 const baseEvent = {

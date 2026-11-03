@@ -1,5 +1,5 @@
-import { BaselineSynthesizer }  from '../baseline-synthesizer';
-import { FrozenProcessValues }  from '../frozen-process-values';
+import { BaselineSynthesizer } from '../baseline-synthesizer';
+import { FrozenProcessValues } from '../frozen-process-values';
 
 /**
  * Pins the contract the baseline gates on: the synthesizer yields the four named templates, and two

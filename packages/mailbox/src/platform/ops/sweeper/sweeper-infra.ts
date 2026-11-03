@@ -1,20 +1,20 @@
-import type { IArtifactResolver }                                    from '@serverlessinbox/artifact-registry-cdk';
-import { PipelineLogGroup, PositionHash, StackIdentity }             from '@serverlessinbox/mailbox-cdk-shared';
-import * as iam                                                      from 'aws-cdk-lib/aws-iam';
-import { IFunction }                                                 from 'aws-cdk-lib/aws-lambda';
-import type { ILogGroup }                                            from 'aws-cdk-lib/aws-logs';
-import { ArnFormat, Aws, Fn, Stack }                                 from 'aws-cdk-lib';
-import { Construct }                                                 from 'constructs';
+import type { IArtifactResolver }                        from '@serverlessinbox/artifact-registry-cdk';
+import { PipelineLogGroup, PositionHash, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
+import * as iam                                          from 'aws-cdk-lib/aws-iam';
+import { IFunction }                                     from 'aws-cdk-lib/aws-lambda';
+import type { ILogGroup }                                from 'aws-cdk-lib/aws-logs';
+import { ArnFormat, Aws, Fn, Stack }                     from 'aws-cdk-lib';
+import { Construct }                                     from 'constructs';
 
-import { ResourceSweeperStarterLambda }                              from '../../../resources/lambdas/resource-sweeper-starter-lambda';
-import { ResourceSweeperWorkerLambda }                               from '../../../resources/lambdas/resource-sweeper-worker-lambda';
-import { SweeperPolicyNames, SweeperWorkflow }                       from '../../../resources/workflows/sweeper-workflow';
-import { retainOnUpdateOrDelete }                                    from '../../../utils/cfn-resource';
+import { ResourceSweeperStarterLambda }                  from '../../../resources/lambdas/resource-sweeper-starter-lambda';
+import { ResourceSweeperWorkerLambda }                   from '../../../resources/lambdas/resource-sweeper-worker-lambda';
+import { SweeperPolicyNames, SweeperWorkflow }           from '../../../resources/workflows/sweeper-workflow';
+import { retainOnUpdateOrDelete }                        from '../../../utils/cfn-resource';
 
-import type { IResourceRemoval }                                     from './removal';
-import { SweeperExecutionGrants }                                    from './sweeper-execution-grants';
-import { SWEEPER_WORKER_ROLE_NAME_PREFIX }                           from './sweeper-worker-role-name';
-import { SweeperWorkerRoleRemoval }                                  from './sweeper-worker-role-removal';
+import type { IResourceRemoval }                         from './removal';
+import { SweeperExecutionGrants }                        from './sweeper-execution-grants';
+import { SWEEPER_WORKER_ROLE_NAME_PREFIX }               from './sweeper-worker-role-name';
+import { SweeperWorkerRoleRemoval }                      from './sweeper-worker-role-removal';
 
 export interface SweeperInfraProps {
   readonly artifactResolver: IArtifactResolver;

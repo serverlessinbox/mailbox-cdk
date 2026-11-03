@@ -18,7 +18,7 @@ import {
   type DefaultCacheBehavior,
   type DistributionConfig,
   type LambdaFunctionAssociation,
-} from '@aws-sdk/client-cloudfront';
+}                                                                               from '@aws-sdk/client-cloudfront';
 import {
   GetFunctionConfigurationCommand,
   InvokeCommand,
@@ -27,17 +27,17 @@ import {
   ResourceConflictException,
   TagResourceCommand,
   UpdateFunctionCodeCommand,
-} from '@aws-sdk/client-lambda';
-import { GetResourcesCommand, ResourceGroupsTaggingAPIClient } from '@aws-sdk/client-resource-groups-tagging-api';
-import { ServerlessInboxTagKeys }                              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                          from 'aws-sdk-client-mock';
+}                                                                               from '@aws-sdk/client-lambda';
+import { GetResourcesCommand, ResourceGroupsTaggingAPIClient }                  from '@aws-sdk/client-resource-groups-tagging-api';
+import { ServerlessInboxTagKeys }                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
 import {
   buildUpdaterParts,
   invokeResponse,
   lambdaTarget,
   registryMocks,
-} from './updater-helpers';
+}                                                                               from './updater-helpers';
 
 jest.mock('@serverlessinbox/artifact-registry', () =>
   (jest.requireActual('./updater-helpers') as typeof import('./updater-helpers')).artifactRegistryModuleMock(),

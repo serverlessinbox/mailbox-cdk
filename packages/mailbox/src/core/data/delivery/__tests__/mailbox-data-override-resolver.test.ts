@@ -14,7 +14,7 @@ import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 import type { ResourceProperties, TableRole }   from '../../../../runtime/data-override-resolver/resource-properties-contract';
 import { MailboxDataOverrideResolver }          from '../mailbox-data-override-resolver';
 
-const ROLES: readonly TableRole[] = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];
+const ROLES: readonly TableRole[] = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable', 'patTable'];
 
 const INCOMING_ARNS: Record<TableRole, string> = {
   configTable:       'arn:aws:dynamodb:us-west-2:123456789012:table/config',
@@ -22,6 +22,7 @@ const INCOMING_ARNS: Record<TableRole, string> = {
   changelogTable:    'arn:aws:dynamodb:us-west-2:123456789012:table/changelog',
   auditLogTable:     'arn:aws:dynamodb:us-west-2:123456789012:table/audit',
   mailFeedbackTable: 'arn:aws:dynamodb:us-west-2:123456789012:table/feedback',
+  patTable:          'arn:aws:dynamodb:us-west-2:123456789012:table/pat',
 };
 
 describe('MailboxDataOverrideResolver', () => {
@@ -77,6 +78,8 @@ describe('MailboxDataOverrideResolver', () => {
       auditLogTableOverrideArn:     { 'Fn::Join': ['', ['{{resolve:ssm:', { Ref: parameterLogicalId('auditLogTable') }, '}}']] },
       mailFeedbackTableIncomingArn: INCOMING_ARNS.mailFeedbackTable,
       mailFeedbackTableOverrideArn: { 'Fn::Join': ['', ['{{resolve:ssm:', { Ref: parameterLogicalId('mailFeedbackTable') }, '}}']] },
+      patTableIncomingArn:          INCOMING_ARNS.patTable,
+      patTableOverrideArn:          { 'Fn::Join': ['', ['{{resolve:ssm:', { Ref: parameterLogicalId('patTable') }, '}}']] },
     };
 
     template.resourceCountIs('Custom::MailboxDataOverrideResolver', 1);
@@ -93,6 +96,7 @@ describe('MailboxDataOverrideResolver', () => {
     ['changelogTable', 'changelogTableArn'],
     ['auditLogTable', 'auditLogTableArn'],
     ['mailFeedbackTable', 'mailFeedbackTableArn'],
+    ['patTable', 'patTableArn'],
   ] as const)('answers the effective ARN of the %s with the %s attribute of the resolver custom resource', (role, attribute) => {
     const [resolverId] = Object.keys(template.findResources('Custom::MailboxDataOverrideResolver'));
 

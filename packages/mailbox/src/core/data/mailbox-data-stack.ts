@@ -1,28 +1,30 @@
-import { isDevelopmentMode, removalPolicyForRetainedResources }                           from '@serverlessinbox/mailbox-cdk-shared';
-import { applyServerlessInboxBaseTagsWithDeployerType, applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
-import type { ServerlessInboxDeployerType }                                               from '@serverlessinbox/mailbox-cdk-shared';
-import * as cdk                                                                           from 'aws-cdk-lib';
-import { Construct }                                                                      from 'constructs';
+import { isDevelopmentMode, removalPolicyForRetainedResources }                 from '@serverlessinbox/mailbox-cdk-shared';
+import { applyServerlessInboxBaseTagsWithDeployerType,
+  applyServerlessInboxComponentTag }                                            from '@serverlessinbox/mailbox-cdk-shared';
+import type { ServerlessInboxDeployerType }                                     from '@serverlessinbox/mailbox-cdk-shared';
+import * as cdk                                                                 from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import { BlobStore }                                                                      from '../../resources/buckets/blob-store';
-import { AuditLogTable }                                                                  from '../../resources/tables/auditlog-table';
-import { ChangelogTable }                                                                 from '../../resources/tables/changelog-table';
-import { ConfigTable }                                                                    from '../../resources/tables/config-table';
-import { ItemTable }                                                                      from '../../resources/tables/item-table';
-import { MailFeedbackTable }                                                              from '../../resources/tables/mailfeedback-table';
-import { defaultCfnResource }                                                             from '../../utils/cfn-resource';
-import { MailboxResourceDescriptions }                                                    from '../../utils/resource-descriptions';
-import type { MailboxKmsConfig }                                                          from '../kms';
-import { MailboxEncryption }                                                              from '../mailbox-encryption';
+import { BlobStore }                                                            from '../../resources/buckets/blob-store';
+import { AuditLogTable }                                                        from '../../resources/tables/auditlog-table';
+import { ChangelogTable }                                                       from '../../resources/tables/changelog-table';
+import { ConfigTable }                                                          from '../../resources/tables/config-table';
+import { ItemTable }                                                            from '../../resources/tables/item-table';
+import { MailFeedbackTable }                                                    from '../../resources/tables/mailfeedback-table';
+import { PatTable }                                                             from '../../resources/tables/pat-table';
+import { defaultCfnResource }                                                   from '../../utils/cfn-resource';
+import { MailboxResourceDescriptions }                                          from '../../utils/resource-descriptions';
+import type { MailboxKmsConfig }                                                from '../kms';
+import { MailboxEncryption }                                                    from '../mailbox-encryption';
 
 /** The values the data stack's template parameters take; the keys are the parameter names. */
 export type MailboxDataStackParameters = {
   /** S3-safe base for bucket names. */
-  readonly nameBase:     string;
+  readonly nameBase: string;
   /** Root (main) CloudFormation stack name. */
-  readonly rootStack:    string;
+  readonly rootStack: string;
   /** Unique id (stack id guid) of the root (main) CloudFormation stack. */
-  readonly rootStackId:  string;
+  readonly rootStackId: string;
   /** Deployment mechanism label used for tagging. */
   readonly deployerType: ServerlessInboxDeployerType;
 };
@@ -34,7 +36,7 @@ export interface MailboxDataStackProps extends cdk.StackProps {
 
 /**
  * CDK Stack that creates and owns all retained Serverless Inbox data resources: the DynamoDB tables
- * (config, item, changelog, auditlog, mailfeedback) and the S3 bucket for email storage.
+ * (config, item, changelog, auditlog, mailfeedback, pat) and the S3 bucket for email storage.
  *
  * The ARN of each resource is a CloudFormation output. The parameters are {@link MailboxDataStackParameters}.
  */
@@ -103,12 +105,14 @@ export class MailboxDataStack extends cdk.Stack {
     const changelogTable    = new ChangelogTable(this, dynamoTableProps);
     const auditLogTable     = new AuditLogTable(this, dynamoTableProps);
     const mailFeedbackTable = new MailFeedbackTable(this, dynamoTableProps);
+    const patTable          = new PatTable(this, dynamoTableProps);
 
     defaultCfnResource(configTable).overrideLogicalId('configTable');
     defaultCfnResource(itemTable).overrideLogicalId('itemTable');
     defaultCfnResource(changelogTable).overrideLogicalId('changelogTable');
     defaultCfnResource(auditLogTable).overrideLogicalId('auditLogTable');
     defaultCfnResource(mailFeedbackTable).overrideLogicalId('mailFeedbackTable');
+    defaultCfnResource(patTable).overrideLogicalId('patTable');
     defaultCfnResource(blobStore).overrideLogicalId('blobStore');
     if (!blobStore.policy) {
       throw new Error(
@@ -123,6 +127,7 @@ export class MailboxDataStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'changelogTableArn',     { value: changelogTable.tableArn });
     new cdk.CfnOutput(this, 'auditLogTableArn',      { value: auditLogTable.tableArn });
     new cdk.CfnOutput(this, 'mailFeedbackTableArn',  { value: mailFeedbackTable.tableArn });
+    new cdk.CfnOutput(this, 'patTableArn',           { value: patTable.tableArn });
     new cdk.CfnOutput(this, 'blobStoreArn',          { value: blobStore.bucketArn });
   }
 

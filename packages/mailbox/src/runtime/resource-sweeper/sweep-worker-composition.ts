@@ -1,16 +1,16 @@
-import { ACMClient }                                      from '@aws-sdk/client-acm';
-import { EventBridgeClient }                              from '@aws-sdk/client-eventbridge';
-import { IAMClient }                                      from '@aws-sdk/client-iam';
-import { LambdaClient }                                   from '@aws-sdk/client-lambda';
-import { toRegion, type LoggerBuffer }                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { ACMClient }                   from '@aws-sdk/client-acm';
+import { EventBridgeClient }           from '@aws-sdk/client-eventbridge';
+import { IAMClient }                   from '@aws-sdk/client-iam';
+import { LambdaClient }                from '@aws-sdk/client-lambda';
+import { toRegion, type LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { WorkerConfig }                              from './config';
-import { RootStackMembership }                            from './root-stack-membership';
-import { SweepWorker }                                    from './sweep-worker';
-import { CertSweeper }                                    from './targets/cert-sweeper';
-import { EdgeFunctionSweeper }                            from './targets/edge-function-sweeper';
-import { StackFailureDetectorSweeper }                    from './targets/stack-failure-detector-sweeper';
-import { SweeperRoleSweeper }                             from './targets/sweeper-role-sweeper';
+import type { WorkerConfig }           from './config';
+import { RootStackMembership }         from './root-stack-membership';
+import { SweepWorker }                 from './sweep-worker';
+import { CertSweeper }                 from './targets/cert-sweeper';
+import { EdgeFunctionSweeper }         from './targets/edge-function-sweeper';
+import { StackFailureDetectorSweeper } from './targets/stack-failure-detector-sweeper';
+import { SweeperRoleSweeper }          from './targets/sweeper-role-sweeper';
 
 /** Lambda@Edge functions live in this region only, wherever the stack runs. */
 const LAMBDA_AT_EDGE_REGION = toRegion('us-east-1');

@@ -2,7 +2,7 @@ import { ArtifactZone, PinnedArtifactResolver }      from '@serverlessinbox/arti
 import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 import type { Template }                             from 'aws-cdk-lib/assertions';
 import * as acm                                      from 'aws-cdk-lib/aws-certificatemanager';
-import { Table, AttributeType }                      from 'aws-cdk-lib/aws-dynamodb';
+import { Table, AttributeType, TableEncryption }     from 'aws-cdk-lib/aws-dynamodb';
 import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Bucket }                                    from 'aws-cdk-lib/aws-s3';
 import * as cdk                                      from 'aws-cdk-lib';
@@ -16,7 +16,9 @@ import { DataBlobStore }                             from '../../../resources/bu
 import { AuditEventsQueue }                          from '../../../resources/queues/audit-events-queue';
 import { EmailSendingQueue }                         from '../../../resources/queues/email-sending-queue';
 import { AuthKeyStoreTable }                         from '../../../resources/tables/auth-key-store-table';
+import { DataPatTable }                              from '../../../resources/tables/data-pat-table';
 import { DataTable }                                 from '../../../resources/tables/data-tables';
+import { MailLogTable }                              from '../../../resources/tables/mail-log-table';
 import type { AdminApiProps }                        from '../admin-api';
 
 const isRouteProperties = t.isPartial({
@@ -63,6 +65,14 @@ export function dataTable(scope: Construct, id: string): DataTable {
   return new DataTable(new Table(scope, id, { partitionKey: { name: 'pk', type: AttributeType.STRING } }));
 }
 
+/** A personal access token table handle over a table keyed like the real one. */
+export function patTable(scope: Construct, id: string): DataPatTable {
+  return new DataPatTable(new Table(scope, id, {
+    partitionKey: { name: 'pk', type: AttributeType.STRING },
+    sortKey:      { name: 'sk', type: AttributeType.STRING },
+  }));
+}
+
 /** A DNS-validated certificate for `domainName`, the input a custom-domain API takes. */
 export function certificate(stack: cdk.Stack, domainName: string): acm.Certificate {
   return new acm.Certificate(stack, 'certificate', {
@@ -93,10 +103,12 @@ export function newAdminApiProps(stack: cdk.Stack, overrides: Partial<AdminApiPr
     auditLogTable:        dataTable(inputs, 'audit-log-table'),
     changelogTable:       dataTable(inputs, 'changelog-table'),
     mailFeedbackTable:    dataTable(inputs, 'mail-feedback-table'),
+    patTable:             patTable(inputs, 'pat-table'),
+    mailLogTable:         new MailLogTable(inputs, 'mail-log-table', { encryption: TableEncryption.AWS_MANAGED }),
     authKeyStoreTable:    new AuthKeyStoreTable(inputs, 'auth-key-store-table'),
     blobStore:            new DataBlobStore(new Bucket(inputs, 'blob-store')),
-    emailSubmissionQueue: new EmailSendingQueue(inputs, 'email-submission-queue'),
-    auditEventsQueue:     new AuditEventsQueue(inputs, 'audit-events-queue'),
+    emailSubmissionQueue: new EmailSendingQueue(inputs, 'email-submission-queue', { encryption: { kind: 'aws-managed' } }),
+    auditEventsQueue:     new AuditEventsQueue(inputs, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
     artifactResolver:     new PinnedArtifactResolver({
       packages:         {
         'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
@@ -114,6 +126,7 @@ export function newAdminApiProps(stack: cdk.Stack, overrides: Partial<AdminApiPr
     sesConfigSetName:     'test-config-set',
     systemSenderAddress:  'noreply@example.com',
     vendorLink:           { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: ServerlessInboxTagKeys.rootStack },
+    scopeMap:             {},
     ...overrides,
   };
 }

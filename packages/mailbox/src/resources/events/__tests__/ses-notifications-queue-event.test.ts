@@ -22,7 +22,7 @@ describe('SesNotificationsQueueEvent', () => {
 
   beforeEach(() => {
     stack        = new Stack(new App(), 'TestStack', { synthesizer: new BootstraplessSynthesizer() });
-    queue        = new SesEventQueue(stack, 'ses-event-queue', { topic: new Topic(stack, 'topic') });
+    queue        = new SesEventQueue(stack, 'ses-event-queue', { topic: new Topic(stack, 'topic'), encryption: { kind: 'aws-managed' } });
     const target = new Function(stack, 'target', { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });
 
     new SesNotificationsQueueEvent(target, 'ses-notifications-queue', { target, queue });

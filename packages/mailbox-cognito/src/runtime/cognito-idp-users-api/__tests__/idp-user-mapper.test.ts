@@ -79,7 +79,7 @@ describe('IdpUserMapper', () => {
     });
 
     it('takes the requested username when Cognito reports none', () => {
-      expect(mapper.fromFetchedUser({}, toUsername('requested')).username).toBe('requested');
+      expect(mapper.fromFetchedUser({ Username: undefined }, toUsername('requested')).username).toBe('requested');
     });
 
     it.each([
@@ -88,7 +88,7 @@ describe('IdpUserMapper', () => {
       { reported: undefined, fallback: false, expected: false },
       { reported: undefined, fallback: undefined, expected: false },
     ])('reports enabled=$expected when Cognito reports $reported and the fallback is $fallback', ({ reported, fallback, expected }) => {
-      const user = mapper.fromFetchedUser({ Enabled: reported }, toUsername('alice'), fallback);
+      const user = mapper.fromFetchedUser({ Username: undefined, Enabled: reported }, toUsername('alice'), fallback);
 
       expect(user.enabled).toBe(expected);
     });

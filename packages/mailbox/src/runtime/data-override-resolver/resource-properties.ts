@@ -11,6 +11,8 @@ const resourcePropertyFields = {
   auditLogTableOverrideArn:     t.isString(),
   mailFeedbackTableIncomingArn: t.isString(),
   mailFeedbackTableOverrideArn: t.isString(),
+  patTableIncomingArn:          t.isString(),
+  patTableOverrideArn:          t.isString(),
 };
 
 /**

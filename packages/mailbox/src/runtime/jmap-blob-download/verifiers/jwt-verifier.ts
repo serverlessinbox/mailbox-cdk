@@ -1,12 +1,13 @@
-import { DynamoDBClient, GetItemCommand }                                                          from '@aws-sdk/client-dynamodb';
-import { toIssuer, type Issuer, type TableName }                                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { createLocalJWKSet, decodeJwt, decodeProtectedHeader, errors, jwtVerify, type JWTPayload } from 'jose';
-import * as t                                                                                      from 'typanion';
+import { DynamoDBClient, GetItemCommand }                                       from '@aws-sdk/client-dynamodb';
+import { toIssuer, type Issuer, type TableName }                                from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { createLocalJWKSet, decodeJwt, decodeProtectedHeader, errors,
+  jwtVerify, type JWTPayload }                                                  from 'jose';
+import * as t                                                                   from 'typanion';
 
-import { toAudience, type Audience }                                                               from '../auth-identifiers';
-import type { SupportedAlgorithm }                                                                 from '../cloudfront/origin-headers';
+import { toAudience, type Audience }                                            from '../auth-identifiers';
+import type { SupportedAlgorithm }                                              from '../cloudfront/origin-headers';
 
-import type { VerifiedJwt }                                                                        from './auth-tokens';
+import type { VerifiedJwt }                                                     from './auth-tokens';
 
 const isKeySetDocument = t.isPartial({ keys: t.isArray(t.isUnknown()) });
 const isJwkMember      = t.isPartial({ kty: t.isString() });

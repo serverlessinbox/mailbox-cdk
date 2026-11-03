@@ -1,12 +1,13 @@
-import * as iam                                                                   from 'aws-cdk-lib/aws-iam';
-import { IFunction }                                                              from 'aws-cdk-lib/aws-lambda';
-import * as tasks                                                                 from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import * as sfn                                                                   from 'aws-cdk-lib/aws-stepfunctions';
-import { Duration }                                                               from 'aws-cdk-lib';
-import type { IResolvable }                                                       from 'aws-cdk-lib';
-import { Construct }                                                              from 'constructs';
+import * as iam                                                                 from 'aws-cdk-lib/aws-iam';
+import { IFunction }                                                            from 'aws-cdk-lib/aws-lambda';
+import * as tasks                                                               from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import * as sfn                                                                 from 'aws-cdk-lib/aws-stepfunctions';
+import { Duration }                                                             from 'aws-cdk-lib';
+import type { IResolvable }                                                     from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import type { RemovalId, RemovalTargets, SweepStatus, WorkerInput, WorkerOutput } from '../../../runtime/resource-sweeper/removal';
+import type { RemovalId, RemovalTargets, SweepStatus, WorkerInput,
+  WorkerOutput }                                                                from '../../../runtime/resource-sweeper/removal';
 
 const WORKER_RESULT_PATH    = '$.workerResult';
 const WORKER_STATUS_PATH    = `${WORKER_RESULT_PATH}.${'status' satisfies keyof WorkerOutput}`;

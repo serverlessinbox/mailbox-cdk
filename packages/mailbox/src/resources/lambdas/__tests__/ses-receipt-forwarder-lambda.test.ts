@@ -7,18 +7,18 @@
  * email-processor queue: it must never receive from it, since consuming is the processor's job.
  */
 
-import { actionsOf }                                 from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Template }                                  from 'aws-cdk-lib/assertions';
+import { actionsOf }                         from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                          from 'aws-cdk-lib/assertions';
 
-import { EmailProcessingQueue }                      from '../../queues/email-processing-queue';
-import { SesReceiptForwarderLambda }                 from '../ses-receipt-forwarder-lambda';
+import { EmailProcessingQueue }              from '../../queues/email-processing-queue';
+import { SesReceiptForwarderLambda }         from '../ses-receipt-forwarder-lambda';
 
-import { arrangeWrapperStack, onlyLambdaOf }         from './lambda-wrapper-helpers';
-import type { SynthesizedLambda }                    from './lambda-wrapper-helpers';
+import { arrangeWrapperStack, onlyLambdaOf } from './lambda-wrapper-helpers';
+import type { SynthesizedLambda }            from './lambda-wrapper-helpers';
 
 function synthesize(): { lambda: SynthesizedLambda; queueUrl: unknown } {
   const { stack, artifactResolver } = arrangeWrapperStack();
-  const emailProcessorQueue         = new EmailProcessingQueue(stack, 'email-processing-queue');
+  const emailProcessorQueue         = new EmailProcessingQueue(stack, 'email-processing-queue', { encryption: { kind: 'aws-managed' } });
 
   new SesReceiptForwarderLambda(stack, 'ses-receipt-forwarder', { emailProcessorQueue, artifactResolver });
 

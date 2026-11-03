@@ -9,19 +9,19 @@
  * asserted in their own files.
  */
 
-import { actionsOf }                                 from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Template }                                  from 'aws-cdk-lib/assertions';
-import { AttributeType, Table }                      from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket }                                    from 'aws-cdk-lib/aws-s3';
+import { actionsOf }                         from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                          from 'aws-cdk-lib/assertions';
+import { AttributeType, Table }              from 'aws-cdk-lib/aws-dynamodb';
+import { Bucket }                            from 'aws-cdk-lib/aws-s3';
 
-import { DataBlobStore }                             from '../../buckets/data-blob-store';
-import { AuditEventsQueue }                          from '../../queues/audit-events-queue';
-import { EmailSendingQueue }                         from '../../queues/email-sending-queue';
-import { DataTable }                                 from '../../tables/data-tables';
-import { IdentityProvisionerLambda }                 from '../identity-provisioner-lambda';
+import { DataBlobStore }                     from '../../buckets/data-blob-store';
+import { AuditEventsQueue }                  from '../../queues/audit-events-queue';
+import { EmailSendingQueue }                 from '../../queues/email-sending-queue';
+import { DataTable }                         from '../../tables/data-tables';
+import { IdentityProvisionerLambda }         from '../identity-provisioner-lambda';
 
-import { arrangeWrapperStack, onlyLambdaOf }         from './lambda-wrapper-helpers';
-import type { SynthesizedLambda }                    from './lambda-wrapper-helpers';
+import { arrangeWrapperStack, onlyLambdaOf } from './lambda-wrapper-helpers';
+import type { SynthesizedLambda }            from './lambda-wrapper-helpers';
 
 function synthesize(adminUIURL?: string): SynthesizedLambda {
   const { stack, artifactResolver } = arrangeWrapperStack();
@@ -31,10 +31,10 @@ function synthesize(adminUIURL?: string): SynthesizedLambda {
     configTable:      dataTable('config-table'),
     itemTable:        dataTable('item-table'),
     changelogTable:   dataTable('changelog-table'),
-    auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+    auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
     artifactResolver,
     blobStore:            new DataBlobStore(new Bucket(stack, 'blob-store')),
-    emailSubmissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
+    emailSubmissionQueue: new EmailSendingQueue(stack, 'email-submission-queue', { encryption: { kind: 'aws-managed' } }),
     sesConfigSetName:     'test-config-set',
     systemSenderAddress:  'noreply@example.com',
     vendorAccountIds:     ['123456789012'],

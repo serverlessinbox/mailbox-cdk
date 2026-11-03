@@ -16,17 +16,45 @@ function grantSpy(): GrantSpy {
 
 /** Stands in for the `IDataTable` of a config, item, changelog or mail-feedback table. */
 export function fakeDataTable(name: string) {
-  return { tableName: name, tableArn: `arn:fake:${name}`, grantRead: grantSpy(), grantReadWrite: grantSpy() };
+  return { tableName: name, tableArn: `arn:fake:${name}`, grantRead: grantSpy(), grantReadWrite: grantSpy(), grantConditionCheck: grantSpy() };
+}
+
+/** Stands in for the `IMailLogTable`. */
+export function fakeMailLogTable(name: string) {
+  return { tableName: name, grantRead: grantSpy(), grantWrite: grantSpy() };
 }
 
 /** Stands in for the `IAuthKeyStoreTable`. */
 export function fakeAuthKeyStoreTable(name: string) {
-  return { tableName: name, tableArn: `arn:fake:${name}`, grantGetItem: grantSpy(), grantRead: grantSpy(), grantReadWrite: grantSpy() };
+  return {
+    tableName:                     name,
+    tableArn:                      `arn:fake:${name}`,
+    grantReadJwks:                 grantSpy(),
+    grantReadHmac:                 grantSpy(),
+    grantManageHmac:               grantSpy(),
+    grantManageJwks:               grantSpy(),
+    grantManageConnectionKeys:     grantSpy(),
+    grantReadConnectionPublicKey:  grantSpy(),
+    grantReadConnectionPrivateKey: grantSpy(),
+  };
 }
 
 /** Stands in for the `IWebSocketTable` that holds the connections. */
 export function fakeWebSocketTable(name: string) {
   return { tableName: name, grantStoreConnection: grantSpy(), grantRemoveConnection: grantSpy(), grantBroadcast: grantSpy() };
+}
+
+/** Stands in for the `IPatTable`. */
+export function fakePatTable(name: string) {
+  return {
+    tableName:                  name,
+    tableArn:                   `arn:fake:${name}`,
+    grantPatLookup:             grantSpy(),
+    grantPatEdgeLookup:         grantSpy(),
+    grantPatManage:             grantSpy(),
+    grantPatRevokeForPrincipal: grantSpy(),
+    grantPatExpiryNotify:       grantSpy(),
+  };
 }
 
 /** Stands in for the `IDataBlobStore`. */
@@ -53,6 +81,11 @@ export function fakeQueue(name: string) {
 /** Stands in for the `IIdentityProvisioner`. */
 export function fakeIdentityProvisioner(name: string) {
   return { functionArn: `arn:fake:${name}`, functionName: name, grantInvoke: grantSpy() };
+}
+
+/** Stands in for the `IMailImportRunner`. */
+export function fakeMailImportRunner(name: string) {
+  return { functionName: name, grantInvoke: grantSpy() };
 }
 
 /** Stands in for the `ITemplateVersionParam`. */

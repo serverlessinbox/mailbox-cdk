@@ -13,12 +13,12 @@ import {
   CognitoIdentityProviderClient,
   NotAuthorizedException,
   UsernameExistsException,
-} from '@aws-sdk/client-cognito-identity-provider';
-import { LoggerBuffer }                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                            from 'aws-sdk-client-mock';
+}                                                                               from '@aws-sdk/client-cognito-identity-provider';
+import { LoggerBuffer }                                                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import { toGroupName, toUserPoolId, toUsername } from '../../shared/cognito-identifiers';
-import { UserEnsurer, type BootstrapUser }       from '../ensure-user';
+import { toGroupName, toUserPoolId, toUsername }                                from '../../shared/cognito-identifiers';
+import { UserEnsurer, type BootstrapUser }                                      from '../ensure-user';
 
 function bootstrapUser(overrides: Partial<BootstrapUser> = {}): BootstrapUser {
   return {

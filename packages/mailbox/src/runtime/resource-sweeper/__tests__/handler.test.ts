@@ -20,17 +20,17 @@ process.env['SERVICE_NAME']                      = 'resource-sweeper';
 process.env['AWS_REGION']                        = 'us-west-2';
 process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'] = STATE_MACHINE_ARN;
 
-import { ACMClient, DeleteCertificateCommand }                                                   from '@aws-sdk/client-acm';
-import { SFNClient, StartExecutionCommand, ListExecutionsCommand }                               from '@aws-sdk/client-sfn';
-import { ExpectedFailure, LoggerBuffer }                                                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { captureCfnResponse }                                                                    from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
-import { mockClient }                                                                            from 'aws-sdk-client-mock';
+import { ACMClient, DeleteCertificateCommand }                     from '@aws-sdk/client-acm';
+import { SFNClient, StartExecutionCommand, ListExecutionsCommand } from '@aws-sdk/client-sfn';
+import { ExpectedFailure, LoggerBuffer }                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { captureCfnResponse }                                      from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
+import { mockClient }                                              from 'aws-sdk-client-mock';
 
-import { starterHandler, workerHandler }                                                         from '../handler';
-import { SweepStarter }                                                                          from '../sweep-starter';
-import { SweepWorker }                                                                           from '../sweep-worker';
+import { starterHandler, workerHandler }                           from '../handler';
+import { SweepStarter }                                            from '../sweep-starter';
+import { SweepWorker }                                             from '../sweep-worker';
 
-import { createEvent, lambdaContext, updateEvent, answerCertificateRemoval }                     from './sweep-helpers';
+import { lambdaContext, updateEvent, answerCertificateRemoval }    from './sweep-helpers';
 
 // wrapHandler PUTs the CFN response over real `https`; captureCfnResponse routes it into memory.
 jest.mock('https', () => ({ request: jest.fn() }));
@@ -65,14 +65,15 @@ describe('starterHandler logger scope', () => {
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
     jest.spyOn(console, 'info').mockImplementation(() => undefined);
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    const consoleDebug           = jest.spyOn(console, 'debug').mockImplementation(() => undefined);
-    const eventWithoutProperties = createEvent();
-    Reflect.deleteProperty(eventWithoutProperties, 'ResourceProperties');
+    const consoleDebug = jest.spyOn(console, 'debug').mockImplementation(() => undefined);
+    // An old removal entry with a non-string cert ARN passes the request reader and fails in the planner, inside the starter.
+    const failingUpdate = updateEvent();
+    Reflect.set(failingUpdate, 'OldResourceProperties', { cert: { certArn: 123 } });
 
     await starterHandler(updateEvent(), lambdaContext());
     expect(consoleDebug).not.toHaveBeenCalled();
 
-    await starterHandler(eventWithoutProperties, lambdaContext());
+    await starterHandler(failingUpdate, lambdaContext());
 
     const invocationStarts = consoleDebug.mock.calls.filter(([message]) => message === 'Starter invoked');
     expect(invocationStarts).toHaveLength(1);

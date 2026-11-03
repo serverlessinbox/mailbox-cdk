@@ -10,7 +10,7 @@ export interface EmailProcessingQueueEventProps {
   /** The function that receives each batch of inbound emails. */
   readonly target: IFunction;
   /** The queue the inbound emails are read from, seen from the consuming side. */
-  readonly queue:  IEmailProcessingQueueConsumer;
+  readonly queue: IEmailProcessingQueueConsumer;
 }
 
 /** Invokes the target with batches of up to 10 inbound emails, reporting partial batch failures. */

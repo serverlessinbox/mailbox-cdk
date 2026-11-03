@@ -1,5 +1,6 @@
-import type { IArtifactResolver }                                                                         from '@serverlessinbox/artifact-registry-cdk';
-import { MailboxArtifactResolverFactory, resolveDeployerType, slugifyLabel, StackHelpers, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import { MailboxArtifactResolverFactory, resolveDeployerType, slugifyLabel,
+  StackHelpers, StackIdentity }                                                 from '@serverlessinbox/mailbox-cdk-shared';
 import {
   AuthClientConfig,
   AuthPolicyConfig,
@@ -13,28 +14,30 @@ import {
   Permission,
   ProvisionAdminApiClientParams,
   ProvisionJmapApiClientParams,
-} from '@serverlessinbox/mailbox';
-import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider, JmapApiAddonContext, IJmapApiAddon, MailboxAuthorizationConfig, ScopeMap } from '@serverlessinbox/mailbox';
-import * as cognito                                                                                                                                    from 'aws-cdk-lib/aws-cognito';
-import * as lambda                                                                                                                                     from 'aws-cdk-lib/aws-lambda';
-import type * as route53                                                                                                                               from 'aws-cdk-lib/aws-route53';
-import { Aws, CustomResource, Duration, SecretValue }                                                                                                  from 'aws-cdk-lib';
-import { Construct }                                                                                                                                   from 'constructs';
+}                                                                               from '@serverlessinbox/mailbox';
+import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider,
+  JmapApiAddonContext, IJmapApiAddon, MailboxAuthorizationConfig, ScopeMap }    from '@serverlessinbox/mailbox';
+import * as cognito                                                             from 'aws-cdk-lib/aws-cognito';
+import * as lambda                                                              from 'aws-cdk-lib/aws-lambda';
+import type * as route53                                                        from 'aws-cdk-lib/aws-route53';
+import { Aws, CustomResource, Duration, SecretValue }                           from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import { CognitoIdpUsersAdminApiAddon }                                                                                                                from '../cognito-idp-users-addon';
-import { MailboxCognitoDataDeployer }                                                                                                                  from '../data-stack/mailbox-cognito-data-deployer';
-import { ADMIN_GROUP_NAME, DEFAULT_PASSWORD_MIN_LENGTH, RESOURCE_SERVER_IDENTIFIER, USER_GROUP_NAME }                                                  from '../data-stack/mailbox-cognito-data-stack-contract';
-import { JmapOAuthAddon }                                                                                                                              from '../jmap-oauth-addon';
-import { loadMailboxCognitoArtifactVersions }                                                                                                          from '../mailbox-cognito-artifact-versions';
-import { loadMailboxCognitoRegistryRecord }                                                                                                            from '../mailbox-cognito-registry-record';
-import { CognitoBootstrapUserLambda }                                                                                                                  from '../resources/lambdas/bootstrap-user-lambda';
-import type { BootstrapUserProperties }                                                                                                                from '../runtime/bootstrap-user/properties';
+import { CognitoIdpUsersAdminApiAddon }                                         from '../cognito-idp-users-addon';
+import { MailboxCognitoDataDeployer }                                           from '../data-stack/mailbox-cognito-data-deployer';
+import { ADMIN_GROUP_NAME, DEFAULT_PASSWORD_MIN_LENGTH,
+  RESOURCE_SERVER_IDENTIFIER, USER_GROUP_NAME }                                 from '../data-stack/mailbox-cognito-data-stack-contract';
+import { JmapOAuthAddon }                                                       from '../jmap-oauth-addon';
+import { loadMailboxCognitoArtifactVersions }                                   from '../mailbox-cognito-artifact-versions';
+import { loadMailboxCognitoRegistryRecord }                                     from '../mailbox-cognito-registry-record';
+import { CognitoBootstrapUserLambda }                                           from '../resources/lambdas/bootstrap-user-lambda';
+import type { BootstrapUserProperties }                                         from '../runtime/bootstrap-user/properties';
 
-import { CognitoScope, CognitoScopeToPermissions, PermissionToCognitoScope }                                                                           from './cognito-scopemap';
-import { DynamicClientRegistrationMode }                                                                                                               from './dynamic-client-registration-mode';
-import type { MailboxUserPoolAdminUiConfig }                                                                                                           from './mailbox-user-pool-admin-ui-config';
-import type { MfaMode }                                                                                                                                from './mfa-mode';
-import { UserPoolAudience }                                                                                                                            from './user-pool-audience';
+import { CognitoScope, CognitoScopeToPermissions, DeprecatedCognitoScopes }     from './cognito-scopemap';
+import { DynamicClientRegistrationMode }                                        from './dynamic-client-registration-mode';
+import type { MailboxUserPoolAdminUiConfig }                                    from './mailbox-user-pool-admin-ui-config';
+import type { MfaMode }                                                         from './mfa-mode';
+import { UserPoolAudience }                                                     from './user-pool-audience';
 
 /**
  * Maps Cognito groups to the two roles mailbox components distinguish.
@@ -333,7 +336,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       passwordMinLength:   this.passwordMinLength,
       artifactResolver:    this.artifacts,
       deployerType,
-      rootStack:           { name: Aws.STACK_NAME, id: StackIdentity.guid },
+      rootStack: { name: Aws.STACK_NAME, id: StackIdentity.guid },
     });
     const stackRef        = cognitoDeployer.dataStackRef;
 
@@ -562,7 +565,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   private createOAuthClient(params: GenerateClientParams): AuthClientConfig {
     const isClientCredentials = params.flow === OAuthFlow.CLIENT_CREDENTIALS;
     const clientKey           = slugifyLabel(params.name);
-    const requestScopeList    = params.permissions.map((permission: Permission) => this.toOAuthScope(permission));
+    const requestScopeList    = [...new Set(params.permissions.map((permission: Permission) => this.toOAuthScope(permission)))];
 
     const cfnClient = new cognito.CfnUserPoolClient(this, `user-pool-client-${clientKey}`, {
       userPoolId:                      this.userPool.userPoolId,
@@ -645,7 +648,14 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   }
 
   private toOAuthScope(permission: Permission): string {
-    return this.toOAuthScopeName(PermissionToCognitoScope[permission]);
+    const containingScopes = Object.values(CognitoScope)
+      .filter((cognitoScope: CognitoScope) => !DeprecatedCognitoScopes.has(cognitoScope) && CognitoScopeToPermissions[cognitoScope].includes(permission));
+    const [cognitoScope]   = containingScopes;
+    if (containingScopes.length !== 1 || cognitoScope === undefined) {
+      throw new Error(`Right ${permission} is in ${containingScopes.length} Cognito scopes of CognitoScopeToPermissions (${containingScopes.join(', ') || 'none'}); a right must be in exactly one.`);
+    }
+
+    return this.toOAuthScopeName(cognitoScope);
   }
 
   private toOAuthScopeName(cognitoScope: CognitoScope): string {

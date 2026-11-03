@@ -7,11 +7,11 @@ import {
   type CustomResourceRequest,
   type ParentStackStatus,
   type PhysicalResourceId,
-} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { wrapHandler }                                     from 'aws-custom-resources';
-import type { CloudFormationCustomResourceEvent, Context } from 'aws-lambda';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { wrapHandler }                                                          from 'aws-custom-resources';
+import type { CloudFormationCustomResourceEvent, Context }                      from 'aws-lambda';
 
-import type { NewUpdateCycle, UpdaterTrigger }             from './updater-trigger';
+import type { NewUpdateCycle, UpdaterTrigger }                                  from './updater-trigger';
 
 /** The answer to CloudFormation: the physical id when this resource sets one, and no attributes. A type alias, because `wrapHandler` requires `Data` to be a `Record<string, string>`. */
 export type CfnTriggerAnswer = {
@@ -56,7 +56,7 @@ export class CfnTrigger implements UpdaterTrigger<void> {
     const answerCloudFormation     = wrapHandler(async (event) => {
       const request = readCustomResourceRequest(event);
 
-      emitManualFinalize({ ...event, StackId: request.StackId }, { service: this.serviceName });
+      emitManualFinalize(request, { service: this.serviceName });
       return this.answerRequest(request, cycleFailures);
     });
     await answerCloudFormation(this.event, this.context, () => undefined);

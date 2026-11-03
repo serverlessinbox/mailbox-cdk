@@ -1,16 +1,16 @@
-import { EventSourceMapping }      from 'aws-cdk-lib/aws-lambda';
-import type { IFunction }          from 'aws-cdk-lib/aws-lambda';
-import { Duration }                from 'aws-cdk-lib';
-import type { Construct }          from 'constructs';
+import { EventSourceMapping }  from 'aws-cdk-lib/aws-lambda';
+import type { IFunction }      from 'aws-cdk-lib/aws-lambda';
+import { Duration }            from 'aws-cdk-lib';
+import type { Construct }      from 'constructs';
 
-import type { ISesEventQueue }     from '../queues/ses-event-queue';
+import type { ISesEventQueue } from '../queues/ses-event-queue';
 
 /** Settings of the mapping that feeds SES notifications from their queue to a function. */
 export interface SesNotificationsQueueEventProps {
   /** The function that receives each batch of SES notifications. */
   readonly target: IFunction;
   /** The queue the SES notifications are read from. */
-  readonly queue:  ISesEventQueue;
+  readonly queue: ISesEventQueue;
 }
 
 /** Invokes the target with batches of up to 100 SES notifications, at most 5 concurrent batches, reporting partial batch failures. */

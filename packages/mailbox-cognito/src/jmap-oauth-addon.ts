@@ -1,15 +1,16 @@
-import type { IArtifactResolver }                                                                               from '@serverlessinbox/artifact-registry-cdk';
-import { StaticContentDeployer, StaticContentSource, PublicStaticAssetsBucket, GateOnConditionAspect }          from '@serverlessinbox/mailbox-cdk-shared';
-import type { IPublicStaticAssetsBucket }                                                                       from '@serverlessinbox/mailbox-cdk-shared';
-import { IJmapApiAddon, IIdentityProvisioner }                                                                  from '@serverlessinbox/mailbox';
-import { HttpUrlIntegration, HttpLambdaIntegration }                                                            from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { HttpApi, HttpMethod, HttpRoute, HttpStage, CfnStage }                                                  from 'aws-cdk-lib/aws-apigatewayv2';
-import { IUserPool }                                                                                            from 'aws-cdk-lib/aws-cognito';
-import * as cdk                                                                                                 from 'aws-cdk-lib';
-import { Construct }                                                                                            from 'constructs';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import { StaticContentDeployer, StaticContentSource, PublicStaticAssetsBucket,
+  GateOnConditionAspect }                                                       from '@serverlessinbox/mailbox-cdk-shared';
+import type { IPublicStaticAssetsBucket }                                       from '@serverlessinbox/mailbox-cdk-shared';
+import { IJmapApiAddon, IIdentityProvisioner }                                  from '@serverlessinbox/mailbox';
+import { HttpUrlIntegration, HttpLambdaIntegration }                            from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { HttpApi, HttpMethod, HttpRoute, HttpStage, CfnStage }                  from 'aws-cdk-lib/aws-apigatewayv2';
+import { IUserPool }                                                            from 'aws-cdk-lib/aws-cognito';
+import * as cdk                                                                 from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import { JmapOAuthDcrLambda }                                                                                   from './resources/lambdas/jmap-oauth-dcr-lambda';
-import { DynamicClientRegistrationMode }                                                                        from './user-pool/dynamic-client-registration-mode';
+import { JmapOAuthDcrLambda }                                                   from './resources/lambdas/jmap-oauth-dcr-lambda';
+import { DynamicClientRegistrationMode }                                        from './user-pool/dynamic-client-registration-mode';
 
 /** RFC 7591 Dynamic Client Registration path, mounted on the JMAP API's HttpApi. */
 const REGISTRATION_PATH      = '/oauth/register';
@@ -154,7 +155,7 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       token_endpoint:         props.pool.tokenEndpoint,
       userinfo_endpoint:      `${props.pool.issuer}/oauth2/userInfo`,
       ...(withRegistration
-        ? { registration_endpoint:`${props.apiBaseUrl}${REGISTRATION_PATH}` }
+        ? { registration_endpoint: `${props.apiBaseUrl}${REGISTRATION_PATH}` }
         : {}),
       scopes_supported:                      ['openid', 'email', 'profile', 'offline_access'],
       response_types_supported:              ['code'],

@@ -7,17 +7,17 @@
  * defaults decide the pool's MFA and password policy on every install that does not set them.
  */
 
-import type { IArtifactResolver }                      from '@serverlessinbox/artifact-registry-cdk';
-import { renderWithTokens, statementsForAction }       from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { RootStack }                              from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                             from 'aws-cdk-lib/assertions';
-import { Stack }                                       from 'aws-cdk-lib';
+import type { IArtifactResolver }                from '@serverlessinbox/artifact-registry-cdk';
+import { renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { RootStack }                        from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                       from 'aws-cdk-lib/assertions';
+import { Stack }                                 from 'aws-cdk-lib';
 
-import { MfaMode }                                     from '../../user-pool/mfa-mode';
-import { MailboxCognitoDataDeployer }                  from '../mailbox-cognito-data-deployer';
-import type { MailboxCognitoDataDeployerProps }        from '../mailbox-cognito-data-deployer';
+import { MfaMode }                               from '../../user-pool/mfa-mode';
+import { MailboxCognitoDataDeployer }            from '../mailbox-cognito-data-deployer';
+import type { MailboxCognitoDataDeployerProps }  from '../mailbox-cognito-data-deployer';
 
-import { newDeployerTestStack }                        from './cognito-deployer-helpers';
+import { newDeployerTestStack }                  from './cognito-deployer-helpers';
 
 const DEPLOYER_RESOURCE_TYPE        = 'Custom::MailboxCognitoDataDeployer';
 const STACK_NAME_REF                = { Ref: 'AWS::StackName' };
@@ -51,7 +51,7 @@ describe('MailboxCognitoDataDeployer', () => {
       const templateUrl: unknown                  = stack.resolve(artifactResolver.getUrl('mailbox-cognito', 'cognito-data-stack-template.json'));
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
-        stackName:        COGNITO_STACK_NAME,
+        stackName: COGNITO_STACK_NAME,
         templateUrl,
         region:           { Ref: 'AWS::Region' },
         preserveOnDelete: true,

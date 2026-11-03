@@ -1,5 +1,5 @@
 import type { IArtifactResolver }                                   from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription, type BaseQueueProps }                from '@serverlessinbox/mailbox-cdk-shared';
+import { ComponentDescription, type QueueEncryptionChoice }         from '@serverlessinbox/mailbox-cdk-shared';
 import { IBucket }                                                  from 'aws-cdk-lib/aws-s3';
 import { Lambda, LambdaInvocationType, S3 }                         from 'aws-cdk-lib/aws-ses-actions';
 import { IReceiptRuleSet, ReceiptRule, ReceiptRuleSet, TlsPolicy }  from 'aws-cdk-lib/aws-ses';
@@ -14,8 +14,8 @@ export interface SesRulesProps {
   /** The raw bucket the receipt rule's S3 action stores incoming email in. */
   readonly blobStoreBucket:  IBucket;
   readonly artifactResolver: IArtifactResolver;
-  /** Encryption props forwarded from the mailbox encryption plan. */
-  readonly queueProps?: Partial<BaseQueueProps>;
+  /** The encryption of the email-processing queue, from the mailbox encryption plan. */
+  readonly queueEncryption: QueueEncryptionChoice;
 }
 
 /**
@@ -37,7 +37,7 @@ export class SesRules extends Construct {
     ComponentDescription.describe(this, 'SES receipt rules that deliver inbound mail to S3 and enqueue it for processing.');
 
     const emailProcessingQueue = new EmailProcessingQueue(this, 'email-processing-queue', {
-      queueProps: props.queueProps,
+      encryption: props.queueEncryption,
     });
     this.emailProcessingQueue  = emailProcessingQueue;
 

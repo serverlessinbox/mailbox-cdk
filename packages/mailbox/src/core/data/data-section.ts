@@ -1,16 +1,17 @@
-import type { IArtifactResolver }                                              from '@serverlessinbox/artifact-registry-cdk';
-import type { BaseQueueProps, ServerlessInboxDeployerType }                    from '@serverlessinbox/mailbox-cdk-shared';
-import { ComponentDescription, applyServerlessInboxComponentTag }              from '@serverlessinbox/mailbox-cdk-shared';
-import type { IBucket }                                                        from 'aws-cdk-lib/aws-s3';
-import { Aws, Fn }                                                             from 'aws-cdk-lib';
-import { Construct }                                                           from 'constructs';
+import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
+import type { QueueEncryptionChoice, ServerlessInboxDeployerType } from '@serverlessinbox/mailbox-cdk-shared';
+import { ComponentDescription, applyServerlessInboxComponentTag }  from '@serverlessinbox/mailbox-cdk-shared';
+import type { IBucket }                                            from 'aws-cdk-lib/aws-s3';
+import { Aws, Fn }                                                 from 'aws-cdk-lib';
+import { Construct }                                               from 'constructs';
 
-import type { IDataBlobStore }                                                 from '../../resources/buckets/data-blob-store';
-import type { IAuditEventsQueue }                                              from '../../resources/queues/audit-events-queue';
-import type { IDataTable }                                                     from '../../resources/tables/data-tables';
+import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
+import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
+import type { IPatTable }                                          from '../../resources/tables/data-pat-table';
+import type { IDataTable }                                         from '../../resources/tables/data-tables';
 
-import { AuditWriting }                                                        from './audit-writing';
-import { MailboxDataDeployer }                                                 from './delivery/mailbox-data-deployer';
+import { AuditWriting }                                            from './audit-writing';
+import { MailboxDataDeployer }                                     from './delivery/mailbox-data-deployer';
 
 /** Derives the S3-safe form of a stack name at deploy time. */
 export interface IS3SafeStackNameResolver {
@@ -22,7 +23,7 @@ export interface DataSectionProps {
   readonly artifactResolver: IArtifactResolver;
   readonly deployerType:     ServerlessInboxDeployerType;
   readonly stackHelpers:     IS3SafeStackNameResolver;
-  readonly queueProps?:      Partial<BaseQueueProps>;
+  readonly queueEncryption:  QueueEncryptionChoice;
 }
 
 /** The retained data resources, the audit writer, and the S3-safe stack names. */
@@ -39,6 +40,7 @@ export class DataSection extends Construct {
   public readonly changelogTable: IDataTable;
   public readonly auditLogTable: IDataTable;
   public readonly mailFeedbackTable: IDataTable;
+  public readonly patTable: IPatTable;
   public readonly blobStore: IDataBlobStore;
   public readonly blobStoreBucket: IBucket;
   public readonly auditEventsQueue: IAuditEventsQueue;
@@ -71,11 +73,12 @@ export class DataSection extends Construct {
     this.changelogTable    = dataRef.changelogTable;
     this.auditLogTable     = dataRef.auditLogTable;
     this.mailFeedbackTable = dataRef.mailFeedbackTable;
+    this.patTable          = dataRef.patTable;
 
     const auditWriting = new AuditWriting(this, 'audit-writing', {
       auditLogTable:    this.auditLogTable,
       artifactResolver: props.artifactResolver,
-      queueProps:       props.queueProps,
+      queueEncryption:  props.queueEncryption,
     });
 
     this.auditEventsQueue = auditWriting.auditEventsQueue;

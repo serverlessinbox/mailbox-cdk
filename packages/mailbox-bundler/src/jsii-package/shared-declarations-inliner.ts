@@ -1,13 +1,13 @@
-import { access, mkdir, mkdtemp, readFile, rm, writeFile }  from 'fs/promises';
-import { glob }                                             from 'glob';
-import { createRequire }                                    from 'module';
-import { tmpdir }                                           from 'os';
-import { dirname, join, relative, sep }                     from 'path';
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'fs/promises';
+import { glob }                                            from 'glob';
+import { createRequire }                                   from 'module';
+import { tmpdir }                                          from 'os';
+import { dirname, join, relative, sep }                    from 'path';
 
-import { runWithInheritedStdio }                            from '../utils/run-process';
+import { runWithInheritedStdio }                           from '../utils/run-process';
 
-import { findSpecifierReferences }                          from './declaration-references';
-import { readPackageJson }                                  from './package-json';
+import { findSpecifierReferences }                         from './declaration-references';
+import { readPackageJson }                                 from './package-json';
 
 const declarationsFolderName = 'lib';
 const declarationSuffix      = '.d.ts';

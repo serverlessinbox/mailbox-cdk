@@ -10,13 +10,13 @@ import {
   DescribeCertificateCommand,
   DeleteCertificateCommand,
   ListTagsForCertificateCommand,
-} from '@aws-sdk/client-acm';
-import { LoggerBuffer }          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }            from 'aws-sdk-client-mock';
+}                                                                               from '@aws-sdk/client-acm';
+import { LoggerBuffer }                                                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import type { CertRemovalInput } from '../../removal';
-import { RootStackMembership }   from '../../root-stack-membership';
-import { CertSweeper }           from '../cert-sweeper';
+import type { CertRemovalInput }                                                from '../../removal';
+import { RootStackMembership }                                                  from '../../root-stack-membership';
+import { CertSweeper }                                                          from '../cert-sweeper';
 
 const acmMock         = mockClient(ACMClient);
 const ROOT_STACK_NAME = 'test-stack';

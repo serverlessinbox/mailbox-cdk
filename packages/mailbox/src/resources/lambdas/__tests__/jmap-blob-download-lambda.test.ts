@@ -9,15 +9,15 @@
  * function that is never updated, never replaced, or never created.
  */
 
-import { ServerlessInboxTagKeys }            from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                   from 'aws-cdk-lib/assertions';
-import * as iam                              from 'aws-cdk-lib/aws-iam';
-import * as logs                             from 'aws-cdk-lib/aws-logs';
-import * as s3                               from 'aws-cdk-lib/aws-s3';
-import * as cdk                              from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }     from 'aws-cdk-lib';
+import { ServerlessInboxTagKeys }        from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }               from 'aws-cdk-lib/assertions';
+import * as iam                          from 'aws-cdk-lib/aws-iam';
+import * as logs                         from 'aws-cdk-lib/aws-logs';
+import * as s3                           from 'aws-cdk-lib/aws-s3';
+import * as cdk                          from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
-import { JmapBlobDownloadLambda }            from '../jmap-blob-download-lambda';
+import { JmapBlobDownloadLambda }        from '../jmap-blob-download-lambda';
 
 const ROLE_ARN = 'arn:aws:iam::123456789012:role/jmap-blob-download';
 
@@ -39,6 +39,7 @@ function synthesizeFunction(versionId: string | undefined): Template {
 }
 
 describe('JmapBlobDownloadLambda', () => {
+
   it('renders the function from the resolved artifact, the given role and the given log group', () => {
     const template = synthesizeFunction('abc123');
 
@@ -64,6 +65,12 @@ describe('JmapBlobDownloadLambda', () => {
         { Key: ServerlessInboxTagKeys.autoUpdateType, Value: 'edge' },
       ]),
     });
+  });
+
+  it('sets the function timeout to ten seconds', () => {
+    const template = synthesizeFunction('abc123');
+
+    template.hasResourceProperties('AWS::Lambda::Function', { Timeout: 10 });
   });
 
   it('describes the published version by the artifact version, so a new artifact version publishes a new Lambda version', () => {

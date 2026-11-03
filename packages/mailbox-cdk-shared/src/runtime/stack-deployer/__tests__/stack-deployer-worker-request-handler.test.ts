@@ -1,11 +1,11 @@
-import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
-import { mockClient }                                  from 'aws-sdk-client-mock';
+import { CloudFormationClient, DescribeStacksCommand }                          from '@aws-sdk/client-cloudformation';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import { CfnResponder }                                from '../answers/cfn-responder';
-import { CloudFormationStacks }                        from '../cloudformation-stacks';
-import { StackDeployerWorkerRequestHandler }           from '../stack-deployer-worker-request-handler';
-import { StackDeployerWorker }                         from '../stack-deployer-worker';
-import { StackDeploymentEventReader }                  from '../stack/stack-deployment-event-reader';
+import { CfnResponder }                                                         from '../answers/cfn-responder';
+import { CloudFormationStacks }                                                 from '../cloudformation-stacks';
+import { StackDeployerWorkerRequestHandler }                                    from '../stack-deployer-worker-request-handler';
+import { StackDeployerWorker }                                                  from '../stack-deployer-worker';
+import { StackDeploymentEventReader }                                           from '../stack/stack-deployment-event-reader';
 
 import {
   defaultLevelLogger,
@@ -19,7 +19,7 @@ import {
   US_EAST_1,
   type ConsoleSpies,
   type FakeCfnEndpoint,
-} from './stack-deployer-helpers';
+}                                                                               from './stack-deployer-helpers';
 
 /**
  * Pins what happens to an input before the worker acts on it: it is read, the dispatch line is written, the

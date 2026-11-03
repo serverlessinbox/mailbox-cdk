@@ -7,7 +7,7 @@
 import { ArtifactZone, PinnedArtifactResolver }        from '@serverlessinbox/artifact-registry-cdk';
 import { ServerlessInboxTagKeys }                      from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                             from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                        from 'aws-cdk-lib/aws-dynamodb';
+import { Table, AttributeType, TableEncryption }       from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket }                                      from 'aws-cdk-lib/aws-s3';
 import { CfnResource, TagManager }                     from 'aws-cdk-lib';
 import type { Stack }                                  from 'aws-cdk-lib';
@@ -38,8 +38,10 @@ function newSection(stack: Stack): EmailSection {
       mailFeedbackTable: dataTable('mail-feedback-table'),
       blobStore:         new DataBlobStore(bucket),
       blobStoreBucket:   bucket,
-      auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue'),
+      auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
     },
+    dynamoTables:     { encryption: TableEncryption.AWS_MANAGED },
+    queueEncryption:  { kind: 'aws-managed' },
   });
 }
 

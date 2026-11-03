@@ -1,7 +1,7 @@
-import type { Caller }                   from '../caller/caller';
+import type { Caller }                  from '../caller/caller';
 
-import type { AuditChange, AuditEntry }  from './audit-event';
-import type { AuditSink }                from './audit-sink';
+import type { AuditChange, AuditEntry } from './audit-event';
+import type { AuditSink }               from './audit-sink';
 
 const UNKNOWN_ENTITY_ID = 'unknown';
 const REDACTED_VALUE    = '[REDACTED]';

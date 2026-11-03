@@ -1,7 +1,7 @@
-import type { Stack }                                                                      from '@aws-sdk/client-cloudformation';
-import * as t                                                                              from 'typanion';
+import type { Stack }                                                           from '@aws-sdk/client-cloudformation';
+import * as t                                                                   from 'typanion';
 
-import { toRegion }                                                                        from '../../../runtime/handler-kit/aws-identifiers';
+import { toRegion }                                                             from '../../../runtime/handler-kit/aws-identifiers';
 import {
   toLogicalResourceId,
   toPhysicalResourceId,
@@ -10,12 +10,13 @@ import {
   toStackId,
   toStackName,
   type StackId,
-} from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { LoggerBuffer }                                                                    from '../../../runtime/handler-kit/logger-buffer';
-import type { CfnReplyTarget }                                                             from '../answers/cfn-responder';
-import type { UpdateRollbackAnswers }                                                      from '../answers/update-rollback-answerer';
-import { toStateMachineArn, toTemplateUrl }                                                from '../deployer-identifiers';
-import type { BrandedStackDeployerProperties, CfnRequest, OperationInput, SfnInvokeEvent } from '../stack/stack-deployment';
+}                                                                               from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { LoggerBuffer }                                                         from '../../../runtime/handler-kit/logger-buffer';
+import type { CfnReplyTarget }                                                  from '../answers/cfn-responder';
+import type { UpdateRollbackAnswers }                                           from '../answers/update-rollback-answerer';
+import { toStateMachineArn, toTemplateUrl }                                     from '../deployer-identifiers';
+import type { BrandedStackDeployerProperties, CfnRequest, OperationInput,
+  SfnInvokeEvent }                                                              from '../stack/stack-deployment';
 
 export const RESPONSE_URL        = toResponseUrl('https://example.com/cfn-response');
 export const STACK_ID            = toStackId('arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-abc/guid');

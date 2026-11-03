@@ -10,22 +10,22 @@
  * with a configuration failure.
  */
 
-import type { ArtifactPin }                                                 from '@serverlessinbox/artifact-registry-cdk';
-import { ArtifactZone }                                                     from '@serverlessinbox/artifact-registry-cdk';
-import { getAttLogicalId, statementsForRole }                               from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import type { PolicyStatementJson }                                         from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { env }                                                              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { ServerlessInboxTagKeys }                                           from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                                         from 'aws-cdk-lib/assertions';
-import { CfnCondition, Duration, Fn }                                       from 'aws-cdk-lib';
-import * as t                                                               from 'typanion';
+import type { ArtifactPin }                                            from '@serverlessinbox/artifact-registry-cdk';
+import { ArtifactZone }                                                from '@serverlessinbox/artifact-registry-cdk';
+import { getAttLogicalId, statementsForRole }                          from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import type { PolicyStatementJson }                                    from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { env }                                                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { ServerlessInboxTagKeys }                                      from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                                    from 'aws-cdk-lib/assertions';
+import { CfnCondition, Duration, Fn }                                  from 'aws-cdk-lib';
+import * as t                                                          from 'typanion';
 
-import { isTemplateValue, resourcesOfType }                                 from '../../../__tests__/template-resources';
-import { Granularity }                                                      from '../../../contracts/granularity';
-import { load }                                                             from '../../../runtime/artifact-updater/config';
-import { ArtifactUpdaterLambda }                                            from '../artifact-updater-lambda';
+import { isTemplateValue, resourcesOfType }                            from '../../../__tests__/template-resources';
+import { Granularity }                                                 from '../../../contracts/granularity';
+import { load }                                                        from '../../../runtime/artifact-updater/config';
+import { ArtifactUpdaterLambda }                                       from '../artifact-updater-lambda';
 
-import { arrangeWrapperStack, ownedByRootStack, processEnvironmentOf }      from './lambda-wrapper-helpers';
+import { arrangeWrapperStack, ownedByRootStack, processEnvironmentOf } from './lambda-wrapper-helpers';
 
 const isUpdaterFunctionProperties = t.isPartial({
   Timeout:     t.isNumber(),

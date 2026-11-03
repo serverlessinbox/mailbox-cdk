@@ -1,12 +1,12 @@
-import type { IArtifactResolver }            from '@serverlessinbox/artifact-registry-cdk';
-import type { BaseQueueProps }               from '@serverlessinbox/mailbox-cdk-shared';
-import { applyServerlessInboxComponentTag }  from '@serverlessinbox/mailbox-cdk-shared';
-import { Construct }                         from 'constructs';
+import type { IArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
+import type { QueueEncryptionChoice }       from '@serverlessinbox/mailbox-cdk-shared';
+import { applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
+import { Construct }                        from 'constructs';
 
-import type { IDataBlobStore }               from '../../resources/buckets/data-blob-store';
-import type { IDataTable }                   from '../../resources/tables/data-tables';
+import type { IDataBlobStore }              from '../../resources/buckets/data-blob-store';
+import type { IDataTable }                  from '../../resources/tables/data-tables';
 
-import { TantivySearch }                     from './tantivy-search';
+import { TantivySearch }                    from './tantivy-search';
 
 /** What {@link SearchSection} uses of the data section. */
 export interface ISearchDataInputs {
@@ -21,7 +21,7 @@ export interface ISearchDataInputs {
 export interface SearchSectionProps {
   readonly artifactResolver: IArtifactResolver;
   readonly data:             ISearchDataInputs;
-  readonly queueProps?:      Partial<BaseQueueProps>;
+  readonly queueEncryption:  QueueEncryptionChoice;
 }
 
 /** Full-text search over the mailbox items. */
@@ -36,7 +36,7 @@ export class SearchSection extends Construct {
       configTable:      props.data.configTable,
       changelogTable:   props.data.changelogTable,
       artifactResolver: props.artifactResolver,
-      queueProps:       props.queueProps,
+      queueEncryption:  props.queueEncryption,
     });
   }
 }

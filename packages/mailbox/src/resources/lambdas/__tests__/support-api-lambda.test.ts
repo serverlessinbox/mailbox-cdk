@@ -7,18 +7,18 @@
  * runtime, where nothing in the template reports it.
  */
 
-import { actionsOf }                                      from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Template }                                       from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                           from 'aws-cdk-lib/aws-dynamodb';
-import type { Stack }                                     from 'aws-cdk-lib';
+import { actionsOf }                         from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                          from 'aws-cdk-lib/assertions';
+import { Table, AttributeType }              from 'aws-cdk-lib/aws-dynamodb';
+import type { Stack }                        from 'aws-cdk-lib';
 
-import { SupportRolesInfra }                              from '../../../platform/support/support-roles-infra';
-import { AuditEventsQueue }                               from '../../queues/audit-events-queue';
-import { DataTable }                                      from '../../tables/data-tables';
-import { SupportApiLambda }                               from '../support-api-lambda';
+import { SupportRolesInfra }                 from '../../../platform/support/support-roles-infra';
+import { AuditEventsQueue }                  from '../../queues/audit-events-queue';
+import { DataTable }                         from '../../tables/data-tables';
+import { SupportApiLambda }                  from '../support-api-lambda';
 
-import { arrangeWrapperStack, onlyLambdaOf }              from './lambda-wrapper-helpers';
-import type { SynthesizedLambda }                         from './lambda-wrapper-helpers';
+import { arrangeWrapperStack, onlyLambdaOf } from './lambda-wrapper-helpers';
+import type { SynthesizedLambda }            from './lambda-wrapper-helpers';
 
 const VENDOR_ACCOUNT = '999988887777';
 
@@ -39,7 +39,7 @@ function synthesize(): SynthesizedSupportApi {
   new SupportApiLambda(stack, 'support-api', {
     supportRoles:     roles,
     configTable:      new DataTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
-    auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+    auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
     artifactResolver,
     vendorAccountIds: [VENDOR_ACCOUNT],
   });

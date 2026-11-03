@@ -1,4 +1,4 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient }                                                       from '@aws-sdk/client-dynamodb';
 import {
   answerRequestWithBadConfig,
   CaughtError,
@@ -9,11 +9,11 @@ import {
   readCustomResourceRequest,
   toPhysicalResourceId,
   withSmokeTest,
-} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { wrapHandler }           from 'aws-custom-resources';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { wrapHandler }                                                          from 'aws-custom-resources';
 
-import { load }                  from './config';
-import { TableOverrideResolver } from './table-override-resolver';
+import { load }                                                                 from './config';
+import { TableOverrideResolver }                                                from './table-override-resolver';
 
 const dynamodb                       = new DynamoDBClient({});
 const { config, error: configError } = env.tryLoad(load);
@@ -33,7 +33,7 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
 
   const logger = new LoggerBuffer(config.serviceName, config.logLevel);
 
-  emitManualFinalize({ ...event, StackId: request.StackId }, { service: config.serviceName });
+  emitManualFinalize(request, { service: config.serviceName });
 
   try {
     if (request.RequestType === 'Delete') {

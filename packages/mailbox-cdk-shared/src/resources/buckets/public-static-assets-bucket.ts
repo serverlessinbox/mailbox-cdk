@@ -1,14 +1,14 @@
-import type { IArtifactResolver }     from '@serverlessinbox/artifact-registry-cdk';
-import * as iam                       from 'aws-cdk-lib/aws-iam';
-import { BlockPublicAccess }          from 'aws-cdk-lib/aws-s3';
-import { Stack, RemovalPolicy }       from 'aws-cdk-lib';
-import { Construct }                  from 'constructs';
+import type { IArtifactResolver }    from '@serverlessinbox/artifact-registry-cdk';
+import * as iam                      from 'aws-cdk-lib/aws-iam';
+import { BlockPublicAccess }         from 'aws-cdk-lib/aws-s3';
+import { Stack, RemovalPolicy }      from 'aws-cdk-lib';
+import { Construct }                 from 'constructs';
 
-import { getOrCreateSharedGroup }     from '../../tagging/shared-group';
-import { BucketAutoEmpty }            from '../lambdas/bucket-auto-empty';
+import { getOrCreateSharedGroup }    from '../../tagging/shared-group';
+import { BucketAutoEmpty }           from '../lambdas/bucket-auto-empty';
 
-import { StackNamedBucket }           from './named-bucket';
-import type { IStaticContentTarget }  from './static-content-target';
+import { StackNamedBucket }          from './named-bucket';
+import type { IStaticContentTarget } from './static-content-target';
 
 /** The stack's public static assets bucket: a target for static content, plus the domain its documents are served from. */
 export interface IPublicStaticAssetsBucket extends IStaticContentTarget {

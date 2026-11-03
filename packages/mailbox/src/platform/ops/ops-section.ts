@@ -1,20 +1,20 @@
-import type { IArtifactResolver }                         from '@serverlessinbox/artifact-registry-cdk';
-import { applyServerlessInboxComponentTag }               from '@serverlessinbox/mailbox-cdk-shared';
-import type * as acm                                      from 'aws-cdk-lib/aws-certificatemanager';
-import * as awslambda                                     from 'aws-cdk-lib/aws-lambda';
-import { Fn }                                             from 'aws-cdk-lib';
-import { Construct }                                      from 'constructs';
+import type { IArtifactResolver }                       from '@serverlessinbox/artifact-registry-cdk';
+import { applyServerlessInboxComponentTag }             from '@serverlessinbox/mailbox-cdk-shared';
+import type * as acm                                    from 'aws-cdk-lib/aws-certificatemanager';
+import * as awslambda                                   from 'aws-cdk-lib/aws-lambda';
+import { Fn }                                           from 'aws-cdk-lib';
+import { Construct }                                    from 'constructs';
 
-import type { IDataTable }                                from '../../resources/tables/data-tables';
+import type { IDataTable }                              from '../../resources/tables/data-tables';
 
-import { LicenseRefresh }                                 from './license-refresh';
-import { StackFailureDetection, SendStackFailuresMode }   from './stack-failure-detection';
-import { CertificateRemoval }                             from './sweeper/certificate-removal';
-import { DeferredRemoval }                                from './sweeper/deferred-removal';
-import { EdgeFunctionRemoval }                            from './sweeper/edge-function-removal';
-import type { IResourceRemoval }                          from './sweeper/removal';
-import { StackFailureDetectorRemoval }                    from './sweeper/stack-failure-detector-removal';
-import { SweeperInfra }                                   from './sweeper/sweeper-infra';
+import { LicenseRefresh }                               from './license-refresh';
+import { StackFailureDetection, SendStackFailuresMode } from './stack-failure-detection';
+import { CertificateRemoval }                           from './sweeper/certificate-removal';
+import { DeferredRemoval }                              from './sweeper/deferred-removal';
+import { EdgeFunctionRemoval }                          from './sweeper/edge-function-removal';
+import type { IResourceRemoval }                        from './sweeper/removal';
+import { StackFailureDetectorRemoval }                  from './sweeper/stack-failure-detector-removal';
+import { SweeperInfra }                                 from './sweeper/sweeper-infra';
 
 /** What {@link OpsSection} uses of the data section. */
 export interface IOpsDataInputs {
@@ -34,7 +34,7 @@ export interface OpsSectionProps {
   readonly artifactResolver: IArtifactResolver;
   readonly vendorAccountIds: string[];
   /** The domain name the mailbox serves; a deploy-time token when it comes from a hosted zone. */
-  readonly domainName:       string;
+  readonly domainName: string;
   /** Default: {@link SendStackFailuresMode.ENABLED}. */
   readonly sendStackFailures?: SendStackFailuresMode;
   readonly data:               IOpsDataInputs;

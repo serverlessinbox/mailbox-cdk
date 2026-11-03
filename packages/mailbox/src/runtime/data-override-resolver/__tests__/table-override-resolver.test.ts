@@ -42,6 +42,7 @@ describe('TableOverrideResolver', () => {
       changelogTableArn:    INCOMING_ARNS.changelogTable,
       auditLogTableArn:     INCOMING_ARNS.auditLogTable,
       mailFeedbackTableArn: INCOMING_ARNS.mailFeedbackTable,
+      patTableArn:          INCOMING_ARNS.patTable,
     });
     expect(dynamodbMock.calls()).toHaveLength(0);
     expect(consoleInfo).toHaveBeenCalledWith('itemTable: override matches incoming, using incoming table', { service: 'test' });
@@ -72,6 +73,7 @@ describe('TableOverrideResolver', () => {
         changelogTableArn:    INCOMING_ARNS.changelogTable,
         auditLogTableArn:     INCOMING_ARNS.auditLogTable,
         mailFeedbackTableArn: INCOMING_ARNS.mailFeedbackTable,
+        patTableArn:          INCOMING_ARNS.patTable,
       });
       expect(dynamodbMock.commandCalls(DescribeTableCommand)).toHaveLength(1);
       expect(consoleInfo).toHaveBeenCalledWith(`itemTable: using override table ${OVERRIDE_ITEM_ARN}`, { service: 'test' });
@@ -138,6 +140,41 @@ describe('TableOverrideResolver', () => {
       dynamodbMock.on(DescribeTableCommand).rejects(accessDenied);
 
       await expect(resolver.resolve(PROPERTIES_WITH_ITEM_OVERRIDE)).rejects.toBe(accessDenied);
+    });
+  });
+
+  describe('when the token table override differs from the incoming table', () => {
+    const OVERRIDE_PAT_ARN             = tableArn('override-pat');
+    const PROPERTIES_WITH_PAT_OVERRIDE = { ...PROPERTIES_WITHOUT_OVERRIDES, patTableOverrideArn: OVERRIDE_PAT_ARN };
+
+    it('uses the override when its table is ACTIVE, leaving the other roles on their incoming tables', async () => {
+      dynamodbMock
+        .on(DescribeTableCommand, { TableName: 'override-pat' })
+        .resolves({ Table: { TableName: 'override-pat', TableStatus: 'ACTIVE' } });
+
+      const arns = await resolver.resolve(PROPERTIES_WITH_PAT_OVERRIDE);
+
+      expect(arns.patTableArn).toBe(OVERRIDE_PAT_ARN);
+      expect(arns.itemTableArn).toBe(INCOMING_ARNS.itemTable);
+      expect(consoleInfo).toHaveBeenCalledWith(`patTable: using override table ${OVERRIDE_PAT_ARN}`, { service: 'test' });
+    });
+
+    it('rejects with an ExpectedFailure naming patTable when the override table does not exist', async () => {
+      dynamodbMock.on(DescribeTableCommand).rejects(new ResourceNotFoundException({ $metadata: {}, message: 'Requested resource not found' }));
+
+      const rejection = resolver.resolve(PROPERTIES_WITH_PAT_OVERRIDE);
+
+      await expect(rejection).rejects.toBeInstanceOf(ExpectedFailure);
+      await expect(rejection).rejects.toThrow(`patTable: override table ${OVERRIDE_PAT_ARN} does not exist`);
+    });
+
+    it('rejects with an ExpectedFailure naming patTable and the status when the override table is not ACTIVE', async () => {
+      dynamodbMock.on(DescribeTableCommand).resolves({ Table: { TableName: 'override-pat', TableStatus: 'CREATING' } });
+
+      const rejection = resolver.resolve(PROPERTIES_WITH_PAT_OVERRIDE);
+
+      await expect(rejection).rejects.toBeInstanceOf(ExpectedFailure);
+      await expect(rejection).rejects.toThrow(`patTable: override table ${OVERRIDE_PAT_ARN} is not ACTIVE (status: CREATING)`);
     });
   });
 });

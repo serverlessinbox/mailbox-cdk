@@ -3,13 +3,14 @@
  * role another stack owns is refused. The IAM client is faked at the AWS boundary.
  */
 
-import { DeleteRoleCommand, DeleteRolePolicyCommand, IAMClient, ListRoleTagsCommand }   from '@aws-sdk/client-iam';
-import { LoggerBuffer }                                                                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                                                   from 'aws-sdk-client-mock';
+import { DeleteRoleCommand, DeleteRolePolicyCommand, IAMClient,
+  ListRoleTagsCommand }                                                         from '@aws-sdk/client-iam';
+import { LoggerBuffer }                                                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import type { SweeperRoleRemovalInput }                                                 from '../../removal';
-import { RootStackMembership }                                                          from '../../root-stack-membership';
-import { SweeperRoleSweeper }                                                           from '../sweeper-role-sweeper';
+import type { SweeperRoleRemovalInput }                                         from '../../removal';
+import { RootStackMembership }                                                  from '../../root-stack-membership';
+import { SweeperRoleSweeper }                                                   from '../sweeper-role-sweeper';
 
 const iamMock = mockClient(IAMClient);
 

@@ -1,5 +1,5 @@
-import { toPhysicalResourceId }                       from '../../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { ExpectedFailure }                            from '../../../../runtime/handler-kit/errors/expected-failure';
+import { toPhysicalResourceId }                                                 from '../../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { ExpectedFailure }                                                      from '../../../../runtime/handler-kit/errors/expected-failure';
 import {
   awsError,
   cfnRequest,
@@ -16,14 +16,14 @@ import {
   US_WEST_2,
   type ConsoleSpies,
   type FakeCfnEndpoint,
-} from '../../__tests__/stack-deployer-helpers';
-import { StackDeploymentEventReader }                 from '../../stack/stack-deployment-event-reader';
-import { StackOperationFailure }                      from '../../stack/stack-operation-failure';
-import { WorkerResult }                               from '../../worker-result';
-import { AnswerDeliveryFailure }                      from '../answer-delivery-failure';
-import { CfnResponder }                               from '../cfn-responder';
-import { FailureAnswerer, type StackFailureAnswerer } from '../failure-answerer';
-import type { UpdateRollbackAnswers }                 from '../update-rollback-answerer';
+}                                                                               from '../../__tests__/stack-deployer-helpers';
+import { StackDeploymentEventReader }                                           from '../../stack/stack-deployment-event-reader';
+import { StackOperationFailure }                                                from '../../stack/stack-operation-failure';
+import { WorkerResult }                                                         from '../../worker-result';
+import { AnswerDeliveryFailure }                                                from '../answer-delivery-failure';
+import { CfnResponder }                                                         from '../cfn-responder';
+import { FailureAnswerer, type StackFailureAnswerer }                           from '../failure-answerer';
+import type { UpdateRollbackAnswers }                                           from '../update-rollback-answerer';
 
 /**
  * Pins that every failure of a deployer invocation is answered to CloudFormation exactly once, from whatever

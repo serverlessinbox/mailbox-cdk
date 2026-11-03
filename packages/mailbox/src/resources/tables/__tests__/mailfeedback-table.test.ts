@@ -6,12 +6,12 @@
  * here makes stored entries unreachable.
  */
 
-import { Match, Template }                                         from 'aws-cdk-lib/assertions';
-import * as kms                                                    from 'aws-cdk-lib/aws-kms';
+import { Match, Template }                                      from 'aws-cdk-lib/assertions';
+import * as kms                                                 from 'aws-cdk-lib/aws-kms';
 
-import { MailFeedbackTable }                                       from '../mailfeedback-table';
+import { MailFeedbackTable }                                    from '../mailfeedback-table';
 
-import { DATA_TABLE_PROPS, createDataTableStack, propsWithKey }    from './data-table-helpers';
+import { DATA_TABLE_PROPS, createDataTableStack, propsWithKey } from './data-table-helpers';
 
 describe('MailFeedbackTable', () => {
   it('is keyed by string pk and sk and has the indexes gsi1 and gsi2 only', () => {

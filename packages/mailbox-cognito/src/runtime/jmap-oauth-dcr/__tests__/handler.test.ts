@@ -10,16 +10,16 @@
  * failing invocation holds no more than the failure itself.
  */
 
-import { CognitoIdentityProviderClient, CreateUserPoolClientCommand }  from '@aws-sdk/client-cognito-identity-provider';
-import type * as CognitoSdk                                            from '@aws-sdk/client-cognito-identity-provider';
-import { InvokeCommand, LambdaClient }                                 from '@aws-sdk/client-lambda';
-import type * as LambdaSdk                                             from '@aws-sdk/client-lambda';
-import type { LoggerBuffer }                                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                                  from 'aws-sdk-client-mock';
+import { CognitoIdentityProviderClient, CreateUserPoolClientCommand } from '@aws-sdk/client-cognito-identity-provider';
+import type * as CognitoSdk                                           from '@aws-sdk/client-cognito-identity-provider';
+import { InvokeCommand, LambdaClient }                                from '@aws-sdk/client-lambda';
+import type * as LambdaSdk                                            from '@aws-sdk/client-lambda';
+import type { LoggerBuffer }                                          from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                 from 'aws-sdk-client-mock';
 
-import type * as HandlerModule                                         from '../handler';
+import type * as HandlerModule                                        from '../handler';
 
-import { mockIdentityProvisioner, requestEvent }                       from './jmap-oauth-dcr-helpers';
+import { mockIdentityProvisioner, requestEvent }                      from './jmap-oauth-dcr-helpers';
 
 type Handler = (typeof HandlerModule)['handler'];
 

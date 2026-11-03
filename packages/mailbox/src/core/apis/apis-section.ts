@@ -1,33 +1,39 @@
-import type { IArtifactResolver }                                                           from '@serverlessinbox/artifact-registry-cdk';
-import { applyServerlessInboxComponentTag }                                                 from '@serverlessinbox/mailbox-cdk-shared';
-import type { VendorLink }                                                                  from '@serverlessinbox/mailbox-cdk-shared';
-import type * as acm                                                                        from 'aws-cdk-lib/aws-certificatemanager';
-import { Construct }                                                                        from 'constructs';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import { applyServerlessInboxComponentTag }                                     from '@serverlessinbox/mailbox-cdk-shared';
+import type { VendorLink }                                                      from '@serverlessinbox/mailbox-cdk-shared';
+import type * as acm                                                            from 'aws-cdk-lib/aws-certificatemanager';
+import { Construct }                                                            from 'constructs';
 
-import type { IWebSocketBroadcastPublisher }                                                from '../../contracts/websocket-push';
-import type { IDataBlobStore }                                                              from '../../resources/buckets/data-blob-store';
-import type { IIdentityProvisioner }                                                        from '../../resources/lambdas/identity-provisioner-lambda';
-import type { IAuditEventsQueue }                                                           from '../../resources/queues/audit-events-queue';
-import type { IEmailSendingQueue }                                                          from '../../resources/queues/email-sending-queue';
-import type { IAuthKeyStoreTable }                                                          from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                                                                  from '../../resources/tables/data-tables';
-import type { IMailboxAuthProvider }                                                        from '../auth/auth-provider';
-import type { ScopeMap }                                                                    from '../auth/jmap-scopes';
-import type { IMailboxDomainNames }                                                         from '../domains/mailbox-domains';
+import type { IWebSocketBroadcastPublisher }                                    from '../../contracts/websocket-push';
+import type { IDataBlobStore }                                                  from '../../resources/buckets/data-blob-store';
+import type { IIdentityProvisioner }                                            from '../../resources/lambdas/identity-provisioner-lambda';
+import type { IMailImportRunner }                                               from '../../resources/lambdas/mail-import-runner-lambda';
+import type { IAuditEventsQueue }                                               from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }                                              from '../../resources/queues/email-sending-queue';
+import type { IImportJobsQueue }                                                from '../../resources/queues/import-jobs-queue';
+import type { IAuthKeyStoreTable }                                              from '../../resources/tables/auth-key-store-table';
+import type { IPatTable }                                                       from '../../resources/tables/data-pat-table';
+import type { IDataTable }                                                      from '../../resources/tables/data-tables';
+import type { IMailLogTable }                                                   from '../../resources/tables/mail-log-table';
+import type { IMailboxAuthProvider }                                            from '../auth/auth-provider';
+import type { ScopeMap }                                                        from '../auth/jmap-scopes';
+import type { IMailboxDomainNames }                                             from '../domains/mailbox-domains';
 
-import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider, IJmapApiAddon } from './addons';
-import { AdminApi }                                                                         from './admin-api';
-import type { ApiCustomDomainProps }                                                        from './api-custom-domain';
-import { ApiGateway }                                                                       from './api-gateway';
-import { JmapApi }                                                                          from './jmap-api';
-import { McpApi }                                                                           from './mcp-api';
-import { UserApi }                                                                          from './user-api';
-import { WebSocketPush }                                                                    from './websocket';
+import type { AdminApiAddonContext, IAdminApiAddon, IAdminApiAddonProvider,
+  IJmapApiAddon }                                                               from './addons';
+import { AdminApi }                                                             from './admin-api';
+import type { ApiCustomDomainProps }                                            from './api-custom-domain';
+import { ApiGateway }                                                           from './api-gateway';
+import { JmapApi }                                                              from './jmap-api';
+import { McpApi }                                                               from './mcp-api';
+import { UserApi }                                                              from './user-api';
+import { WebSocketPush }                                                        from './websocket';
 
 /** What {@link ApisSection} uses of the data section. */
 export interface IApisDataInputs {
   readonly configTable:       IDataTable;
   readonly itemTable:         IDataTable;
+  readonly patTable:          IPatTable;
   readonly changelogTable:    IDataTable;
   readonly auditLogTable:     IDataTable;
   readonly mailFeedbackTable: IDataTable;
@@ -46,6 +52,7 @@ export interface IApisEmailInputs {
   readonly submissionQueue:  IEmailSendingQueue;
   readonly sesRuleSetName:   string;
   readonly sesConfigSetName: string;
+  readonly mailLogTable:     IMailLogTable;
 }
 
 /** What {@link ApisSection.addEndpoints} uses of the edge section. */
@@ -53,7 +60,7 @@ export interface IApisEdgeInputs {
   readonly apiCertificate?:  acm.ICertificate;
   readonly jmapCertificate?: acm.ICertificate;
   /** Present only when the mailbox has a hosted zone: the WebSocket API gets a custom domain only then. */
-  readonly wsCertificate?:   acm.ICertificate;
+  readonly wsCertificate?: acm.ICertificate;
   /** The certificate the MCP API is served with; absent when the edge section created none. */
   readonly regionalCertificate?: acm.ICertificate;
 }
@@ -64,6 +71,12 @@ export interface IApisUiInputs {
   readonly adminUiOrigins: string[];
   /** Origins the Webmail UI is served from; empty when it is disabled. */
   readonly webmailUiOrigins: string[];
+}
+
+/** What {@link ApisSection.addEndpoints} uses of the jobs section. */
+export interface IApisJobsInputs {
+  readonly importJobsQueue:  IImportJobsQueue;
+  readonly mailImportRunner: IMailImportRunner;
 }
 
 /** Props of {@link ApisSection}: what the addons and the API endpoints are built from. */
@@ -96,6 +109,8 @@ export interface ApisEndpointsProps {
   readonly mailboxDomains: IMailboxDomainNames;
   readonly edge:           IApisEdgeInputs;
   readonly ui:             IApisUiInputs;
+  /** The mail-import queue and runner, from the jobs section. */
+  readonly jobs: IApisJobsInputs;
   /** Origins allowed to call the admin API and the JMAP API cross-origin, besides the UIs'. */
   readonly extraAllowedOrigins?: string[];
   /** Whether to add the MCP API; it needs the edge section's regional certificate. */
@@ -181,14 +196,16 @@ export class ApisSection extends Construct {
       props.artifactResolver,
       props.vendorLink,
       `noreply@${props.mailboxDomains.domainName}`,
+      props.authProvider.scopeMap,
     );
 
     const userApi = this.addUserApi(
-      props.data.configTable,
-      props.data.itemTable,
-      props.data.auditEventsQueue,
+      props.data,
       props.auth.authKeyStoreTable,
       props.artifactResolver,
+      props.authProvider.scopeMap,
+      props.jobs,
+      `noreply@${props.mailboxDomains.domainName}`,
     );
 
     const mcpApi = props.enableMcp
@@ -200,6 +217,7 @@ export class ApisSection extends Construct {
 
     jmapApi.enableWebSocketPublishing(webSocketPush.webSocketUrl, webSocketPush.broadcaster);
     adminApi.enableWebSocketPublishing(webSocketPush.broadcaster);
+    userApi.enableWebSocketPublishing(webSocketPush.broadcaster);
 
     gateway.domainLogicalIdPin?.overrideLogicalId('Mailboxadminapidomain8793AE5D');
     jmapApi.domainLogicalIdPin?.overrideLogicalId('Mailboxjmapapidomain47B62A36');
@@ -266,6 +284,7 @@ export class ApisSection extends Construct {
     return new JmapApi(this, 'jmap-api', {
       configTable:       data.configTable,
       itemTable:         data.itemTable,
+      patTable:          data.patTable,
       changelogTable:    data.changelogTable,
       authKeyStoreTable: auth.authKeyStoreTable,
       cdnHost,
@@ -275,7 +294,7 @@ export class ApisSection extends Construct {
       auditEventsQueue:     data.auditEventsQueue,
       artifactResolver,
       authProvider,
-      identityProvisioner:  auth.identityProvisioner,
+      identityProvisioner: auth.identityProvisioner,
 
       customDomain,
 
@@ -315,10 +334,12 @@ export class ApisSection extends Construct {
     artifactResolver: IArtifactResolver,
     vendorLink: VendorLink,
     systemSenderAddress: string,
+    scopeMap: ScopeMap,
   ): AdminApi {
     return new AdminApi(this, 'admin', {
       configTable:          data.configTable,
       itemTable:            data.itemTable,
+      patTable:             data.patTable,
       auditLogTable:        data.auditLogTable,
       changelogTable:       data.changelogTable,
       mailFeedbackTable:    data.mailFeedbackTable,
@@ -327,30 +348,40 @@ export class ApisSection extends Construct {
       emailSubmissionQueue: email.submissionQueue,
       auditEventsQueue:     data.auditEventsQueue,
       artifactResolver,
-      identityProvisioner:  auth.identityProvisioner,
+      identityProvisioner: auth.identityProvisioner,
       vendorLink,
+      scopeMap,
 
       addons: adminApiAddons,
 
       sesRuleSetName:   email.sesRuleSetName,
       sesConfigSetName: email.sesConfigSetName,
+      mailLogTable:     email.mailLogTable,
       systemSenderAddress,
     });
   }
 
   private addUserApi(
-    configTable: IDataTable,
-    itemTable: IDataTable,
-    auditEventsQueue: IAuditEventsQueue,
+    data: IApisDataInputs,
     authKeyStoreTable: IAuthKeyStoreTable,
     artifactResolver: IArtifactResolver,
+    scopeMap: ScopeMap,
+    jobs: IApisJobsInputs,
+    systemSenderAddress: string,
   ): UserApi {
     return new UserApi(this, 'user-api', {
-      configTable,
-      itemTable,
-      auditEventsQueue,
+      configTable:      data.configTable,
+      itemTable:        data.itemTable,
+      patTable:         data.patTable,
+      blobStore:        data.blobStore,
+      changelogTable:   data.changelogTable,
+      auditEventsQueue: data.auditEventsQueue,
+      systemSenderAddress,
       authKeyStoreTable,
+      importJobsQueue:  jobs.importJobsQueue,
+      mailImportRunner: jobs.mailImportRunner,
       artifactResolver,
+      scopeMap,
     });
   }
 

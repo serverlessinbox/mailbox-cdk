@@ -9,3 +9,9 @@ export type Audience = Branded<'Audience'>;
 export function toAudience(raw: string): Audience {
   return raw as Audience;
 }
+
+/**
+ * The issuer and audience of a session token issued to a personal access token. A session token that carries
+ * any other identity is not a personal access token session.
+ */
+export const PAT_SESSION_IDENTITY = 'pat';

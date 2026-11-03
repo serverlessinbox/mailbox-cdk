@@ -9,7 +9,6 @@
 
 import { TableEncryption }                      from 'aws-cdk-lib/aws-dynamodb';
 import * as kms                                 from 'aws-cdk-lib/aws-kms';
-import { QueueEncryption }                      from 'aws-cdk-lib/aws-sqs';
 import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
 import type { MailboxKmsConfig }                from '../kms';
@@ -32,21 +31,21 @@ describe('MailboxEncryption', () => {
       const plan = MailboxEncryption.plan(config);
 
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.AWS_MANAGED });
-      expect(plan.queues).toBeUndefined();
+      expect(plan.queueEncryption).toEqual({ kind: 'aws-managed' });
       expect(plan.blobStore).toEqual({ encryptionKey: undefined });
     });
 
-    it('takes the excluded tables out of KMS and leaves the queues on the default', () => {
+    it('takes the excluded tables out of KMS and leaves the queues on AWS-managed encryption', () => {
       const plan = MailboxEncryption.plan({ excluded: [MailboxKmsResource.DYNAMODB] });
 
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.DEFAULT });
-      expect(plan.queues).toBeUndefined();
+      expect(plan.queueEncryption).toEqual({ kind: 'aws-managed' });
     });
 
     it('takes the excluded queues out of KMS and leaves the tables on AWS-managed encryption', () => {
       const plan = MailboxEncryption.plan({ excluded: [MailboxKmsResource.SQS] });
 
-      expect(plan.queues).toEqual({ encryption: QueueEncryption.UNENCRYPTED });
+      expect(plan.queueEncryption).toEqual({ kind: 'unencrypted' });
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.AWS_MANAGED });
     });
 
@@ -54,7 +53,7 @@ describe('MailboxEncryption', () => {
       const plan = MailboxEncryption.plan({ mode: MailboxKmsMode.NONE });
 
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.DEFAULT });
-      expect(plan.queues).toEqual({ encryption: QueueEncryption.UNENCRYPTED });
+      expect(plan.queueEncryption).toEqual({ kind: 'unencrypted' });
       expect(plan.blobStore).toEqual({ encryptionKey: undefined });
     });
   });
@@ -66,7 +65,7 @@ describe('MailboxEncryption', () => {
       const plan = MailboxEncryption.plan({ mode: MailboxKmsMode.CUSTOMER_MANAGED, key: shared });
 
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.CUSTOMER_MANAGED, encryptionKey: shared });
-      expect(plan.queues).toEqual({ encryption: QueueEncryption.KMS, encryptionMasterKey: shared });
+      expect(plan.queueEncryption).toEqual({ kind: 'kms', key: shared });
       expect(plan.blobStore).toEqual({ encryptionKey: shared });
     });
 
@@ -76,7 +75,7 @@ describe('MailboxEncryption', () => {
       const plan = MailboxEncryption.plan({ mode: MailboxKmsMode.CUSTOMER_MANAGED, key: shared, perResource: { blobStore, dynamoTables, queues } });
 
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.CUSTOMER_MANAGED, encryptionKey: dynamoTables });
-      expect(plan.queues).toEqual({ encryption: QueueEncryption.KMS, encryptionMasterKey: queues });
+      expect(plan.queueEncryption).toEqual({ kind: 'kms', key: queues });
       expect(plan.blobStore).toEqual({ encryptionKey: blobStore });
     });
 
@@ -86,7 +85,7 @@ describe('MailboxEncryption', () => {
       const plan = MailboxEncryption.plan({ mode: MailboxKmsMode.CUSTOMER_MANAGED, key: shared, perResource: { blobStore } });
 
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.CUSTOMER_MANAGED, encryptionKey: shared });
-      expect(plan.queues).toEqual({ encryption: QueueEncryption.KMS, encryptionMasterKey: shared });
+      expect(plan.queueEncryption).toEqual({ kind: 'kms', key: shared });
       expect(plan.blobStore).toEqual({ encryptionKey: blobStore });
     });
 
@@ -100,7 +99,7 @@ describe('MailboxEncryption', () => {
       });
 
       expect(plan.dynamoTables).toEqual({ encryption: TableEncryption.DEFAULT });
-      expect(plan.queues).toEqual({ encryption: QueueEncryption.UNENCRYPTED });
+      expect(plan.queueEncryption).toEqual({ kind: 'unencrypted' });
       expect(plan.blobStore).toEqual({ encryptionKey: blobStore });
     });
 

@@ -10,26 +10,26 @@
  * tsc and synth, so these assertions are the only guard.
  */
 
-import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import { VENDOR_ACCOUNT_ID }                    from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                      from 'aws-cdk-lib/assertions';
-import { HttpApi }                              from 'aws-cdk-lib/aws-apigatewayv2';
-import { Function as LambdaFunction }           from 'aws-cdk-lib/aws-lambda';
-import { Bucket }                               from 'aws-cdk-lib/aws-s3';
-import * as cdk                                 from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver }          from '@serverlessinbox/artifact-registry-cdk';
+import { VENDOR_ACCOUNT_ID }                             from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                               from 'aws-cdk-lib/assertions';
+import { HttpApi }                                       from 'aws-cdk-lib/aws-apigatewayv2';
+import { Function as LambdaFunction }                    from 'aws-cdk-lib/aws-lambda';
+import { Bucket }                                        from 'aws-cdk-lib/aws-s3';
+import * as cdk                                          from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }    from '../../../contracts/websocket-push';
-import { DataBlobStore }                        from '../../../resources/buckets/data-blob-store';
-import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
-import { EmailSendingQueue }                    from '../../../resources/queues/email-sending-queue';
-import { AuthKeyStoreTable }                    from '../../../resources/tables/auth-key-store-table';
-import { AuthMethod }                           from '../../auth/auth-method';
-import type { IMailboxAuthProvider }            from '../../auth/auth-provider';
-import type { IJmapApiAddon }                   from '../addons';
-import { JmapApi }                              from '../jmap-api';
-import type { JmapApiProps }                    from '../jmap-api';
+import type { IWebSocketBroadcastPublisher }             from '../../../contracts/websocket-push';
+import { DataBlobStore }                                 from '../../../resources/buckets/data-blob-store';
+import { AuditEventsQueue }                              from '../../../resources/queues/audit-events-queue';
+import { EmailSendingQueue }                             from '../../../resources/queues/email-sending-queue';
+import { AuthKeyStoreTable }                             from '../../../resources/tables/auth-key-store-table';
+import { AuthMethod }                                    from '../../auth/auth-method';
+import type { IMailboxAuthProvider }                     from '../../auth/auth-provider';
+import type { IJmapApiAddon }                            from '../addons';
+import { JmapApi }                                       from '../jmap-api';
+import type { JmapApiProps }                             from '../jmap-api';
 
-import { certificate, dataTable, newApiStack }  from './apis-helpers';
+import { certificate, dataTable, newApiStack, patTable } from './apis-helpers';
 
 describe('JmapApi', () => {
   let stack: cdk.Stack;
@@ -50,11 +50,12 @@ describe('JmapApi', () => {
     return {
       configTable:          dataTable(stack, 'config-table'),
       itemTable:            dataTable(stack, 'item-table'),
+      patTable:             patTable(stack, 'pat-table'),
       changelogTable:       dataTable(stack, 'changelog-table'),
       authKeyStoreTable:    new AuthKeyStoreTable(stack, 'auth-key-store-table'),
       blobStore:            new DataBlobStore(new Bucket(stack, 'blob-store')),
-      emailSubmissionQueue: new EmailSendingQueue(stack, 'email-submission-queue'),
-      auditEventsQueue:     new AuditEventsQueue(stack, 'audit-events-queue'),
+      emailSubmissionQueue: new EmailSendingQueue(stack, 'email-submission-queue', { encryption: { kind: 'aws-managed' } }),
+      auditEventsQueue:     new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
       cdnHost:              'cdn.example.com',
       artifactResolver:     new PinnedArtifactResolver({
         packages:         {

@@ -18,17 +18,18 @@ import {
   TEST_ACCOUNT,
   TEST_REGION,
   newDeployerTestStack,
-} from '../../../../__tests__/deployer-test-helpers';
-import type { TableRole }                from '../../../../runtime/data-override-resolver/resource-properties-contract';
-import { MailboxDataDeployer }           from '../mailbox-data-deployer';
-import type { MailboxDataDeployerProps } from '../mailbox-data-deployer';
+}                                                             from '../../../../__tests__/deployer-test-helpers';
+import type { TableRole }                                     from '../../../../runtime/data-override-resolver/resource-properties-contract';
+import { MailboxDataDeployer }                                from '../mailbox-data-deployer';
+import type { MailboxDataDeployerProps }                      from '../mailbox-data-deployer';
 
-const DEPLOYER_RESOURCE_TYPE            = 'Custom::MailboxDataDeployer';
-const RESOLVER_RESOURCE_TYPE            = 'Custom::MailboxDataOverrideResolver';
-const DATA_STACK_NAME                   = 'given-data';
-const STACK_NAME_REF                    = { Ref: 'AWS::StackName' };
-const STACK_GUID                        = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
-const TABLE_ROLES: readonly TableRole[] = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];
+const DEPLOYER_RESOURCE_TYPE                                 = 'Custom::MailboxDataDeployer';
+const RESOLVER_RESOURCE_TYPE                                 = 'Custom::MailboxDataOverrideResolver';
+const DATA_STACK_NAME                                        = 'given-data';
+const STACK_NAME_REF                                         = { Ref: 'AWS::StackName' };
+const STACK_GUID                                             = { 'Fn::Select': [2, { 'Fn::Split': ['/', { Ref: 'AWS::StackId' }] }] };
+const TABLE_ROLES: readonly Exclude<TableRole, 'patTable'>[] = ['configTable', 'itemTable', 'changelogTable', 'auditLogTable', 'mailFeedbackTable'];
+const RESOLVER_ROLES: readonly TableRole[]                   = [...TABLE_ROLES, 'patTable'];
 
 interface SynthesizedDeployer {
   readonly template:          Template;
@@ -136,7 +137,7 @@ describe('MailboxDataDeployer', () => {
   });
 
   describe('data stack ref', () => {
-    it.each(TABLE_ROLES)('hands the override resolver the data stack output for the %s as its incoming ARN', (role) => {
+    it.each(RESOLVER_ROLES)('hands the override resolver the data stack output for the %s as its incoming ARN', (role) => {
       const { template } = synthDeployer();
 
       template.hasResourceProperties(RESOLVER_RESOURCE_TYPE, {
@@ -149,6 +150,13 @@ describe('MailboxDataDeployer', () => {
 
       const [statement] = statementsForAction(template, 'dynamodb:GetItem');
       expect(resourcesOf(statement)[0]).toEqual({ 'Fn::GetAtt': [logicalIdOf(template, RESOLVER_RESOURCE_TYPE), `${role}Arn`] });
+    });
+
+    it('points the token table handle at the ARN the override resolver answers with', () => {
+      const { template } = synthDeployer({}, (deployer, grantee) => deployer.patTable.grantPatLookup(grantee));
+
+      const [statement] = statementsForAction(template, 'dynamodb:GetItem');
+      expect(resourcesOf(statement)[0]).toEqual({ 'Fn::GetAtt': [logicalIdOf(template, RESOLVER_RESOURCE_TYPE), 'patTableArn'] });
     });
 
     it('points the blob store handle at the data stack output for the blob store', () => {

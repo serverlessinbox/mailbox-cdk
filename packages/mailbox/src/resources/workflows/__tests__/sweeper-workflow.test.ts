@@ -9,19 +9,19 @@
  * The state machine is retained, or the sweep could not finish once the stack is deleted.
  */
 
-import { renderLiteralText, statementsForAction }                        from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Template }                                                      from 'aws-cdk-lib/assertions';
-import * as iam                                                          from 'aws-cdk-lib/aws-iam';
-import * as lambda                                                       from 'aws-cdk-lib/aws-lambda';
-import * as sfn                                                          from 'aws-cdk-lib/aws-stepfunctions';
-import { App, BootstraplessSynthesizer, Duration, Stack }                from 'aws-cdk-lib';
-import * as t                                                            from 'typanion';
+import { renderLiteralText, statementsForAction }         from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                                       from 'aws-cdk-lib/assertions';
+import * as iam                                           from 'aws-cdk-lib/aws-iam';
+import * as lambda                                        from 'aws-cdk-lib/aws-lambda';
+import * as sfn                                           from 'aws-cdk-lib/aws-stepfunctions';
+import { App, BootstraplessSynthesizer, Duration, Stack } from 'aws-cdk-lib';
+import * as t                                             from 'typanion';
 
-import { stateBodyOf }                                                   from '../../../__tests__/state-machine-helpers';
-import { isTemplateValue, resourcesOfType }                              from '../../../__tests__/template-resources';
-import type { IRemovalChain }                                            from '../../../platform/ops/sweeper/removal';
-import { SweeperWorkflow }                                               from '../sweeper-workflow';
-import type { SweeperWorkflowProps }                                     from '../sweeper-workflow';
+import { stateBodyOf }                                    from '../../../__tests__/state-machine-helpers';
+import { isTemplateValue, resourcesOfType }               from '../../../__tests__/template-resources';
+import type { IRemovalChain }                             from '../../../platform/ops/sweeper/removal';
+import { SweeperWorkflow }                                from '../sweeper-workflow';
+import type { SweeperWorkflowProps }                      from '../sweeper-workflow';
 
 const STATE_MACHINE_ARN = 'arn:aws:states:us-west-2:123456789012:stateMachine:sweeper-machine';
 

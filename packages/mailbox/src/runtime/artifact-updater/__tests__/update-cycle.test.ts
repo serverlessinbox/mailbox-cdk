@@ -3,18 +3,23 @@
 /**
  * Pins how one scan decides which resources to update and by which path: only resources that opted in and
  * carry their artifact tags are touched, each goes to the updater its type names, and one failing resource
- * must not stop the others from being updated. The three updaters have their own suites and are faked here.
+ * must not stop the others from being updated. It also pins the concurrency: the regions run side by side,
+ * code updates share a capped pool, and the edge functions of a region run one at a time. The three updaters
+ * have their own suites and are faked here.
  */
 
 import {
   GetResourcesCommand,
   ResourceGroupsTaggingAPIClient,
   type ResourceTagMapping,
-} from '@aws-sdk/client-resource-groups-tagging-api';
-import { ServerlessInboxTagKeys }                                                             from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                                                         from 'aws-sdk-client-mock';
+}                                                                               from '@aws-sdk/client-resource-groups-tagging-api';
+import { ServerlessInboxTagKeys }                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import { buildUpdaterParts, DISTRIBUTION_ARN, LAMBDA_ARN, lambdaTarget, uiTarget, US_WEST_2 } from './updater-helpers';
+import { MAX_CONCURRENT_RESOURCE_UPDATES }                                      from '../update-cycle';
+
+import { buildUpdaterParts, DISTRIBUTION_ARN, LAMBDA_ARN, lambdaTarget,
+  uiTarget, US_WEST_2 }                                                         from './updater-helpers';
 
 jest.mock('../lambda-code/lambda-code-updater');
 jest.mock('../edge-lambda-updater');
@@ -48,6 +53,25 @@ function distributionWithType(autoUpdateType: string, bucketName?: string): Reso
     [ServerlessInboxTagKeys.autoUpdateType]:  autoUpdateType,
     ...(bucketName ? { [ServerlessInboxTagKeys.bucketName]: bucketName } : {}),
   });
+}
+
+/** A promise a test opens when it chooses, so an update that awaits it stays in flight until then. */
+interface Gate {
+  readonly promise: Promise<void>;
+  readonly open:    () => void;
+}
+
+function gate(): Gate {
+  let open: () => void = () => undefined;
+  const promise        = new Promise<void>((resolve) => {
+    open = () => resolve();
+  });
+  return { promise, open };
+}
+
+/** Resolves once every promise chain already started has run to its next wait. */
+function settle(): Promise<void> {
+  return new Promise<void>((resolve) => setImmediate(resolve));
 }
 
 describe('UpdateCycle', () => {
@@ -168,9 +192,9 @@ describe('UpdateCycle', () => {
       expect(edgeUpdater.advanceIfStale).not.toHaveBeenCalled();
       expect(uiUpdater.advanceIfStale).not.toHaveBeenCalled();
       expect(console.debug).toHaveBeenCalledWith('unknown auto-update-type', {
-        arn:          unknownType.ResourceARN,
+        arn: unknownType.ResourceARN,
         resourceType,
-        type:         'canary',
+        type: 'canary',
       });
     });
 
@@ -347,6 +371,126 @@ describe('UpdateCycle', () => {
       expect(console.error).toHaveBeenCalledWith(
         'failed to update resource',
         expect.objectContaining({ arn: 'arn:aws:lambda:us-east-1:123456789012:layer:shared:3' }),
+      );
+    });
+  });
+
+  describe('concurrency', () => {
+    const codeFunctions = (count: number): ResourceTagMapping[] =>
+      Array.from(Array(count).keys(), (index) =>
+        lambdaWithType('code', `arn:aws:lambda:us-east-1:123456789012:function:fn-${index}`));
+
+    it('never has more code updates in flight than MAX_CONCURRENT_RESOURCE_UPDATES', async () => {
+      const resources = codeFunctions(MAX_CONCURRENT_RESOURCE_UPDATES + 2);
+      taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: resources });
+      const { cycle, codeUpdater } = buildUpdaterParts();
+      const held                   = gate();
+      let inFlight                 = 0;
+      let peak                     = 0;
+      jest.mocked(codeUpdater.advanceIfStale).mockImplementation(async () => {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await held.promise;
+        inFlight -= 1;
+        return true;
+      });
+
+      const run = cycle.run();
+      try {
+        await settle();
+        expect(codeUpdater.advanceIfStale).toHaveBeenCalledTimes(MAX_CONCURRENT_RESOURCE_UPDATES);
+      } finally {
+        held.open();
+      }
+      await run;
+
+      expect(peak).toBe(MAX_CONCURRENT_RESOURCE_UPDATES);
+      expect(codeUpdater.advanceIfStale).toHaveBeenCalledTimes(resources.length);
+    });
+
+    it('lets the other updates finish when one of them fails while the pool is full', async () => {
+      const resources = codeFunctions(MAX_CONCURRENT_RESOURCE_UPDATES + 1);
+      taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: resources });
+      const { cycle, codeUpdater } = buildUpdaterParts();
+      jest.mocked(codeUpdater.advanceIfStale).mockRejectedValueOnce(new Error('UpdateFunctionCode failed'));
+
+      await expect(cycle.run()).resolves.toBeUndefined();
+
+      expect(codeUpdater.advanceIfStale).toHaveBeenCalledTimes(resources.length);
+      expect(console.info).toHaveBeenCalledWith('artifact update cycle completed', {
+        attempted: resources.length,
+        failed:    1,
+      });
+    });
+
+    it('updates two edge functions of the edge region one after another', async () => {
+      taggingMock.on(GetResourcesCommand).resolves({
+        ResourceTagMappingList: [
+          lambdaWithType('edge', 'arn:aws:lambda:us-east-1:123456789012:function:edge-a'),
+          lambdaWithType('edge', 'arn:aws:lambda:us-east-1:123456789012:function:edge-b'),
+        ],
+      });
+      const { cycle, edgeUpdater } = buildUpdaterParts();
+      const held                   = gate();
+      let inFlight                 = 0;
+      let peak                     = 0;
+      jest.mocked(edgeUpdater.advanceIfStale).mockImplementation(async () => {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await held.promise;
+        inFlight -= 1;
+        return true;
+      });
+
+      const run = cycle.run();
+      try {
+        await settle();
+        expect(edgeUpdater.advanceIfStale).toHaveBeenCalledTimes(1);
+      } finally {
+        held.open();
+      }
+      await run;
+
+      expect(edgeUpdater.advanceIfStale).toHaveBeenCalledTimes(2);
+      expect(peak).toBe(1);
+    });
+
+    it('starts the edge region update while the deployment region update is still in flight', async () => {
+      taggingMock
+        .on(GetResourcesCommand)
+        .resolvesOnce({ ResourceTagMappingList: [lambdaWithType('code')] })
+        .resolves({ ResourceTagMappingList: [lambdaWithType('edge')] });
+      const { cycle, codeUpdater, edgeUpdater } = buildUpdaterParts({ deploymentRegion: US_WEST_2 });
+      const held                                = gate();
+      jest.mocked(codeUpdater.advanceIfStale).mockImplementation(async () => {
+        await held.promise;
+        return true;
+      });
+
+      const run = cycle.run();
+      try {
+        await settle();
+        expect(codeUpdater.advanceIfStale).toHaveBeenCalledTimes(1);
+        expect(edgeUpdater.advanceIfStale).toHaveBeenCalledTimes(1);
+      } finally {
+        held.open();
+      }
+      await run;
+    });
+
+    it('still updates the edge region when the scan of the deployment region fails, and rejects', async () => {
+      taggingMock
+        .on(GetResourcesCommand)
+        .rejectsOnce(new Error('ThrottlingException'))
+        .resolves({ ResourceTagMappingList: [lambdaWithType('edge')] });
+      const { cycle, edgeUpdater } = buildUpdaterParts({ deploymentRegion: US_WEST_2 });
+
+      await expect(cycle.run()).rejects.toThrow('ThrottlingException');
+
+      expect(edgeUpdater.advanceIfStale).toHaveBeenCalledTimes(1);
+      expect(console.error).toHaveBeenCalledWith(
+        'resource scan failed',
+        expect.objectContaining({ region: US_WEST_2, error: 'ThrottlingException' }),
       );
     });
   });

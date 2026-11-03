@@ -31,11 +31,11 @@ describe('McpApi', () => {
     });
 
     sut = new McpApi(stack, 'mcp-api', {
-      jmapApiUrl:       'https://jmap.example.com',
+      jmapApiUrl: 'https://jmap.example.com',
       authorizerLambda,
       certificate:      certificate(stack, 'mcp.example.com'),
       host:             'mcp.example.com',
-      scopeMap:         { 'mail.read': [Permission.MAIL_READ] },
+      scopeMap:         { 'mail.read': [Permission.MAIL_READ_ITEMS] },
       artifactResolver: new PinnedArtifactResolver({
         packages:         {
           'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },

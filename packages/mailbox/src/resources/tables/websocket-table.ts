@@ -1,8 +1,8 @@
-import { StackNamedTable }              from '@serverlessinbox/mailbox-cdk-shared';
-import { AttributeType, BillingMode }   from 'aws-cdk-lib/aws-dynamodb';
-import { Grant, IGrantable }            from 'aws-cdk-lib/aws-iam';
-import { RemovalPolicy }                from 'aws-cdk-lib';
-import { Construct }                    from 'constructs';
+import { StackNamedTable }            from '@serverlessinbox/mailbox-cdk-shared';
+import { AttributeType, BillingMode } from 'aws-cdk-lib/aws-dynamodb';
+import { Grant, IGrantable }          from 'aws-cdk-lib/aws-iam';
+import { RemovalPolicy }              from 'aws-cdk-lib';
+import { Construct }                  from 'constructs';
 
 /**
  * Access to the WebSocket connections table without exposing the underlying DynamoDB table. A

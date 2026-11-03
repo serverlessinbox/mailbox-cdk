@@ -44,6 +44,34 @@ describe('extractConfig', () => {
     });
   });
 
+  it('reads the personal access token table when its header is present', () => {
+    const request = originRequestOf({
+      customHeaders: { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE, 'x-region': 'eu-west-1', 'x-pat-table': 'pat-table' },
+    });
+
+    expect(extractConfig(request)).toEqual({
+      kind:   'read',
+      config: { authKeyStoreTable: AUTH_KEY_STORE_TABLE, region: 'eu-west-1', jwtAlgorithms: undefined, patTable: 'pat-table' },
+    });
+  });
+
+  it('leaves the personal access token table unset when its header is absent, so JWT configuration is unchanged', () => {
+    const request = originRequestOf({ customHeaders: { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE, 'x-region': 'eu-west-1' } });
+
+    expect(extractConfig(request)).toEqual({
+      kind:   'read',
+      config: { authKeyStoreTable: AUTH_KEY_STORE_TABLE, region: 'eu-west-1' },
+    });
+  });
+
+  it('names x-pat-table when it is present but empty', () => {
+    const reading = extractConfig(originRequestOf({
+      customHeaders: { 'x-auth-key-store-table': AUTH_KEY_STORE_TABLE, 'x-region': 'eu-west-1', 'x-pat-table': '' },
+    }));
+
+    expect(reading).toEqual({ kind: 'rejected', problem: 'header x-pat-table is empty' });
+  });
+
   it('names the missing custom origin headers', () => {
     expect(extractConfig(originRequestOf({ customHeaders: null }))).toEqual({
       kind:    'rejected',

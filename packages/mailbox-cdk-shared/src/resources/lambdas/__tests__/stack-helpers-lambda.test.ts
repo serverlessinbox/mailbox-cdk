@@ -7,16 +7,16 @@
  * status read fails at deploy time with AccessDenied, which no synth-time check reports.
  */
 
-import { Match, Template }                         from 'aws-cdk-lib/assertions';
+import { Match, Template }                from 'aws-cdk-lib/assertions';
 
-import { createStackWithResolver }                 from '../../../__tests__/stack-helpers-helpers';
-import { actionsOf, allPolicyStatements }          from '../../../cdk-test-support';
-import { StackHelpersLambda }                      from '../stack-helpers-lambda';
+import { createStackWithResolver }        from '../../../__tests__/stack-helpers-helpers';
+import { actionsOf, allPolicyStatements } from '../../../cdk-test-support';
+import { StackHelpersLambda }             from '../stack-helpers-lambda';
 
 describe('StackHelpersLambda', () => {
   const { stack, resolver } = createStackWithResolver();
   new StackHelpersLambda(stack, 'handler', { artifactResolver: resolver });
-  const template            = Template.fromStack(stack);
+  const template = Template.fromStack(stack);
 
   it('loads its code from the stack-helpers bundle of mailbox-cdk-shared', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {

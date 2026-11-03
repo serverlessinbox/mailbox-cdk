@@ -8,16 +8,17 @@
  * grant renders is pinned by the resource that owns it.
  */
 
-import { statementsForAction }                                                                                              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { VENDOR_ACCOUNT_ID }                                                                                                from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                                                                                         from 'aws-cdk-lib/assertions';
+import { statementsForAction }                                                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { VENDOR_ACCOUNT_ID }                                                    from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                                                             from 'aws-cdk-lib/assertions';
 
-import type { IWebSocketBroadcastPublisher }                                                                                from '../../../contracts/websocket-push';
-import { Permission }                                                                                                       from '../../../core/auth/jmap-scopes';
-import { JmapApiLambda }                                                                                                    from '../jmap-api-lambda';
+import type { IWebSocketBroadcastPublisher }                                    from '../../../contracts/websocket-push';
+import { Permission }                                                           from '../../../core/auth/jmap-scopes';
+import { JmapApiLambda }                                                        from '../jmap-api-lambda';
 
-import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataBlobStore, fakeDataTable, fakeIdentityProvisioner, fakeQueue } from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                                                                                from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataBlobStore,
+  fakeDataTable, fakeIdentityProvisioner, fakeQueue }                           from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                                    from './lambda-wrapper-helpers';
 
 function synthesize(oauthProtectedResourceUrl?: string) {
   const { stack, artifactResolver } = arrangeWrapperStack();
@@ -41,7 +42,7 @@ function synthesize(oauthProtectedResourceUrl?: string) {
     apiBaseUrl: 'https://jmap.example.com',
     artifactResolver,
     identityProvisioner,
-    scopeMap:         { 'mail.read': [Permission.MAIL_READ] },
+    scopeMap:         { 'mail.read': [Permission.MAIL_READ_ITEMS] },
     vendorAccountIds: [VENDOR_ACCOUNT_ID],
     oauthProtectedResourceUrl,
   });
@@ -70,7 +71,7 @@ describe('JmapApiLambda', () => {
         IDENTITY_PROVISIONER_FUNCTION_NAME: 'identity-provisioner',
         CDN_HOST:                           'cdn.example.com',
         API_BASE_URL:                       'https://jmap.example.com',
-        OAUTH_HANDLER_CONFIG:               JSON.stringify({ scopeMap: { 'mail.read': [Permission.MAIL_READ] } }),
+        OAUTH_HANDLER_CONFIG:               JSON.stringify({ scopeMap: { 'mail.read': [Permission.MAIL_READ_ITEMS] } }),
       });
     });
 
@@ -90,7 +91,7 @@ describe('JmapApiLambda', () => {
       const { lambda, configTable, authKeyStoreTable } = synthesize();
 
       expectGrantedOnceTo(configTable.grantRead, lambda);
-      expectGrantedOnceTo(authKeyStoreTable.grantRead, lambda);
+      expectGrantedOnceTo(authKeyStoreTable.grantReadHmac, lambda);
     });
 
     it('read-write on the item and changelog tables', () => {

@@ -3,11 +3,11 @@
  * `[\sa-zA-Z0-9_.-]*`, which only a deploy reveals, so the literal is held to that set here.
  */
 
-import { Template }                        from 'aws-cdk-lib/assertions';
-import { App, Stack }                      from 'aws-cdk-lib';
-import * as t                              from 'typanion';
+import { Template }                     from 'aws-cdk-lib/assertions';
+import { App, Stack }                   from 'aws-cdk-lib';
+import * as t                           from 'typanion';
 
-import { ServerlessInboxResourceGroup }    from '../serverless-inbox-resource-group';
+import { ServerlessInboxResourceGroup } from '../serverless-inbox-resource-group';
 
 const isGroupResource = t.isPartial({
   Properties: t.isPartial({ Description: t.isString() }),

@@ -18,16 +18,16 @@ import {
   managedLambdasOf,
   probeManagedLambda,
   type ManagedLambda,
-} from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Template }                                      from 'aws-cdk-lib/assertions';
-import * as cdk                                          from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
-import * as path                                         from 'node:path';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Template }                                                             from 'aws-cdk-lib/assertions';
+import * as cdk                                                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                                        from 'aws-cdk-lib';
+import * as path                                                                from 'node:path';
 
-import { MailboxEdgeStack }                              from '../core/edge/mailbox-edge-stack';
-import { Mailbox }                                       from '../mailbox';
+import { MailboxEdgeStack }                                                     from '../core/edge/mailbox-edge-stack';
+import { Mailbox }                                                              from '../mailbox';
 
-import { createMockAuthProvider, TEST_ARTIFACT_CONTEXT } from './mailbox-helpers';
+import { createMockAuthProvider, TEST_ARTIFACT_CONTEXT }                        from './mailbox-helpers';
 
 const GO_PACKAGE = 'mailbox-go';
 
@@ -56,7 +56,9 @@ const GO_ARTIFACTS = new Set<string>([
   'identity-provisioner',
   'idp-token-exchange',
   'jmap-api',
+  'job-sweeper',
   'license-refresher',
+  'mail-import-runner',
   'ses-receipt-forwarder',
   'sqs-ses-event-processor',
   'stack-failure-detector',

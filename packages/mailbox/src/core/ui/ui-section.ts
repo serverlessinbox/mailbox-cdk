@@ -1,22 +1,22 @@
-import type { IArtifactResolver }            from '@serverlessinbox/artifact-registry-cdk';
-import { applyServerlessInboxComponentTag }  from '@serverlessinbox/mailbox-cdk-shared';
-import type * as acm                         from 'aws-cdk-lib/aws-certificatemanager';
-import { Construct }                         from 'constructs';
-import type { IDependable }                  from 'constructs';
+import type { IArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
+import { applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
+import type * as acm                        from 'aws-cdk-lib/aws-certificatemanager';
+import { Construct }                        from 'constructs';
+import type { IDependable }                 from 'constructs';
 
-import type { IUiContentUpdater }            from '../../contracts/ui-content-updater';
-import type { MailboxOAuthClients }          from '../../mailbox-outputs';
-import type { MailboxCertificateOverrides }  from '../../mailbox-props';
-import type { IAuditEventsQueue }            from '../../resources/queues/audit-events-queue';
-import type { IDataTable }                   from '../../resources/tables/data-tables';
-import type { IAdminApiAddon }               from '../apis/addons';
-import type { AuthClientConfig }             from '../auth/auth-provider';
-import type { IMailboxAuthProvider }         from '../auth/auth-provider';
-import type { IMailboxDomainNames }          from '../domains/mailbox-domains';
+import type { IUiContentUpdater }           from '../../contracts/ui-content-updater';
+import type { MailboxOAuthClients }         from '../../mailbox-outputs';
+import type { MailboxCertificateOverrides } from '../../mailbox-props';
+import type { IAuditEventsQueue }           from '../../resources/queues/audit-events-queue';
+import type { IDataTable }                  from '../../resources/tables/data-tables';
+import type { IAdminApiAddon }              from '../apis/addons';
+import type { AuthClientConfig }            from '../auth/auth-provider';
+import type { IMailboxAuthProvider }        from '../auth/auth-provider';
+import type { IMailboxDomainNames }         from '../domains/mailbox-domains';
 
-import { AdminUi }                           from './admin-ui';
-import type { MailboxUi, MailboxUiConfig }   from './mailbox-ui';
-import { WebmailUi }                         from './webmail-ui';
+import { AdminUi }                          from './admin-ui';
+import type { MailboxUi, MailboxUiConfig }  from './mailbox-ui';
+import { WebmailUi }                        from './webmail-ui';
 
 /** What {@link UiSection} uses of the data section. */
 export interface IUiDataInputs {

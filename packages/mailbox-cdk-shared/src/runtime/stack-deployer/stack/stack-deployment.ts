@@ -1,6 +1,6 @@
-import * as t                    from 'typanion';
+import * as t                                                                   from 'typanion';
 
-import { isRegion, type Region } from '../../../runtime/handler-kit/aws-identifiers';
+import { isRegion, type Region }                                                from '../../../runtime/handler-kit/aws-identifiers';
 import {
   isLogicalResourceId,
   isPhysicalResourceId,
@@ -10,10 +10,10 @@ import {
   isStackName,
   type PhysicalResourceId,
   type StackName,
-} from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
-import { isTemplateUrl }         from '../deployer-identifiers';
+}                                                                               from '../../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { isTemplateUrl }                                                        from '../deployer-identifiers';
 
-import { isStackFlag }           from './stack-flag';
+import { isStackFlag }                                                          from './stack-flag';
 
 const isRequestType = t.isEnum(['Create', 'Update', 'Delete'] as const);
 

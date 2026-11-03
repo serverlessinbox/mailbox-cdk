@@ -1,14 +1,14 @@
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
-import type { Pipeline }          from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import type { Pipeline }                                                        from '@serverlessinbox/mailbox-cdk-shared';
 import {
   BucketAutoEmpty,
   StaticContentDeployer,
   StaticContentSource,
   slugifyLabel,
   ServerlessInboxTagKeys,
-} from '@serverlessinbox/mailbox-cdk-shared';
-import * as acm                       from 'aws-cdk-lib/aws-certificatemanager';
-import { HttpOrigin }                 from 'aws-cdk-lib/aws-cloudfront-origins';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                                                                 from 'aws-cdk-lib/aws-certificatemanager';
+import { HttpOrigin }                                                           from 'aws-cdk-lib/aws-cloudfront-origins';
 import {
   AllowedMethods,
   CachePolicy,
@@ -21,18 +21,18 @@ import {
   ResponseHeadersPolicy,
   SecurityPolicyProtocol,
   ViewerProtocolPolicy,
-} from 'aws-cdk-lib/aws-cloudfront';
-import * as iam                            from 'aws-cdk-lib/aws-iam';
-import { Bucket }                          from 'aws-cdk-lib/aws-s3';
-import { Duration, Fn, Tags }              from 'aws-cdk-lib';
-import { Construct, IDependable }          from 'constructs';
+}                                                                               from 'aws-cdk-lib/aws-cloudfront';
+import * as iam                                                                 from 'aws-cdk-lib/aws-iam';
+import { Bucket }                                                               from 'aws-cdk-lib/aws-s3';
+import { Duration, Fn, Tags }                                                   from 'aws-cdk-lib';
+import { Construct, IDependable }                                               from 'constructs';
 
-import { AuthPolicyName, OAuthClientName } from '../../contracts/auth-names';
-import { UiBucket }                        from '../../resources/buckets/ui-bucket';
-import type { IAuditEventsQueue }          from '../../resources/queues/audit-events-queue';
-import type { IDataTable }                 from '../../resources/tables/data-tables';
+import { AuthPolicyName, OAuthClientName }                                      from '../../contracts/auth-names';
+import { UiBucket }                                                             from '../../resources/buckets/ui-bucket';
+import type { IAuditEventsQueue }                                               from '../../resources/queues/audit-events-queue';
+import type { IDataTable }                                                      from '../../resources/tables/data-tables';
 
-import { IdpTokenExchangeApi }             from './idp-token-exchange-api';
+import { IdpTokenExchangeApi }                                                  from './idp-token-exchange-api';
 
 /** Location of a UI bundle zip in the artifact registry: the package that publishes it and the object path within it. */
 export type UiBundleSource = {

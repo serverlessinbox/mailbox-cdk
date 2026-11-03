@@ -6,10 +6,10 @@
  * throw instead of producing a policy that trusts a wrong or non-account principal.
  */
 
-import * as cdk                                        from 'aws-cdk-lib';
+import * as cdk                                       from 'aws-cdk-lib';
 
-import { VENDOR_ACCOUNT_IDS_CONTEXT_KEY }              from '../context-keys';
-import { VENDOR_ACCOUNT_ID, resolveVendorAccountIds }  from '../vendor-account';
+import { VENDOR_ACCOUNT_IDS_CONTEXT_KEY }             from '../context-keys';
+import { VENDOR_ACCOUNT_ID, resolveVendorAccountIds } from '../vendor-account';
 
 function stackWith(value?: unknown): cdk.Stack {
   const context = value === undefined ? {} : { [VENDOR_ACCOUNT_IDS_CONTEXT_KEY]: value };

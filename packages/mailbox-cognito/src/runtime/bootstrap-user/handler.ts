@@ -1,5 +1,5 @@
-import { CloudFormationClient }          from '@aws-sdk/client-cloudformation';
-import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
+import { CloudFormationClient }                                                 from '@aws-sdk/client-cloudformation';
+import { CognitoIdentityProviderClient }                                        from '@aws-sdk/client-cognito-identity-provider';
 import {
   answerRequestWithBadConfig,
   emitManualFinalize,
@@ -10,13 +10,13 @@ import {
   ParentStackStatus,
   readCustomResourceRequest,
   withSmokeTest,
-} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { wrapHandler }                 from 'aws-custom-resources';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { wrapHandler }                                                          from 'aws-custom-resources';
 
-import { BootstrapUserAnswers }        from './bootstrap-user-answers';
-import { BootstrapUserRequestHandler } from './bootstrap-user-request-handler';
-import { load }                        from './config';
-import { UserEnsurer }                 from './ensure-user';
+import { BootstrapUserAnswers }                                                 from './bootstrap-user-answers';
+import { BootstrapUserRequestHandler }                                          from './bootstrap-user-request-handler';
+import { load }                                                                 from './config';
+import { UserEnsurer }                                                          from './ensure-user';
 
 const { config, error: configError } = env.tryLoad(load);
 const cognito                        = new CognitoIdentityProviderClient({});
@@ -30,7 +30,7 @@ export const handler = withSmokeTest(wrapHandler(async (event) => {
     return BootstrapUserAnswers.withPasswordMarker(badConfigAnswer.PhysicalResourceId);
   }
 
-  emitManualFinalize({ ...event, StackId: request.StackId }, { service: config.serviceName });
+  emitManualFinalize(request, { service: config.serviceName });
 
   const logger                = new LoggerBuffer(config.serviceName, config.logLevel);
   const requestHandler        = new BootstrapUserRequestHandler(new UserEnsurer(cognito, logger), logger);

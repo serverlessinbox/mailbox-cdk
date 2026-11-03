@@ -72,24 +72,15 @@ describe('PipelineLogGroup', () => {
     expect(groups[0]).toMatchObject({ DeletionPolicy: 'RetainExceptOnCreate' });
   });
 
-  it('grantFilterEvents grants logs:FilterLogEvents scoped to the log group ARN', () => {
+  it('groupLevelArn is the log-group-format ARN of the group, with the account and region as Ref tokens and no trailing :*', () => {
     const stack    = newStack();
     const logGroup = PipelineLogGroup.getOrCreate(stack, 'jmap');
-    const role     = new Role(stack, 'test-role', { assumedBy: new ServicePrincipal('lambda.amazonaws.com') });
 
-    logGroup.grantFilterEvents(role);
+    const groupLevelArn = JSON.stringify(stack.resolve(logGroup.groupLevelArn));
 
-    const [logGroupLogicalId] = Object.keys(logGroupResources(stack));
-    Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: Match.objectLike({
-        Statement: Match.arrayWith([
-          Match.objectLike({
-            Action:   'logs:FilterLogEvents',
-            Effect:   'Allow',
-            Resource: { 'Fn::GetAtt': [logGroupLogicalId, 'Arn'] },
-          }),
-        ]),
-      }),
-    });
+    expect(groupLevelArn).toContain('":log-group:"');
+    expect(groupLevelArn).toContain('{"Ref":"AWS::AccountId"}');
+    expect(groupLevelArn).not.toContain('111122223333');
+    expect(groupLevelArn).not.toMatch(/:\*"\]\}$/);
   });
 });

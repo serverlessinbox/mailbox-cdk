@@ -1,8 +1,9 @@
-import { toRegion, toTableName, type Region, type TableName }                            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import * as t                                                                            from 'typanion';
+import { toRegion, toTableName, type Region, type TableName }                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import * as t                                                                   from 'typanion';
 
-import { firstHeaderValue, type CloudFrontRequest }                                      from './cloudfront/cloudfront-event';
-import { isSupportedAlgorithm, type BlobDownloadOriginHeaders, type SupportedAlgorithm } from './cloudfront/origin-headers';
+import { firstHeaderValue, type CloudFrontRequest }                             from './cloudfront/cloudfront-event';
+import { isSupportedAlgorithm, type BlobDownloadOriginHeaders,
+  type SupportedAlgorithm }                                                     from './cloudfront/origin-headers';
 
 /**
  * Configuration the CloudFront distribution hands the function in the custom origin headers of its S3 origin;
@@ -12,6 +13,7 @@ export interface Config {
   readonly authKeyStoreTable: TableName;
   readonly region:            Region;
   readonly jwtAlgorithms?:    readonly SupportedAlgorithm[];
+  readonly patTable?:         TableName;
 }
 
 /** The configuration read from the origin headers. */
@@ -33,6 +35,7 @@ const AUTH_KEY_STORE_TABLE_HEADER = 'x-auth-key-store-table' satisfies keyof Blo
 const REGION_HEADER               = 'x-region' satisfies keyof BlobDownloadOriginHeaders;
 const JWT_ALGORITHMS_HEADER       = 'x-jwt-algorithms' satisfies keyof BlobDownloadOriginHeaders;
 const ALLOWED_ORIGINS_HEADER      = 'x-allowed-origins' satisfies keyof BlobDownloadOriginHeaders;
+const PAT_TABLE_HEADER            = 'x-pat-table' satisfies keyof BlobDownloadOriginHeaders;
 
 // An AWS region code: a two-letter geography, one or more direction words and a number, such as `eu-west-1` or `us-gov-east-1`.
 const isRegionCode = t.cascade(t.isString(), [t.matchesRegExp(/^[a-z]{2}(-[a-z]+)+-\d$/)]);
@@ -42,8 +45,8 @@ const isAlgorithmList = t.cascade(t.isArray(isSupportedAlgorithm), [t.hasMinLeng
 /**
  * Reads the configuration from the custom origin headers. The auth key store table and the region are required,
  * and a region must have the shape of an AWS region code; no `x-jwt-algorithms` header leaves the algorithm list
- * unset, and one that is present must list only supported algorithms. The first header that is missing or invalid
- * is named in the rejection.
+ * unset, and one that is present must list only supported algorithms. The personal access token table is optional;
+ * a present `x-pat-table` header must not be empty. The first header that is missing or invalid is named in the rejection.
  */
 export function extractConfig(request: CloudFrontRequest): ConfigReading {
   const customHeaders = request.origin?.s3?.customHeaders;
@@ -73,11 +76,17 @@ export function extractConfig(request: CloudFrontRequest): ConfigReading {
     return { kind: 'rejected', problem: `header ${JWT_ALGORITHMS_HEADER} is not a comma-separated list of supported algorithms` };
   }
 
+  const patTable = firstHeaderValue(customHeaders, PAT_TABLE_HEADER);
+  if (patTable === '') {
+    return { kind: 'rejected', problem: `header ${PAT_TABLE_HEADER} is empty` };
+  }
+
   return {
     kind:   'read',
     config: {
       authKeyStoreTable: toTableName(authKeyStoreTable),
       region:            toRegion(region),
+      patTable:          patTable ? toTableName(patTable) : undefined,
       jwtAlgorithms,
     },
   };

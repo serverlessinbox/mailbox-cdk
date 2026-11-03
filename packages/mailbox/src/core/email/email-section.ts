@@ -1,5 +1,5 @@
 import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
-import type { BaseQueueProps }                                     from '@serverlessinbox/mailbox-cdk-shared';
+import type { QueueEncryptionChoice }                              from '@serverlessinbox/mailbox-cdk-shared';
 import { applyServerlessInboxComponentTag }                        from '@serverlessinbox/mailbox-cdk-shared';
 import type { IBucket }                                            from 'aws-cdk-lib/aws-s3';
 import type { IReceiptRuleSet }                                    from 'aws-cdk-lib/aws-ses';
@@ -10,7 +10,10 @@ import type { IDataBlobStore }                                     from '../../r
 import { EmailProcessorLambda }                                    from '../../resources/lambdas/email-processor-lambda';
 import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
 import type { IEmailSendingQueue }                                 from '../../resources/queues/email-sending-queue';
+import type { DynamoTableEncryptionProps }                         from '../../resources/tables/data-table-props';
 import type { IDataTable }                                         from '../../resources/tables/data-tables';
+import type { IMailLogTable }                                      from '../../resources/tables/mail-log-table';
+import { MailLogTable }                                            from '../../resources/tables/mail-log-table';
 
 import { EmailSending }                                            from './email-sending';
 import { SesEventProcessing }                                      from './ses-event-processing';
@@ -32,7 +35,8 @@ export interface IEmailDataInputs {
 export interface EmailSectionProps {
   readonly artifactResolver: IArtifactResolver;
   readonly data:             IEmailDataInputs;
-  readonly queueProps?:      Partial<BaseQueueProps>;
+  readonly queueEncryption:  QueueEncryptionChoice;
+  readonly dynamoTables:     DynamoTableEncryptionProps;
 }
 
 /** Email receiving, sending and SES event processing. */
@@ -41,6 +45,7 @@ export class EmailSection extends Construct {
   public readonly sesRuleSetName: string;
   public readonly sesRuleSet: IReceiptRuleSet;
   public readonly submissionQueue: IEmailSendingQueue;
+  public readonly mailLogTable: IMailLogTable;
 
   private readonly sesEventProcessing: SesEventProcessing;
   private readonly emailSending: EmailSending;
@@ -60,7 +65,7 @@ export class EmailSection extends Construct {
       blobStore:         data.blobStore,
       auditEventsQueue:  data.auditEventsQueue,
       artifactResolver:  props.artifactResolver,
-      queueProps:        props.queueProps,
+      queueEncryption:   props.queueEncryption,
     });
 
     this.emailSending = new EmailSending(this, 'email-sending', {
@@ -70,7 +75,7 @@ export class EmailSection extends Construct {
       blobStore:        data.blobStore,
       artifactResolver: props.artifactResolver,
       sesConfigSetName: this.sesEventProcessing.sesConfigSetName,
-      queueProps:       props.queueProps,
+      queueEncryption:  props.queueEncryption,
     });
 
     // SES receipt rules and the email-processing queue they feed. Built before the email-processor
@@ -78,8 +83,10 @@ export class EmailSection extends Construct {
     const sesRules = new SesRules(this, 'ses-rules', {
       blobStoreBucket:  data.blobStoreBucket,
       artifactResolver: props.artifactResolver,
-      queueProps:       props.queueProps,
+      queueEncryption:  props.queueEncryption,
     });
+
+    this.mailLogTable = new MailLogTable(this, 'mail-log-table', props.dynamoTables);
 
     this.emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
       configTable:          data.configTable,
@@ -87,6 +94,7 @@ export class EmailSection extends Construct {
       changelogTable:       data.changelogTable,
       blobStore:            data.blobStore,
       emailProcessingQueue: sesRules.emailProcessingQueue,
+      mailLogTable:         this.mailLogTable,
       artifactResolver:     props.artifactResolver,
     });
 

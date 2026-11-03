@@ -1,17 +1,17 @@
-import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import type { Pipeline }           from '@serverlessinbox/mailbox-cdk-shared';
-import { HttpLambdaIntegration }   from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { HttpApi, HttpMethod }     from 'aws-cdk-lib/aws-apigatewayv2';
-import { Aws }                     from 'aws-cdk-lib';
-import { Construct, IDependable }  from 'constructs';
+import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { Pipeline }          from '@serverlessinbox/mailbox-cdk-shared';
+import { HttpLambdaIntegration }  from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { HttpApi, HttpMethod }    from 'aws-cdk-lib/aws-apigatewayv2';
+import { Aws }                    from 'aws-cdk-lib';
+import { Construct, IDependable } from 'constructs';
 
 import type {
   AuthPolicyName,
   OAuthClientName,
-} from '../../contracts/auth-names';
-import { IdpTokenExchangeLambda }  from '../../resources/lambdas/idp-token-exchange-lambda';
-import type { IAuditEventsQueue }  from '../../resources/queues/audit-events-queue';
-import type { IDataTable }         from '../../resources/tables/data-tables';
+}                                 from '../../contracts/auth-names';
+import { IdpTokenExchangeLambda } from '../../resources/lambdas/idp-token-exchange-lambda';
+import type { IAuditEventsQueue } from '../../resources/queues/audit-events-queue';
+import type { IDataTable }        from '../../resources/tables/data-tables';
 
 /** Props of {@link IdpTokenExchangeApi}. */
 export interface IdpTokenExchangeApiProps {

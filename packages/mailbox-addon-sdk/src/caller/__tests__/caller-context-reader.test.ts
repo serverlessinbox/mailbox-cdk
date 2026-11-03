@@ -1,6 +1,6 @@
-import { ADMIN_CONTEXT, authorizedEvent }        from '../../__tests__/authorized-event-helpers';
-import { UnauthenticatedError }                  from '../../errors';
-import { CallerContextReader }                   from '../caller-context-reader';
+import { ADMIN_CONTEXT, authorizedEvent } from '../../__tests__/authorized-event-helpers';
+import { UnauthenticatedError }           from '../../errors';
+import { CallerContextReader }            from '../caller-context-reader';
 
 /*
  * Pins how the authorizer's flat context becomes a caller. A request without a tenant or a principal must be

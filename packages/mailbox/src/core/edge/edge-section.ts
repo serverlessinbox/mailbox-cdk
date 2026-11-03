@@ -1,24 +1,26 @@
-import type { IArtifactResolver }                                                   from '@serverlessinbox/artifact-registry-cdk';
-import type { ServerlessInboxDeployerType }                                         from '@serverlessinbox/mailbox-cdk-shared';
-import { ComponentDescription, PipelineLogGroup, applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
-import * as acm                                                                     from 'aws-cdk-lib/aws-certificatemanager';
-import type * as route53                                                            from 'aws-cdk-lib/aws-route53';
-import type { IBucket }                                                             from 'aws-cdk-lib/aws-s3';
-import * as cdk                                                                     from 'aws-cdk-lib';
-import { Construct }                                                                from 'constructs';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import type { ServerlessInboxDeployerType }                                     from '@serverlessinbox/mailbox-cdk-shared';
+import { ComponentDescription, PipelineLogGroup,
+  applyServerlessInboxComponentTag }                                            from '@serverlessinbox/mailbox-cdk-shared';
+import * as acm                                                                 from 'aws-cdk-lib/aws-certificatemanager';
+import type * as route53                                                        from 'aws-cdk-lib/aws-route53';
+import type { IBucket }                                                         from 'aws-cdk-lib/aws-s3';
+import * as cdk                                                                 from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import type { MailboxCertificateOverrides }                                         from '../../mailbox-props';
-import type { IAuthKeyStoreTable }                                                  from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                                                          from '../../resources/tables/data-tables';
-import { MailboxDns }                                                               from '../domains/mailbox-dns';
-import type { MailboxDnsCnameTargets }                                              from '../domains/mailbox-dns';
-import type { IMailboxDomainNames }                                                 from '../domains/mailbox-domains';
-import { Cdn }                                                                      from '../ui/cdn-construct';
-import type { CdnCustomDomain }                                                     from '../ui/cdn-construct';
+import type { MailboxCertificateOverrides }                                     from '../../mailbox-props';
+import type { IAuthKeyStoreTable }                                              from '../../resources/tables/auth-key-store-table';
+import type { IPatTable }                                                       from '../../resources/tables/data-pat-table';
+import type { IDataTable }                                                      from '../../resources/tables/data-tables';
+import { MailboxDns }                                                           from '../domains/mailbox-dns';
+import type { MailboxDnsCnameTargets }                                          from '../domains/mailbox-dns';
+import type { IMailboxDomainNames }                                             from '../domains/mailbox-domains';
+import { Cdn }                                                                  from '../ui/cdn-construct';
+import type { CdnCustomDomain }                                                 from '../ui/cdn-construct';
 
-import { DnsZone }                                                                  from './dns-zone';
-import type { IDnsZone }                                                            from './dns-zone';
-import { MailboxEdgeDeployer }                                                      from './mailbox-edge-deployer';
+import { DnsZone }                                                              from './dns-zone';
+import type { IDnsZone }                                                        from './dns-zone';
+import { MailboxEdgeDeployer }                                                  from './mailbox-edge-deployer';
 
 /** What {@link EdgeSection} uses of the data section. */
 export interface IEdgeDataInputs {
@@ -26,6 +28,8 @@ export interface IEdgeDataInputs {
   readonly itemTable:   IDataTable;
   /** The raw bucket the CDN fronts. */
   readonly blobStoreBucket: IBucket;
+  /** The personal access token table; its name is handed to the CDN's authorizer, and its lookup rows are read by the edge role. */
+  readonly patTable: IPatTable;
 }
 
 /** What {@link EdgeSection} uses of the auth section. */
@@ -56,7 +60,7 @@ export interface EdgeSectionProps {
   readonly auth:             IEdgeAuthInputs;
   readonly addressing:       IEdgeAddressing;
   /** The hosted zone the mailbox has, if any: the certificates validate and the DNS records are written into it. */
-  readonly hostedZone?:      route53.IHostedZone;
+  readonly hostedZone?: route53.IHostedZone;
   /** The operator's own certificates; the api, jmap, ws and cloudFront ones are read here. */
   readonly certificateOverrides?: MailboxCertificateOverrides;
 }
@@ -147,6 +151,7 @@ export class EdgeSection extends Construct {
       itemTable:         props.data.itemTable,
       configTable:       props.data.configTable,
       authKeyStoreTable: props.auth.authKeyStoreTable,
+      patTable:          props.data.patTable,
       productVersion:    props.productVersion,
       deployerType:      props.deployerType,
       logGroupName:      PipelineLogGroup.getOrCreate(this, 'jmap').logGroupName,
@@ -172,6 +177,7 @@ export class EdgeSection extends Construct {
     const cdn = new Cdn(this, 'blob-cdn', {
       blobStore:               this.props.data.blobStoreBucket,
       authKeyStoreTable:       this.props.auth.authKeyStoreTable,
+      patTable:                this.props.data.patTable,
       allowedOrigins:          allowedOrigins.length > 0 ? allowedOrigins : undefined,
       jmapBlobDownloadVersion: this.edgeStack.jmapBlobDownloadVersion,
       customDomain:            this.blobCdnCustomDomain(),

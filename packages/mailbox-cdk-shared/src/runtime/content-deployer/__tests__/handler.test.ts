@@ -7,15 +7,15 @@
  * response is read from the request the handler sends to the ResponseURL.
  */
 
-import type * as CloudFormationSdk from '@aws-sdk/client-cloudformation';
-import type * as CloudFrontSdk     from '@aws-sdk/client-cloudfront';
-import type * as S3Sdk             from '@aws-sdk/client-s3';
-import { mockClient }              from 'aws-sdk-client-mock';
-import type { AwsClientStub }      from 'aws-sdk-client-mock';
+import type * as CloudFormationSdk                                              from '@aws-sdk/client-cloudformation';
+import type * as CloudFrontSdk                                                  from '@aws-sdk/client-cloudfront';
+import type * as S3Sdk                                                          from '@aws-sdk/client-s3';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
+import type { AwsClientStub }                                                   from 'aws-sdk-client-mock';
 
-import { captureCfnResponse }      from '../../../runtime-test-support';
-import type { SmokeTestProbe }     from '../../../runtime/handler-kit/smoke-test';
-import type * as HandlerModule     from '../handler';
+import { captureCfnResponse }                                                   from '../../../runtime-test-support';
+import type { SmokeTestProbe }                                                  from '../../../runtime/handler-kit/smoke-test';
+import type * as HandlerModule                                                  from '../handler';
 
 import {
   PHYSICAL_RESOURCE_ID,
@@ -23,8 +23,8 @@ import {
   fakeCreateEvent,
   fakeLambdaContext,
   fakeUpdateEvent,
-} from './content-deployer-helpers';
-import type { FakeCfnEvent } from './content-deployer-helpers';
+}                                                                               from './content-deployer-helpers';
+import type { FakeCfnEvent }                                                    from './content-deployer-helpers';
 
 jest.mock('https', () => ({
   request: jest.fn(),

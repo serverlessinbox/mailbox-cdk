@@ -15,7 +15,7 @@
 
 import { ServerlessInboxTagKeys, StackIdentity, VENDOR_ACCOUNT_ID } from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                                          from 'aws-cdk-lib/assertions';
-import { Table, AttributeType }                                     from 'aws-cdk-lib/aws-dynamodb';
+import { Table, AttributeType, TableEncryption }                    from 'aws-cdk-lib/aws-dynamodb';
 import { Function as LambdaFunction }                               from 'aws-cdk-lib/aws-lambda';
 import { Bucket }                                                   from 'aws-cdk-lib/aws-s3';
 import type * as cdk                                                from 'aws-cdk-lib';
@@ -25,8 +25,10 @@ import { DataBlobStore }                                            from '../../
 import { AuditEventsQueue }                                         from '../../queues/audit-events-queue';
 import { EmailSendingQueue }                                        from '../../queues/email-sending-queue';
 import { DataTable }                                                from '../../tables/data-tables';
+import { MailLogTable }                                             from '../../tables/mail-log-table';
 import { AdminApiLambda }                                           from '../admin-api-lambda';
 
+import { expectGrantedOnceTo, fakePatTable }                        from './lambda-wrapper-fakes';
 import { arrangeWrapperStack }                                      from './lambda-wrapper-helpers';
 
 function rootStackIdOf(stack: cdk.Stack): unknown {
@@ -36,8 +38,10 @@ function rootStackIdOf(stack: cdk.Stack): unknown {
 describe('AdminApiLambda IAM scoping', () => {
   let stack: cdk.Stack;
   let lambda: AdminApiLambda;
+  let patTable: ReturnType<typeof fakePatTable>;
 
   beforeEach(() => {
+    patTable          = fakePatTable('pat-table');
     const arrangement = arrangeWrapperStack();
     stack             = arrangement.stack;
 
@@ -57,8 +61,8 @@ describe('AdminApiLambda IAM scoping', () => {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
     const blobStore                   = new DataBlobStore(new Bucket(stack, 'blob-store'));
-    const emailSubmissionQueue        = new EmailSendingQueue(stack, 'email-submission-queue');
-    const auditEventsQueue            = new AuditEventsQueue(stack, 'audit-events-queue');
+    const emailSubmissionQueue        = new EmailSendingQueue(stack, 'email-submission-queue', { encryption: { kind: 'aws-managed' } });
+    const auditEventsQueue            = new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } });
     const identityProvisionerFunction = LambdaFunction.fromFunctionArn(
       stack,
       'identity-provisioner-ref',
@@ -71,6 +75,8 @@ describe('AdminApiLambda IAM scoping', () => {
       auditLogTable,
       changelogTable,
       mailFeedbackTable,
+      mailLogTable: new MailLogTable(stack, 'mail-log-table', { encryption: TableEncryption.AWS_MANAGED }),
+      patTable,
       blobStore,
       emailSubmissionQueue,
       auditEventsQueue,
@@ -134,6 +140,13 @@ describe('AdminApiLambda IAM scoping', () => {
         },
       });
     }
+  });
+
+  it('sets PAT_TABLE_NAME and requests the principal-revoke grant on the token table for itself', () => {
+    Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ PAT_TABLE_NAME: 'pat-table' }) },
+    });
+    expectGrantedOnceTo(patTable.grantPatRevokeForPrincipal, lambda);
   });
 
   it('sets ROOT_STACK_ID to the stack guid', () => {

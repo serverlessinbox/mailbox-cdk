@@ -6,8 +6,8 @@
  * weak password, and one rejected wrongly would block an admin from managing a user.
  */
 
-import { create }                   from '@bufbuild/protobuf';
-import { InvalidInputError }        from '@serverlessinbox/mailbox-addon-sdk';
+import { create }                                                               from '@bufbuild/protobuf';
+import { InvalidInputError }                                                    from '@serverlessinbox/mailbox-addon-sdk';
 
 import {
   CreateIdpUserRequestSchema,
@@ -16,8 +16,8 @@ import {
   ListIdpUsersRequestSchema,
   SetIdpUserEnabledRequestSchema,
   SetIdpUserPasswordRequestSchema,
-} from '../generated/idp_users_pb';
-import { IdpUsersRequestValidator } from '../idp-users.validation';
+}                                                                               from '../generated/idp_users_pb';
+import { IdpUsersRequestValidator }                                             from '../idp-users.validation';
 
 describe('IdpUsersRequestValidator', () => {
   const validator = new IdpUsersRequestValidator();

@@ -1,19 +1,52 @@
-import { PositionHash, StackIdentity }   from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }               from 'aws-cdk-lib/assertions';
-import * as iam                          from 'aws-cdk-lib/aws-iam';
-import * as cdk                          from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
+import {
+  actionsOf,
+  allPolicyStatements,
+  resourcesOf,
+  statementsForRole,
+  type PolicyStatementJson,
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { PositionHash, StackIdentity }                                          from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                                                      from 'aws-cdk-lib/assertions';
+import * as iam                                                                 from 'aws-cdk-lib/aws-iam';
+import * as kms                                                                 from 'aws-cdk-lib/aws-kms';
+import * as cdk                                                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }                                        from 'aws-cdk-lib';
 
-import { defaultCfnResource }            from '../../../utils/cfn-resource';
-import { AuthKeyStoreTable }             from '../auth-key-store-table';
+import { defaultCfnResource }                                                   from '../../../utils/cfn-resource';
+import { AuthKeyStoreTable }                                                    from '../auth-key-store-table';
+import type { IAuthKeyStoreTable }                                              from '../auth-key-store-table';
 
 /**
  * AuthKeyStoreTable tests.
  *
  * Pin the table definition the signing-key readers and the updater depend on (pk/sk keys, on-demand
- * billing) and that each grant method hands out the action set meant for its kind of caller; a
- * regression breaks key lookup or widens a Lambda's DynamoDB access.
+ * billing, the physical name), and the IAM each grant method renders: one DynamoDB statement per table
+ * access, limited to one `dynamodb:LeadingKeys` value, plus a KMS statement only when a customer key
+ * encrypts the table. A regression breaks key lookup, widens one caller's reach into another item type,
+ * or hands the customer key's statements to a caller that never reads encrypted items.
  */
+
+type GrantMethod = Exclude<keyof IAuthKeyStoreTable, 'tableName' | 'tableArn'>;
+
+const GRANT_METHODS: readonly GrantMethod[] = [
+  'grantReadJwks',
+  'grantReadHmac',
+  'grantManageHmac',
+  'grantManageJwks',
+  'grantManageConnectionKeys',
+  'grantReadConnectionPublicKey',
+  'grantReadConnectionPrivateKey',
+];
+
+interface TableAccess {
+  readonly actions:     string[];
+  readonly leadingKeys: unknown;
+}
+
+interface RoleAccess {
+  readonly role:        string;
+  readonly leadingKeys: unknown;
+}
 
 function createStack(): cdk.Stack {
   const app = new App();
@@ -21,6 +54,43 @@ function createStack(): cdk.Stack {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
+}
+
+function newRole(stack: cdk.Stack, id: string): iam.Role {
+  return new iam.Role(stack, id, {
+    assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+  });
+}
+
+/** The `dynamodb:LeadingKeys` value a statement's condition names; undefined when it has no such condition. */
+function leadingKeysOf(statement: PolicyStatementJson): unknown {
+  return statement.Condition?.['ForAllValues:StringEquals']?.['dynamodb:LeadingKeys'];
+}
+
+/** Whether a statement's resources include the table, by its logical ID. */
+function referencesTable(statement: PolicyStatementJson, tableId: string): boolean {
+  return resourcesOf(statement).some((resource) => JSON.stringify(resource).includes(`"${tableId}"`));
+}
+
+function tableAccesses(template: Template, tableId: string): TableAccess[] {
+  return allPolicyStatements(template)
+    .filter((statement) => referencesTable(statement, tableId))
+    .map((statement) => ({ actions: actionsOf(statement).sort(), leadingKeys: leadingKeysOf(statement) }));
+}
+
+function kmsStatements(template: Template): PolicyStatementJson[] {
+  return allPolicyStatements(template)
+    .filter((statement) => actionsOf(statement).some((action) => action.startsWith('kms:')));
+}
+
+/** Synthesizes one grant of `method` to a fresh role, with or without a customer key on the table. */
+function grantedTemplate(method: GrantMethod, customerKey: boolean): { template: Template; tableId: string } {
+  const stack = createStack();
+  const table = new AuthKeyStoreTable(stack, 'auth-key-store-table', customerKey ? new kms.Key(stack, 'customer-key') : undefined);
+
+  table[method](newRole(stack, 'grantee'));
+
+  return { template: Template.fromStack(stack), tableId: stack.getLogicalId(defaultCfnResource(table)) };
 }
 
 describe('AuthKeyStoreTable', () => {
@@ -58,93 +128,86 @@ describe('AuthKeyStoreTable', () => {
     template.hasResource('AWS::DynamoDB::Table', { DeletionPolicy: 'Delete' });
   });
 
-  it('grantGetItem grants exactly one Allow statement with GetItem on the table only', () => {
+  it('adds no SSESpecification without a customer key, so the table keeps its AWS-owned encryption', () => {
     const stack = createStack();
-    const sut   = new AuthKeyStoreTable(stack, 'auth-key-store-table');
-    const role  = new iam.Role(stack, 'TestRole', {
-      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-    });
+    new AuthKeyStoreTable(stack, 'auth-key-store-table');
 
-    sut.grantGetItem(role);
+    Template.fromStack(stack).hasResourceProperties('AWS::DynamoDB::Table', { SSESpecification: Match.absent() });
+  });
 
-    const tableId = stack.getLogicalId(defaultCfnResource(sut));
+  it('encrypts the table with the customer key when one is passed', () => {
+    const stack = createStack();
+    new AuthKeyStoreTable(stack, 'auth-key-store-table', new kms.Key(stack, 'customer-key'));
 
-    Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
-      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(defaultCfnResource(role)) }]),
-      PolicyDocument: {
-        Statement: Match.arrayEquals([
-          Match.objectEquals({
-            Action:   'dynamodb:GetItem',
-            Effect:   'Allow',
-            Resource: { 'Fn::GetAtt': [tableId, 'Arn'] },
-          }),
-        ]),
-      },
+    Template.fromStack(stack).hasResourceProperties('AWS::DynamoDB::Table', {
+      SSESpecification: Match.objectLike({ SSEEnabled: true, SSEType: 'KMS' }),
     });
   });
 
-  it('grantRead grants exactly one Allow statement with the read actions', () => {
+  it('limits every access to the table to one LeadingKeys value, granted to the roles the plan names', () => {
     const stack = createStack();
-    const sut   = new AuthKeyStoreTable(stack, 'auth-key-store-table');
-    const role  = new iam.Role(stack, 'TestRole', {
-      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-    });
+    const table = new AuthKeyStoreTable(stack, 'auth-key-store-table');
+    const roles = {
+      authorizer: newRole(stack, 'authorizer'),
+      edge:       newRole(stack, 'edge-function'),
+      jmapApi:    newRole(stack, 'jmap-api'),
+      bootstrap:  newRole(stack, 'bootstrap'),
+      updater:    newRole(stack, 'auth-key-store-updater'),
+      userApi:    newRole(stack, 'user-api'),
+      runner:     newRole(stack, 'mail-import-runner'),
+    };
 
-    sut.grantRead(role);
+    table.grantReadJwks(roles.authorizer);
+    table.grantReadJwks(roles.edge);
+    table.grantReadHmac(roles.edge);
+    table.grantReadHmac(roles.jmapApi);
+    table.grantManageHmac(roles.bootstrap);
+    table.grantManageHmac(roles.updater);
+    table.grantManageJwks(roles.updater);
+    table.grantManageConnectionKeys(roles.updater);
+    table.grantReadConnectionPublicKey(roles.userApi);
+    table.grantReadConnectionPrivateKey(roles.runner);
 
-    const tableId  = stack.getLogicalId(defaultCfnResource(sut));
-    const template = Template.fromStack(stack);
+    const template               = Template.fromStack(stack);
+    const tableId                = stack.getLogicalId(defaultCfnResource(table));
+    const accesses: RoleAccess[] = Object.entries(roles).flatMap(([role, created]) => statementsForRole(template, stack.getLogicalId(defaultCfnResource(created)))
+      .filter((statement) => referencesTable(statement, tableId))
+      .map((statement) => ({ role, leadingKeys: leadingKeysOf(statement) })));
 
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(defaultCfnResource(role)) }]),
-      PolicyDocument: {
-        Statement: Match.arrayEquals([
-          Match.objectEquals({
-            Action:   ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query'],
-            Effect:   'Allow',
-            Resource: [
-              { 'Fn::GetAtt': [tableId, 'Arn'] },
-              { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
-            ],
-          }),
-        ]),
-      },
-    });
+    expect(accesses).toEqual([
+      { role: 'authorizer',  leadingKeys: ['jwks'] },
+      { role: 'edge',        leadingKeys: ['jwks'] },
+      { role: 'edge',        leadingKeys: ['hmac'] },
+      { role: 'jmapApi',     leadingKeys: ['hmac'] },
+      { role: 'bootstrap',   leadingKeys: ['hmac'] },
+      { role: 'updater',     leadingKeys: ['hmac'] },
+      { role: 'updater',     leadingKeys: ['jwks'] },
+      { role: 'updater',     leadingKeys: ['connection-key-public'] },
+      { role: 'updater',     leadingKeys: ['connection-key-private'] },
+      { role: 'userApi',     leadingKeys: ['connection-key-public'] },
+      { role: 'runner',      leadingKeys: ['connection-key-private'] },
+    ]);
   });
 
-  it('grantReadWrite grants exactly one Allow statement with the read+write actions', () => {
-    const stack = createStack();
-    const sut   = new AuthKeyStoreTable(stack, 'auth-key-store-table');
-    const role  = new iam.Role(stack, 'TestRole', {
-      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-    });
+  it.each<[GrantMethod, TableAccess[]]>([
+    ['grantReadJwks',             [{ actions: ['dynamodb:GetItem'], leadingKeys: ['jwks'] }]],
+    ['grantReadHmac',             [{ actions: ['dynamodb:GetItem'], leadingKeys: ['hmac'] }]],
+    ['grantManageHmac',           [{ actions: ['dynamodb:GetItem', 'dynamodb:PutItem'], leadingKeys: ['hmac'] }]],
+    ['grantManageJwks',           [{ actions: ['dynamodb:GetItem', 'dynamodb:PutItem'], leadingKeys: ['jwks'] }]],
+    ['grantManageConnectionKeys',     [
+      { actions: ['dynamodb:GetItem', 'dynamodb:PutItem'], leadingKeys: ['connection-key-public'] },
+      { actions: ['dynamodb:DeleteItem', 'dynamodb:PutItem', 'dynamodb:Query'], leadingKeys: ['connection-key-private'] },
+    ]],
+    ['grantReadConnectionPublicKey',  [{ actions: ['dynamodb:GetItem'], leadingKeys: ['connection-key-public'] }]],
+    ['grantReadConnectionPrivateKey', [{ actions: ['dynamodb:GetItem'], leadingKeys: ['connection-key-private'] }]],
+  ])('%s renders exactly its planned table access', (method, expected) => {
+    const { template, tableId } = grantedTemplate(method, false);
 
-    sut.grantReadWrite(role);
+    expect(tableAccesses(template, tableId)).toEqual(expected);
+  });
 
-    const tableId  = stack.getLogicalId(defaultCfnResource(sut));
-    const template = Template.fromStack(stack);
-
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      Roles:          Match.arrayWith([{ Ref: stack.getLogicalId(defaultCfnResource(role)) }]),
-      PolicyDocument: {
-        Statement: Match.arrayEquals([
-          Match.objectEquals({
-            Action:   [
-              'dynamodb:GetItem',
-              'dynamodb:BatchGetItem',
-              'dynamodb:Query',
-              'dynamodb:PutItem',
-              'dynamodb:UpdateItem',
-              'dynamodb:DeleteItem',
-            ],
-            Effect:   'Allow',
-            Resource: [
-              { 'Fn::GetAtt': [tableId, 'Arn'] },
-              { 'Fn::Join': ['', [{ 'Fn::GetAtt': [tableId, 'Arn'] }, '/index/*']] },
-            ],
-          }),
-        ]),
-      },
-    });
+  it.each(GRANT_METHODS)('%s adds KMS statements exactly when a customer key encrypts the table', (method) => {
+    expect(kmsStatements(grantedTemplate(method, true).template)).not.toHaveLength(0);
+    expect(kmsStatements(grantedTemplate(method, false).template)).toHaveLength(0);
   });
 });

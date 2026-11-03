@@ -1,8 +1,8 @@
-import * as t                                                from 'typanion';
+import * as t                                                                   from 'typanion';
 
-import { ADMIN_CONTEXT, authorizedEvent, type EventOptions } from '../../__tests__/authorized-event-helpers';
-import type { AuditEntry, AuditEvent, AuditSink }            from '../../audit/index';
-import type { HandlerContext }                               from '../../caller';
+import { ADMIN_CONTEXT, authorizedEvent, type EventOptions }                    from '../../__tests__/authorized-event-helpers';
+import type { AuditEntry, AuditEvent, AuditSink }                               from '../../audit/index';
+import type { HandlerContext }                                                  from '../../caller';
 import {
   AlreadyExistsError,
   ConflictError,
@@ -10,14 +10,14 @@ import {
   InvalidInputError,
   NotFoundError,
   UnauthenticatedError,
-}                                                            from '../../errors';
-import type { JsonValue }                                    from '../../json';
-import type { Dispatch, RequestWork }                        from '../addon-handler';
-import { RequestCore }                                       from '../request-core';
-import type { RequestLogger }                                from '../request-logger';
+}                                                                               from '../../errors';
+import type { JsonValue }                                                       from '../../json';
+import type { Dispatch, RequestWork }                                           from '../addon-handler';
+import { RequestCore }                                                          from '../request-core';
+import type { RequestLogger }                                                   from '../request-logger';
 
-import errorStatusTable                                      from './fixtures/error-status-table.json';
-import { loggerDouble, sinkDouble }                          from './handler-helpers';
+import errorStatusTable                                                         from './fixtures/error-status-table.json';
+import { loggerDouble, sinkDouble }                                             from './handler-helpers';
 
 /*
  * Pins the request pipeline every addon Lambda shares: the order a request is checked in, what the work is

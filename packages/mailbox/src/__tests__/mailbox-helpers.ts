@@ -33,8 +33,16 @@ export function createMockAuthProvider(options: MockAuthProviderOptions = {}): I
     authMethod:              AuthMethod.HEADER,
     usePkce:                 false,
     scopeMap:                options.scopeMap ?? {
-      'mail.read':  [Permission.MAIL_READ],
-      'mail.write': [Permission.MAIL_WRITE],
+      'mail.read':  [Permission.MAIL_READ_ITEMS],
+      'mail.write': [
+        Permission.MAIL_ADD_ITEMS,
+        Permission.MAIL_REMOVE_ITEMS,
+        Permission.MAIL_SET_SEEN,
+        Permission.MAIL_SET_KEYWORDS,
+        Permission.MAIL_CREATE_CHILD,
+        Permission.MAIL_RENAME,
+        Permission.MAIL_DELETE,
+      ],
     },
     policies:                {
       adminApi: { audiences: ['admin-api'], requireAnyOfGroups: ['admins'] },

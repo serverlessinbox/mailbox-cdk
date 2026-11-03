@@ -8,16 +8,16 @@
  * function itself, the function can be created or updated before that work has completed.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }          from '@serverlessinbox/artifact-registry-cdk';
-import { Template }                                      from 'aws-cdk-lib/assertions';
-import * as dynamodb                                     from 'aws-cdk-lib/aws-dynamodb';
-import * as cdk                                          from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }                 from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import * as dynamodb                            from 'aws-cdk-lib/aws-dynamodb';
+import * as cdk                                 from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import { AuthPolicyName, OAuthClientName }               from '../../../contracts/auth-names';
-import { AuditEventsQueue }                              from '../../../resources/queues/audit-events-queue';
-import { DataTable }                                     from '../../../resources/tables/data-tables';
-import { IdpTokenExchangeApi }                           from '../idp-token-exchange-api';
+import { AuthPolicyName, OAuthClientName }      from '../../../contracts/auth-names';
+import { AuditEventsQueue }                     from '../../../resources/queues/audit-events-queue';
+import { DataTable }                            from '../../../resources/tables/data-tables';
+import { IdpTokenExchangeApi }                  from '../idp-token-exchange-api';
 
 interface SynthesizedFunction {
   Properties?: { Environment?: { Variables?: Record<string, string> } };
@@ -37,7 +37,7 @@ describe('IdpTokenExchangeApi', () => {
       configTable:      new DataTable(new dynamodb.Table(stack, 'config-table', {
         partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       })),
-      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue'),
+      auditEventsQueue: new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
       authPolicyName:   AuthPolicyName.JMAP_API,
       oauthClientName:  OAuthClientName.WEBMAIL_UI,
       dependsOn,

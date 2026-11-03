@@ -3,11 +3,15 @@ import { Aws }                     from 'aws-cdk-lib';
 import type { Construct }          from 'constructs';
 
 import type { IAuthKeyStoreTable } from '../tables/auth-key-store-table';
+import type { IPatTable }          from '../tables/data-pat-table';
 
-/** Inputs of `EdgeFunctionRole`: the one table it reads and the name pattern of the edge stack whose function it runs. */
+/** Inputs of `EdgeFunctionRole`: the tables it reads and the name pattern of the edge stack whose function it runs. */
 export interface EdgeFunctionRoleProps {
   /** Auth key store the function reads with `GetItem`; no other table is granted. */
   readonly authKeyStoreTable: IAuthKeyStoreTable;
+
+  /** Personal access token table the function reads token rows from with `GetItem`; no other access is granted. */
+  readonly patTable: IPatTable;
 
   /** Name pattern of the edge stack (`<root stack>-edge-*`); the function name is generated from it. */
   readonly edgeStackNamePattern: string;
@@ -19,7 +23,8 @@ export interface EdgeFunctionRoleProps {
  * the stack. On a replacement CloudFormation creates the new role before deleting the old one, and updates
  * the edge function with the new ARN in the same operation.
  *
- * Owns its grants: `GetItem` on the auth key store and log writes to the function's replica log groups.
+ * Owns its grants: reads of the JWKS and HMAC items in the auth key store, reads of personal access token lookup rows, and log writes to the function's
+ * replica log groups.
  */
 export class EdgeFunctionRole extends iam.Role {
   constructor(scope: Construct, id: string, props: EdgeFunctionRoleProps) {
@@ -31,12 +36,18 @@ export class EdgeFunctionRole extends iam.Role {
       description: `Serverless Inbox Mailbox: jmap-blob-download Lambda@Edge role (${Aws.STACK_NAME})`,
     });
 
-    this.grantAuthKeyStoreGetItem(props.authKeyStoreTable);
+    this.grantAuthKeyStoreReads(props.authKeyStoreTable);
+    this.grantPatLookupRows(props.patTable);
     this.grantReplicaLogs(props.edgeStackNamePattern);
   }
 
-  private grantAuthKeyStoreGetItem(authKeyStoreTable: IAuthKeyStoreTable): void {
-    authKeyStoreTable.grantGetItem(this);
+  private grantAuthKeyStoreReads(authKeyStoreTable: IAuthKeyStoreTable): void {
+    authKeyStoreTable.grantReadJwks(this);
+    authKeyStoreTable.grantReadHmac(this);
+  }
+
+  private grantPatLookupRows(patTable: IPatTable): void {
+    patTable.grantPatEdgeLookup(this);
   }
 
   /**

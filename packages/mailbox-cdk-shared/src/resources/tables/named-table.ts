@@ -1,11 +1,11 @@
-import { TableProps }         from 'aws-cdk-lib/aws-dynamodb';
-import { Aws, IResolvable }   from 'aws-cdk-lib';
-import { Construct }          from 'constructs';
+import { TableProps }       from 'aws-cdk-lib/aws-dynamodb';
+import { Aws, IResolvable } from 'aws-cdk-lib';
+import { Construct }        from 'constructs';
 
-import { PositionHash }       from '../../naming/position-hash';
-import { StackIdentity }      from '../../naming/stack-identity';
+import { PositionHash }     from '../../naming/position-hash';
+import { StackIdentity }    from '../../naming/stack-identity';
 
-import { BaseTable }          from './base-table';
+import { BaseTable }        from './base-table';
 
 /** Props for {@link StackNamedTable}: the DynamoDB table props plus an optional replacement for the stack name in the table name. */
 export interface StackNamedTableProps extends TableProps {

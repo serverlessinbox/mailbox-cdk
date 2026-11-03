@@ -3,14 +3,15 @@ import {
   toPhysicalResourceId,
   type CustomResourceRequest,
   type LoggerBuffer,
-} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { generateSecurePassword }                                                       from '../../utils/secure-password';
-import { toGroupName, toUserPoolId, toUsername, type GroupName }                        from '../shared/cognito-identifiers';
+import { generateSecurePassword }                                               from '../../utils/secure-password';
+import { toGroupName, toUserPoolId, toUsername, type GroupName }                from '../shared/cognito-identifiers';
 
-import { BootstrapUserAnswers, PASSWORD_SET_AT_INSTALL_TIME, type BootstrapUserAnswer } from './bootstrap-user-answers';
-import { UserEnsurer, type BootstrapUser, type EnsuredUser }                            from './ensure-user';
-import { isBootstrapUserProperties, type BootstrapUserProperties }                      from './properties';
+import { BootstrapUserAnswers, PASSWORD_SET_AT_INSTALL_TIME,
+  type BootstrapUserAnswer }                                                    from './bootstrap-user-answers';
+import { UserEnsurer, type BootstrapUser, type EnsuredUser }                    from './ensure-user';
+import { isBootstrapUserProperties, type BootstrapUserProperties }              from './properties';
 
 const DEFAULT_USERNAME        = 'admin';
 const DEFAULT_PASSWORD_LENGTH = 16;

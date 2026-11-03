@@ -1,10 +1,11 @@
-import { Cli }                                                                     from 'clipanion';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir }                                                                  from 'node:os';
-import * as path                                                                   from 'node:path';
-import { Writable }                                                                from 'node:stream';
+import { Cli }                                                                  from 'clipanion';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync,
+  writeFileSync }                                                               from 'node:fs';
+import { tmpdir }                                                               from 'node:os';
+import * as path                                                                from 'node:path';
+import { Writable }                                                             from 'node:stream';
 
-import { BakeArtifactVersionsCommand }                                             from '../bake-artifact-versions-command';
+import { BakeArtifactVersionsCommand }                                          from '../bake-artifact-versions-command';
 
 /**
  * Pins what the command owns: which root it bakes under (`--root`, else the current directory),

@@ -4,6 +4,32 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.7](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.6...v0.5.7) (Tue Nov 03 2026)
+
+
+
+## [0.5.6](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.5...v0.5.6) (Mon Nov 02 2026)
+
+### fix
+
+* **iam** grant log-group actions on the log-group ARN ([d042fe2](https://github.com/serverlessinbox/mailbox-cdk/commit/d042fe2e55ec7e0bc4f679ac581f0db9ce7cbe84))
+
+### refactor
+
+* **mailbox** queue encryption is a union, one behaviour per variant ([7e4dc83](https://github.com/serverlessinbox/mailbox-cdk/commit/7e4dc83f8bf4c77e3f66db0e88b4f1799d63dee6))
+
+* remove the remaining Partial types and forbid Partial in lint ([66a2dc6](https://github.com/serverlessinbox/mailbox-cdk/commit/66a2dc65781c3e734f4d0b455bfed59a1286db18))
+
+### feat
+
+* **mailbox-cdk-shared** run work concurrently under a fixed cap ([9d6f11a](https://github.com/serverlessinbox/mailbox-cdk/commit/9d6f11aa7ab67b3a732855832f3453cc6569be61))
+
+* **eslint-plugin** align caps the = column at 80 and gives lone entries one space ([7b0a5af](https://github.com/serverlessinbox/mailbox-cdk/commit/7b0a5af97634ede36aaac2933bfaab4c11504031))
+
+### style
+
+* enable import-layout and reformat imports at the column-80 lane ([17dddd6](https://github.com/serverlessinbox/mailbox-cdk/commit/17dddd6fbd2207684e1d5a0015543ac67cca1cd1))
+
 ## [0.5.5](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.4...v0.5.5) (Wed Oct 28 2026)
 
 

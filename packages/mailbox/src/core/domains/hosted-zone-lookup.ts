@@ -1,10 +1,11 @@
-import type { IArtifactResolver }                                                                               from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription, MailboxArtifactResolverFactory, StackHelpers, applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
-import * as route53                                                                                             from 'aws-cdk-lib/aws-route53';
-import { Construct }                                                                                            from 'constructs';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription, MailboxArtifactResolverFactory, StackHelpers,
+  applyServerlessInboxComponentTag }                                            from '@serverlessinbox/mailbox-cdk-shared';
+import * as route53                                                             from 'aws-cdk-lib/aws-route53';
+import { Construct }                                                            from 'constructs';
 
-import { loadMailboxArtifactVersions }                                                                          from '../../mailbox-artifact-versions';
-import { loadMailboxRegistryRecord }                                                                            from '../../mailbox-registry-record';
+import { loadMailboxArtifactVersions }                                          from '../../mailbox-artifact-versions';
+import { loadMailboxRegistryRecord }                                            from '../../mailbox-registry-record';
 
 /**
  * Settings of a {@link HostedZoneLookup}.

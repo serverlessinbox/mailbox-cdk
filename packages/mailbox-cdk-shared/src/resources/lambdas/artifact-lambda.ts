@@ -5,14 +5,14 @@ import {
   FunctionOptions,
   Runtime,
   Function as LambdaFunction,
-} from 'aws-cdk-lib/aws-lambda';
-import { Aws }               from 'aws-cdk-lib';
-import { Construct }         from 'constructs';
+}                                 from 'aws-cdk-lib/aws-lambda';
+import { Aws }                    from 'aws-cdk-lib';
+import { Construct }              from 'constructs';
 
-import { applyArtifactTags } from '../../artifacts/apply-artifact-tags';
+import { applyArtifactTags }      from '../../artifacts/apply-artifact-tags';
 
-import { PipelineLogGroup }  from './pipeline-log-groups';
-import type { Pipeline }     from './pipelines';
+import { PipelineLogGroup }       from './pipeline-log-groups';
+import type { Pipeline }          from './pipelines';
 
 /** What `ArtifactLambda` needs beyond the function options: which published artifact holds the code, and which pipeline the function logs under. */
 export interface ArtifactLambdaProps extends FunctionOptions {

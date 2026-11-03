@@ -41,8 +41,9 @@ function createProps(stack: cdk.Stack): SesEventProcessingProps {
     mailFeedbackTable: dataTable('mail-feedback-table'),
     configTable:       dataTable('config-table'),
     blobStore:         new DataBlobStore(new Bucket(stack, 'blob-store')),
-    auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue'),
+    auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
     artifactResolver,
+    queueEncryption: { kind: 'aws-managed' },
   };
 }
 

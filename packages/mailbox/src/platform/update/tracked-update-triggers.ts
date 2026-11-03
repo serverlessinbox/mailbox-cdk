@@ -10,7 +10,7 @@ const SERVICE_TIMEOUT_MARGIN = cdk.Duration.seconds(30);
 /** Inputs of the tracked update triggers. */
 export interface TrackedUpdateTriggersProps {
   /** The updater Lambda the post-deploy trigger invokes. */
-  readonly updater:    lambda.IFunction;
+  readonly updater: lambda.IFunction;
   /** The condition that is false when the updater does not follow releases; it gates every trigger. */
   readonly isTracking: cdk.CfnCondition;
 }

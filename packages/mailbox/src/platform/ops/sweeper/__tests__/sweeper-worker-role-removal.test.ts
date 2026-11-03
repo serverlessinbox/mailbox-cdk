@@ -6,10 +6,10 @@
  * is skipped on a request whose execution input carries no worker role.
  */
 
-import type { Construct }                                     from 'constructs';
+import type { Construct }                                                       from 'constructs';
 
-import { newTestStack }                                       from '../../../__tests__/platform-helpers';
-import { SweeperWorkerRoleRemoval }                           from '../sweeper-worker-role-removal';
+import { newTestStack }                                                         from '../../../__tests__/platform-helpers';
+import { SweeperWorkerRoleRemoval }                                             from '../sweeper-worker-role-removal';
 
 import {
   renderRemovalChain,
@@ -17,7 +17,7 @@ import {
   resolveStatements,
   startStateOf,
   stateOf,
-} from './sweeper-helpers';
+}                                                                               from './sweeper-helpers';
 
 const WORKER_ROLE_ARN = 'arn:aws:iam::123456789012:role/mailbox-sweeper-worker-aaaa1111-bbbb2222';
 const POLICY_NAME     = 'worker-policy';

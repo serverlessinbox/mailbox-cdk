@@ -7,21 +7,21 @@
  * the AWS clients it builds faked and CloudFormation's response read from the request sent to the ResponseURL.
  */
 
-import type * as LambdaSdk                                                          from '@aws-sdk/client-lambda';
-import type * as TaggingSdk                                                         from '@aws-sdk/client-resource-groups-tagging-api';
-import type * as LambdaRuntime                                                      from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { captureCfnResponse }                                                       from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
-import { mockClient }                                                               from 'aws-sdk-client-mock';
-import type { AwsClientStub }                                                       from 'aws-sdk-client-mock';
+import type * as LambdaSdk                                                      from '@aws-sdk/client-lambda';
+import type * as TaggingSdk                                                     from '@aws-sdk/client-resource-groups-tagging-api';
+import type * as LambdaRuntime                                                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { captureCfnResponse }                                                   from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
+import type { AwsClientStub }                                                   from 'aws-sdk-client-mock';
 
-import type * as HandlerModule                                                      from '../handler';
+import type * as HandlerModule                                                  from '../handler';
 
 import {
   deployEndTriggerEvent,
   fakeLambdaContext,
   GOOD_ENVIRONMENT as SHARED_ENVIRONMENT,
   httpApiEvent,
-} from './updater-helpers';
+}                                                                               from './updater-helpers';
 
 jest.mock('https', () => ({
   request: jest.fn(),

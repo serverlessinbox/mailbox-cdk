@@ -5,13 +5,13 @@
  * hands to a distribution, and the deploy grant it writes.
  */
 
-import { Match, Template }                   from 'aws-cdk-lib/assertions';
-import { Distribution }                      from 'aws-cdk-lib/aws-cloudfront';
-import { Role, ServicePrincipal }            from 'aws-cdk-lib/aws-iam';
-import * as cdk                              from 'aws-cdk-lib';
-import { App, BootstraplessSynthesizer }     from 'aws-cdk-lib';
+import { Match, Template }               from 'aws-cdk-lib/assertions';
+import { Distribution }                  from 'aws-cdk-lib/aws-cloudfront';
+import { Role, ServicePrincipal }        from 'aws-cdk-lib/aws-iam';
+import * as cdk                          from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer } from 'aws-cdk-lib';
 
-import { UiBucket }                          from '../ui-bucket';
+import { UiBucket }                      from '../ui-bucket';
 
 function newStack(): cdk.Stack {
   return new cdk.Stack(new App(), 'TestStack', {

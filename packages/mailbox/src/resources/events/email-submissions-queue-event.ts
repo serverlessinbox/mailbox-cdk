@@ -10,7 +10,7 @@ export interface EmailSubmissionsQueueEventProps {
   /** The function that receives each submitted email. */
   readonly target: IFunction;
   /** The queue the submitted emails are read from, seen from the consuming side. */
-  readonly queue:  IEmailSendingQueueConsumer;
+  readonly queue: IEmailSendingQueueConsumer;
 }
 
 /** Invokes the target with one submitted email per batch. */

@@ -1,5 +1,5 @@
 import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription, type BaseQueueProps }               from '@serverlessinbox/mailbox-cdk-shared';
+import { ComponentDescription, type QueueEncryptionChoice }        from '@serverlessinbox/mailbox-cdk-shared';
 import { Construct }                                               from 'constructs';
 
 import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
@@ -17,8 +17,8 @@ export interface EmailSendingProps {
   readonly artifactResolver: IArtifactResolver;
   readonly sesConfigSetName: string;
 
-  /** Optional default props applied to all queues created by this construct (e.g. encryption). */
-  readonly queueProps?: Partial<BaseQueueProps>;
+  /** The encryption of the email-submissions queue. */
+  readonly queueEncryption: QueueEncryptionChoice;
 }
 
 /**
@@ -37,7 +37,7 @@ export class EmailSending extends Construct {
     ComponentDescription.describe(this, 'Outbound email submission — queues messages and sends them via SES.');
 
     const submissionQueue = new EmailSendingQueue(this, 'email-submissions-queue', {
-      queueProps: props.queueProps,
+      encryption: props.queueEncryption,
     });
     this.submissionQueue  = submissionQueue;
 

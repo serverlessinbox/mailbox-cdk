@@ -1,11 +1,11 @@
-import type { IArtifactResolver }        from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                      from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration }                      from 'aws-cdk-lib';
-import { Construct }                     from 'constructs';
+import type { IArtifactResolver }    from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                  from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                  from 'aws-cdk-lib';
+import { Construct }                 from 'constructs';
 
-import type { ISupportRoles }            from '../../contracts/support-roles';
-import { SupportCollectionSchedule }     from '../events/support-collection-schedule';
-import type { IDataTable }               from '../tables/data-tables';
+import type { ISupportRoles }        from '../../contracts/support-roles';
+import { SupportCollectionSchedule } from '../events/support-collection-schedule';
+import type { IDataTable }           from '../tables/data-tables';
 
 /**
  * The support roles whose assumptions it archives and whose tier tags it recomputes, the config table it

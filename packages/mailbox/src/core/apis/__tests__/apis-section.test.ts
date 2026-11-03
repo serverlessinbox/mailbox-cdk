@@ -12,7 +12,7 @@ import { ArtifactZone, PinnedArtifactResolver }                       from '@ser
 import { ServerlessInboxTagKeys, VENDOR_ACCOUNT_ID }                  from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                                            from 'aws-cdk-lib/assertions';
 import * as acm                                                       from 'aws-cdk-lib/aws-certificatemanager';
-import { Table, AttributeType }                                       from 'aws-cdk-lib/aws-dynamodb';
+import { Table, AttributeType, TableEncryption }                      from 'aws-cdk-lib/aws-dynamodb';
 import { Function as LambdaFunction }                                 from 'aws-cdk-lib/aws-lambda';
 import { Bucket }                                                     from 'aws-cdk-lib/aws-s3';
 import * as cdk                                                       from 'aws-cdk-lib';
@@ -20,16 +20,21 @@ import { App, BootstraplessSynthesizer, CfnResource, TagManager }     from 'aws-
 import type { Construct }                                             from 'constructs';
 
 import { DataBlobStore }                                              from '../../../resources/buckets/data-blob-store';
+import { fakeMailImportRunner }                                       from '../../../resources/lambdas/__tests__/lambda-wrapper-fakes';
 import { AuditEventsQueue }                                           from '../../../resources/queues/audit-events-queue';
 import { EmailSendingQueue }                                          from '../../../resources/queues/email-sending-queue';
+import { ImportJobsQueue }                                            from '../../../resources/queues/import-jobs-queue';
 import { AuthKeyStoreTable }                                          from '../../../resources/tables/auth-key-store-table';
 import { DataTable }                                                  from '../../../resources/tables/data-tables';
+import { MailLogTable }                                               from '../../../resources/tables/mail-log-table';
 import { AuthMethod }                                                 from '../../auth/auth-method';
 import type { IMailboxAuthProvider }                                  from '../../auth/auth-provider';
 import { MailboxDomains }                                             from '../../domains/mailbox-domains';
 import type { IAdminApiAddon, IAdminApiAddonProvider, IJmapApiAddon } from '../addons';
 import { ApisSection }                                                from '../apis-section';
 import type { ApisEndpointsProps, ApisSectionProps, IApisEdgeInputs } from '../apis-section';
+
+import { patTable }                                                   from './apis-helpers';
 
 /** What a test varies of the section: the optional JMAP hooks of the auth provider and the further admin-api addon providers. */
 interface SectionOptions {
@@ -81,11 +86,12 @@ describe('ApisSection', () => {
       data:       {
         configTable:       dataTable('config-table'),
         itemTable:         dataTable('item-table'),
+        patTable:          patTable(stack, 'pat-table'),
         changelogTable:    dataTable('changelog-table'),
         auditLogTable:     dataTable('audit-log-table'),
         mailFeedbackTable: dataTable('mail-feedback-table'),
         blobStore:         new DataBlobStore(new Bucket(stack, 'blob-store')),
-        auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue'),
+        auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
       },
       auth:       {
         authKeyStoreTable:   new AuthKeyStoreTable(stack, 'auth-key-store-table'),
@@ -96,9 +102,10 @@ describe('ApisSection', () => {
         ),
       },
       email:      {
-        submissionQueue:  new EmailSendingQueue(stack, 'email-submission-queue'),
+        submissionQueue:  new EmailSendingQueue(stack, 'email-submission-queue', { encryption: { kind: 'aws-managed' } }),
         sesRuleSetName:   'rule-set',
         sesConfigSetName: 'config-set',
+        mailLogTable:     new MailLogTable(stack, 'mail-log-table', { encryption: TableEncryption.AWS_MANAGED }),
       },
       vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: 'serverless-inbox:stack' },
     };
@@ -122,6 +129,7 @@ describe('ApisSection', () => {
       mailboxDomains: new MailboxDomains({ domainName: 'example.com' }),
       edge:           {},
       ui:             { adminUiOrigins: [], webmailUiOrigins: [] },
+      jobs:           { importJobsQueue: new ImportJobsQueue(stack, 'import-jobs-queue', { encryption: { kind: 'aws-managed' } }), mailImportRunner: fakeMailImportRunner('mail-import-runner') },
       ...overrides,
     };
   }

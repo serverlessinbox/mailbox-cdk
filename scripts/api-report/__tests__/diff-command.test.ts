@@ -1,11 +1,11 @@
-import { Cli }                                       from 'clipanion';
-import { mkdtempSync, rmSync, writeFileSync }        from 'node:fs';
-import { tmpdir }                                    from 'node:os';
-import * as path                                     from 'node:path';
-import { Writable }                                  from 'node:stream';
+import { Cli }                                from 'clipanion';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir }                             from 'node:os';
+import * as path                              from 'node:path';
+import { Writable }                           from 'node:stream';
 
-import { DeclarationReporter }                       from '../declaration-reporter';
-import { DiffCommand }                               from '../diff-command';
+import { DeclarationReporter }                from '../declaration-reporter';
+import { DiffCommand }                        from '../diff-command';
 
 /**
  * Pins the API gate's verdict: exit 0 when the stored baseline equals the current report, exit 1

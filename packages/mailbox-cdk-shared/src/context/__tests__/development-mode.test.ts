@@ -7,10 +7,11 @@
  * production stack's data deletable.
  */
 
-import * as cdk                                                                                 from 'aws-cdk-lib';
+import * as cdk                                                                 from 'aws-cdk-lib';
 
-import { DEVELOPMENT_CONTEXT_KEY }                                                              from '../context-keys';
-import { autoDeleteObjectsInDevelopment, isDevelopmentMode, removalPolicyForRetainedResources } from '../development-mode';
+import { DEVELOPMENT_CONTEXT_KEY }                                              from '../context-keys';
+import { autoDeleteObjectsInDevelopment, isDevelopmentMode,
+  removalPolicyForRetainedResources }                                           from '../development-mode';
 
 function stackWith(value?: unknown): cdk.Stack {
   const context = value === undefined ? {} : { [DEVELOPMENT_CONTEXT_KEY]: value };

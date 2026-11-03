@@ -1,17 +1,17 @@
 /// <reference types="jest" />
 
 /**
- * ItemTable: the key schema and the three secondary indexes of the item table, and the settings the
- * table takes from its props. Item keys are written under these names, so a change here makes stored
- * entries unreachable.
+ * ItemTable: the key schema and the three secondary indexes of the item table, the settings the table takes from
+ * its props, and the `ttl` attribute the job and connection rows expire through. Item keys are written under these
+ * names, so a change here makes stored entries unreachable.
  */
 
-import { Match, Template }                                         from 'aws-cdk-lib/assertions';
-import * as kms                                                    from 'aws-cdk-lib/aws-kms';
+import { Match, Template }                                      from 'aws-cdk-lib/assertions';
+import * as kms                                                 from 'aws-cdk-lib/aws-kms';
 
-import { ItemTable }                                               from '../item-table';
+import { ItemTable }                                            from '../item-table';
 
-import { DATA_TABLE_PROPS, createDataTableStack, propsWithKey }    from './data-table-helpers';
+import { DATA_TABLE_PROPS, createDataTableStack, propsWithKey } from './data-table-helpers';
 
 describe('ItemTable', () => {
   it('is keyed by string pk and sk and has the indexes gsi1 to gsi3', () => {
@@ -39,6 +39,15 @@ describe('ItemTable', () => {
       TableName:                        { 'Fn::Join': ['', [{ Ref: 'AWS::AccountId' }, '-custom-item-table']] },
       SSESpecification:                 { SSEEnabled: true, SSEType: 'KMS', KMSMasterKeyId: keyArn },
       PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: false },
+    });
+  });
+
+  it('expires rows through the ttl attribute', () => {
+    const stack = createDataTableStack();
+    new ItemTable(stack, DATA_TABLE_PROPS);
+
+    Template.fromStack(stack).hasResourceProperties('AWS::DynamoDB::Table', {
+      TimeToLiveSpecification: { AttributeName: 'ttl', Enabled: true },
     });
   });
 });

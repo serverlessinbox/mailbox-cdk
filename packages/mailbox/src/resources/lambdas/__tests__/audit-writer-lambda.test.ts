@@ -7,13 +7,13 @@
  * event, not here.
  */
 
-import { Template }                                         from 'aws-cdk-lib/assertions';
+import { Template }                                      from 'aws-cdk-lib/assertions';
 
-import { AuditEventsQueueEvent }                            from '../../events/audit-events-queue-event';
-import { AuditWriterLambda }                                from '../audit-writer-lambda';
+import { AuditEventsQueueEvent }                         from '../../events/audit-events-queue-event';
+import { AuditWriterLambda }                             from '../audit-writer-lambda';
 
-import { expectGrantedOnceTo, fakeDataTable, fakeQueue }    from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataTable, fakeQueue } from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }             from './lambda-wrapper-helpers';
 
 jest.mock('../../events/audit-events-queue-event');
 

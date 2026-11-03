@@ -1,5 +1,5 @@
-import { TagResourceCommand, type CloudFrontClient } from '@aws-sdk/client-cloudfront';
-import type { S3Client }                             from '@aws-sdk/client-s3';
+import { TagResourceCommand, type CloudFrontClient }                            from '@aws-sdk/client-cloudfront';
+import type { S3Client }                                                        from '@aws-sdk/client-s3';
 import {
   CaughtError,
   deployZipToPrefix,
@@ -7,11 +7,11 @@ import {
   parseArn,
   ServerlessInboxTagKeys,
   type LoggerBuffer,
-} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { UiTarget }                      from './artifact-target';
-import type { ReleaseArtifacts, StaleTarget } from './release-artifacts';
-import type { RegionClients }                 from './updater-clients';
+import type { UiTarget }                                                        from './artifact-target';
+import type { ReleaseArtifacts, StaleTarget }                                   from './release-artifacts';
+import type { RegionClients }                                                   from './updater-clients';
 
 const CONTENT_PREFIX = 'content/';
 
@@ -86,7 +86,7 @@ export class UiBucketUpdater {
       this.logger.error('failed to update UI bucket', {
         bucketName: target.bucketName,
         distributionId,
-        error:      CaughtError.readableMessage(thrown),
+        error: CaughtError.readableMessage(thrown),
       });
       throw thrown;
     }

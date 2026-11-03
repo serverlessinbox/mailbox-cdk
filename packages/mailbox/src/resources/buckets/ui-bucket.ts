@@ -1,10 +1,10 @@
-import { StackNamedBucket }                   from '@serverlessinbox/mailbox-cdk-shared';
-import { S3BucketOrigin }                     from 'aws-cdk-lib/aws-cloudfront-origins';
+import { StackNamedBucket }  from '@serverlessinbox/mailbox-cdk-shared';
+import { S3BucketOrigin }    from 'aws-cdk-lib/aws-cloudfront-origins';
 import {
   IOrigin,
   IOriginAccessControl,
   S3OriginAccessControl,
-} from 'aws-cdk-lib/aws-cloudfront';
+}                            from 'aws-cdk-lib/aws-cloudfront';
 import { Grant, IGrantable } from 'aws-cdk-lib/aws-iam';
 import { BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import { RemovalPolicy }     from 'aws-cdk-lib';

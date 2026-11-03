@@ -1,8 +1,8 @@
-import { posix }                 from 'node:path';
+import { posix }               from 'node:path';
 
-import { packageRoots }          from './package-roots';
-import type { SourceLocation }   from './zone-classifier';
-import type { ZoneClassifier }   from './zone-classifier';
+import { packageRoots }        from './package-roots';
+import type { SourceLocation } from './zone-classifier';
+import type { ZoneClassifier } from './zone-classifier';
 
 export interface ImportTarget {
   readonly relative: boolean;

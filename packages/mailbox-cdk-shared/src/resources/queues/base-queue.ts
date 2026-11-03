@@ -5,8 +5,15 @@ import { Construct }                          from 'constructs';
 
 import { makePhysicalName }                   from '../../naming/resource-names';
 
-/** Queue props for {@link BaseQueue}: every SQS queue prop, with the visibility timeout and long-poll wait optional. */
-export interface BaseQueueProps extends Omit<QueueProps, 'visibilityTimeout' | 'receiveMessageWaitTime'> {
+import type { QueueEncryptionChoice }         from './queue-encryption';
+
+type QueueEncryptionSettings = Pick<QueueProps, 'encryption' | 'encryptionMasterKey'>;
+
+/** Queue props for {@link BaseQueue}: every SQS queue prop, with the visibility timeout and long-poll wait optional and the encryption required. */
+export interface BaseQueueProps extends Omit<QueueProps, 'visibilityTimeout' | 'receiveMessageWaitTime' | 'encryption' | 'encryptionMasterKey'> {
+  /** The queue's encryption: SQS-managed, unencrypted, or a customer-managed KMS key. */
+  readonly encryption: QueueEncryptionChoice;
+
   /**
    * Visibility timeout (default: 6 minutes).
    *
@@ -22,9 +29,9 @@ export interface BaseQueueProps extends Omit<QueueProps, 'visibilityTimeout' | '
 }
 
 /**
- * An SQS queue with a 6-minute visibility timeout, 20-second long polling and SQS-managed (or, with an
- * `encryptionMasterKey`, KMS) encryption. Every request that is not sent over TLS is denied: the queue
- * is created with `enforceSSL` set, and that is not overridable through the props.
+ * An SQS queue with a 6-minute visibility timeout, 20-second long polling and the encryption its props
+ * choose: SQS-managed, unencrypted, or a customer-managed KMS key. Every request that is not sent over TLS
+ * is denied: the queue is created with `enforceSSL` set, and that is not overridable through the props.
  *
  * The default visibility timeout suits a Lambda consumer with a ~5-minute timeout and up to 60 seconds
  * of batching. For a consumer with other characteristics, override `visibilityTimeout` with a value
@@ -35,23 +42,21 @@ export interface BaseQueueProps extends Omit<QueueProps, 'visibilityTimeout' | '
  * replaces the queue.
  */
 export class BaseQueue extends Queue {
-  constructor(scope: Construct, id: string, props: BaseQueueProps = {}) {
+  constructor(scope: Construct, id: string, props: BaseQueueProps) {
     const {
       visibilityTimeout = Duration.minutes(6),
       receiveMessageWaitTime = Duration.seconds(20),
+      encryption,
       ...rest
     } = props;
 
     const queueName = rest.queueName ?? makePhysicalName(scope, id, { maxLength: 80 });
 
-    const encryption = rest.encryption
-      ?? (rest.encryptionMasterKey ? QueueEncryption.KMS : QueueEncryption.KMS_MANAGED);
-
     super(scope, id, {
       visibilityTimeout,
       receiveMessageWaitTime,
       ...rest,
-      encryption,
+      ...BaseQueue.encryptionSettings(encryption),
       queueName,
       enforceSSL: true,
     });
@@ -91,5 +96,16 @@ export class BaseQueue extends Queue {
     this.encryptionMasterKey?.grant(grantee, 'kms:Decrypt');
 
     return grant;
+  }
+
+  private static encryptionSettings(choice: QueueEncryptionChoice): QueueEncryptionSettings {
+    switch (choice.kind) {
+      case 'aws-managed':
+        return { encryption: QueueEncryption.SQS_MANAGED };
+      case 'unencrypted':
+        return { encryption: QueueEncryption.UNENCRYPTED };
+      case 'kms':
+        return { encryption: QueueEncryption.KMS, encryptionMasterKey: choice.key };
+    }
   }
 }

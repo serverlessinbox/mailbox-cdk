@@ -1,7 +1,7 @@
-import { toPrincipalId, toTenantId, type Caller }  from '../../caller';
-import type { AuditEvent }                         from '../audit-event';
-import { AuditRecorder }                           from '../audit-recorder';
-import type { AuditSink }                          from '../audit-sink';
+import { toPrincipalId, toTenantId, type Caller } from '../../caller';
+import type { AuditEvent }                        from '../audit-event';
+import { AuditRecorder }                          from '../audit-recorder';
+import type { AuditSink }                         from '../audit-sink';
 
 /*
  * Pins how an entry of a handler becomes the event the audit writer stores. The tenant, the actor and the action

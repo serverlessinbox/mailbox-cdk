@@ -33,6 +33,7 @@ export class MailboxDataOverrideResolver extends Construct {
     changelogTable:    { id: 'changelog-table-override', label: 'changelog table' },
     auditLogTable:     { id: 'auditlog-table-override', label: 'audit log table' },
     mailFeedbackTable: { id: 'mailfeedback-table-override', label: 'mail feedback table' },
+    patTable:          { id: 'pat-table-override', label: 'personal access token table' },
   };
 
   private readonly resource: cdk.CustomResource;
@@ -57,6 +58,8 @@ export class MailboxDataOverrideResolver extends Construct {
       auditLogTableOverrideArn:     this.createOverrideReference('auditLogTable', arns.auditLogTable),
       mailFeedbackTableIncomingArn: arns.mailFeedbackTable,
       mailFeedbackTableOverrideArn: this.createOverrideReference('mailFeedbackTable', arns.mailFeedbackTable),
+      patTableIncomingArn:          arns.patTable,
+      patTableOverrideArn:          this.createOverrideReference('patTable', arns.patTable),
     };
 
     this.resource = new cdk.CustomResource(this, 'resource', {

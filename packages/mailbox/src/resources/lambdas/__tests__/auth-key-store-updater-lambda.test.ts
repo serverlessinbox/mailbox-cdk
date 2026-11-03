@@ -7,13 +7,13 @@
  * renders are pinned by the table and the triggers, not here.
  */
 
-import { Template }                                         from 'aws-cdk-lib/assertions';
+import { Template }                                   from 'aws-cdk-lib/assertions';
 
-import { AuthKeyRefreshSchedule }                           from '../../events/auth-key-refresh-schedule';
-import { AuthKeyStoreUpdaterLambda }                        from '../auth-key-store-updater-lambda';
+import { AuthKeyRefreshSchedule }                     from '../../events/auth-key-refresh-schedule';
+import { AuthKeyStoreUpdaterLambda }                  from '../auth-key-store-updater-lambda';
 
-import { expectGrantedOnceTo, fakeAuthKeyStoreTable }       from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeAuthKeyStoreTable } from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }          from './lambda-wrapper-helpers';
 
 jest.mock('../../events/auth-key-refresh-schedule');
 
@@ -42,10 +42,12 @@ describe('AuthKeyStoreUpdaterLambda', () => {
     });
   });
 
-  it('requests read-write on the key store table for itself', () => {
+  it('requests the HMAC, JWKS and connection-key grants on the key store table for itself', () => {
     const { lambda, authKeyStoreTable } = synthesize();
 
-    expectGrantedOnceTo(authKeyStoreTable.grantReadWrite, lambda);
+    expectGrantedOnceTo(authKeyStoreTable.grantManageHmac, lambda);
+    expectGrantedOnceTo(authKeyStoreTable.grantManageJwks, lambda);
+    expectGrantedOnceTo(authKeyStoreTable.grantManageConnectionKeys, lambda);
   });
 
   it('registers the refresh schedule with itself as the target', () => {

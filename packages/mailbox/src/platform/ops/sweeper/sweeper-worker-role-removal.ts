@@ -1,15 +1,15 @@
-import { StackIdentity }                                                  from '@serverlessinbox/mailbox-cdk-shared';
-import * as iam                                                           from 'aws-cdk-lib/aws-iam';
-import * as lambda                                                        from 'aws-cdk-lib/aws-lambda';
-import * as sfn                                                           from 'aws-cdk-lib/aws-stepfunctions';
-import { Aws, Duration }                                                  from 'aws-cdk-lib';
-import { Construct }                                                      from 'constructs';
+import { StackIdentity }                                              from '@serverlessinbox/mailbox-cdk-shared';
+import * as iam                                                       from 'aws-cdk-lib/aws-iam';
+import * as lambda                                                    from 'aws-cdk-lib/aws-lambda';
+import * as sfn                                                       from 'aws-cdk-lib/aws-stepfunctions';
+import { Aws, Duration }                                              from 'aws-cdk-lib';
+import { Construct }                                                  from 'constructs';
 
-import type { RemovalTargets, SweeperRoleWorkerInput }                    from '../../../runtime/resource-sweeper/removal';
+import type { RemovalTargets, SweeperRoleWorkerInput }                from '../../../runtime/resource-sweeper/removal';
 
-import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard }     from './removal';
-import type { IResourceRemoval, WorkerPayloadTemplate }                   from './removal';
-import { SWEEPER_WORKER_ROLE_NAME_PREFIX }                                from './sweeper-worker-role-name';
+import { buildWorkerRetryLoop, targetField, withTargetPresenceGuard } from './removal';
+import type { IResourceRemoval, WorkerPayloadTemplate }               from './removal';
+import { SWEEPER_WORKER_ROLE_NAME_PREFIX }                            from './sweeper-worker-role-name';
 
 /** Inputs of {@link SweeperWorkerRoleRemoval}: the ARN and inline policy name of the sweeper's worker role. */
 export interface SweeperWorkerRoleRemovalProps {

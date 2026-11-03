@@ -7,11 +7,11 @@
  * the detector time to report a failed stack before the sweeper tears it down.
  */
 
-import { StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration }      from 'aws-cdk-lib';
+import { StackIdentity }                                                        from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                                                             from 'aws-cdk-lib';
 
-import { stateBodyOf }   from '../../../../__tests__/state-machine-helpers';
-import { newTestStack }  from '../../../__tests__/platform-helpers';
+import { stateBodyOf }                                                          from '../../../../__tests__/state-machine-helpers';
+import { newTestStack }                                                         from '../../../__tests__/platform-helpers';
 
 import {
   guardEntryOf,
@@ -26,7 +26,7 @@ import {
   startStateOf,
   stateOf,
   statusTargetOf,
-} from './sweeper-helpers';
+}                                                                               from './sweeper-helpers';
 
 /** The stack id the pattern test evaluates against: its guid prefix is `a1b2c3d4`. */
 const SAMPLE_STACK_ID = 'arn:aws:cloudformation:us-west-2:123456789012:stack/DetectorGrantsStack/a1b2c3d4-0000-4000-8000-000000000001';

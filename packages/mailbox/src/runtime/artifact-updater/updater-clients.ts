@@ -1,12 +1,12 @@
-import type { CloudFrontClient } from '@aws-sdk/client-cloudfront';
-import type { LambdaClient }     from '@aws-sdk/client-lambda';
+import type { CloudFrontClient }                                                from '@aws-sdk/client-cloudfront';
+import type { LambdaClient }                                                    from '@aws-sdk/client-lambda';
 import {
   GetResourcesCommand,
   type ResourceGroupsTaggingAPIClient,
   type ResourceTagMapping,
-} from '@aws-sdk/client-resource-groups-tagging-api';
-import type { S3Client }                                 from '@aws-sdk/client-s3';
-import { ServerlessInboxTagKeys, toRegion, type Region } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+}                                                                               from '@aws-sdk/client-resource-groups-tagging-api';
+import type { S3Client }                                                        from '@aws-sdk/client-s3';
+import { ServerlessInboxTagKeys, toRegion, type Region }                        from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
 /** Lambda@Edge functions and the CloudFront API live in this region regardless of the deployment region. */
 export const EDGE_REGION = toRegion('us-east-1');

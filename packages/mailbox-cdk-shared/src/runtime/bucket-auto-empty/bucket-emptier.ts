@@ -4,10 +4,10 @@ import {
   type ListObjectVersionsCommandOutput,
   type ObjectIdentifier,
   type S3Client,
-} from '@aws-sdk/client-s3';
+}                                                                               from '@aws-sdk/client-s3';
 
-import { ExpectedFailure }                      from '../../runtime/handler-kit/errors/expected-failure';
-import { hasTimeLeft, type InvocationDeadline } from '../../runtime/handler-kit/invocation-deadline';
+import { ExpectedFailure }                                                      from '../../runtime/handler-kit/errors/expected-failure';
+import { hasTimeLeft, type InvocationDeadline }                                 from '../../runtime/handler-kit/invocation-deadline';
 
 const DELETE_OBJECTS_BATCH_SIZE = 1000;
 
@@ -45,7 +45,7 @@ export class BucketEmptier {
       this.assertTimeLeft(bucketName, deadline, deleted);
       const page = await this.listVersions(bucketName, position);
       deleted   += await this.deleteVersions(bucketName, this.identifiersIn(page), deadline);
-      position   = this.nextPosition(page);
+      position = this.nextPosition(page);
     } while (position);
 
     return deleted;

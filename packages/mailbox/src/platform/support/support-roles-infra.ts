@@ -1,18 +1,18 @@
-import { PositionHash, rootStackResourceTagConditions, StackIdentity } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack }                                              from '@serverlessinbox/mailbox-cdk-shared';
-import * as iam                                                        from 'aws-cdk-lib/aws-iam';
-import { Fn, Aws, Stack, Duration }                                    from 'aws-cdk-lib';
-import { Construct }                                                   from 'constructs';
+import { PositionHash, rootStackResourceTagConditions, StackIdentity }          from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack }                                                       from '@serverlessinbox/mailbox-cdk-shared';
+import * as iam                                                                 from 'aws-cdk-lib/aws-iam';
+import { Fn, Aws, Stack, Duration }                                             from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import type { ISupportRoles }                                          from '../../contracts/support-roles';
+import type { ISupportRoles }                                                   from '../../contracts/support-roles';
 
 import {
   ENUMERATION_AND_ACCOUNT_LEVEL_ACTIONS,
   SUPPORT_CONFIG_READ_TIER,
   SUPPORT_DIAG_TIER,
   SUPPORT_TIERS,
-} from './support-tiers';
-import type { SupportTier } from './support-tiers';
+}                                                                               from './support-tiers';
+import type { SupportTier }                                                     from './support-tiers';
 
 const SUPPORT_ROLE_MAX_SESSION_DURATION = Duration.seconds(3600);
 const HOP_ROLE_SLUG                     = 'hop';
@@ -206,10 +206,10 @@ export class SupportRolesInfra extends Construct implements ISupportRoles {
   /**
    * CloudFront creates the edge log group itself in every replica region, untagged, so a tag condition
    * cannot reach it. The ARN is built from the same intrinsics as the pipeline log group names so the
-   * name matches exactly.
+   * name matches exactly. It is listed with its `:*` stream form and as the log-group-format ARN.
    */
   private buildEdgeLogGroupStatement(): iam.PolicyStatement {
-    const edgeLogGroupArn = Fn.join('', [
+    const edgeLogGroupArnParts = [
       'arn:',
       Aws.PARTITION,
       ':logs:*:',
@@ -218,8 +218,7 @@ export class SupportRolesInfra extends Construct implements ISupportRoles {
       Aws.STACK_NAME,
       '/jmap-',
       StackIdentity.guidPrefix,
-      ':*',
-    ]);
+    ];
 
     return new iam.PolicyStatement({
       effect:    iam.Effect.ALLOW,
@@ -231,7 +230,10 @@ export class SupportRolesInfra extends Construct implements ISupportRoles {
         'logs:StartQuery',
         'logs:GetQueryResults',
       ],
-      resources: [edgeLogGroupArn],
+      resources: [
+        Fn.join('', [...edgeLogGroupArnParts, ':*']),
+        Fn.join('', edgeLogGroupArnParts),
+      ],
     });
   }
 

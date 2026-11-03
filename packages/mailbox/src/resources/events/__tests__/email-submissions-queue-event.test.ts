@@ -21,7 +21,7 @@ describe('EmailSubmissionsQueueEvent', () => {
 
   beforeEach(() => {
     stack        = new Stack(new App(), 'TestStack', { synthesizer: new BootstraplessSynthesizer() });
-    queue        = new EmailSendingQueue(stack, 'email-submissions-queue');
+    queue        = new EmailSendingQueue(stack, 'email-submissions-queue', { encryption: { kind: 'aws-managed' } });
     const target = new Function(stack, 'target', { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });
 
     new EmailSubmissionsQueueEvent(target, 'email-submissions-queue', { target, queue });

@@ -5,21 +5,21 @@
  * stack in DELETE_FAILED over a bucket that needs nothing.
  */
 
-import { NoSuchBucket, S3Client }        from '@aws-sdk/client-s3';
+import { NoSuchBucket, S3Client }                                               from '@aws-sdk/client-s3';
 
-import { readCustomResourceRequest }     from '../../../runtime/handler-kit/custom-resource/custom-resource-request-reader';
-import { ExpectedFailure }               from '../../../runtime/handler-kit/errors/expected-failure';
-import { InvalidOwnInput }               from '../../../runtime/handler-kit/errors/invalid-own-input';
-import { LoggerBuffer }                  from '../../../runtime/handler-kit/logger-buffer';
-import { BucketAutoEmptyRequestHandler } from '../bucket-auto-empty-request-handler';
-import { BucketEmptier }                 from '../bucket-emptier';
+import { readCustomResourceRequest }                                            from '../../../runtime/handler-kit/custom-resource/custom-resource-request-reader';
+import { ExpectedFailure }                                                      from '../../../runtime/handler-kit/errors/expected-failure';
+import { InvalidOwnInput }                                                      from '../../../runtime/handler-kit/errors/invalid-own-input';
+import { LoggerBuffer }                                                         from '../../../runtime/handler-kit/logger-buffer';
+import { BucketAutoEmptyRequestHandler }                                        from '../bucket-auto-empty-request-handler';
+import { BucketEmptier }                                                        from '../bucket-emptier';
 
 import {
   PHYSICAL_RESOURCE_ID,
   fakeCreateEvent,
   fakeDeleteEvent,
   fakeUpdateEvent,
-} from './bucket-auto-empty-helpers';
+}                                                                               from './bucket-auto-empty-helpers';
 
 describe('BucketAutoEmptyRequestHandler', () => {
   const bucketEmptier  = new BucketEmptier(new S3Client({}));
@@ -84,7 +84,6 @@ describe('BucketAutoEmptyRequestHandler', () => {
       ['no bucketName', readCustomResourceRequest(fakeDeleteEvent({}))],
       ['a blank bucketName', readCustomResourceRequest(fakeDeleteEvent({ bucketName: '   ' }))],
       ['a bucketName that is not a string', readCustomResourceRequest(fakeDeleteEvent({ bucketName: 123 }))],
-      ['no resource properties', readCustomResourceRequest({ ...fakeDeleteEvent({}), ResourceProperties: undefined })],
     ])('fails a Delete with %s, saying the bucket cannot be checked', async (_title, request) => {
       const failure: unknown = await requestHandler.handle(request, deadline).catch((error: unknown) => error);
 

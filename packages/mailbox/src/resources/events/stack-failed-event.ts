@@ -1,16 +1,16 @@
-import * as targets                      from 'aws-cdk-lib/aws-events-targets';
-import * as events                       from 'aws-cdk-lib/aws-events';
-import { CfnPermission }                 from 'aws-cdk-lib/aws-lambda';
-import type { IFunction }                from 'aws-cdk-lib/aws-lambda';
-import { RemovalPolicy, Stack }          from 'aws-cdk-lib';
-import type { Construct }                from 'constructs';
+import * as targets               from 'aws-cdk-lib/aws-events-targets';
+import * as events                from 'aws-cdk-lib/aws-events';
+import { CfnPermission }          from 'aws-cdk-lib/aws-lambda';
+import type { IFunction }         from 'aws-cdk-lib/aws-lambda';
+import { RemovalPolicy, Stack }   from 'aws-cdk-lib';
+import type { Construct }         from 'constructs';
 
-import { retainOnEveryOperation }        from '../../utils/cfn-resource';
+import { retainOnEveryOperation } from '../../utils/cfn-resource';
 
 /** What the sweeper needs to find and remove the retained rule. */
 export interface IStackFailedEvent {
   /** ARN of the retained rule. */
-  readonly ruleArn:      string;
+  readonly ruleArn: string;
   /** Id of the rule's single target within the rule. */
   readonly ruleTargetId: string;
 }

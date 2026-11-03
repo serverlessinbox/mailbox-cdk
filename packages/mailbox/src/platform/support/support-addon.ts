@@ -1,18 +1,18 @@
-import type { IArtifactResolver }                                                                      from '@serverlessinbox/artifact-registry-cdk';
-import { GateOnConditionAspect }                                                                       from '@serverlessinbox/mailbox-cdk-shared';
-import { resolveVendorAccountIds }                                                                     from '@serverlessinbox/mailbox-cdk-shared';
-import { HttpMethod }                                                                                  from 'aws-cdk-lib/aws-apigatewayv2';
-import * as cdk                                                                                        from 'aws-cdk-lib';
-import { Fn }                                                                                          from 'aws-cdk-lib';
-import { Construct }                                                                                   from 'constructs';
+import type { IArtifactResolver }                 from '@serverlessinbox/artifact-registry-cdk';
+import { GateOnConditionAspect }                  from '@serverlessinbox/mailbox-cdk-shared';
+import { resolveVendorAccountIds }                from '@serverlessinbox/mailbox-cdk-shared';
+import { HttpMethod }                             from 'aws-cdk-lib/aws-apigatewayv2';
+import * as cdk                                   from 'aws-cdk-lib';
+import { Fn }                                     from 'aws-cdk-lib';
+import { Construct }                              from 'constructs';
 
-import type { AdminApiRouteSpec, IAdminApiAddon }                                                      from '../../core/apis/addons';
-import { SupportApiLambda }                                                                            from '../../resources/lambdas/support-api-lambda';
-import { SupportRoleAssumptionCollectorLambda }                                                        from '../../resources/lambdas/support-role-assumption-collector-lambda';
-import type { IAuditEventsQueue }                                                                      from '../../resources/queues/audit-events-queue';
-import type { IDataTable }                                                                             from '../../resources/tables/data-tables';
+import type { AdminApiRouteSpec, IAdminApiAddon } from '../../core/apis/addons';
+import { SupportApiLambda }                       from '../../resources/lambdas/support-api-lambda';
+import { SupportRoleAssumptionCollectorLambda }   from '../../resources/lambdas/support-role-assumption-collector-lambda';
+import type { IAuditEventsQueue }                 from '../../resources/queues/audit-events-queue';
+import type { IDataTable }                        from '../../resources/tables/data-tables';
 
-import { SupportRolesInfra }                                                                           from './support-roles-infra';
+import { SupportRolesInfra }                      from './support-roles-infra';
 
 /**
  * Whether the support feature is provisioned.

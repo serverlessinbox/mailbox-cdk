@@ -6,16 +6,18 @@
  * statement each grant renders is pinned by the table that owns it.
  */
 
-import { Template }                                                  from 'aws-cdk-lib/assertions';
+import { Template }                                                             from 'aws-cdk-lib/assertions';
 
-import { AuthPolicyName }                                            from '../../../contracts/auth-names';
-import { AuthorizerLambda }                                          from '../authorizer-lambda';
-import type { AuthorizerLambdaProps }                                from '../authorizer-lambda';
+import { AuthPolicyName }                                                       from '../../../contracts/auth-names';
+import { Permission }                                                           from '../../../core/auth/jmap-scopes';
+import { AuthorizerLambda }                                                     from '../authorizer-lambda';
+import type { AuthorizerLambdaProps }                                           from '../authorizer-lambda';
 
-import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataTable } from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                         from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataTable,
+  fakePatTable, fakeQueue }                                                     from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                                    from './lambda-wrapper-helpers';
 
-type OptionalProps = Pick<AuthorizerLambdaProps, 'anonymousRoutes' | 'principalLookup'>;
+type OptionalProps = Partial<Pick<AuthorizerLambdaProps, 'anonymousRoutes' | 'principalLookup' | 'scopeMap' | 'personalAccessTokens'>>;
 
 function synthesize(optional: OptionalProps = {}) {
   const { stack, artifactResolver } = arrangeWrapperStack();
@@ -28,6 +30,7 @@ function synthesize(optional: OptionalProps = {}) {
     authPolicyName: AuthPolicyName.ADMIN_API,
     serviceName:    'jmap',
     pipeline:       'jmap',
+    scopeMap:       {},
     ...optional,
   });
 
@@ -50,16 +53,52 @@ describe('AuthorizerLambda', () => {
     expect(synthesize().environment).toMatchObject({ ALLOW_ANONYMOUS_ROUTES: '' });
   });
 
+  it('passes the provider scope map to the handler as OAUTH_SCOPE_MAP', () => {
+    const scopeMap = { 'mail.read': [Permission.MAIL_READ_ITEMS] };
+
+    expect(synthesize({ scopeMap }).environment).toMatchObject({ OAUTH_SCOPE_MAP: JSON.stringify(scopeMap) });
+  });
+
   it('requests read on the key store table for itself', () => {
     const { lambda, authKeyStoreTable } = synthesize();
 
-    expectGrantedOnceTo(authKeyStoreTable.grantRead, lambda);
+    expectGrantedOnceTo(authKeyStoreTable.grantReadJwks, lambda);
   });
 
   it('requests read on the config table for itself', () => {
     const { lambda, configTable } = synthesize();
 
     expectGrantedOnceTo(configTable.grantRead, lambda);
+  });
+
+  describe('personal access tokens', () => {
+    function withTokens() {
+      const patTable         = fakePatTable('pat-table');
+      const auditEventsQueue = fakeQueue('audit-events');
+
+      return { patTable, auditEventsQueue, ...synthesize({ personalAccessTokens: { patTable, auditEventsQueue } }) };
+    }
+
+    it('passes the token table name and the audit queue URL when tokens are accepted', () => {
+      expect(withTokens().environment).toMatchObject({
+        PAT_TABLE_NAME:         'pat-table',
+        AUDIT_EVENTS_QUEUE_URL: 'https://sqs.fake/audit-events',
+      });
+    });
+
+    it('requests the token lookup grant and the audit queue send grant for itself', () => {
+      const { lambda, patTable, auditEventsQueue } = withTokens();
+
+      expectGrantedOnceTo(patTable.grantPatLookup, lambda);
+      expectGrantedOnceTo(auditEventsQueue.grantSend, lambda);
+    });
+
+    it('sets neither variable when tokens are not accepted', () => {
+      const { environment } = synthesize();
+
+      expect(environment).not.toHaveProperty('PAT_TABLE_NAME');
+      expect(environment).not.toHaveProperty('AUDIT_EVENTS_QUEUE_URL');
+    });
   });
 
   describe('principal lookup', () => {

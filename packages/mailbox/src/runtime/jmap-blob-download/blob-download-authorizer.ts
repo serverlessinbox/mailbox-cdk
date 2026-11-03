@@ -1,13 +1,16 @@
-import { CaughtError, toAccountId, type AccountId, type LoggerBuffer, type Region, type TenantId } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { CaughtError, toAccountId, type AccountId, type LoggerBuffer,
+  type Region, type TableName, type TenantId }                                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { decodeBlobId, isSafeBlobPath, parseBlobId }                                               from './blob-id/blob-id-format';
-import { toEncodedBlobId, type EncodedBlobId, type ParsedBlobId }                                  from './blob-id/blob-id';
-import { BlobRequestRejected }                                                                     from './blob-id/blob-request-rejected';
-import { firstHeaderValue, type CloudFrontRequest }                                                from './cloudfront/cloudfront-event';
-import { corsPreflightResponse, errorResponse, type CloudFrontResponse }                           from './cloudfront/cloudfront-responses';
-import { extractAllowedOrigins, extractConfig, type Config }                                       from './config';
-import type { HmacTokenPayload, VerifiedJwt }                                                      from './verifiers/auth-tokens';
-import type { Verifiers }                                                                          from './verifiers/region-bound-verifiers';
+import { PAT_SESSION_IDENTITY }                                                 from './auth-identifiers';
+import { decodeBlobId, isSafeBlobPath, parseBlobId }                            from './blob-id/blob-id-format';
+import { toEncodedBlobId, type EncodedBlobId, type ParsedBlobId }               from './blob-id/blob-id';
+import { BlobRequestRejected }                                                  from './blob-id/blob-request-rejected';
+import { firstHeaderValue, type CloudFrontRequest }                             from './cloudfront/cloudfront-event';
+import { corsPreflightResponse, errorResponse, type CloudFrontResponse }        from './cloudfront/cloudfront-responses';
+import { extractAllowedOrigins, extractConfig, type Config }                    from './config';
+import { CredentialReader, type AcceptedCredential }                            from './request-credential';
+import type { HmacTokenPayload, PatVerdict, UsablePatVerdict, VerifiedJwt }     from './verifiers/auth-tokens';
+import type { Verifiers }                                                       from './verifiers/region-bound-verifiers';
 
 /** The JMAP download URL parameters (RFC 8620): `accountId` and `blobId` are required. */
 interface DownloadParams {
@@ -24,19 +27,22 @@ type RejectionStatus = 400 | 401 | 403 | 500;
 type RejectionContext = { readonly accountId: AccountId };
 
 /**
- * Decides whether a CloudFront origin request for a blob may reach the S3 origin, and rewrites an allowed
- * request to the blob's S3 key. A blob is served only to a bearer who presents a JWT that verifies, together
- * with an HMAC session token issued for the same issuer and audience that lists the requested account; an
- * email blob also needs the MAC of its id. A CORS preflight is answered without authentication. It decides on
- * the request alone and holds no state between requests; the key caches live in the verifiers it is handed.
+ * Decides whether a CloudFront origin request for a blob may reach the S3 origin, and rewrites an allowed request to
+ * the blob's S3 key. A blob is served to a bearer who presents either a JWT that verifies, together with an HMAC session
+ * token issued for the same issuer and audience that lists the requested account, or a personal access token whose
+ * lookup row is usable, together with a session token issued to that very token. An email blob also needs the MAC of
+ * its id. A CORS preflight is answered without authentication. It decides on the request alone and holds no state between
+ * requests; the key caches live in the verifiers it is handed.
  */
 export class BlobDownloadAuthorizer {
   private readonly logger: LoggerBuffer;
   private readonly verifiersFor: (region: Region) => Verifiers;
+  private readonly credentials: CredentialReader;
 
   constructor(logger: LoggerBuffer, verifiersFor: (region: Region) => Verifiers) {
     this.logger       = logger;
     this.verifiersFor = verifiersFor;
+    this.credentials  = new CredentialReader();
   }
 
   /**
@@ -48,21 +54,18 @@ export class BlobDownloadAuthorizer {
       return corsPreflightResponse(firstHeaderValue(request.headers, 'origin'), extractAllowedOrigins(request));
     }
 
-    const config        = this.readConfig(request);
-    const { jwt, hmac } = this.verifiersFor(config.region);
+    const config    = this.readConfig(request);
+    const verifiers = this.verifiersFor(config.region);
 
     const query        = new URLSearchParams(request.querystring || '');
     const params       = this.readDownloadParams(query);
     const blob         = this.readBlob(params.blobId);
-    const jwtToken     = this.readBearerToken(request);
+    const credential   = this.readCredential(request);
     const sessionToken = this.readSessionToken(query);
 
-    const verifiedJwt = await this.verifyJwt(jwt, jwtToken, config);
-    const session     = await this.verifySession(hmac, sessionToken, config);
-    this.requireAccountAccess(session, params.accountId, blob);
-    this.requireSameIdentity(verifiedJwt, session);
-    await this.requireBlobMac(hmac, session, params.accountId, blob, config);
-    this.requireSafePath(blob);
+    const session = credential.kind === 'pat'
+      ? await this.authorizeToken(verifiers, credential.secret, sessionToken, config, params, blob)
+      : await this.authorizeJwt(verifiers, credential.token, sessionToken, config, params, blob);
 
     return this.forward(request, session.tenantId, params, blob);
   }
@@ -121,12 +124,12 @@ export class BlobDownloadAuthorizer {
     return blob;
   }
 
-  private readBearerToken(request: CloudFrontRequest): string {
-    const parts = (firstHeaderValue(request.headers, 'authorization') ?? '').split(' ');
-    if (parts.length !== 2 || parts[0] !== 'Bearer' || !parts[1]) {
-      throw this.reject(401, 'Missing or invalid Authorization header');
+  private readCredential(request: CloudFrontRequest): AcceptedCredential {
+    const credential = this.credentials.read(request);
+    if (credential.kind === 'refused') {
+      throw this.reject(401, 'Missing or invalid Authorization header', credential.reason);
     }
-    return parts[1];
+    return credential;
   }
 
   private readSessionToken(query: URLSearchParams): string {
@@ -135,6 +138,50 @@ export class BlobDownloadAuthorizer {
       throw this.reject(401, 'Unauthorized', 'Missing auth token in query parameters');
     }
     return sessionToken;
+  }
+
+  private async authorizeJwt(
+    verifiers: Verifiers,
+    token: string,
+    sessionToken: string,
+    config: Config,
+    params: DownloadParams,
+    blob: ParsedBlobId,
+  ): Promise<HmacTokenPayload> {
+    const verifiedJwt = await this.verifyJwt(verifiers.jwt, token, config);
+    const session     = await this.verifySession(verifiers.hmac, sessionToken, config);
+    this.requireAccountAccess(session, params.accountId, blob);
+    this.requireSameIdentity(verifiedJwt, session);
+    await this.requireBlobMac(verifiers.hmac, session, params.accountId, blob, config);
+    this.requireSafeKeyParts(blob);
+    return session;
+  }
+
+  private async authorizeToken(
+    verifiers: Verifiers,
+    secret: string,
+    sessionToken: string,
+    config: Config,
+    params: DownloadParams,
+    blob: ParsedBlobId,
+  ): Promise<HmacTokenPayload> {
+    const patTable = this.requirePatTable(config);
+
+    const session = await this.verifySession(verifiers.hmac, sessionToken, config);
+    const verdict = await verifiers.pat.verdict(secret, patTable);
+    this.requireUsable(verdict);
+    this.requireAccountAccess(session, params.accountId, blob);
+    this.requireTokenBinding(verdict, session);
+    await this.requireBlobMac(verifiers.hmac, session, params.accountId, blob, config);
+    this.requireSafeKeyParts(blob);
+    return session;
+  }
+
+  private requirePatTable(config: Config): TableName {
+    if (config.patTable === undefined) {
+      throw this.reject(401, 'Unauthorized', 'Missing x-pat-table origin header, so a personal access token cannot be read');
+    }
+    return config.patTable;
   }
 
   private async verifyJwt(jwt: Verifiers['jwt'], token: string, config: Config): Promise<VerifiedJwt> {
@@ -148,7 +195,7 @@ export class BlobDownloadAuthorizer {
   }
 
   private async verifySession(hmac: Verifiers['hmac'], token: string, config: Config): Promise<HmacTokenPayload> {
-    this.logger.debug('JWT verified; verifying HMAC token');
+    this.logger.debug('Verifying HMAC session token');
 
     const session = await hmac.verifySessionToken(token, config.authKeyStoreTable);
     if (!session) {
@@ -157,6 +204,12 @@ export class BlobDownloadAuthorizer {
 
     this.logger.debug('HMAC token verified', { authorizedAccounts: session.accountIds.length });
     return session;
+  }
+
+  private requireUsable(verdict: PatVerdict): asserts verdict is UsablePatVerdict {
+    if (!verdict.usable) {
+      throw this.reject(401, 'Unauthorized', `personal access token is not usable: ${verdict.reason}`);
+    }
   }
 
   // A principal blob belongs to the tenant, not to an account, so it needs no account in the session.
@@ -176,6 +229,19 @@ export class BlobDownloadAuthorizer {
     }
     if (jwt.audience && session.audience !== jwt.audience) {
       throw this.reject(403, 'Access denied: audience mismatch');
+    }
+  }
+
+  // A token session must have been issued to this token: its subject is the token id, its identity the token identity, and its tenant the token's own.
+  private requireTokenBinding(verdict: UsablePatVerdict, session: HmacTokenPayload): void {
+    if (session.sub !== verdict.tokenId) {
+      throw this.reject(403, 'Access denied: token mismatch');
+    }
+    if (session.issuer !== PAT_SESSION_IDENTITY || session.audience !== PAT_SESSION_IDENTITY) {
+      throw this.reject(403, 'Access denied: session not issued to a token');
+    }
+    if (session.tenantId !== verdict.tenantId) {
+      throw this.reject(403, 'Access denied: tenant mismatch');
     }
   }
 
@@ -203,12 +269,12 @@ export class BlobDownloadAuthorizer {
     this.logger.debug('Blob MAC verified');
   }
 
-  private requireSafePath(blob: ParsedBlobId): void {
-    if (!isSafeBlobPath(blob.path)) {
+  private requireSafeKeyParts(blob: ParsedBlobId): void {
+    if (!isSafeBlobPath(blob.entityId) || !isSafeBlobPath(blob.path)) {
       throw this.reject(403, 'Access denied: invalid blob path', 'Access denied: unsafe blob path');
     }
 
-    this.logger.debug('Blob path safety verified');
+    this.logger.debug('Blob key parts safety verified');
   }
 
   private forward(

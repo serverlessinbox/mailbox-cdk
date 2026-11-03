@@ -7,20 +7,21 @@
  * blob endpoint can read.
  */
 
-import type { IArtifactResolver }                from '@serverlessinbox/artifact-registry-cdk';
-import { renderWithTokens, statementsForAction } from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { Match, Template }                       from 'aws-cdk-lib/assertions';
-import { Table }                                 from 'aws-cdk-lib/aws-dynamodb';
-import * as route53                              from 'aws-cdk-lib/aws-route53';
-import type { Stack }                            from 'aws-cdk-lib';
-import { Construct }                             from 'constructs';
-import * as t                                    from 'typanion';
+import type { IArtifactResolver }                     from '@serverlessinbox/artifact-registry-cdk';
+import { renderWithTokens, statementsForAction }      from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { Match, Template }                            from 'aws-cdk-lib/assertions';
+import { Table }                                      from 'aws-cdk-lib/aws-dynamodb';
+import * as route53                                   from 'aws-cdk-lib/aws-route53';
+import type { Stack }                                 from 'aws-cdk-lib';
+import { Construct }                                  from 'constructs';
+import * as t                                         from 'typanion';
 
 import {
   TEST_ACCOUNT,
   newDeployerTestStack,
-} from '../../../__tests__/deployer-test-helpers';
+}                                                     from '../../../__tests__/deployer-test-helpers';
 import { AuthKeyStoreTable, type IAuthKeyStoreTable } from '../../../resources/tables/auth-key-store-table';
+import { DataPatTable }                               from '../../../resources/tables/data-pat-table';
 import { DataTable }                                  from '../../../resources/tables/data-tables';
 import { MailboxDomains }                             from '../../domains/mailbox-domains';
 import { MailboxEdgeDeployer }                        from '../mailbox-edge-deployer';
@@ -35,7 +36,7 @@ const DEPLOYER_RESOURCE_ID: unknown = expect.stringMatching(/^edgedeployeredgest
 const DEPLOYER_LOGICAL_ID: unknown  = expect.stringMatching(/^edgedeployeredgestack[0-9A-F]{8}$/);
 
 /** The `stackName` property of the edge deployer resource: a `Fn::Join` of a separator and its parts. */
-const isDeployerResource       = t.isPartial({
+const isDeployerResource = t.isPartial({
   Properties: t.isPartial({
     stackName: t.isRecord(t.isTuple([t.isString(), t.isArray(t.isOneOf([t.isString(), t.isRecord(t.isString())]))])),
   }),
@@ -101,6 +102,7 @@ function synthDeployer(
     itemTable:         dataTable(stack, 'item-table', ITEM_TABLE_ARN),
     configTable:       dataTable(stack, 'config-table', CONFIG_TABLE_ARN),
     authKeyStoreTable: authKeyStoreTable(stack, 'auth-key-store-table'),
+    patTable:          new DataPatTable(Table.fromTableArn(stack, 'pat-table', 'arn:aws:dynamodb:us-west-2:111122223333:table/pat-table')),
     productVersion:    '1.2.3',
     logGroupName:      'test-log-group',
     deployerType:      'cfn',
@@ -125,7 +127,7 @@ describe('MailboxEdgeDeployer', () => {
       const templateUrl: unknown                  = stack.resolve(artifactResolver.getUrl('mailbox-cdk-edge', 'edge-stack-template.json'));
 
       template.hasResourceProperties(DEPLOYER_RESOURCE_TYPE, {
-        stackName:             EDGE_STACK_NAME,
+        stackName: EDGE_STACK_NAME,
         templateUrl,
         region:                'us-east-1',
         terminationProtection: false,
@@ -273,7 +275,7 @@ describe('MailboxEdgeDeployer', () => {
       ]);
     });
 
-    const hashedSuffix                                                                    = 'edge-0a1b2c3d';
+    const hashedSuffix = 'edge-0a1b2c3d';
     const scopedByName: Array<[string, (template: Template) => string[], string, string]> = [
       [
         'the stack',

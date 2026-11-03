@@ -1,4 +1,5 @@
-import type { BuildResult, ImportKind, Message, OnResolveArgs, Plugin, PluginBuild } from 'esbuild';
+import type { BuildResult, ImportKind, Message, OnResolveArgs, Plugin,
+  PluginBuild } from 'esbuild';
 
 type ResolveOptions  = Parameters<PluginBuild['onResolve']>[0];
 type ResolveCallback = Parameters<PluginBuild['onResolve']>[1];

@@ -1,24 +1,27 @@
-import type { IArtifactResolver }                                     from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription }                                       from '@serverlessinbox/mailbox-cdk-shared';
-import type { VendorLink }                                            from '@serverlessinbox/mailbox-cdk-shared';
-import { HttpLambdaAuthorizer }                                       from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpMethod }                                                 from 'aws-cdk-lib/aws-apigatewayv2';
-import { Duration }                                                   from 'aws-cdk-lib';
-import { Construct }                                                  from 'constructs';
+import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }                                    from '@serverlessinbox/mailbox-cdk-shared';
+import type { VendorLink }                                         from '@serverlessinbox/mailbox-cdk-shared';
+import { HttpLambdaAuthorizer }                                    from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpMethod }                                              from 'aws-cdk-lib/aws-apigatewayv2';
+import { Duration }                                                from 'aws-cdk-lib';
+import { Construct }                                               from 'constructs';
 
-import { AuthPolicyName }                                             from '../../contracts/auth-names';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }    from '../../contracts/websocket-push';
-import type { IDataBlobStore }                                        from '../../resources/buckets/data-blob-store';
-import { AdminApiLambda }                                             from '../../resources/lambdas/admin-api-lambda';
-import { AuthorizerLambda }                                           from '../../resources/lambdas/authorizer-lambda';
-import type { IIdentityProvisioner }                                  from '../../resources/lambdas/identity-provisioner-lambda';
-import type { IAuditEventsQueue }                                     from '../../resources/queues/audit-events-queue';
-import type { IEmailSendingQueue }                                    from '../../resources/queues/email-sending-queue';
-import type { IAuthKeyStoreTable }                                    from '../../resources/tables/auth-key-store-table';
-import type { IDataTable }                                            from '../../resources/tables/data-tables';
+import { AuthPolicyName }                                          from '../../contracts/auth-names';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
+import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
+import { AdminApiLambda }                                          from '../../resources/lambdas/admin-api-lambda';
+import { AuthorizerLambda }                                        from '../../resources/lambdas/authorizer-lambda';
+import type { IIdentityProvisioner }                               from '../../resources/lambdas/identity-provisioner-lambda';
+import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }                                 from '../../resources/queues/email-sending-queue';
+import type { IAuthKeyStoreTable }                                 from '../../resources/tables/auth-key-store-table';
+import type { IPatTable }                                          from '../../resources/tables/data-pat-table';
+import type { IDataTable }                                         from '../../resources/tables/data-tables';
+import type { IMailLogTable }                                      from '../../resources/tables/mail-log-table';
+import type { ScopeMap }                                           from '../auth/jmap-scopes';
 
-import type { IAdminApiAddon }                                        from './addons';
-import type { ApiRoute, IApiArea }                                    from './api-area';
+import type { IAdminApiAddon }                                     from './addons';
+import type { ApiRoute, IApiArea }                                 from './api-area';
 
 /**
  * Inputs of {@link AdminApi}: the tables, queues and blob store its handler Lambda works on, and the
@@ -30,12 +33,15 @@ export interface AdminApiProps {
   readonly auditLogTable:        IDataTable;
   readonly changelogTable:       IDataTable;
   readonly mailFeedbackTable:    IDataTable;
+  readonly patTable:             IPatTable;
   readonly authKeyStoreTable:    IAuthKeyStoreTable;
+  readonly mailLogTable:         IMailLogTable;
   readonly blobStore:            IDataBlobStore;
   readonly emailSubmissionQueue: IEmailSendingQueue;
   readonly auditEventsQueue:     IAuditEventsQueue;
   readonly artifactResolver:     IArtifactResolver;
   readonly identityProvisioner:  IIdentityProvisioner;
+  readonly scopeMap:             ScopeMap;
 
   /** Optional addons that mount extra endpoints on this Admin API (e.g. provider-specific APIs). */
   readonly addons?: IAdminApiAddon[];
@@ -79,7 +85,7 @@ export class AdminApi extends Construct implements IApiArea {
         methods:       [HttpMethod.POST],
         integrationId: 'handler',
         handler,
-        authorizer:    httpLambdaAuthorize,
+        authorizer: httpLambdaAuthorize,
       },
     ];
   }
@@ -122,6 +128,8 @@ export class AdminApi extends Construct implements IApiArea {
       auditLogTable:        props.auditLogTable,
       changelogTable:       props.changelogTable,
       mailFeedbackTable:    props.mailFeedbackTable,
+      mailLogTable:         props.mailLogTable,
+      patTable:             props.patTable,
       blobStore:            props.blobStore,
       emailSubmissionQueue: props.emailSubmissionQueue,
       auditEventsQueue:     props.auditEventsQueue,
@@ -136,15 +144,17 @@ export class AdminApi extends Construct implements IApiArea {
 
   private createAuthorizer(props: AdminApiProps): HttpLambdaAuthorizer {
     const lambdaAuthorizer = new AuthorizerLambda(this, 'lambda-authorizer', {
-      authKeyStoreTable: props.authKeyStoreTable,
-      configTable:       props.configTable,
-      artifactResolver:  props.artifactResolver,
-      authPolicyName:    AuthPolicyName.ADMIN_API,
-      serviceName:       'authorizer-admin-api',
-      pipeline:          'admin',
+      authKeyStoreTable:    props.authKeyStoreTable,
+      configTable:          props.configTable,
+      artifactResolver:     props.artifactResolver,
+      authPolicyName:       AuthPolicyName.ADMIN_API,
+      scopeMap:             props.scopeMap,
+      serviceName:          'authorizer-admin-api',
+      pipeline:             'admin',
+      personalAccessTokens: { patTable: props.patTable, auditEventsQueue: props.auditEventsQueue },
     });
 
-    return new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer);
+    return new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer, { resultsCacheTtl: Duration.minutes(5) });
   }
 
   private createLookupAuthorizer(props: AdminApiProps): HttpLambdaAuthorizer {
@@ -154,6 +164,7 @@ export class AdminApi extends Construct implements IApiArea {
       artifactResolver:  props.artifactResolver,
       authPolicyName:    AuthPolicyName.ADMIN_API,
       principalLookup:   true,
+      scopeMap:          props.scopeMap,
       serviceName:       'authorizer-admin-api-lookup',
       pipeline:          'admin',
     });

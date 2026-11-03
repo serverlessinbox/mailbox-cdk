@@ -8,22 +8,22 @@
  * never be fixed.
  */
 
-import { CloudFormationClient }                       from '@aws-sdk/client-cloudformation';
+import { CloudFormationClient }                                                 from '@aws-sdk/client-cloudformation';
 import {
   AdminCreateUserCommand,
   CognitoIdentityProviderClient,
   NotAuthorizedException,
-} from '@aws-sdk/client-cognito-identity-provider';
-import { ParentStackStatus, type LoggerBuffer }                                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { captureCfnResponse }                                                             from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
-import type { CloudFormationCustomResourceEvent, Context }                                from 'aws-lambda';
-import { mockClient }                                                                     from 'aws-sdk-client-mock';
-import * as t                                                                             from 'typanion';
+}                                                                               from '@aws-sdk/client-cognito-identity-provider';
+import { ParentStackStatus, type LoggerBuffer }                                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { captureCfnResponse }                                                   from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
+import type { CloudFormationCustomResourceEvent, Context }                      from 'aws-lambda';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
+import * as t                                                                   from 'typanion';
 
-import { PASSWORD_SET_AT_INSTALL_TIME }                                                   from '../bootstrap-user-answers';
-import type * as BootstrapUserModule                                                      from '../index';
+import { PASSWORD_SET_AT_INSTALL_TIME }                                         from '../bootstrap-user-answers';
+import type * as BootstrapUserModule                                            from '../index';
 
-import { FUNCTION_ARN, PHYSICAL_RESOURCE_ID, STACK_ID, templateProperties }               from './bootstrap-user-helpers';
+import { FUNCTION_ARN, PHYSICAL_RESOURCE_ID, STACK_ID, templateProperties }     from './bootstrap-user-helpers';
 
 jest.mock('https', () => ({
   ...jest.requireActual<typeof import('https')>('https'),

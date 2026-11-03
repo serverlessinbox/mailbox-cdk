@@ -1,13 +1,15 @@
-import type { ResourceTagMapping, Tag }                                                  from '@aws-sdk/client-resource-groups-tagging-api';
-import { CaughtError, parseArn, ServerlessInboxTagKeys, type LoggerBuffer }              from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import * as t                                                                            from 'typanion';
+import type { ResourceTagMapping, Tag }                                         from '@aws-sdk/client-resource-groups-tagging-api';
+import { CaughtError, parseArn, runConcurrently, ServerlessInboxTagKeys,
+  type LoggerBuffer }                                                           from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import * as t                                                                   from 'typanion';
 
-import type { LambdaTarget, UiTarget }                                                   from './artifact-target';
-import type { Config }                                                                   from './config';
-import type { EdgeLambdaUpdater }                                                        from './edge-lambda-updater';
-import type { LambdaCodeUpdater }                                                        from './lambda-code/lambda-code-updater';
-import type { UiBucketUpdater }                                                          from './ui-bucket-updater';
-import { EDGE_REGION, type RegionClients, type RootStackResources, type UpdaterClients } from './updater-clients';
+import type { LambdaTarget, UiTarget }                                          from './artifact-target';
+import type { Config }                                                          from './config';
+import type { EdgeLambdaUpdater }                                               from './edge-lambda-updater';
+import type { LambdaCodeUpdater }                                               from './lambda-code/lambda-code-updater';
+import type { UiBucketUpdater }                                                 from './ui-bucket-updater';
+import { EDGE_REGION, type RegionClients, type RootStackResources,
+  type UpdaterClients }                                                         from './updater-clients';
 import {
   toArtifactName,
   toArtifactPackageName,
@@ -15,7 +17,7 @@ import {
   toContentBucketName,
   toDistributionArn,
   toLambdaFunctionArn,
-} from './updater-identifiers';
+}                                                                               from './updater-identifiers';
 
 const isUpdateType = t.isEnum(['code', 'edge', 'ui'] as const);
 
@@ -41,6 +43,9 @@ interface UpdatableResource {
   readonly deployedVersion: string;
   readonly bucketName:      string | undefined;
 }
+
+/** The most resource updates one region runs at the same time. The edge lane counts as one of them. */
+export const MAX_CONCURRENT_RESOURCE_UPDATES = 4;
 
 /**
  * One scan of the Lambda functions and CloudFront distributions the root stack owns in the deployment region
@@ -84,9 +89,7 @@ export class UpdateCycle {
   public async run(): Promise<void> {
     try {
       const scanTargets = this.beginCycle();
-      for (const scan of scanTargets) {
-        await this.scanRegion(scan);
-      }
+      await runConcurrently(scanTargets.length, scanTargets, (scan) => this.scanRegion(scan));
       this.concludeCycle();
     } catch (thrown) {
       this.logger.error('artifact update cycle failed', { error: CaughtError.readableMessage(thrown) });
@@ -122,18 +125,33 @@ export class UpdateCycle {
   }
 
   private async scanRegion(scan: RegionClients): Promise<void> {
-    const resources = await this.rootStackResources.find(scan.tagging, ['lambda:function', 'cloudfront:distribution']);
-    for (const mapping of resources) {
-      await this.updateResource(scan, mapping);
+    let mappings: ResourceTagMapping[];
+    try {
+      mappings = await this.rootStackResources.find(scan.tagging, ['lambda:function', 'cloudfront:distribution']);
+    } catch (thrown) {
+      this.reportScanFailure(scan, thrown);
     }
+
+    const updatable      = mappings
+      .map((mapping) => this.readUpdatableResource(mapping))
+      .filter((resource): resource is UpdatableResource => resource !== undefined);
+    const edgeResources  = updatable.filter((resource) => resource.updateType === 'edge');
+    const otherResources = updatable.filter((resource) => resource.updateType !== 'edge');
+
+    const tasks: Array<() => Promise<void>> = otherResources.map((resource) => () => this.updateResource(scan, resource));
+    if (edgeResources.length > 0) {
+      tasks.push(() => this.updateEdgeResourcesInTurn(scan, edgeResources));
+    }
+    await runConcurrently(MAX_CONCURRENT_RESOURCE_UPDATES, tasks, (task) => task());
   }
 
-  private async updateResource(scan: RegionClients, mapping: ResourceTagMapping): Promise<void> {
-    const resource = this.readUpdatableResource(mapping);
-    if (!resource) {
-      return;
-    }
+  /** Logs the region whose scan failed, then rethrows the failure. */
+  private reportScanFailure(scan: RegionClients, thrown: unknown): never {
+    this.logger.error('resource scan failed', { region: scan.region, error: CaughtError.readableMessage(thrown) });
+    throw thrown;
+  }
 
+  private async updateResource(scan: RegionClients, resource: UpdatableResource): Promise<void> {
     try {
       if (await this.advance(scan, resource)) {
         this.updatesAttempted += 1;
@@ -142,6 +160,13 @@ export class UpdateCycle {
       this.updatesAttempted += 1;
       this.updatesFailed    += 1;
       this.logger.error('failed to update resource', { arn: resource.arn, error: CaughtError.readableMessage(thrown) });
+    }
+  }
+
+  /** The edge functions of a region are updated one after another, never side by side in the concurrent pool. */
+  private async updateEdgeResourcesInTurn(scan: RegionClients, resources: readonly UpdatableResource[]): Promise<void> {
+    for (const resource of resources) {
+      await this.updateResource(scan, resource);
     }
   }
 

@@ -9,15 +9,15 @@
  * by the units that own them.
  */
 
-import { Match, Template }                                  from 'aws-cdk-lib/assertions';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
 
-import type { ISupportRoles }                               from '../../../contracts/support-roles';
-import { SupportCollectionSchedule }                        from '../../events/support-collection-schedule';
-import { SupportRoleAssumptionCollectorLambda }             from '../support-role-assumption-collector-lambda';
+import type { ISupportRoles }                   from '../../../contracts/support-roles';
+import { SupportCollectionSchedule }            from '../../events/support-collection-schedule';
+import { SupportRoleAssumptionCollectorLambda } from '../support-role-assumption-collector-lambda';
 
-import { expectGrantedOnceTo, fakeDataTable }               from './lambda-wrapper-fakes';
-import type { GrantSpy }                                    from './lambda-wrapper-fakes';
-import { arrangeWrapperStack }                              from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataTable }   from './lambda-wrapper-fakes';
+import type { GrantSpy }                        from './lambda-wrapper-fakes';
+import { arrangeWrapperStack }                  from './lambda-wrapper-helpers';
 
 jest.mock('../../events/support-collection-schedule');
 

@@ -1,11 +1,11 @@
-import type { APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
+import type { APIGatewayProxyStructuredResultV2 }                               from 'aws-lambda';
 
-import { AuditRecorder }                          from '../audit/audit-recorder';
-import type { AuditSink }                         from '../audit/index';
-import type { AuthorizedEvent }                   from '../caller/authorized-event';
-import { CallerContextReader }                    from '../caller/caller-context-reader';
-import type { Caller }                            from '../caller/caller';
-import type { HandlerContext }                    from '../caller/handler-context';
+import { AuditRecorder }                                                        from '../audit/audit-recorder';
+import type { AuditSink }                                                       from '../audit/index';
+import type { AuthorizedEvent }                                                 from '../caller/authorized-event';
+import { CallerContextReader }                                                  from '../caller/caller-context-reader';
+import type { Caller }                                                          from '../caller/caller';
+import type { HandlerContext }                                                  from '../caller/handler-context';
 import {
   AlreadyExistsError,
   ConflictError,
@@ -13,11 +13,11 @@ import {
   InvalidInputError,
   NotFoundError,
   UnauthenticatedError,
-}                                                 from '../errors/index';
-import { JsonBodyReader, type JsonValue }         from '../json/index';
+}                                                                               from '../errors/index';
+import { JsonBodyReader, type JsonValue }                                       from '../json/index';
 
-import type { Dispatch }                          from './addon-handler';
-import type { RequestLogger }                     from './request-logger';
+import type { Dispatch }                                                        from './addon-handler';
+import type { RequestLogger }                                                   from './request-logger';
 
 /** An error class and the HTTP status it answers with. */
 interface StatusRule {

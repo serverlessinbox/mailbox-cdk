@@ -7,8 +7,8 @@
  * tag so a function another stack owns is never deleted.
  */
 
-import { stateBodyOf }  from '../../../../__tests__/state-machine-helpers';
-import { newTestStack } from '../../../__tests__/platform-helpers';
+import { stateBodyOf }                                                          from '../../../../__tests__/state-machine-helpers';
+import { newTestStack }                                                         from '../../../__tests__/platform-helpers';
 
 import {
   newEdgeFunctionRemoval,
@@ -20,7 +20,7 @@ import {
   resolveStatements,
   startStateOf,
   stateOf,
-} from './sweeper-helpers';
+}                                                                               from './sweeper-helpers';
 
 describe('EdgeFunctionRemoval', () => {
   const anyUsEast1Function = {

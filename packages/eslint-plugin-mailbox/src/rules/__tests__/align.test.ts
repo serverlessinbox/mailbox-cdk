@@ -3,7 +3,13 @@ import typescriptEslint from 'typescript-eslint';
 
 import { align }        from '../align';
 
+// Pins the alignment of `=` and `:`: group membership by line adjacency, the column-80 cap, and
+// the one-space gap of a lone entry. Boundary cases use names of 73 and 74 characters for `=`
+// (the `=` on column 80, then one past it) and 76 and 77 characters for `:` (the value likewise).
+
 const code = (...rows: string[]): string => rows.join('\n');
+
+const nameOf = (length: number): string => 'a'.repeat(length);
 
 const tester = new RuleTester({
   languageOptions: { parser: typescriptEslint.parser },
@@ -16,8 +22,12 @@ tester.run('align', align, {
       code: code('export const a      = 1;', 'export const bcd    = 2;', 'export const efghij = 3;'),
     },
     {
-      name: 'a single declaration is left alone',
-      code: 'const abc   = 1;',
+      name: 'a declaration over the cap with one space is left alone',
+      code: `const ${nameOf(74)} = 1;`,
+    },
+    {
+      name: 'neighbours of an over-cap declaration align with each other',
+      code: code(`const ${nameOf(74)} = 1;`, 'const b   = 2;', 'const cde = 3;'),
     },
     {
       name: 'a blank line and a comment line each end a group',
@@ -115,6 +125,68 @@ tester.run('align', align, {
       name:   'a multi-line value ends its member on a later line and the next member joins the group',
       code:   code('const o = {', '  a: {', '    x: 1,', '  },', '  bcd: 2,', '};'),
       output: code('const o = {', '  a:   {', '    x: 1,', '  },', '  bcd: 2,', '};'),
+      errors: [{ messageId: 'alignValue' }],
+    },
+    {
+      name:   'a single declaration with extra spaces is reset to one space',
+      code:   'const abc   = 1;',
+      output: 'const abc = 1;',
+      errors: [{ messageId: 'alignEquals' }],
+    },
+    {
+      name:   'an equals sign on column 80 is within the cap and aligns with its neighbour',
+      code:   code(`const ${nameOf(73)} = 1;`, 'const b = 2;'),
+      output: code(`const ${nameOf(73)} = 1;`, `const b${' '.repeat(73)}= 2;`),
+      errors: [{ messageId: 'alignEquals' }],
+    },
+    {
+      name:   'an equals sign past column 80 is a group of its own and its neighbours align separately',
+      code:   code('const a      = 1;', `const ${nameOf(74)} = 2;`, 'const bcd = 3;'),
+      output: code('const a = 1;', `const ${nameOf(74)} = 2;`, 'const bcd = 3;'),
+      errors: [{ messageId: 'alignEquals' }],
+    },
+    {
+      name:   'the declarations around an over-cap destructuring get one space before their equals sign',
+      code:   code(
+        `const context${' '.repeat(68)}= this.resolveContext(props);`,
+        `const { ${nameOf(70)} } = context;`,
+        `const enabledUis${' '.repeat(65)}= { adminUi: true };`,
+      ),
+      output: code(
+        'const context = this.resolveContext(props);',
+        `const { ${nameOf(70)} } = context;`,
+        'const enabledUis = { adminUi: true };',
+      ),
+      errors: [{ messageId: 'alignEquals' }, { messageId: 'alignEquals' }],
+    },
+    {
+      name:   'an over-cap destructuring with extra spaces before its equals sign is reset to one space',
+      code:   `const { ${nameOf(70)} }   = context;`,
+      output: `const { ${nameOf(70)} } = context;`,
+      errors: [{ messageId: 'alignEquals' }],
+    },
+    {
+      name:   'an object value on column 80 is within the cap and aligns with its neighbour',
+      code:   code('const o = {', `  ${nameOf(76)}: 1,`, '  b: 2,', '};'),
+      output: code('const o = {', `  ${nameOf(76)}: 1,`, `  b:${' '.repeat(76)}2,`, '};'),
+      errors: [{ messageId: 'alignValue' }],
+    },
+    {
+      name:   'an object value past column 80 is a group of its own and its neighbour gets one space',
+      code:   code('const o = {', `  ${nameOf(77)}: 1,`, '  b:   2,', '};'),
+      output: code('const o = {', `  ${nameOf(77)}: 1,`, '  b: 2,', '};'),
+      errors: [{ messageId: 'alignValue' }],
+    },
+    {
+      name:   'an interface member value past column 80 is a group of its own and its neighbour gets one space',
+      code:   code('interface I {', `  ${nameOf(77)}: string;`, '  b:   number;', '}'),
+      output: code('interface I {', `  ${nameOf(77)}: string;`, '  b: number;', '}'),
+      errors: [{ messageId: 'alignValue' }],
+    },
+    {
+      name:   'a lone object value with extra spaces is reset to one space',
+      code:   code('const o = {', '  a:   1,', '};'),
+      output: code('const o = {', '  a: 1,', '};'),
       errors: [{ messageId: 'alignValue' }],
     },
   ],

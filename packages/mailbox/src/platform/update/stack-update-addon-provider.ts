@@ -1,9 +1,9 @@
-import type { IArtifactResolver }                                                              from '@serverlessinbox/artifact-registry-cdk';
-import { Construct }                                                                           from 'constructs';
+import type { IArtifactResolver }                                       from '@serverlessinbox/artifact-registry-cdk';
+import { Construct }                                                    from 'constructs';
 
-import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider }                        from '../../core/apis/addons';
+import { IAdminApiAddon, AdminApiAddonContext, IAdminApiAddonProvider } from '../../core/apis/addons';
 
-import { StackUpdateAddon }                                                                    from './stack-update-addon';
+import { StackUpdateAddon }                                             from './stack-update-addon';
 
 /**
  * Settings of the {@link StackUpdateAddonProvider}: which template the stack is updated from and

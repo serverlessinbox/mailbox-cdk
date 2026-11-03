@@ -3,30 +3,46 @@
 /**
  * UserApi tests: the user area serves `POST /user/{proxy+}` on the shared API, behind its own authorizer
  * that uses the JMAP API's policy and has no principal lookup. A route that loses its authorizer, or gets
- * the wrong policy, stays green in tsc and synth, so these assertions are the only guard.
+ * the wrong policy, stays green in tsc and synth, so these assertions are the only guard. The stage carries
+ * no access log, so a request body or header cannot be written to the logs, and no statement the user area's
+ * stack renders grants the connection private key.
  */
 
-import { Template }   from 'aws-cdk-lib/assertions';
-import type * as cdk  from 'aws-cdk-lib';
+import { Match, Template }      from 'aws-cdk-lib/assertions';
+import type * as cdk            from 'aws-cdk-lib';
 
-import { ApiGateway } from '../api-gateway';
-import { UserApi }    from '../user-api';
+import { resourcesOfType }      from '../../../__tests__/iam-test-helpers';
+import { fakeMailImportRunner } from '../../../resources/lambdas/__tests__/lambda-wrapper-fakes';
+import { ImportJobsQueue }      from '../../../resources/queues/import-jobs-queue';
+import { Permission }           from '../../auth/jmap-scopes';
+import { ApiGateway }           from '../api-gateway';
+import { UserApi }              from '../user-api';
 
 import {
   authorizerOfRoute,
   newAdminApiProps,
   newApiStack,
   routeOf,
-} from './apis-helpers';
+}                               from './apis-helpers';
 
 describe('UserApi', () => {
   let stack: cdk.Stack;
   let gateway: ApiGateway;
 
   function userApiProps() {
-    const { configTable, itemTable, auditEventsQueue, authKeyStoreTable, artifactResolver } = newAdminApiProps(stack);
+    const {
+      configTable, itemTable, patTable, blobStore, changelogTable, auditEventsQueue, authKeyStoreTable, artifactResolver,
+    } = newAdminApiProps(stack);
+    const importJobsQueue  = new ImportJobsQueue(stack, 'import-jobs-queue', { encryption: { kind: 'aws-managed' } });
+    const mailImportRunner = fakeMailImportRunner('mail-import-runner');
 
-    return { configTable, itemTable, auditEventsQueue, authKeyStoreTable, artifactResolver };
+    const scopeMap = { 'mail-reader': [Permission.MAIL_READ_ITEMS] };
+
+    return {
+      configTable, itemTable, patTable, blobStore, changelogTable, auditEventsQueue, authKeyStoreTable, importJobsQueue,
+      mailImportRunner, artifactResolver, scopeMap,
+      systemSenderAddress: 'noreply@example.com',
+    };
   }
 
   function mountedUserApi(): UserApi {
@@ -69,5 +85,39 @@ describe('UserApi', () => {
     const { functionEnvironment } = authorizerOfRoute(Template.fromStack(stack), 'POST /user/{proxy+}');
 
     expect(functionEnvironment).toMatchObject({ AUTH_POLICY_NAME: 'JMAP_API', PRINCIPAL_LOOKUP: 'off' });
+  });
+
+  it('gives the user authorizer the token table and caches its answer for 5 minutes', () => {
+    mountedUserApi();
+
+    const { functionEnvironment, cacheTtlSeconds } = authorizerOfRoute(Template.fromStack(stack), 'POST /user/{proxy+}');
+
+    expect(functionEnvironment).toHaveProperty('PAT_TABLE_NAME');
+    expect(cacheTtlSeconds).toBe(300);
+  });
+
+  it('gives the API stage no access log, so no request body or header is written to the logs', () => {
+    mountedUserApi();
+
+    const stages = resourcesOfType<{ readonly AccessLogSettings?: unknown }>(Template.fromStack(stack), 'AWS::ApiGatewayV2::Stage');
+    expect(stages.length).toBeGreaterThan(0);
+    for (const stage of stages) {
+      expect(stage.AccessLogSettings).toBeUndefined();
+    }
+  });
+
+  it('renders no statement that grants the connection private key to the user area', () => {
+    mountedUserApi();
+
+    const privateKeyStatements = Template.fromStack(stack).findResources('AWS::IAM::Policy', {
+      Properties: {
+        PolicyDocument: {
+          Statement: Match.arrayWith([Match.objectLike({
+            Condition: { 'ForAllValues:StringEquals': { 'dynamodb:LeadingKeys': ['connection-key-private'] } },
+          })]),
+        },
+      },
+    });
+    expect(Object.keys(privateKeyStatements)).toHaveLength(0);
   });
 });

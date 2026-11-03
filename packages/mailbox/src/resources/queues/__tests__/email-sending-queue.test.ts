@@ -14,7 +14,7 @@ import { createStack }        from './queue-helpers';
 describe('EmailSendingQueue', () => {
   it('sets the visibility timeout to 6 minutes on the main queue, not only its dead-letter queue', () => {
     const stack = createStack();
-    new EmailSendingQueue(stack, 'email-sending-queue');
+    new EmailSendingQueue(stack, 'email-sending-queue', { encryption: { kind: 'aws-managed' } });
 
     const template = Template.fromStack(stack);
 
@@ -26,7 +26,7 @@ describe('EmailSendingQueue', () => {
 
   it('moves a message to the 14 day dead-letter queue created beside it after 5 receives', () => {
     const stack = createStack();
-    new EmailSendingQueue(stack, 'email-sending-queue');
+    new EmailSendingQueue(stack, 'email-sending-queue', { encryption: { kind: 'aws-managed' } });
 
     const template = Template.fromStack(stack);
     const dlqId    = stack.getLogicalId(defaultCfnResource(stack.node.findChild('email-sending-queue-dlq')));

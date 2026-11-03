@@ -30,15 +30,15 @@ import {
   AdminGetUserCommand,
   CognitoIdentityProviderClient,
   ListUsersCommand,
-} from '@aws-sdk/client-cognito-identity-provider';
-import { InvokeCommand, LambdaClient }          from '@aws-sdk/client-lambda';
-import { SendMessageCommand, SQSClient }        from '@aws-sdk/client-sqs';
-import * as lambdaRuntime                       from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                           from 'aws-sdk-client-mock';
+}                                                                               from '@aws-sdk/client-cognito-identity-provider';
+import { InvokeCommand, LambdaClient }                                          from '@aws-sdk/client-lambda';
+import { SendMessageCommand, SQSClient }                                        from '@aws-sdk/client-sqs';
+import * as lambdaRuntime                                                       from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import { handler }                              from '../handler';
+import { handler }                                                              from '../handler';
 
-import { authorizedEvent, payloadOf }           from './idp-users-helpers';
+import { authorizedEvent, payloadOf }                                           from './idp-users-helpers';
 
 describe('IdP users API handler', () => {
   const cognitoMock = mockClient(CognitoIdentityProviderClient);

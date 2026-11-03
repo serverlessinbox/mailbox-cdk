@@ -1,4 +1,5 @@
-import { toAccountId, toIssuer, toTenantId, type AccountId, type Issuer, type TenantId } from '../auth-identifiers';
+import { toAccountId, toIssuer, toTenantId, type AccountId, type Issuer,
+  type TenantId } from '../auth-identifiers';
 
 /**
  * Pins what the tenant, account and issuer kinds exist for: one cannot be passed where another is expected,

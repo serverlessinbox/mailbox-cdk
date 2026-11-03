@@ -5,11 +5,11 @@
  * outside it. A resource that misses the condition is deployed even when the feature is off.
  */
 
-import { Template }               from 'aws-cdk-lib/assertions';
-import * as cdk                   from 'aws-cdk-lib';
-import { Construct }              from 'constructs';
+import { Template }              from 'aws-cdk-lib/assertions';
+import * as cdk                  from 'aws-cdk-lib';
+import { Construct }             from 'constructs';
 
-import { GateOnConditionAspect }  from '../gate-on-condition-aspect';
+import { GateOnConditionAspect } from '../gate-on-condition-aspect';
 
 function topic(scope: Construct, id: string): cdk.CfnResource {
   return new cdk.CfnResource(scope, id, { type: 'AWS::SNS::Topic' });

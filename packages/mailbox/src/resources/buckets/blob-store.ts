@@ -72,7 +72,7 @@ export class BlobStore extends StackNamedBucket {
       nameBase:          props.nameBase,
       autoDeleteObjects: props.developmentMode,
       lifecycleRules,
-      removalPolicy:     props.removalPolicy,
+      removalPolicy: props.removalPolicy,
     });
 
     this.grantS3UseOfEncryptionKey(props.encryptionKey);

@@ -4,9 +4,9 @@ import {
   toFunctionName,
   type BaseConfig,
   type FunctionName,
-} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { toUserPoolId, type UserPoolId } from '../shared/cognito-identifiers';
+import { toUserPoolId, type UserPoolId }                                        from '../shared/cognito-identifiers';
 
 /**
  * The environment of the DCR Lambda: the base configuration plus its own variables. Neither has a safe default: a

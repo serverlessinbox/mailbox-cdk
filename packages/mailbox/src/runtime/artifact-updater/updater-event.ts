@@ -14,7 +14,7 @@ const cfnRequestFields = {
 
 const isCreateRequest = t.isPartial({ RequestType: t.isLiteral('Create'), ...cfnRequestFields });
 const isUpdateRequest = t.isPartial({
-  RequestType:           t.isLiteral('Update'),
+  RequestType: t.isLiteral('Update'),
   ...cfnRequestFields,
   PhysicalResourceId:    t.isString(),
   OldResourceProperties: isResourceProperties,

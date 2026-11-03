@@ -4,7 +4,7 @@
  * what a Lambda accepts from its environment, so a looser parser starts a Lambda on a value it should refuse.
  */
 
-import * as t from 'typanion';
+import * as t                                                                   from 'typanion';
 
 import {
   mustLoad,
@@ -18,7 +18,7 @@ import {
   days,
   onOff,
   enumOf,
-} from '../config-env';
+}                                                                               from '../config-env';
 
 describe('env', () => {
   const originalEnv = process.env;

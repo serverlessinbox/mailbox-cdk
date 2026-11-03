@@ -74,7 +74,7 @@ export class MailboxEdgeConstruct extends Construct {
 
     this.jmapBlobDownloadFunction = jmapBlobDownloadFunction;
     // CloudFront Lambda@Edge requires a published version.
-    this.jmapBlobDownloadVersion  = jmapBlobDownloadFunction.currentVersion;
+    this.jmapBlobDownloadVersion = jmapBlobDownloadFunction.currentVersion;
   }
 
   /** An L1 certificate with native DNS validation: CloudFormation creates the Route53 records itself, without a CDK bootstrap custom resource. */
@@ -108,7 +108,7 @@ export class MailboxEdgeConstruct extends Construct {
       // pipeline group, so home-region edge logs merge into it; other regions get same-named,
       // service-created, untagged groups — an accepted gap. Reference by name only: this stack
       // cannot construct the home-region LogGroup directly.
-      logGroup:       logs.LogGroup.fromLogGroupName(this, 'shared-log-group', props.logGroupName),
+      logGroup: logs.LogGroup.fromLogGroupName(this, 'shared-log-group', props.logGroupName),
     });
   }
 }

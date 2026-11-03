@@ -7,14 +7,15 @@
  * the event renders are pinned by the resource and the event that own them, not here.
  */
 
-import { Template }                                                                         from 'aws-cdk-lib/assertions';
+import { Template }                                                             from 'aws-cdk-lib/assertions';
 
-import type { IWebSocketBroadcastPublisher }                                                from '../../../contracts/websocket-push';
-import { EmailProcessingQueueEvent }                                                        from '../../events/email-processing-queue-event';
-import { EmailProcessorLambda }                                                             from '../email-processor-lambda';
+import type { IWebSocketBroadcastPublisher }                                    from '../../../contracts/websocket-push';
+import { EmailProcessingQueueEvent }                                            from '../../events/email-processing-queue-event';
+import { EmailProcessorLambda }                                                 from '../email-processor-lambda';
 
-import { expectGrantedOnceTo, fakeDataBlobStore, fakeDataTable, fakeQueue }                 from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                                                from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataBlobStore, fakeDataTable,
+  fakeMailLogTable, fakeQueue }                                                 from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                                    from './lambda-wrapper-helpers';
 
 jest.mock('../../events/email-processing-queue-event');
 
@@ -25,16 +26,18 @@ function synthesize() {
   const changelogTable              = fakeDataTable('changelog-table');
   const blobStore                   = fakeDataBlobStore('blob-store');
   const emailProcessingQueue        = fakeQueue('email-processing');
+  const mailLogTable                = fakeMailLogTable('mail-log-table');
   const lambda                      = new EmailProcessorLambda(stack, 'email-processor', {
     configTable,
     itemTable,
     changelogTable,
     blobStore,
     emailProcessingQueue,
+    mailLogTable,
     artifactResolver,
   });
 
-  return { lambda, stack, configTable, itemTable, changelogTable, blobStore, emailProcessingQueue };
+  return { lambda, stack, configTable, itemTable, changelogTable, blobStore, emailProcessingQueue, mailLogTable };
 }
 
 describe('EmailProcessorLambda', () => {
@@ -50,6 +53,7 @@ describe('EmailProcessorLambda', () => {
       CONFIG_TABLE_NAME:    'config-table',
       ITEM_TABLE_NAME:      'item-table',
       CHANGELOG_TABLE_NAME: 'changelog-table',
+      MAIL_LOG_TABLE_NAME:  'mail-log-table',
     });
   });
 
@@ -72,6 +76,12 @@ describe('EmailProcessorLambda', () => {
     const { lambda, emailProcessingQueue } = synthesize();
 
     expectGrantedOnceTo(emailProcessingQueue.grantConsume, lambda);
+  });
+
+  it('requests PutItem on the mail-log table for itself', () => {
+    const { lambda, mailLogTable } = synthesize();
+
+    expectGrantedOnceTo(mailLogTable.grantWrite, lambda);
   });
 
   it('registers one queue event that delivers the email-processing queue to itself', () => {

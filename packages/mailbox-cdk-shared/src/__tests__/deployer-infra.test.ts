@@ -7,18 +7,19 @@
  * resource must depend on the workflow so the workflow can still answer its delete.
  */
 
-import { Match, Template }                                                                   from 'aws-cdk-lib/assertions';
-import type { IFunction }                                                                    from 'aws-cdk-lib/aws-lambda';
-import { Stack }                                                                             from 'aws-cdk-lib';
-import { Construct }                                                                         from 'constructs';
+import { Match, Template }                                                      from 'aws-cdk-lib/assertions';
+import type { IFunction }                                                       from 'aws-cdk-lib/aws-lambda';
+import { Stack }                                                                from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import { DeployerInfra }                                                                     from '../deployer-infra';
-import { PositionHash }                                                                      from '../naming/position-hash';
-import { StackIdentity }                                                                     from '../naming/stack-identity';
-import { DeployedStack }                                                                     from '../resources/stacks/deployed-stack';
-import type { StackDeployerProperties }                                                      from '../runtime/stack-deployer/stack/stack-deployer-properties-contract';
+import { DeployerInfra }                                                        from '../deployer-infra';
+import { PositionHash }                                                         from '../naming/position-hash';
+import { StackIdentity }                                                        from '../naming/stack-identity';
+import { DeployedStack }                                                        from '../resources/stacks/deployed-stack';
+import type { StackDeployerProperties }                                         from '../runtime/stack-deployer/stack/stack-deployer-properties-contract';
 
-import { newDeployerTestStack, newWorkerStandIn, starterServiceName, stateMachineLogicalId } from './deployer-infra-helpers';
+import { newDeployerTestStack, newWorkerStandIn, starterServiceName,
+  stateMachineLogicalId }                                                       from './deployer-infra-helpers';
 
 const DEPLOYMENT: StackDeployerProperties = {
   stackName:        'sub-stack',

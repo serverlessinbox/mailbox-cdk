@@ -102,6 +102,7 @@ export type { IPipelineLogGroup } from './resources/lambdas/pipeline-log-groups'
 export { BaseTable } from './resources/tables/base-table';
 export { BaseQueue } from './resources/queues/base-queue';
 export type { BaseQueueProps } from './resources/queues/base-queue';
+export type { QueueEncryptionChoice, AwsManagedQueueEncryption, UnencryptedQueueEncryption, KmsQueueEncryption } from './resources/queues/queue-encryption';
 export { StackNamedTable } from './resources/tables/named-table';
 export type { StackNamedTableProps } from './resources/tables/named-table';
 

@@ -1,18 +1,18 @@
-import type { IArtifactResolver }                                              from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                                                            from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement }                                                     from 'aws-cdk-lib/aws-iam';
-import { Aws, Duration }                                                       from 'aws-cdk-lib';
-import { Construct }                                                           from 'constructs';
+import type { IArtifactResolver }                                         from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                                                       from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }                                                from 'aws-cdk-lib/aws-iam';
+import { Aws, Duration }                                                  from 'aws-cdk-lib';
+import { Construct }                                                      from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl }      from '../../contracts/websocket-push';
-import type { ScopeMap }                                                       from '../../core/auth/jmap-scopes';
-import type { IDataBlobStore }                                                 from '../buckets/data-blob-store';
-import type { IAuditEventsQueue }                                              from '../queues/audit-events-queue';
-import type { IEmailSendingQueue }                                             from '../queues/email-sending-queue';
-import type { IAuthKeyStoreTable }                                             from '../tables/auth-key-store-table';
-import type { IDataTable }                                                     from '../tables/data-tables';
+import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../../contracts/websocket-push';
+import type { ScopeMap }                                                  from '../../core/auth/jmap-scopes';
+import type { IDataBlobStore }                                            from '../buckets/data-blob-store';
+import type { IAuditEventsQueue }                                         from '../queues/audit-events-queue';
+import type { IEmailSendingQueue }                                        from '../queues/email-sending-queue';
+import type { IAuthKeyStoreTable }                                        from '../tables/auth-key-store-table';
+import type { IDataTable }                                                from '../tables/data-tables';
 
-import type { IIdentityProvisioner }                                           from './identity-provisioner-lambda';
+import type { IIdentityProvisioner }                                      from './identity-provisioner-lambda';
 
 /**
  * The tables, blob store, queues and identity provisioner the JMAP API reads and writes, plus its CDN
@@ -31,7 +31,7 @@ export interface JmapApiLambdaProps {
   readonly artifactResolver:     IArtifactResolver;
   readonly identityProvisioner:  IIdentityProvisioner;
   /** The OAuth scope map; delivered to the Go handler in the OAUTH_HANDLER_CONFIG variable. */
-  readonly scopeMap:             ScopeMap;
+  readonly scopeMap: ScopeMap;
   /** Optional: fully-resolved RFC 9728 protected-resource document URL (e.g. https://jmap.example.com/.well-known/oauth-protected-resource).
    *  The Go handler advertises this URL via 401 WWW-Authenticate: Bearer resource_metadata="...". */
   readonly oauthProtectedResourceUrl?: string;
@@ -71,7 +71,7 @@ export class JmapApiLambda extends GoLambda implements IWebSocketPushTargetWithU
     });
 
     props.configTable.grantRead(this);
-    props.authKeyStoreTable.grantRead(this);
+    props.authKeyStoreTable.grantReadHmac(this);
 
     props.itemTable.grantReadWrite(this);
     props.changelogTable.grantReadWrite(this);

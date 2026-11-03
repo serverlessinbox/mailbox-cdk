@@ -40,6 +40,20 @@ const publicStateEntries: readonly RestrictedSyntaxEntry[] = [
   },
 ];
 
+const partialMessage = 'Declare a named type or a discriminated union instead of Partial (strong-typing L-288).';
+
+// `Partial<Record<K, V>>` over a closed key union is the sparse-lookup exception; an open string key is still flagged.
+const partialEntries: readonly RestrictedSyntaxEntry[] = [
+  {
+    selector: 'TSTypeReference[typeName.name="Partial"]:not([typeArguments.params.0.typeName.name="Record"])',
+    message:  partialMessage,
+  },
+  {
+    selector: 'TSTypeReference[typeName.name="Partial"][typeArguments.params.0.typeName.name="Record"][typeArguments.params.0.typeArguments.params.0.type="TSStringKeyword"]',
+    message:  partialMessage,
+  },
+];
+
 export const restrictedSyntaxRules: TSESLint.FlatConfig.Rules = {
-  'no-restricted-syntax': ['error', ...anonymousTypeEntries, ...requireEntries, ...publicStateEntries],
+  'no-restricted-syntax': ['error', ...anonymousTypeEntries, ...requireEntries, ...publicStateEntries, ...partialEntries],
 };

@@ -1,4 +1,5 @@
-import { toFunctionName, toQueueUrl, toRegion, toTableName, type FunctionName, type QueueUrl, type Region, type TableName } from '../aws-identifiers';
+import { toFunctionName, toQueueUrl, toRegion, toTableName, type FunctionName,
+  type QueueUrl, type Region, type TableName } from '../aws-identifiers';
 
 /**
  * Pins what the AWS-wide identifier kinds exist for: a region cannot be passed where a table name is expected,

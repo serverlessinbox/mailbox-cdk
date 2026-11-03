@@ -1,20 +1,20 @@
-import { toPhysicalResourceId, type PhysicalResourceId } from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
+import { toPhysicalResourceId, type PhysicalResourceId }                        from '../../runtime/handler-kit/custom-resource/custom-resource-identifiers';
 import type {
   CreateRequest,
   CustomResourceRequest,
   DeleteRequest,
   UpdateRequest,
-}                                                       from '../../runtime/handler-kit/custom-resource/custom-resource-request';
-import { CaughtError }                                   from '../../runtime/handler-kit/errors/caught-error';
-import { InvalidOwnInput }                               from '../../runtime/handler-kit/errors/invalid-own-input';
-import type { InvocationDeadline }                       from '../../runtime/handler-kit/invocation-deadline';
-import type { LoggerBuffer }                             from '../../runtime/handler-kit/logger-buffer';
+}                                                                               from '../../runtime/handler-kit/custom-resource/custom-resource-request';
+import { CaughtError }                                                          from '../../runtime/handler-kit/errors/caught-error';
+import { InvalidOwnInput }                                                      from '../../runtime/handler-kit/errors/invalid-own-input';
+import type { InvocationDeadline }                                              from '../../runtime/handler-kit/invocation-deadline';
+import type { LoggerBuffer }                                                    from '../../runtime/handler-kit/logger-buffer';
 
-import type { BucketEmptier }                            from './bucket-emptier';
+import type { BucketEmptier }                                                   from './bucket-emptier';
 import {
   isBucketAutoEmptyDeletionProperties,
   isBucketAutoEmptyResourceProperties,
-}                                                       from './resource-properties';
+}                                                                               from './resource-properties';
 
 /** The attributes a bucket-auto-empty resource returns, all as strings. A type alias, because `wrapHandler` requires `Data` to be a `Record<string, string>`. */
 export type BucketAutoEmptyResponseData = {

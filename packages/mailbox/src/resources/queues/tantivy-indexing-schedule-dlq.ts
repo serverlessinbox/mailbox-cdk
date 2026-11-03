@@ -1,11 +1,11 @@
-import { BaseQueue, type BaseQueueProps } from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration }                       from 'aws-cdk-lib';
-import { Construct }                      from 'constructs';
+import { BaseQueue, type QueueEncryptionChoice } from '@serverlessinbox/mailbox-cdk-shared';
+import { Duration }                              from 'aws-cdk-lib';
+import { Construct }                             from 'constructs';
 
 /** Inputs of {@link TantivyIndexingScheduleDlq}. */
 export interface TantivyIndexingScheduleDlqProps {
-  /** Optional default props applied to the queue (e.g. encryption). */
-  readonly queueProps?: Partial<BaseQueueProps>;
+  /** The encryption of the queue. */
+  readonly encryption: QueueEncryptionChoice;
 }
 
 /**
@@ -24,9 +24,9 @@ export interface ITantivyIndexingScheduleDlq {
  * Not responsible for retrying or otherwise processing the failed invocations it collects.
  */
 export class TantivyIndexingScheduleDlq extends BaseQueue implements ITantivyIndexingScheduleDlq {
-  constructor(scope: Construct, id: string, props: TantivyIndexingScheduleDlqProps = {}) {
+  constructor(scope: Construct, id: string, props: TantivyIndexingScheduleDlqProps) {
     super(scope, id, {
-      ...props.queueProps,
+      encryption:      props.encryption,
       retentionPeriod: Duration.days(14),
     });
   }

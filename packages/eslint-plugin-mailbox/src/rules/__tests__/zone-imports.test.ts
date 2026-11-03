@@ -72,14 +72,14 @@ const typeOnlyValid = cellsWith('typeOnly').map(({ importer, target, filename, s
 }));
 
 const cellForbidden = cellsWith('forbid').map(({ importer, target, filename, specifier }) => ({
-  name:   `${importer} never imports ${target}`,
+  name: `${importer} never imports ${target}`,
   filename,
   code:   importCode(specifier, false),
   errors: [{ messageId: 'forbidden' as const }],
 }));
 
 const cellTypeOnlyViolation = cellsWith('typeOnly').map(({ importer, target, filename, specifier }) => ({
-  name:   `${importer} imports value ${target} only with import type`,
+  name: `${importer} imports value ${target} only with import type`,
   filename,
   code:   importCode(specifier, false),
   errors: [{ messageId: 'typeOnly' as const }],

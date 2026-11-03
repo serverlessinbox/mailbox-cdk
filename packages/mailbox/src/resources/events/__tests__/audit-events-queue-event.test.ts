@@ -21,7 +21,7 @@ describe('AuditEventsQueueEvent', () => {
 
   beforeEach(() => {
     stack        = new Stack(new App(), 'TestStack', { synthesizer: new BootstraplessSynthesizer() });
-    queue        = new AuditEventsQueue(stack, 'audit-events-queue');
+    queue        = new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } });
     const target = new Function(stack, 'target', { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });
 
     new AuditEventsQueueEvent(target, 'audit-events-queue', { target, queue });

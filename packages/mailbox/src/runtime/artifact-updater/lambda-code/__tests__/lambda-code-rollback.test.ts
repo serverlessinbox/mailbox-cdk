@@ -12,15 +12,15 @@ import {
   LambdaClient,
   TagResourceCommand,
   UpdateFunctionCodeCommand,
-} from '@aws-sdk/client-lambda';
-import { LoggerBuffer }                                                    from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                                      from 'aws-sdk-client-mock';
-import { SemVer }                                                          from 'semver';
+}                                                                               from '@aws-sdk/client-lambda';
+import { LoggerBuffer }                                                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
+import { SemVer }                                                               from 'semver';
 
-import { ARTIFACT_BUCKET_US_EAST_1, lambdaTarget, NEWER_VERSION, noSleep } from '../../__tests__/updater-helpers';
-import type { ArtifactLocation, StaleTarget }                              from '../../release-artifacts';
-import { LambdaCodeRollback }                                              from '../lambda-code-rollback';
-import { LambdaFunctionCode }                                              from '../lambda-function-code';
+import { ARTIFACT_BUCKET_US_EAST_1, lambdaTarget, NEWER_VERSION, noSleep }      from '../../__tests__/updater-helpers';
+import type { ArtifactLocation, StaleTarget }                                   from '../../release-artifacts';
+import { LambdaCodeRollback }                                                   from '../lambda-code-rollback';
+import { LambdaFunctionCode }                                                   from '../lambda-function-code';
 
 describe('LambdaCodeRollback', () => {
   const lambdaMock                         = mockClient(LambdaClient);

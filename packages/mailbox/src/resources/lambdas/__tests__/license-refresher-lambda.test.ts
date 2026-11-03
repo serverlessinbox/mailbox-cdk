@@ -8,15 +8,15 @@
  * renders are pinned by the table and the triggers, not here.
  */
 
-import { statementsForAction }                              from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
-import { VENDOR_ACCOUNT_ID }                                from '@serverlessinbox/mailbox-cdk-shared';
-import { Template }                                         from 'aws-cdk-lib/assertions';
+import { statementsForAction }                from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { VENDOR_ACCOUNT_ID }                  from '@serverlessinbox/mailbox-cdk-shared';
+import { Template }                           from 'aws-cdk-lib/assertions';
 
-import { LicenseRefreshSchedule }                           from '../../events/license-refresh-schedule';
-import { LicenseRefresherLambda }                           from '../license-refresher-lambda';
+import { LicenseRefreshSchedule }             from '../../events/license-refresh-schedule';
+import { LicenseRefresherLambda }             from '../license-refresher-lambda';
 
-import { expectGrantedOnceTo, fakeDataTable }               from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataTable } from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }  from './lambda-wrapper-helpers';
 
 jest.mock('../../events/license-refresh-schedule');
 

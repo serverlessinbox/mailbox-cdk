@@ -1,15 +1,15 @@
-import type { IArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
 import {
   DeployerWorkerLambda,
   ServerlessInboxTagKeys,
   rootStackRequestTagConditions,
   rootStackResourceTagConditions,
-} from '@serverlessinbox/mailbox-cdk-shared';
-import type { IArtifactObject, IDeployedStack, RootStack } from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement }                                 from 'aws-cdk-lib/aws-iam';
-import type { IRole }                                      from 'aws-cdk-lib/aws-iam';
-import { ArnFormat, Aws, Stack }                           from 'aws-cdk-lib';
-import { Construct }                                       from 'constructs';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared';
+import type { IArtifactObject, IDeployedStack, RootStack }                      from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }                                                      from 'aws-cdk-lib/aws-iam';
+import type { IRole }                                                           from 'aws-cdk-lib/aws-iam';
+import { ArnFormat, Aws, Stack }                                                from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
 /**
  * The edge stack and root-stack identity this worker deploys, the template and artifacts CloudFormation

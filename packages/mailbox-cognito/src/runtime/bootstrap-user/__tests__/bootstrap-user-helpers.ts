@@ -34,6 +34,7 @@ export function request(
     StackId:           STACK_ID,
     RequestId:         'request-id-1',
     LogicalResourceId: 'BootstrapUserResource',
+    ResponseURL:       'https://cloudformation-custom-resource-response.s3.amazonaws.com/signed',
     ...(requestType === 'Create' ? {} : { PhysicalResourceId: PHYSICAL_RESOURCE_ID }),
     ResourceProperties: resourceProperties,
   });

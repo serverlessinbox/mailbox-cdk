@@ -1,21 +1,24 @@
-import { ServerlessInboxResourceGroup, setStackNameBase, StackHelpers }                                        from '@serverlessinbox/mailbox-cdk-shared';
-import * as cdk                                                                                                from 'aws-cdk-lib';
-import { Construct }                                                                                           from 'constructs';
+import type { IArtifactResolver }                                       from '@serverlessinbox/artifact-registry-cdk';
+import type { QueueEncryptionChoice, VendorLink }                       from '@serverlessinbox/mailbox-cdk-shared';
+import { ServerlessInboxResourceGroup, setStackNameBase, StackHelpers } from '@serverlessinbox/mailbox-cdk-shared';
+import * as cdk                                                         from 'aws-cdk-lib';
+import { Construct }                                                    from 'constructs';
 
-import { ApisSection }                                                                                         from './core/apis/apis-section';
-import { AuthSection }                                                                                         from './core/auth/auth-section';
-import { DataSection }                                                                                         from './core/data/data-section';
-import { MailboxAddressing }                                                                                   from './core/domains/mailbox-addressing';
-import type { MailboxEnabledUis }                                                                              from './core/domains/mailbox-addressing';
-import { EdgeSection }                                                                                         from './core/edge/edge-section';
-import { EmailSection }                                                                                        from './core/email/email-section';
-import { SearchSection }                                                                                       from './core/search/search-section';
-import { UiSection }                                                                                           from './core/ui/ui-section';
-import { MailboxContext }                                                                                      from './mailbox-context';
-import type { MailboxUrls, MailboxCertificates, MailboxOAuthClients }                                          from './mailbox-outputs';
-import type { MailboxProps }                                                                                   from './mailbox-props';
-import { OpsSection }                                                                                          from './platform/ops/ops-section';
-import { MailboxResourceDescriptions }                                                                         from './utils/resource-descriptions';
+import { ApisSection }                                                  from './core/apis/apis-section';
+import { AuthSection }                                                  from './core/auth/auth-section';
+import { DataSection }                                                  from './core/data/data-section';
+import { MailboxAddressing }                                            from './core/domains/mailbox-addressing';
+import type { MailboxEnabledUis }                                       from './core/domains/mailbox-addressing';
+import { EdgeSection }                                                  from './core/edge/edge-section';
+import { EmailSection }                                                 from './core/email/email-section';
+import { JobsSection }                                                  from './core/jobs/jobs-section';
+import { SearchSection }                                                from './core/search/search-section';
+import { UiSection }                                                    from './core/ui/ui-section';
+import { MailboxContext }                                               from './mailbox-context';
+import type { MailboxUrls, MailboxCertificates, MailboxOAuthClients }   from './mailbox-outputs';
+import type { MailboxProps }                                            from './mailbox-props';
+import { OpsSection }                                                   from './platform/ops/ops-section';
+import { MailboxResourceDescriptions }                                  from './utils/resource-descriptions';
 
 /**
  * The complete Serverless Inbox mail server as one construct: data stack, email receiving and
@@ -52,16 +55,16 @@ export class Mailbox extends Construct {
   constructor(scope: Construct, id: string, props: MailboxProps) {
     super(scope, id);
 
-    const context                                                                                = this.resolveContext(props);
-    const { artifactResolver, deployerType, vendorLink, encryptionPlan: { queues: queueProps } } = context;
-    const enabledUis                                                                             = { adminUi: props.enableAdminUi ?? true, webmailUi: props.enableWebmailUi ?? true };
+    const context = this.resolveContext(props);
+    const { artifactResolver, deployerType, vendorLink, encryptionPlan: { queueEncryption, dynamoTables } } = context;
+    const enabledUis = { adminUi: props.enableAdminUi ?? true, webmailUi: props.enableWebmailUi ?? true };
 
     // Every other section reads the data tables, queues and blob store, so data comes first.
     const data = new DataSection(this, 'data', {
       artifactResolver,
       deployerType,
       stackHelpers: StackHelpers.getOrCreate(this, artifactResolver),
-      queueProps,
+      queueEncryption,
     });
     setStackNameBase(this, data.mainStackNameBase);
 
@@ -69,7 +72,7 @@ export class Mailbox extends Construct {
     const addressing = this.resolveAddressing(props, enabledUis);
 
     // Receives, sends and processes mail on top of the data stores; auth needs its queue and SES settings.
-    const email = new EmailSection(this, 'email', { artifactResolver, data, queueProps });
+    const email = new EmailSection(this, 'email', { artifactResolver, data, queueEncryption, dynamoTables });
 
     // Key store and identity provisioning, which need data and email. The bootstrap that registers
     // the OAuth clients waits for the UIs (`auth.addBootstrap` below).
@@ -79,8 +82,14 @@ export class Mailbox extends Construct {
       data,
       email,
       vendorLink,
+      dynamoTables,
       domainName: addressing.domains.domainName,
       adminUiUrl: addressing.urls.adminUi,
+    });
+
+    const jobs = new JobsSection(this, 'jobs', {
+      queueEncryption, artifactResolver, data, auth,
+      systemSenderAddress: `noreply@${addressing.domains.domainName}`,
     });
 
     // Edge sub-stack and certificates, which need the auth key store and the addressing. The CDN and
@@ -130,13 +139,14 @@ export class Mailbox extends Construct {
     const endpoints = apis.addEndpoints({
       artifactResolver, authProvider: props.authProvider, data, auth, email, vendorLink,
       cdnHost:        blobCdn.host,
-      mailboxDomains: addressing.domains, edge, ui,
+      mailboxDomains: addressing.domains, edge, ui, jobs,
       extraAllowedOrigins: props.extraAllowedOrigins,
       enableMcp:           props.enableMcp,
     });
 
-    // The email Lambdas can push over the WebSocket only once the endpoints' broadcaster exists.
+    // The email and mail-import Lambdas can push over the WebSocket only once the endpoints' broadcaster exists.
     email.enableWebSocketPublishing(endpoints.broadcaster);
+    jobs.enableWebSocketPublishing(endpoints.broadcaster);
 
     // DNS records point at the UIs, the CDN and the API endpoints, so they come after all three.
     edge.addDns({ ui, blobCdn, apis: endpoints });
@@ -144,17 +154,7 @@ export class Mailbox extends Construct {
     // The bootstrap registers the UIs' OAuth clients, so it needs the UIs and the edge.
     auth.addBootstrap({ email, ui, edge, sesReceivingMode: props.enableReceiving });
 
-    // Full-text search needs only the data stores, so nothing else waits on it.
-    new SearchSection(this, 'search', { artifactResolver, data, queueProps });
-
-    // Platform zone: license refresh, stack-failure detection and cleanup of retained resources.
-    // The cleanup targets edge resources, so it is built after the edge.
-    new OpsSection(this, 'ops', {
-      artifactResolver, data, edge,
-      domainName:        addressing.domains.domainName,
-      vendorAccountIds:  vendorLink.vendorAccountIds,
-      sendStackFailures: props.sendStackFailures,
-    });
+    this.addStandaloneSections(artifactResolver, data, queueEncryption, edge, addressing, vendorLink, props.sendStackFailures);
 
     this.urls         = addressing.urls;
     this.certificates = { edge: edge.edgeCertificate, regional: edge.regionalCertificate };
@@ -165,6 +165,30 @@ export class Mailbox extends Construct {
     // Per-region AWS Resource Group collecting all resources tagged with this deployment's
     // root-stack (this is the main stack, so root-stack = AWS::StackName).
     new ServerlessInboxResourceGroup(this, 'resource-group');
+  }
+
+  /**
+   * The two sections nothing else reads, so the constructor keeps no reference to either. Nothing waits on search
+   * or ops. Search needs only the data stores. Ops (license refresh, stack-failure detection, cleanup of retained
+   * edge resources) comes after the edge, because the cleanup targets edge resources.
+   */
+  private addStandaloneSections(
+    artifactResolver: IArtifactResolver,
+    data: DataSection,
+    queueEncryption: QueueEncryptionChoice,
+    edge: EdgeSection,
+    addressing: MailboxAddressing,
+    vendorLink: VendorLink,
+    sendStackFailures: MailboxProps['sendStackFailures'],
+  ): void {
+    new SearchSection(this, 'search', { artifactResolver, data, queueEncryption });
+
+    new OpsSection(this, 'ops', {
+      artifactResolver, data, edge,
+      domainName:       addressing.domains.domainName,
+      vendorAccountIds: vendorLink.vendorAccountIds,
+      sendStackFailures,
+    });
   }
 
   /** Rejects invalid `extraAllowedOrigins` before anything is built, then resolves the context the sections share. */

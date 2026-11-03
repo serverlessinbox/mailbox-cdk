@@ -1,8 +1,8 @@
-import { Cli }                          from 'clipanion';
-import { PassThrough }                  from 'stream';
+import { Cli }                       from 'clipanion';
+import { PassThrough }               from 'stream';
 
-import { DeclarationClosureChecker }    from '../../jsii-package/declaration-closure-checker';
-import { CheckDeclarationsCommand }     from '../check-declarations-command';
+import { DeclarationClosureChecker } from '../../jsii-package/declaration-closure-checker';
+import { CheckDeclarationsCommand }  from '../check-declarations-command';
 
 jest.mock('../../jsii-package/declaration-closure-checker');
 

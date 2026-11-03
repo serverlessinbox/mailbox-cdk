@@ -1,6 +1,6 @@
-import { App, BootstraplessSynthesizer, Token }   from 'aws-cdk-lib';
+import { App, BootstraplessSynthesizer, Token } from 'aws-cdk-lib';
 
-import { StandaloneStackFactory }                 from '../standalone-stack-factory';
+import { StandaloneStackFactory }               from '../standalone-stack-factory';
 
 /**
  * Pins what the factory gives every consumer: the stack ids carry the consumer's prefix, the edge stack

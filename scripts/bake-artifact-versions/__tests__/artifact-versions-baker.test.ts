@@ -1,12 +1,13 @@
-import { ArtifactZone, PinnedArtifactResolver }                                          from '@serverlessinbox/artifact-registry-cdk';
-import { mkdirSync, mkdtempSync, readFileSync, existsSync, rmSync, writeFileSync }       from 'node:fs';
-import { tmpdir }                                                                        from 'node:os';
-import * as path                                                                         from 'node:path';
+import { ArtifactZone, PinnedArtifactResolver }                                 from '@serverlessinbox/artifact-registry-cdk';
+import { mkdirSync, mkdtempSync, readFileSync, existsSync, rmSync,
+  writeFileSync }                                                               from 'node:fs';
+import { tmpdir }                                                               from 'node:os';
+import * as path                                                                from 'node:path';
 
-import { ArtifactVersionsBaker }                                                         from '../artifact-versions-baker';
-import type { BakedPackage, PinsByPackage }                                              from '../baked-package';
-import { BumpedVersionReader }                                                           from '../bumped-version-reader';
-import { ExternalPinsReader }                                                            from '../external-pins-reader';
+import { ArtifactVersionsBaker }                                                from '../artifact-versions-baker';
+import type { BakedPackage, PinsByPackage }                                     from '../baked-package';
+import { BumpedVersionReader }                                                  from '../bumped-version-reader';
+import { ExternalPinsReader }                                                   from '../external-pins-reader';
 
 /**
  * Pins the file a published package ships: its own packages carry the version the bump wrote into

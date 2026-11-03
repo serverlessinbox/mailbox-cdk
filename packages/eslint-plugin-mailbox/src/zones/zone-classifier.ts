@@ -1,7 +1,8 @@
-import { contractResourcePaths, platformOnlyEventPaths, platformOnlyPaths, zoneMatrix } from './mailbox-zones';
-import type { ImporterZone, TargetZone, Verdict }                                       from './mailbox-zones';
-import { mailboxPackage, packageRoots }                                                 from './package-roots';
-import type { PackageRoot }                                                             from './package-roots';
+import { contractResourcePaths, platformOnlyEventPaths, platformOnlyPaths,
+  zoneMatrix }                                                                  from './mailbox-zones';
+import type { ImporterZone, TargetZone, Verdict }                               from './mailbox-zones';
+import { mailboxPackage, packageRoots }                                         from './package-roots';
+import type { PackageRoot }                                                     from './package-roots';
 
 export interface SourceLocation {
   readonly packageRoot: PackageRoot | null;

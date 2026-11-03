@@ -1,4 +1,3 @@
-import * as iam                       from 'aws-cdk-lib/aws-iam';
 import * as logs                      from 'aws-cdk-lib/aws-logs';
 import { RetentionDays }              from 'aws-cdk-lib/aws-logs';
 import * as cdk                       from 'aws-cdk-lib';
@@ -10,13 +9,13 @@ import { getOrCreateSharedGroup }     from '../../tagging/shared-group';
 
 import type { Pipeline }              from './pipelines';
 
-/** The CloudWatch log group of a pipeline: a `logs.ILogGroup` plus one narrow read grant. */
+/**
+ * The CloudWatch log group of a pipeline: a `logs.ILogGroup` plus `groupLevelArn`, the log group's ARN
+ * in log-group format, which IAM statements list next to `logGroupArn` for log-group-level actions.
+ */
 export interface IPipelineLogGroup extends logs.ILogGroup {
-  /**
-   * Grants exactly `logs:FilterLogEvents` on this log group (e.g., for querying logs during
-   * recovery/troubleshooting). Scoped to this log group's ARN — no conditions.
-   */
-  grantFilterEvents(grantee: iam.IGrantable): iam.Grant;
+  /** The log group's ARN without the trailing `:*` that `logGroupArn` carries. */
+  readonly groupLevelArn: string;
 }
 
 /** Log retention, settable per pipeline. */
@@ -76,11 +75,14 @@ export class PipelineLogGroup extends logs.LogGroup implements IPipelineLogGroup
     });
   }
 
-  grantFilterEvents(grantee: iam.IGrantable): iam.Grant {
-    return iam.Grant.addToPrincipal({
-      grantee,
-      actions:      ['logs:FilterLogEvents'],
-      resourceArns: [this.logGroupArn],
+  public get groupLevelArn(): string {
+    return cdk.Stack.of(this).formatArn({
+      service:      'logs',
+      resource:     'log-group',
+      resourceName: this.logGroupName,
+      arnFormat:    cdk.ArnFormat.COLON_RESOURCE_NAME,
+      region:       Aws.REGION,
+      account:      Aws.ACCOUNT_ID,
     });
   }
 

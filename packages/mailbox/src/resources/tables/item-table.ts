@@ -18,6 +18,7 @@ export class ItemTable extends StackNamedTable {
       encryption:                       props.encryption,
       encryptionKey:                    props.encryptionKey,
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: props.pointInTimeRecoveryEnabled },
+      timeToLiveAttribute:              'ttl',
     });
 
     this.addGlobalSecondaryIndex({

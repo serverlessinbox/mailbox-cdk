@@ -6,11 +6,11 @@
  * because the target must still exist after a failed create to report that rollback.
  */
 
-import { Match, Template }                          from 'aws-cdk-lib/assertions';
-import { Code, Function, Runtime }                  from 'aws-cdk-lib/aws-lambda';
-import { App, BootstraplessSynthesizer, Stack }     from 'aws-cdk-lib';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Code, Function, Runtime }              from 'aws-cdk-lib/aws-lambda';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
-import { StackFailedEvent }                         from '../stack-failed-event';
+import { StackFailedEvent }                     from '../stack-failed-event';
 
 const RETAINED = { DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain' };
 

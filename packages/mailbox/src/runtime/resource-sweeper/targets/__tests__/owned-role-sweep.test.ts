@@ -4,14 +4,15 @@
  * attached policies is retried. A role another stack owns is never deleted, and that mismatch is final.
  */
 
-import { DeleteRoleCommand, DeleteRolePolicyCommand, IAMClient, ListRoleTagsCommand }   from '@aws-sdk/client-iam';
-import { LoggerBuffer }                                                                 from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                                                   from 'aws-sdk-client-mock';
+import { DeleteRoleCommand, DeleteRolePolicyCommand, IAMClient,
+  ListRoleTagsCommand }                                                         from '@aws-sdk/client-iam';
+import { LoggerBuffer }                                                         from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import type { TargetResult }                                                            from '../../removal';
-import { RootStackMembership }                                                          from '../../root-stack-membership';
-import { TargetResults }                                                                from '../../target-results';
-import { OwnedRoleSweep }                                                               from '../owned-role-sweep';
+import type { TargetResult }                                                    from '../../removal';
+import { RootStackMembership }                                                  from '../../root-stack-membership';
+import { TargetResults }                                                        from '../../target-results';
+import { OwnedRoleSweep }                                                       from '../owned-role-sweep';
 
 const iamMock = mockClient(IAMClient);
 

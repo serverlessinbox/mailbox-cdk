@@ -8,14 +8,14 @@
  * message Lambda passes to it.
  */
 
-import { Template }                                                                  from 'aws-cdk-lib/assertions';
+import { Template }                                               from 'aws-cdk-lib/assertions';
 
-import type { IWebSocketPushApi }                                                    from '../../../contracts/websocket-push';
-import { WebSocketMessageLambda }                                                    from '../websocket-message-lambda';
+import type { IWebSocketPushApi }                                 from '../../../contracts/websocket-push';
+import { WebSocketMessageLambda }                                 from '../websocket-message-lambda';
 
-import { expectGrantedOnceTo, fakeDataTable, fakeWebSocketTable }                    from './lambda-wrapper-fakes';
-import type { GrantSpy }                                                             from './lambda-wrapper-fakes';
-import { arrangeWrapperStack, onlyLambdaOf }                                         from './lambda-wrapper-helpers';
+import { expectGrantedOnceTo, fakeDataTable, fakeWebSocketTable } from './lambda-wrapper-fakes';
+import type { GrantSpy }                                          from './lambda-wrapper-fakes';
+import { arrangeWrapperStack, onlyLambdaOf }                      from './lambda-wrapper-helpers';
 
 const FAKE_MANAGEMENT_ENDPOINT = 'https://fake.execute-api.us-west-2.amazonaws.com/prod';
 

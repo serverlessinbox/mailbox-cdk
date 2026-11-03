@@ -8,13 +8,13 @@
  * what it is told to wait for, or it scans a half-deployed stack.
  */
 
-import { Template }                                                              from 'aws-cdk-lib/assertions';
-import { CfnCondition, CfnResource, Fn, Stack }                                  from 'aws-cdk-lib';
-import * as t                                                                    from 'typanion';
+import { Template }                             from 'aws-cdk-lib/assertions';
+import { CfnCondition, CfnResource, Fn, Stack } from 'aws-cdk-lib';
+import * as t                                   from 'typanion';
 
-import { resourcesOfType }                                                       from '../../../__tests__/template-resources';
-import { newInlineFunction, newTestStack }                                       from '../../__tests__/platform-helpers';
-import { TrackedUpdateTriggers }                                                 from '../tracked-update-triggers';
+import { resourcesOfType }                      from '../../../__tests__/template-resources';
+import { newInlineFunction, newTestStack }      from '../../__tests__/platform-helpers';
+import { TrackedUpdateTriggers }                from '../tracked-update-triggers';
 
 const isDeployEndProperties = t.isPartial({ Nonce: t.isString() });
 

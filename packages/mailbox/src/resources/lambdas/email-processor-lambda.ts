@@ -8,6 +8,7 @@ import type { IDataBlobStore }                                     from '../buck
 import { EmailProcessingQueueEvent }                               from '../events/email-processing-queue-event';
 import type { IEmailProcessingQueueConsumer }                      from '../queues/email-processing-queue';
 import type { IDataTable }                                         from '../tables/data-tables';
+import type { IMailLogTable }                                      from '../tables/mail-log-table';
 
 /**
  * The tables and blob store the processor reads and writes, and the email-processing queue it
@@ -19,6 +20,7 @@ export interface EmailProcessorLambdaProps {
   readonly changelogTable:       IDataTable;
   readonly blobStore:            IDataBlobStore;
   readonly emailProcessingQueue: IEmailProcessingQueueConsumer;
+  readonly mailLogTable:         IMailLogTable;
   readonly artifactResolver:     IArtifactResolver;
 }
 
@@ -39,6 +41,7 @@ export class EmailProcessorLambda extends GoLambda implements IWebSocketPushTarg
         CONFIG_TABLE_NAME:    props.configTable.tableName,
         ITEM_TABLE_NAME:      props.itemTable.tableName,
         CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
+        MAIL_LOG_TABLE_NAME:  props.mailLogTable.tableName,
       },
     });
     ComponentDescription.describe(this, 'Inbound email processing — parses MIME, stores raw content to S3, and indexes messages into the mailbox.');
@@ -46,6 +49,7 @@ export class EmailProcessorLambda extends GoLambda implements IWebSocketPushTarg
     props.configTable.grantReadWrite(this);
     props.itemTable.grantReadWrite(this);
     props.changelogTable.grantReadWrite(this);
+    props.mailLogTable.grantWrite(this);
 
     props.blobStore.grantIncomingEmailConsume(this);
     props.blobStore.grantEmailBlobWrite(this);

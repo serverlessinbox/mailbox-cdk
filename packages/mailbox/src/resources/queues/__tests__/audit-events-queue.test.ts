@@ -13,7 +13,7 @@ import { createStack }        from './queue-helpers';
 describe('AuditEventsQueue', () => {
   it('sets the visibility timeout to 5 minutes on the main queue, not only its dead-letter queue', () => {
     const stack = createStack();
-    new AuditEventsQueue(stack, 'audit-events-queue');
+    new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } });
 
     const template = Template.fromStack(stack);
 
@@ -25,7 +25,7 @@ describe('AuditEventsQueue', () => {
 
   it('moves a message to the 14 day dead-letter queue created beside it after 5 receives', () => {
     const stack = createStack();
-    new AuditEventsQueue(stack, 'audit-events-queue');
+    new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } });
 
     const template = Template.fromStack(stack);
     const dlqId    = stack.getLogicalId(defaultCfnResource(stack.node.findChild('audit-events-queue-dlq')));

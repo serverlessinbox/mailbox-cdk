@@ -4,21 +4,21 @@ import {
   type CloudFrontClient,
   type DistributionConfig,
   type LambdaFunctionAssociation,
-} from '@aws-sdk/client-cloudfront';
-import { PublishVersionCommand } from '@aws-sdk/client-lambda';
+}                                                                               from '@aws-sdk/client-cloudfront';
+import { PublishVersionCommand }                                                from '@aws-sdk/client-lambda';
 import {
   CaughtError,
   parseArn,
   type LoggerBuffer,
-} from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+}                                                                               from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import type { LambdaTarget }                                    from './artifact-target';
-import type { FunctionSmokeTester, SmokeTestVerdict }           from './lambda-code/function-smoke-tester';
-import type { LambdaCodeRollback }                              from './lambda-code/lambda-code-rollback';
-import type { LambdaFunctionCode, Sleep }                       from './lambda-code/lambda-function-code';
-import type { ArtifactLocation, ReleaseArtifacts, StaleTarget } from './release-artifacts';
-import type { RegionClients, RootStackResources }               from './updater-clients';
-import { toLambdaFunctionArn, type LambdaFunctionArn }          from './updater-identifiers';
+import type { LambdaTarget }                                                    from './artifact-target';
+import type { FunctionSmokeTester, SmokeTestVerdict }                           from './lambda-code/function-smoke-tester';
+import type { LambdaCodeRollback }                                              from './lambda-code/lambda-code-rollback';
+import type { LambdaFunctionCode, Sleep }                                       from './lambda-code/lambda-function-code';
+import type { ArtifactLocation, ReleaseArtifacts, StaleTarget }                 from './release-artifacts';
+import type { RegionClients, RootStackResources }                               from './updater-clients';
+import { toLambdaFunctionArn, type LambdaFunctionArn }                          from './updater-identifiers';
 
 /** The cache behaviours of a distribution, in which Lambda@Edge functions are associated. */
 type CacheBehaviorsOf = Pick<DistributionConfig, 'DefaultCacheBehavior' | 'CacheBehaviors'>;

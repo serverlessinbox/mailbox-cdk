@@ -12,13 +12,13 @@ process.env['SERVICE_NAME']                      = 'resource-sweeper';
 process.env['AWS_REGION']                        = 'us-west-2';
 process.env['MAILBOX_SWEEPER_STATE_MACHINE_ARN'] = STATE_MACHINE_ARN;
 
-import { FailedRequestAnswerer, LoggerBuffer }                                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { captureCfnResponse }                                                                    from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
+import { FailedRequestAnswerer, LoggerBuffer } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { captureCfnResponse }                  from '@serverlessinbox/mailbox-cdk-shared/runtime-test-support';
 
-import { starterHandler }                                                                        from '../handler';
-import { SweepStarter }                                                                          from '../sweep-starter';
+import { starterHandler }                      from '../handler';
+import { SweepStarter }                        from '../sweep-starter';
 
-import { lambdaContext, updateEvent }                                                            from './sweep-helpers';
+import { lambdaContext, updateEvent }          from './sweep-helpers';
 
 // wrapHandler PUTs the CFN response over real `https`; captureCfnResponse routes it into memory.
 jest.mock('https', () => ({ request: jest.fn() }));

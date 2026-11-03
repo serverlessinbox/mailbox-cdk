@@ -20,9 +20,9 @@ import {
   AdminSetUserPasswordCommand,
   CognitoIdentityProviderClient,
   ListUsersCommand,
-} from '@aws-sdk/client-cognito-identity-provider';
-import { LambdaClient } from '@aws-sdk/client-lambda';
-import { create }       from '@bufbuild/protobuf';
+}                                                                               from '@aws-sdk/client-cognito-identity-provider';
+import { LambdaClient }                                                         from '@aws-sdk/client-lambda';
+import { create }                                                               from '@bufbuild/protobuf';
 import {
   ConflictError,
   InvalidInputError,
@@ -30,13 +30,13 @@ import {
   toPrincipalId as toCallerPrincipalId,
   toTenantId as toCallerTenantId,
   type HandlerContext,
-} from '@serverlessinbox/mailbox-addon-sdk';
-import { LoggerBuffer, toAccountId, toFunctionName } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
-import { mockClient }                                from 'aws-sdk-client-mock';
+}                                                                               from '@serverlessinbox/mailbox-addon-sdk';
+import { LoggerBuffer, toAccountId, toFunctionName }                            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import { toGroupName, toUserPoolId, type GroupName } from '../../shared/cognito-identifiers';
-import { toPrincipalId }                             from '../../shared/identity-identifiers';
-import { IdentityProvisionerClient }                 from '../../shared/identity-provisioner-client';
+import { toGroupName, toUserPoolId, type GroupName }                            from '../../shared/cognito-identifiers';
+import { toPrincipalId }                                                        from '../../shared/identity-identifiers';
+import { IdentityProvisionerClient }                                            from '../../shared/identity-provisioner-client';
 import {
   CreateIdpUserRequestSchema,
   DeleteIdpUserRequestSchema,
@@ -44,10 +44,10 @@ import {
   ListIdpUsersRequestSchema,
   SetIdpUserEnabledRequestSchema,
   SetIdpUserPasswordRequestSchema,
-} from '../generated/idp_users_pb';
-import { IdpUserMapper }            from '../idp-user-mapper';
-import { CognitoIdpUsersService }   from '../idp-users.service';
-import { IdpUsersRequestValidator } from '../idp-users.validation';
+}                                                                               from '../generated/idp_users_pb';
+import { IdpUserMapper }                                                        from '../idp-user-mapper';
+import { CognitoIdpUsersService }                                               from '../idp-users.service';
+import { IdpUsersRequestValidator }                                             from '../idp-users.validation';
 
 const USER_POOL_ID    = 'pool-1';
 const TENANT_ID       = 'tenant-123';

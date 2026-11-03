@@ -1,9 +1,9 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree }    from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 
-import { AllowListMatcher }                                from '../model/allow-list-matcher';
-import { iamAllowList }                                    from '../model/iam-allow-list';
+import { AllowListMatcher }                             from '../model/allow-list-matcher';
+import { iamAllowList }                                 from '../model/iam-allow-list';
 
-import { createRule }                                      from './create-rule';
+import { createRule }                                   from './create-rule';
 
 // R2: IAM statements are written only in resources/**, grants/** and the allow-listed files.
 

@@ -9,16 +9,16 @@
  * assertions are the only guard.
  */
 
-import { Match, Template }                           from 'aws-cdk-lib/assertions';
-import { HttpMethod }                                from 'aws-cdk-lib/aws-apigatewayv2';
-import type { IFunction }                            from 'aws-cdk-lib/aws-lambda';
-import * as cdk                                      from 'aws-cdk-lib';
+import { Match, Template }                                                      from 'aws-cdk-lib/assertions';
+import { HttpMethod }                                                           from 'aws-cdk-lib/aws-apigatewayv2';
+import type { IFunction }                                                       from 'aws-cdk-lib/aws-lambda';
+import * as cdk                                                                 from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }         from '../../../contracts/websocket-push';
-import type { IAdminApiAddon }                       from '../addons';
-import { AdminApi }                                  from '../admin-api';
-import type { AdminApiProps }                        from '../admin-api';
-import { ApiGateway }                                from '../api-gateway';
+import type { IWebSocketBroadcastPublisher }                                    from '../../../contracts/websocket-push';
+import type { IAdminApiAddon }                                                  from '../addons';
+import { AdminApi }                                                             from '../admin-api';
+import type { AdminApiProps }                                                   from '../admin-api';
+import { ApiGateway }                                                           from '../api-gateway';
 
 import {
   authorizerOfRoute,
@@ -26,7 +26,7 @@ import {
   newAdminApiProps,
   newApiStack,
   routeOf,
-} from './apis-helpers';
+}                                                                               from './apis-helpers';
 
 describe('AdminApi', () => {
   let stack: cdk.Stack;
@@ -73,6 +73,23 @@ describe('AdminApi', () => {
     const { functionEnvironment } = authorizerOfRoute(Template.fromStack(stack), 'POST /admin/{proxy+}');
 
     expect(functionEnvironment).toMatchObject({ AUTH_POLICY_NAME: 'ADMIN_API', PRINCIPAL_LOOKUP: 'off' });
+  });
+
+  it('gives the plain authorizer the token table and caches its answer for 5 minutes', () => {
+    mountedAdminApi();
+
+    const { functionEnvironment, cacheTtlSeconds } = authorizerOfRoute(Template.fromStack(stack), 'POST /admin/{proxy+}');
+
+    expect(functionEnvironment).toHaveProperty('PAT_TABLE_NAME');
+    expect(cacheTtlSeconds).toBe(300);
+  });
+
+  it('gives the principal-lookup authorizer no token table, so it refuses tokens', () => {
+    mountedAdminApi({ addons: [addonAt('/first')] });
+
+    const { functionEnvironment } = authorizerOfRoute(Template.fromStack(stack), 'POST /admin/first/{proxy+}');
+
+    expect(functionEnvironment).not.toHaveProperty('PAT_TABLE_NAME');
   });
 
   it('mounts no route at the root of the shared API', () => {

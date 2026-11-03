@@ -5,7 +5,7 @@ import type { HandlerContext }                     from '../caller/handler-conte
 /** The part of one method of a generated `<Service>ServiceRuntime` const that `wrapService` reads. */
 export interface GeneratedMethod {
   /** The last path segment the method is served on, for example `ListIdpUsers`. */
-  readonly name:           string;
+  readonly name: string;
   /** The key of the method on the handlers object, for example `listIdpUsers`. */
   readonly handlerName:    string;
   readonly requestSchema:  DescMessage;

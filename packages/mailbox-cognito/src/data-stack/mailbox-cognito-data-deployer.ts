@@ -1,12 +1,13 @@
-import type { IArtifactResolver }                                                    from '@serverlessinbox/artifact-registry-cdk';
-import { ArtifactObject, DeployedStack, DeployerInfra, serverlessInboxSubStackTags } from '@serverlessinbox/mailbox-cdk-shared';
-import type { RootStack, ServerlessInboxDeployerType }                               from '@serverlessinbox/mailbox-cdk-shared';
-import { Aws, Stack }                                                                from 'aws-cdk-lib';
-import { Construct }                                                                 from 'constructs';
+import type { IArtifactResolver }                                               from '@serverlessinbox/artifact-registry-cdk';
+import { ArtifactObject, DeployedStack, DeployerInfra,
+  serverlessInboxSubStackTags }                                                 from '@serverlessinbox/mailbox-cdk-shared';
+import type { RootStack, ServerlessInboxDeployerType }                          from '@serverlessinbox/mailbox-cdk-shared';
+import { Aws, Stack }                                                           from 'aws-cdk-lib';
+import { Construct }                                                            from 'constructs';
 
-import { COGNITO_ARTIFACT_PACKAGE }                                                  from '../cognito-artifact-package';
-import { MailboxCognitoDataDeployerWorkerLambda }                                    from '../resources/lambdas/mailbox-cognito-data-deployer-worker-lambda';
-import type { MfaMode }                                                              from '../user-pool/mfa-mode';
+import { COGNITO_ARTIFACT_PACKAGE }                                             from '../cognito-artifact-package';
+import { MailboxCognitoDataDeployerWorkerLambda }                               from '../resources/lambdas/mailbox-cognito-data-deployer-worker-lambda';
+import type { MfaMode }                                                         from '../user-pool/mfa-mode';
 
 import {
   COGNITO_DATA_STACK_TEMPLATE_OBJECT,
@@ -14,9 +15,9 @@ import {
   DEFAULT_MFA_MODE,
   DEFAULT_PASSWORD_MIN_LENGTH,
   type MailboxCognitoDataStackParameters,
-} from './mailbox-cognito-data-stack-contract';
-import { cognitoDataStackName }                                      from './mailbox-cognito-data-stack-name';
-import { MailboxCognitoDataStackRef }                                from './mailbox-cognito-data-stack-ref';
+}                                                                               from './mailbox-cognito-data-stack-contract';
+import { cognitoDataStackName }                                                 from './mailbox-cognito-data-stack-name';
+import { MailboxCognitoDataStackRef }                                           from './mailbox-cognito-data-stack-ref';
 
 /** The custom domain the OAuth endpoint of the cognito data stack is served from. */
 export interface MailboxCognitoDataDeployerCustomDomain {

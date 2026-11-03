@@ -1,6 +1,7 @@
-import { InvalidInputError }                                                         from '@serverlessinbox/mailbox-addon-sdk';
+import { InvalidInputError }                                                    from '@serverlessinbox/mailbox-addon-sdk';
 
-import type { CreateIdpUserRequest, ListIdpUsersRequest, SetIdpUserPasswordRequest } from './generated/idp_users_pb';
+import type { CreateIdpUserRequest, ListIdpUsersRequest,
+  SetIdpUserPasswordRequest }                                                   from './generated/idp_users_pb';
 
 const MIN_PASSWORD_LENGTH   = 8;
 const MIN_PAGE_SIZE         = 1;

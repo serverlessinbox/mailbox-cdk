@@ -1,18 +1,18 @@
-import { create, type Message }             from '@bufbuild/protobuf';
+import { create, type Message }                                                 from '@bufbuild/protobuf';
 
-import { authorizedEvent }                  from '../../__tests__/authorized-event-helpers';
-import type { HandlerContext }              from '../../caller/index';
-import { InvalidInputError, NotFoundError } from '../../errors/index';
-import type { JsonValue }                   from '../../json/index';
-import { ServiceRoutes }                    from '../service-routes';
+import { authorizedEvent }                                                      from '../../__tests__/authorized-event-helpers';
+import type { HandlerContext }                                                  from '../../caller/index';
+import { InvalidInputError, NotFoundError }                                     from '../../errors/index';
+import type { JsonValue }                                                       from '../../json/index';
+import { ServiceRoutes }                                                        from '../service-routes';
 
 import {
   GetThingRequestSchema,
   GetThingResponseSchema,
   ListThingsResponseSchema,
   ThingServiceRuntime,
-} from './fixtures/thing-service';
-import { contextDouble }        from './handler-helpers';
+}                                                                               from './fixtures/thing-service';
+import { contextDouble }                                                        from './handler-helpers';
 
 /*
  * Pins how a generated service is served: the method comes from the last path segment, the body is decoded and

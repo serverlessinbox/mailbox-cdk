@@ -8,16 +8,16 @@
  * the logs of every function sharing a bundle.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import type { IArtifactResolver }                from '@serverlessinbox/artifact-registry-cdk';
-import { Match, Template }                       from 'aws-cdk-lib/assertions';
-import { Runtime }                               from 'aws-cdk-lib/aws-lambda';
-import { LogGroup }                              from 'aws-cdk-lib/aws-logs';
-import { App, BootstraplessSynthesizer, Stack }  from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
+import type { IArtifactResolver }               from '@serverlessinbox/artifact-registry-cdk';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
+import { Runtime }                              from 'aws-cdk-lib/aws-lambda';
+import { LogGroup }                             from 'aws-cdk-lib/aws-logs';
+import { App, BootstraplessSynthesizer, Stack } from 'aws-cdk-lib';
 
-import { ArtifactLambda }                        from '../artifact-lambda';
-import type { ArtifactLambdaProps }              from '../artifact-lambda';
-import { PipelineLogGroup }                      from '../pipeline-log-groups';
+import { ArtifactLambda }                       from '../artifact-lambda';
+import type { ArtifactLambdaProps }             from '../artifact-lambda';
+import { PipelineLogGroup }                     from '../pipeline-log-groups';
 
 interface LambdaFixture {
   readonly stack:            Stack;

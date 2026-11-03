@@ -25,8 +25,9 @@ function synthSection(stack: Stack): DataSection {
   });
   const section          = new DataSection(stack, 'data', {
     artifactResolver,
-    deployerType: 'cdk',
-    stackHelpers: StackHelpers.getOrCreate(stack, artifactResolver),
+    deployerType:    'cdk',
+    stackHelpers:    StackHelpers.getOrCreate(stack, artifactResolver),
+    queueEncryption: { kind: 'aws-managed' },
   });
   Template.fromStack(stack);
   return section;

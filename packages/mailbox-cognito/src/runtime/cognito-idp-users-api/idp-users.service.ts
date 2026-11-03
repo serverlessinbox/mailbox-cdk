@@ -9,21 +9,28 @@ import {
   ListUsersCommand,
   type AdminGetUserCommandOutput,
   type CognitoIdentityProviderClient,
-} from '@aws-sdk/client-cognito-identity-provider';
-import { create }                                                                                                                                                                                                                                                                                      from '@bufbuild/protobuf';
-import type { AuditEntry, HandlerContext }                                                                                                                                                                                                                                                             from '@serverlessinbox/mailbox-addon-sdk';
-import { ConflictError, InvalidInputError, NotFoundError }                                                                                                                                                                                                                                             from '@serverlessinbox/mailbox-addon-sdk';
-import { CaughtError, toTenantId, type LoggerBuffer, type TenantId }                                                                                                                                                                                                                                   from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
+}                                                                               from '@aws-sdk/client-cognito-identity-provider';
+import { create }                                                               from '@bufbuild/protobuf';
+import type { AuditEntry, HandlerContext }                                      from '@serverlessinbox/mailbox-addon-sdk';
+import { ConflictError, InvalidInputError, NotFoundError }                      from '@serverlessinbox/mailbox-addon-sdk';
+import { CaughtError, toTenantId, type LoggerBuffer, type TenantId }            from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 
-import { toGroupName, toUserSubject, toUsername, type GroupName, type UserPoolId, type UserSubject, type Username }                                                                                                                                                                                    from '../shared/cognito-identifiers';
-import { toEmailAddress, type EmailAddress }                                                                                                                                                                                                                                                           from '../shared/identity-identifiers';
-import type { IdentityProvisionerClient }                                                                                                                                                                                                                                                              from '../shared/identity-provisioner-client';
+import { toGroupName, toUserSubject, toUsername, type GroupName,
+  type UserPoolId, type UserSubject, type Username }                            from '../shared/cognito-identifiers';
+import { toEmailAddress, type EmailAddress }                                    from '../shared/identity-identifiers';
+import type { IdentityProvisionerClient }                                       from '../shared/identity-provisioner-client';
 
-import type { CreateIdpUserRequest, CreateIdpUserResponse, DeleteIdpUserRequest, DeleteIdpUserResponse, GetIdpUserRequest, GetIdpUserResponse, ListIdpUsersRequest, ListIdpUsersResponse, SetIdpUserEnabledRequest, SetIdpUserEnabledResponse, SetIdpUserPasswordRequest, SetIdpUserPasswordResponse } from './generated/idp_users_pb';
-import { CreateIdpUserResponseSchema, DeleteIdpUserResponseSchema, GetIdpUserResponseSchema, ListIdpUsersResponseSchema, SetIdpUserEnabledResponseSchema, SetIdpUserPasswordResponseSchema }                                                                                                           from './generated/idp_users_pb';
-import type { IdpUsersServiceHandlers }                                                                                                                                                                                                                                                                from './generated/idp_users_service';
-import type { IdpUserMapper }                                                                                                                                                                                                                                                                          from './idp-user-mapper';
-import type { IdpUsersRequestValidator }                                                                                                                                                                                                                                                               from './idp-users.validation';
+import type { CreateIdpUserRequest, CreateIdpUserResponse,
+  DeleteIdpUserRequest, DeleteIdpUserResponse, GetIdpUserRequest,
+  GetIdpUserResponse, ListIdpUsersRequest, ListIdpUsersResponse,
+  SetIdpUserEnabledRequest, SetIdpUserEnabledResponse,
+  SetIdpUserPasswordRequest, SetIdpUserPasswordResponse }                       from './generated/idp_users_pb';
+import { CreateIdpUserResponseSchema, DeleteIdpUserResponseSchema,
+  GetIdpUserResponseSchema, ListIdpUsersResponseSchema,
+  SetIdpUserEnabledResponseSchema, SetIdpUserPasswordResponseSchema }           from './generated/idp_users_pb';
+import type { IdpUsersServiceHandlers }                                         from './generated/idp_users_service';
+import type { IdpUserMapper }                                                   from './idp-user-mapper';
+import type { IdpUsersRequestValidator }                                        from './idp-users.validation';
 
 /** The Cognito failures this service answers as an admin API error rather than as a server error. */
 type CognitoFailureName = 'UserNotFoundException' | 'InvalidParameterException' | 'InvalidPasswordException' | 'UsernameExistsException';

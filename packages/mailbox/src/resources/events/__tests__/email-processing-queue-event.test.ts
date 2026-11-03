@@ -21,7 +21,7 @@ describe('EmailProcessingQueueEvent', () => {
 
   beforeEach(() => {
     stack        = new Stack(new App(), 'TestStack', { synthesizer: new BootstraplessSynthesizer() });
-    queue        = new EmailProcessingQueue(stack, 'email-processing-queue');
+    queue        = new EmailProcessingQueue(stack, 'email-processing-queue', { encryption: { kind: 'aws-managed' } });
     const target = new Function(stack, 'target', { runtime: Runtime.NODEJS_20_X, handler: 'index.handler', code: Code.fromInline('x') });
 
     new EmailProcessingQueueEvent(target, 'email-processing-queue', { target, queue });

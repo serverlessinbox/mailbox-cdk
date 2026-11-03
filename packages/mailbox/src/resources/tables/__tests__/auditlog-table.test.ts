@@ -1,17 +1,17 @@
 /// <reference types="jest" />
 
 /**
- * AuditLogTable: the key schema and the three secondary indexes of the audit log, and the settings the
- * table takes from its props. Item keys are written under these names, so a change here makes stored
- * entries unreachable.
+ * AuditLogTable: the key schema, the three secondary indexes and the TTL attribute `ttl` of the audit log,
+ * and the settings the table takes from its props. Item keys are written under these names, so a change
+ * here makes stored entries unreachable or keeps them forever.
  */
 
-import { Match, Template }                                         from 'aws-cdk-lib/assertions';
-import * as kms                                                    from 'aws-cdk-lib/aws-kms';
+import { Match, Template }                                      from 'aws-cdk-lib/assertions';
+import * as kms                                                 from 'aws-cdk-lib/aws-kms';
 
-import { AuditLogTable }                                           from '../auditlog-table';
+import { AuditLogTable }                                        from '../auditlog-table';
 
-import { DATA_TABLE_PROPS, createDataTableStack, propsWithKey }    from './data-table-helpers';
+import { DATA_TABLE_PROPS, createDataTableStack, propsWithKey } from './data-table-helpers';
 
 describe('AuditLogTable', () => {
   it('is keyed by string pk and sk and has the indexes gsi1 to gsi3', () => {
@@ -26,6 +26,15 @@ describe('AuditLogTable', () => {
         Match.objectLike({ IndexName: 'gsi3' }),
       ],
       AttributeDefinitions:   Match.arrayWith([{ AttributeName: 'pk', AttributeType: 'S' }, { AttributeName: 'sk', AttributeType: 'S' }]),
+    });
+  });
+
+  it('expires entries on the ttl attribute', () => {
+    const stack = createDataTableStack();
+    new AuditLogTable(stack, DATA_TABLE_PROPS);
+
+    Template.fromStack(stack).hasResourceProperties('AWS::DynamoDB::Table', {
+      TimeToLiveSpecification: { AttributeName: 'ttl', Enabled: true },
     });
   });
 

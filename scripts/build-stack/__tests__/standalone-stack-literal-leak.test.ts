@@ -11,15 +11,15 @@
  * The subcommands run with CDK_DEFAULT_ACCOUNT and CDK_DEFAULT_REGION set to a fake account and region,
  * so a subcommand that read those variables would write the fake account into its template.
  */
-import { Cli, type CommandClass }                       from 'clipanion';
-import { mkdtempSync, readdirSync, readFileSync }       from 'node:fs';
-import { tmpdir }                                       from 'node:os';
-import * as path                                        from 'node:path';
-import { Writable }                                     from 'node:stream';
+import { Cli, type CommandClass }                 from 'clipanion';
+import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
+import { tmpdir }                                 from 'node:os';
+import * as path                                  from 'node:path';
+import { Writable }                               from 'node:stream';
 
-import { BuildCognitoDataStackCommand }                 from '../build-cognito-data-stack-command';
-import { BuildDataStackCommand }                        from '../build-data-stack-command';
-import { BuildEdgeStackCommand }                        from '../build-edge-stack-command';
+import { BuildCognitoDataStackCommand }           from '../build-cognito-data-stack-command';
+import { BuildDataStackCommand }                  from '../build-data-stack-command';
+import { BuildEdgeStackCommand }                  from '../build-edge-stack-command';
 
 const FAKE_ACCOUNT = '111122223333';
 const FAKE_REGION  = 'eu-west-2';

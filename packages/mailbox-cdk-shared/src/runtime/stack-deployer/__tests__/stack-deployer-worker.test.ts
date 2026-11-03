@@ -6,16 +6,16 @@ import {
   DescribeStacksCommand,
   UpdateStackCommand,
   type StackEvent,
-} from '@aws-sdk/client-cloudformation';
-import { mockClient }                 from 'aws-sdk-client-mock';
+}                                                                               from '@aws-sdk/client-cloudformation';
+import { mockClient }                                                           from 'aws-sdk-client-mock';
 
-import { AnswerDeliveryFailure }      from '../answers/answer-delivery-failure';
-import { CfnResponder }               from '../answers/cfn-responder';
-import type { UpdateRollbackAnswers } from '../answers/update-rollback-answerer';
-import { CloudFormationStacks }       from '../cloudformation-stacks';
-import { StackDeployerWorker }        from '../stack-deployer-worker';
-import type { OperationInput }        from '../stack/stack-deployment';
-import { StackOperationFailure }      from '../stack/stack-operation-failure';
+import { AnswerDeliveryFailure }                                                from '../answers/answer-delivery-failure';
+import { CfnResponder }                                                         from '../answers/cfn-responder';
+import type { UpdateRollbackAnswers }                                           from '../answers/update-rollback-answerer';
+import { CloudFormationStacks }                                                 from '../cloudformation-stacks';
+import { StackDeployerWorker }                                                  from '../stack-deployer-worker';
+import type { OperationInput }                                                  from '../stack/stack-deployment';
+import { StackOperationFailure }                                                from '../stack/stack-operation-failure';
 
 import {
   awsError,
@@ -34,7 +34,7 @@ import {
   US_EAST_1,
   type ConsoleSpies,
   type FakeCfnEndpoint,
-} from './stack-deployer-helpers';
+}                                                                               from './stack-deployer-helpers';
 
 function failedEvent(reason: string): StackEvent {
   return {

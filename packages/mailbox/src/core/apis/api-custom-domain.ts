@@ -1,6 +1,6 @@
-import { CfnDomainName, DomainName, EndpointType, SecurityPolicy }  from 'aws-cdk-lib/aws-apigatewayv2';
-import type * as acm                                                from 'aws-cdk-lib/aws-certificatemanager';
-import type { Construct }                                           from 'constructs';
+import { CfnDomainName, DomainName, EndpointType, SecurityPolicy } from 'aws-cdk-lib/aws-apigatewayv2';
+import type * as acm                                               from 'aws-cdk-lib/aws-certificatemanager';
+import type { Construct }                                          from 'constructs';
 
 /** The domain name an API is served on and the certificate it is served with. */
 export interface ApiCustomDomainProps {

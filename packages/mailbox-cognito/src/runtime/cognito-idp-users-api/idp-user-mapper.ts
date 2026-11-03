@@ -1,10 +1,11 @@
-import type { AdminGetUserCommandOutput, AttributeType, UserStatusType, UserType } from '@aws-sdk/client-cognito-identity-provider';
-import { timestampFromDate }                                                       from '@bufbuild/protobuf/wkt';
-import { create }                                                                  from '@bufbuild/protobuf';
+import type { AdminGetUserCommandOutput, AttributeType, UserStatusType,
+  UserType }                                                                    from '@aws-sdk/client-cognito-identity-provider';
+import { timestampFromDate }                                                    from '@bufbuild/protobuf/wkt';
+import { create }                                                               from '@bufbuild/protobuf';
 
-import { toUsername, type Username }                                               from '../shared/cognito-identifiers';
+import { toUsername, type Username }                                            from '../shared/cognito-identifiers';
 
-import { IdpUserSchema, type IdpUser }                                             from './generated/idp_users_pb';
+import { IdpUserSchema, type IdpUser }                                          from './generated/idp_users_pb';
 
 const UNKNOWN_USERNAME = toUsername('unknown');
 
@@ -19,7 +20,7 @@ interface IdpUserFields {
 }
 
 /** The fields of a fetched user that the mapper reads, each of which may be missing from what Cognito returned. */
-type FetchedUser = Partial<Pick<AdminGetUserCommandOutput, 'Username' | 'Enabled' | 'UserStatus' | 'UserCreateDate' | 'UserLastModifiedDate' | 'UserAttributes'>>;
+type FetchedUser = Pick<AdminGetUserCommandOutput, 'Username' | 'Enabled' | 'UserStatus' | 'UserCreateDate' | 'UserLastModifiedDate' | 'UserAttributes'>;
 
 /** Maps the users Cognito reports, in a list or on a fetch, to the `IdpUser` the API returns. */
 export class IdpUserMapper {
