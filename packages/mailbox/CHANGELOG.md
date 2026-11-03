@@ -4,6 +4,22 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.8](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.7...v0.5.8) (Tue Nov 03 2026)
+
+
+
+## [0.5.7](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.6...v0.5.7) (Tue Nov 03 2026)
+
+### feat
+
+* **mailbox** personal access tokens authorize blob downloads at the edge ([1ed0d56](https://github.com/serverlessinbox/mailbox-cdk/commit/1ed0d563bc46ab81a3fc6a0aa4f4efbb86c84b7d))
+
+* **mailbox** blob download edge function reads personal access tokens ([7bfde8e](https://github.com/serverlessinbox/mailbox-cdk/commit/7bfde8eea26f197946345cfd157283e8d98c4b51))
+
+### fix
+
+* **mailbox** blob download checks the session before reading the token table ([cb7f47a](https://github.com/serverlessinbox/mailbox-cdk/commit/cb7f47acfa71ec5f89aa936985505dae6547e320))
+
 ## [0.5.6](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.5...v0.5.6) (Mon Nov 02 2026)
 
 ### fix
