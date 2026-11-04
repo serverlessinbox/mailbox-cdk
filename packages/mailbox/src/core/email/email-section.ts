@@ -33,10 +33,11 @@ export interface IEmailDataInputs {
 
 /** Props of {@link EmailSection}. */
 export interface EmailSectionProps {
-  readonly artifactResolver: IArtifactResolver;
-  readonly data:             IEmailDataInputs;
-  readonly queueEncryption:  QueueEncryptionChoice;
-  readonly dynamoTables:     DynamoTableEncryptionProps;
+  readonly artifactResolver:    IArtifactResolver;
+  readonly data:                IEmailDataInputs;
+  readonly queueEncryption:     QueueEncryptionChoice;
+  readonly dynamoTables:        DynamoTableEncryptionProps;
+  readonly systemSenderAddress: string;
 }
 
 /** Email receiving, sending and SES event processing. */
@@ -96,6 +97,7 @@ export class EmailSection extends Construct {
       emailProcessingQueue: sesRules.emailProcessingQueue,
       mailLogTable:         this.mailLogTable,
       artifactResolver:     props.artifactResolver,
+      systemSenderAddress:  props.systemSenderAddress,
     });
 
     this.sesConfigSetName = this.sesEventProcessing.sesConfigSetName;

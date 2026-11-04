@@ -26,12 +26,12 @@ function newSection(stack: Stack): EmailSection {
   const bucket    = new Bucket(stack, 'blob-store');
 
   return new EmailSection(stack, 'email', {
-    artifactResolver: new PinnedArtifactResolver({
+    artifactResolver:    new PinnedArtifactResolver({
       packages:         { 'mailbox-go': { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL } },
       location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,
     }),
-    data:             {
+    data:                {
       configTable:       dataTable('config-table'),
       itemTable:         dataTable('item-table'),
       changelogTable:    dataTable('changelog-table'),
@@ -40,8 +40,9 @@ function newSection(stack: Stack): EmailSection {
       blobStoreBucket:   bucket,
       auditEventsQueue:  new AuditEventsQueue(stack, 'audit-events-queue', { encryption: { kind: 'aws-managed' } }),
     },
-    dynamoTables:     { encryption: TableEncryption.AWS_MANAGED },
-    queueEncryption:  { kind: 'aws-managed' },
+    dynamoTables:        { encryption: TableEncryption.AWS_MANAGED },
+    queueEncryption:     { kind: 'aws-managed' },
+    systemSenderAddress: 'noreply@example.test',
   });
 }
 

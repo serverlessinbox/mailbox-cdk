@@ -1,7 +1,7 @@
 /// <reference types="jest" />
 
 /**
- * EmailProcessorLambda: the table, blob store names it hands the Go handler, the grants it requests
+ * EmailProcessorLambda: the table, blob store and system sender address names it hands the Go handler, the grants it requests
  * for itself on its tables, blob store and queue, the queue event it registers, and the websocket
  * push wiring it takes through enableWebSocketPush. The statement each grant renders and the mapping
  * the event renders are pinned by the resource and the event that own them, not here.
@@ -35,6 +35,7 @@ function synthesize() {
     emailProcessingQueue,
     mailLogTable,
     artifactResolver,
+    systemSenderAddress: 'noreply@example.test',
   });
 
   return { lambda, stack, configTable, itemTable, changelogTable, blobStore, emailProcessingQueue, mailLogTable };
@@ -54,6 +55,14 @@ describe('EmailProcessorLambda', () => {
       ITEM_TABLE_NAME:      'item-table',
       CHANGELOG_TABLE_NAME: 'changelog-table',
       MAIL_LOG_TABLE_NAME:  'mail-log-table',
+    });
+  });
+
+  it('passes the system sender address to the handler', () => {
+    const { stack } = synthesize();
+
+    expect(onlyLambdaOf(Template.fromStack(stack)).environment).toMatchObject({
+      SYSTEM_SENDER_ADDRESS: 'noreply@example.test',
     });
   });
 

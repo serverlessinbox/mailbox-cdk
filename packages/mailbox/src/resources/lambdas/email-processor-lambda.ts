@@ -22,6 +22,8 @@ export interface EmailProcessorLambdaProps {
   readonly emailProcessingQueue: IEmailProcessingQueueConsumer;
   readonly mailLogTable:         IMailLogTable;
   readonly artifactResolver:     IArtifactResolver;
+  /** The system sender address. The template always sets it; there is no fallback. */
+  readonly systemSenderAddress: string;
 }
 
 /**
@@ -37,11 +39,12 @@ export class EmailProcessorLambda extends GoLambda implements IWebSocketPushTarg
       timeout:          Duration.minutes(1),
       memorySize:       1024,
       environment:      {
-        BLOB_STORE_NAME:      props.blobStore.bucketName,
-        CONFIG_TABLE_NAME:    props.configTable.tableName,
-        ITEM_TABLE_NAME:      props.itemTable.tableName,
-        CHANGELOG_TABLE_NAME: props.changelogTable.tableName,
-        MAIL_LOG_TABLE_NAME:  props.mailLogTable.tableName,
+        BLOB_STORE_NAME:       props.blobStore.bucketName,
+        CONFIG_TABLE_NAME:     props.configTable.tableName,
+        ITEM_TABLE_NAME:       props.itemTable.tableName,
+        CHANGELOG_TABLE_NAME:  props.changelogTable.tableName,
+        MAIL_LOG_TABLE_NAME:   props.mailLogTable.tableName,
+        SYSTEM_SENDER_ADDRESS: props.systemSenderAddress,
       },
     });
     ComponentDescription.describe(this, 'Inbound email processing — parses MIME, stores raw content to S3, and indexes messages into the mailbox.');
