@@ -32,6 +32,11 @@ export enum Permission {
   /** Delete contacts. */
   CONTACTS_DELETE = 'contacts/delete',
 
+  /** Read your Sieve filter scripts. */
+  SIEVE_READ = 'sieve/read',
+  /** Create, change and activate your Sieve filter scripts. */
+  SIEVE_WRITE = 'sieve/write',
+
   /** Read your own preferences and client settings. */
   PREFERENCES_READ = 'preferences/read',
   /** Change your own preferences and client settings. */
@@ -69,6 +74,8 @@ export const JMAP_SCOPE_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.CONTACTS_READ]:     'Read contacts',
   [Permission.CONTACTS_WRITE]:    'Write contacts',
   [Permission.CONTACTS_DELETE]:   'Delete contacts',
+  [Permission.SIEVE_READ]:        'Read your Sieve filter scripts',
+  [Permission.SIEVE_WRITE]:       'Write your Sieve filter scripts',
   [Permission.PREFERENCES_READ]:  'Read your own preferences and client settings',
   [Permission.PREFERENCES_WRITE]: 'Change your own preferences and client settings',
   [Permission.IMPORT_READ]:       'List your mail import connections and jobs',

@@ -305,6 +305,8 @@ describe('MailboxUserPool UI client provisioning', () => {
         Permission.IMPORT_WRITE,
         Permission.CONTACTS_READ,
         Permission.CONTACTS_WRITE,
+        Permission.SIEVE_READ,
+        Permission.SIEVE_WRITE,
         Permission.TOKENS_MANAGE,
       ],
       callbackUrls: ['https://w.example.com/cb'],
@@ -319,6 +321,8 @@ describe('MailboxUserPool UI client provisioning', () => {
       'si/preferences.write',
       'si/contacts.read',
       'si/contacts.write',
+      'si/sieve.read',
+      'si/sieve.write',
       'si/tokens.manage',
     ]);
     expect(client.requestScopeList).not.toContain('si/user.read');

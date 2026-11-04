@@ -16,6 +16,8 @@ export enum CognitoScope {
   PREFERENCES_WRITE = 'preferences.write',
   CONTACTS_READ = 'contacts.read',
   CONTACTS_WRITE = 'contacts.write',
+  SIEVE_READ = 'sieve.read',
+  SIEVE_WRITE = 'sieve.write',
   ADMIN = 'admin',
   TOKENS_MANAGE = 'tokens.manage',
 }
@@ -46,6 +48,8 @@ export const CognitoScopeToPermissions: Record<CognitoScope, Permission[]> = {
   [CognitoScope.PREFERENCES_WRITE]: [Permission.PREFERENCES_WRITE],
   [CognitoScope.CONTACTS_READ]:     [Permission.CONTACTS_READ],
   [CognitoScope.CONTACTS_WRITE]:    [Permission.CONTACTS_WRITE, Permission.CONTACTS_DELETE],
+  [CognitoScope.SIEVE_READ]:        [Permission.SIEVE_READ],
+  [CognitoScope.SIEVE_WRITE]:       [Permission.SIEVE_WRITE],
   [CognitoScope.ADMIN]:             [Permission.ADMIN],
   [CognitoScope.TOKENS_MANAGE]:     [Permission.TOKENS_MANAGE],
 };
@@ -69,6 +73,8 @@ export const CognitoScopeDescriptions: Record<CognitoScope, string> = {
   [CognitoScope.PREFERENCES_WRITE]: 'Change your preferences and client settings',
   [CognitoScope.CONTACTS_READ]:     'Read contacts',
   [CognitoScope.CONTACTS_WRITE]:    'Write contacts',
+  [CognitoScope.SIEVE_READ]:        'Read your Sieve filter scripts',
+  [CognitoScope.SIEVE_WRITE]:       'Write your Sieve filter scripts',
   [CognitoScope.ADMIN]:             'Admin access',
   [CognitoScope.TOKENS_MANAGE]:     'Manage your personal access tokens',
 };

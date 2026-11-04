@@ -25,12 +25,14 @@ const RESOURCE_SERVER_SCOPE_NAMES = [
   'preferences.write',
   'contacts.read',
   'contacts.write',
+  'sieve.read',
+  'sieve.write',
   'admin',
   'tokens.manage',
 ];
 
 describe('Cognito resource server scopes', () => {
-  it('keeps exactly the thirteen scope names, whatever permissions exist', () => {
+  it('keeps exactly the fifteen scope names, whatever permissions exist', () => {
     expect(Object.keys(CognitoScopeToPermissions)).toEqual(RESOURCE_SERVER_SCOPE_NAMES);
     expect(Object.values(CognitoScope)).toEqual(RESOURCE_SERVER_SCOPE_NAMES);
   });
@@ -48,6 +50,8 @@ describe('Cognito resource server scopes', () => {
       [CognitoScope.PREFERENCES_WRITE]: 'Change your preferences and client settings',
       [CognitoScope.CONTACTS_READ]:     'Read contacts',
       [CognitoScope.CONTACTS_WRITE]:    'Write contacts',
+      [CognitoScope.SIEVE_READ]:        'Read your Sieve filter scripts',
+      [CognitoScope.SIEVE_WRITE]:       'Write your Sieve filter scripts',
       [CognitoScope.ADMIN]:             'Admin access',
       [CognitoScope.TOKENS_MANAGE]:     'Manage your personal access tokens',
     });
@@ -75,6 +79,8 @@ describe('Cognito resource server scopes', () => {
     [CognitoScope.PREFERENCES_WRITE, [Permission.PREFERENCES_WRITE]],
     [CognitoScope.CONTACTS_READ, [Permission.CONTACTS_READ]],
     [CognitoScope.CONTACTS_WRITE, [Permission.CONTACTS_WRITE, Permission.CONTACTS_DELETE]],
+    [CognitoScope.SIEVE_READ,    [Permission.SIEVE_READ]],
+    [CognitoScope.SIEVE_WRITE,   [Permission.SIEVE_WRITE]],
     [CognitoScope.ADMIN,         [Permission.ADMIN]],
     [CognitoScope.TOKENS_MANAGE, [Permission.TOKENS_MANAGE]],
   ])('grants the rights of %s as the mapping table states', (scope, rights) => {
