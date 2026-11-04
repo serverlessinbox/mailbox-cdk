@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.10](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.9...v0.5.10) (Wed Nov 04 2026)
+
+### feat
+
+* **mailbox-cognito** registered clients get mail scopes ([3936c30](https://github.com/serverlessinbox/mailbox-cdk/commit/3936c30d8642c8f16bb33b776720eda424075084))
+
 ## [0.5.9](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.8...v0.5.9) (Tue Nov 03 2026)
 
 
