@@ -4,6 +4,12 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.9](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.8...v0.5.9) (Tue Nov 03 2026)
+
+### fix
+
+* **mailbox** the mail-import runner reserves no concurrency ([7d3ca75](https://github.com/serverlessinbox/mailbox-cdk/commit/7d3ca75c79adc11e7ff97b497074e997ece0dbfb))
+
 ## [0.5.8](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.7...v0.5.8) (Tue Nov 03 2026)
 
 ### chore
