@@ -436,6 +436,39 @@ describe('BlobDownloadAuthorizer', () => {
     });
   });
 
+  describe('sieve blob MAC', () => {
+    it('rejects a sieve blob id issued without a MAC with a 403 and never asks the verifier', async () => {
+      await expectRejected(downloadRequest({ blob: 'sv:script-1:photo.png' }), 403, 'Access denied: invalid blob');
+      expect(verifyBlobMac).not.toHaveBeenCalled();
+    });
+
+    it('is verified over the session tenant, the requested account and the script id', async () => {
+      await authorizer.authorize(downloadRequest({ blob: 'sv:script-1:photo.png:the-mac' }));
+
+      expect(verifyBlobMac).toHaveBeenCalledWith('tenant-1|account-1|script-1', 'the-mac', AUTH_KEY_STORE_TABLE);
+    });
+
+    it('rejects a sieve blob whose MAC does not verify, so a MAC of another account or script is refused, with a 403', async () => {
+      verifyBlobMac.mockResolvedValue(false);
+
+      await expectRejected(downloadRequest({ blob: 'sv:script-1:photo.png:other-mac' }), 403, 'Access denied: invalid blob');
+    });
+
+    it('rejects a sieve blob whose account is not in the session with a 403 and never asks the verifier', async () => {
+      await expectRejected(downloadRequest({ accountId: 'account-2', blob: 'sv:script-1:photo.png:the-mac' }), 403, 'Access denied: account not authorized');
+      expect(verifyBlobMac).not.toHaveBeenCalled();
+    });
+
+    it('rejects a sieve blob whose path is not safe with a 403', async () => {
+      await expectRejected(downloadRequest({ blob: 'sv:script-1:..:the-mac' }), 403, 'Access denied: invalid blob path');
+    });
+
+    it('serves a verified sieve blob from its prefix under the account', async () => {
+      await expect(authorizer.authorize(downloadRequest({ blob: 'sv:script-1:photo.png:the-mac' })))
+        .resolves.toHaveProperty('uri', '/tenants/tenant-1/accounts/account-1/sieve/script-1/photo.png');
+    });
+  });
+
   describe('blob path', () => {
     it('rejects a blob whose path is not safe with a 403', async () => {
       await expectRejected(downloadRequest({ blob: 'cnt:card-1:..' }), 403, 'Access denied: invalid blob path');

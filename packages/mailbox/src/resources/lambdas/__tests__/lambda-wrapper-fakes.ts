@@ -67,6 +67,8 @@ export function fakeDataBlobStore(name: string) {
     grantUploadBlobReadWriteDelete:    grantSpy(),
     grantIncomingEmailConsume:         grantSpy(),
     grantContactBlobReadWriteDelete:   grantSpy(),
+    grantSieveBlobReadWriteDelete:     grantSpy(),
+    grantSieveBlobDelete:              grantSpy(),
     grantPrincipalBlobReadWriteDelete: grantSpy(),
     grantSearchIndexRead:              grantSpy(),
     grantSearchIndexReadWrite:         grantSpy(),

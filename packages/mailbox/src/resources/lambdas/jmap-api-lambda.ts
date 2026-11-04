@@ -75,11 +75,12 @@ export class JmapApiLambda extends GoLambda implements IWebSocketPushTargetWithU
 
     props.itemTable.grantReadWrite(this);
     props.changelogTable.grantReadWrite(this);
-    // JMAP API reads/writes/deletes email, upload, contact, and principal blobs, and reads the
+    // JMAP API reads/writes/deletes email, upload, contact, sieve-script, and principal blobs, and reads the
     // built search index to serve query results.
     props.blobStore.grantEmailBlobReadWriteDelete(this);
     props.blobStore.grantUploadBlobReadWriteDelete(this);
     props.blobStore.grantContactBlobReadWriteDelete(this);
+    props.blobStore.grantSieveBlobReadWriteDelete(this);
     props.blobStore.grantPrincipalBlobReadWriteDelete(this);
     props.blobStore.grantSearchIndexRead(this);
 

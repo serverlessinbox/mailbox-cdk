@@ -101,12 +101,13 @@ describe('JmapApiLambda', () => {
       expectGrantedOnceTo(changelogTable.grantReadWrite, lambda);
     });
 
-    it('read-write-delete on the email, upload, contact and principal blobs and read on the search index', () => {
+    it('read-write-delete on the email, upload, contact, sieve and principal blobs and read on the search index', () => {
       const { lambda, blobStore } = synthesize();
 
       expectGrantedOnceTo(blobStore.grantEmailBlobReadWriteDelete, lambda);
       expectGrantedOnceTo(blobStore.grantUploadBlobReadWriteDelete, lambda);
       expectGrantedOnceTo(blobStore.grantContactBlobReadWriteDelete, lambda);
+      expectGrantedOnceTo(blobStore.grantSieveBlobReadWriteDelete, lambda);
       expectGrantedOnceTo(blobStore.grantPrincipalBlobReadWriteDelete, lambda);
       expectGrantedOnceTo(blobStore.grantSearchIndexRead, lambda);
     });

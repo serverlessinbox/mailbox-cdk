@@ -34,6 +34,15 @@ export interface IDataBlobStore {
   /** Grants `grantee` `s3:GetObject`/`s3:PutObject`/`s3:DeleteObject` on the per-account contact-blob key prefix. */
   grantContactBlobReadWriteDelete(grantee: IGrantable): void;
 
+  /** Grants `grantee` `s3:GetObject`/`s3:PutObject`/`s3:DeleteObject` on the per-account sieve-script key prefix. */
+  grantSieveBlobReadWriteDelete(grantee: IGrantable): void;
+
+  /**
+   * Grants `grantee` `s3:DeleteObject` on the per-account sieve-script key prefix, plus `s3:ListBucket`
+   * scoped to that same prefix, so a whole script prefix can be listed and deleted.
+   */
+  grantSieveBlobDelete(grantee: IGrantable): void;
+
   /** Grants `grantee` `s3:GetObject`/`s3:PutObject`/`s3:DeleteObject` on the per-tenant principal-blob key prefix. */
   grantPrincipalBlobReadWriteDelete(grantee: IGrantable): void;
 
@@ -60,6 +69,7 @@ export class DataBlobStore implements IDataBlobStore {
   private static readonly UPLOAD_BLOB_KEY_PATTERN    = 'uploads/*';
   private static readonly INCOMING_EMAIL_KEY_PATTERN = `${BlobStore.INCOMING_EMAIL_PREFIX}*`;
   private static readonly CONTACT_BLOB_KEY_PATTERN   = 'tenants/*/accounts/*/contacts/*';
+  private static readonly SIEVE_BLOB_KEY_PATTERN     = 'tenants/*/accounts/*/sieve/*';
   private static readonly PRINCIPAL_BLOB_KEY_PATTERN = 'tenants/*/principals/*';
   private static readonly SEARCH_INDEX_KEY_PATTERN   = 'tenants/*/accounts/*/search-indexes/*';
 
@@ -127,6 +137,29 @@ export class DataBlobStore implements IDataBlobStore {
       resourceArns: [this.bucket.arnForObjects(DataBlobStore.CONTACT_BLOB_KEY_PATTERN)],
     });
     this.bucket.encryptionKey?.grant(grantee, 'kms:GenerateDataKey*', 'kms:Decrypt', 'kms:DescribeKey');
+  }
+
+  public grantSieveBlobReadWriteDelete(grantee: IGrantable): void {
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
+      resourceArns: [this.bucket.arnForObjects(DataBlobStore.SIEVE_BLOB_KEY_PATTERN)],
+    });
+    this.bucket.encryptionKey?.grant(grantee, 'kms:GenerateDataKey*', 'kms:Decrypt', 'kms:DescribeKey');
+  }
+
+  public grantSieveBlobDelete(grantee: IGrantable): void {
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:DeleteObject'],
+      resourceArns: [this.bucket.arnForObjects(DataBlobStore.SIEVE_BLOB_KEY_PATTERN)],
+    });
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['s3:ListBucket'],
+      resourceArns: [this.bucket.bucketArn],
+      conditions:   { StringLike: { 's3:prefix': DataBlobStore.SIEVE_BLOB_KEY_PATTERN } },
+    });
   }
 
   public grantPrincipalBlobReadWriteDelete(grantee: IGrantable): void {

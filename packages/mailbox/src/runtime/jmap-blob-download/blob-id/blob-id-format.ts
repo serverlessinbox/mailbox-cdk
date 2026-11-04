@@ -6,6 +6,7 @@ import {
   type EncodedBlobId,
   type ParsedBlobId,
   type PrincipalBlob,
+  type SieveBlob,
 } from './blob-id';
 
 /** The two halves of a blob id after its prefix: the entity it names and the rest of the id. */
@@ -26,13 +27,17 @@ export function decodeBlobId(encoded: EncodedBlobId): DecodedBlobId | null {
 }
 
 /**
- * Splits a decoded blob id by its prefix: `eml:{emailId}:{path}:{mac}`, `cnt:{cardId}:{path}` or
- * `prn:{principalId}:{path}`. A path may contain colons, so the email MAC is the segment after the LAST colon.
- * An id with an unknown prefix or no path separator has no parsed form.
+ * Splits a decoded blob id by its prefix: `eml:{emailId}:{path}:{mac}`, `sv:{scriptId}:{path}:{mac}`,
+ * `cnt:{cardId}:{path}` or `prn:{principalId}:{path}`. A path may contain colons, so the MAC of an email or
+ * sieve id is the segment after the LAST colon. An id with an unknown prefix or no path separator has no
+ * parsed form.
  */
 export function parseBlobId(decoded: DecodedBlobId): ParsedBlobId | null {
   if (decoded.startsWith('eml:')) {
-    return parseEmailBlob(decoded.slice(4));
+    return parseMacBlob('email', decoded.slice(4));
+  }
+  if (decoded.startsWith('sv:')) {
+    return parseMacBlob('sieve', decoded.slice(3));
   }
   if (decoded.startsWith('cnt:')) {
     return parseEntityBlob('contact', decoded.slice(4));
@@ -65,7 +70,7 @@ export function isSafeBlobPath(path: string): boolean {
   return path !== '..';
 }
 
-function parseEmailBlob(rest: string): EmailBlob | null {
+function parseMacBlob(type: EmailBlob['type'] | SieveBlob['type'], rest: string): EmailBlob | SieveBlob | null {
   const split = splitEntityAndPath(rest);
   if (split === null) {
     return null;
@@ -73,11 +78,11 @@ function parseEmailBlob(rest: string): EmailBlob | null {
 
   const lastColonIdx = split.path.lastIndexOf(':');
   if (lastColonIdx < 0) {
-    return { type: 'email', entityId: split.entityId, path: split.path, mac: null };
+    return { type, entityId: split.entityId, path: split.path, mac: null };
   }
 
   return {
-    type:     'email',
+    type,
     entityId: split.entityId,
     path:     split.path.slice(0, lastColonIdx),
     mac:      split.path.slice(lastColonIdx + 1),

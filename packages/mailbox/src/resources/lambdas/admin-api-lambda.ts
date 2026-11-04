@@ -104,6 +104,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     props.auditEventsQueue.grantSend(this);
 
     props.blobStore.grantEmailBlobWrite(this);
+    props.blobStore.grantSieveBlobDelete(this);
     props.emailSubmissionQueue.grantSend(this);
 
     props.identityProvisioner.grantInvoke(this);

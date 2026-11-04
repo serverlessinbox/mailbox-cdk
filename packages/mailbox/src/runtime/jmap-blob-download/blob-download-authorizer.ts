@@ -245,7 +245,7 @@ export class BlobDownloadAuthorizer {
     }
   }
 
-  // Only an email blob id carries a MAC, over the tenant, account and email the id names.
+  // A MAC-carrying blob id is verified over the tenant, account and entity the id names; one without a MAC is refused.
   private async requireBlobMac(
     hmac: Verifiers['hmac'],
     session: HmacTokenPayload,
@@ -253,12 +253,12 @@ export class BlobDownloadAuthorizer {
     blob: ParsedBlobId,
     config: Config,
   ): Promise<void> {
-    if (blob.type !== 'email') {
+    if (blob.type !== 'email' && blob.type !== 'sieve') {
       return;
     }
 
     if (blob.mac === null) {
-      throw this.reject(403, 'Access denied: invalid blob', 'Access denied: email blob missing MAC');
+      throw this.reject(403, 'Access denied: invalid blob', `Access denied: ${blob.type} blob missing MAC`);
     }
 
     const macPayload = `${session.tenantId}|${accountId}|${blob.entityId}`;
@@ -297,6 +297,8 @@ export class BlobDownloadAuthorizer {
     switch (blob.type) {
       case 'email':
         return `tenants/${tenantId}/accounts/${accountId}/emails/${blob.entityId}/${blob.path}`;
+      case 'sieve':
+        return `tenants/${tenantId}/accounts/${accountId}/sieve/${blob.entityId}/${blob.path}`;
       case 'contact':
         return `tenants/${tenantId}/accounts/${accountId}/contacts/${blob.entityId}/${blob.path}`;
       case 'principal':

@@ -8,14 +8,23 @@ import type { Branded } from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime
 export type EncodedBlobId = Branded<'EncodedBlobId'>;
 
 /**
- * A blob id after base64url decoding: `eml:{emailId}:{path}:{mac}`, `cnt:{cardId}:{path}` or
- * `prn:{principalId}:{path}`. A string of its own kind; `toDecodedBlobId` holds the only cast to the brand.
+ * A blob id after base64url decoding: `eml:{emailId}:{path}:{mac}`, `sv:{scriptId}:{path}:{mac}`,
+ * `cnt:{cardId}:{path}` or `prn:{principalId}:{path}`. A string of its own kind; `toDecodedBlobId` holds the
+ * only cast to the brand.
  */
 export type DecodedBlobId = Branded<'DecodedBlobId'>;
 
 /** A parsed email blob id; its `mac` is `null` when the id was issued without one, which the authorizer refuses. */
 export interface EmailBlob {
   readonly type:     'email';
+  readonly entityId: string;
+  readonly path:     string;
+  readonly mac:      string | null;
+}
+
+/** A parsed sieve-script blob id; its `mac` is `null` when the id was issued without one, which the authorizer refuses. */
+export interface SieveBlob {
+  readonly type:     'sieve';
   readonly entityId: string;
   readonly path:     string;
   readonly mac:      string | null;
@@ -35,8 +44,8 @@ export interface PrincipalBlob {
   readonly path:     string;
 }
 
-/** A decoded blob id split into the parts the authorizer acts on. Only an email blob carries a MAC. */
-export type ParsedBlobId = EmailBlob | ContactBlob | PrincipalBlob;
+/** A decoded blob id split into the parts the authorizer acts on. An email or sieve blob carries a MAC. */
+export type ParsedBlobId = EmailBlob | SieveBlob | ContactBlob | PrincipalBlob;
 
 export function toEncodedBlobId(raw: string): EncodedBlobId {
   return raw as EncodedBlobId;

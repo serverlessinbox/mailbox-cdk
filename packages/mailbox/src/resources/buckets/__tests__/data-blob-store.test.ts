@@ -71,6 +71,19 @@ const GRANT_CASES: GrantCase[] = [
     kmsActions: ['kms:GenerateDataKey*', 'kms:Decrypt', 'kms:DescribeKey'],
   },
   {
+    method:     'grantSieveBlobReadWriteDelete',
+    s3Actions:  ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
+    keyPattern: 'tenants/*/accounts/*/sieve/*',
+    kmsActions: ['kms:GenerateDataKey*', 'kms:Decrypt', 'kms:DescribeKey'],
+  },
+  {
+    method:      'grantSieveBlobDelete',
+    s3Actions:   ['s3:DeleteObject'],
+    keyPattern:  'tenants/*/accounts/*/sieve/*',
+    kmsActions:  [],
+    listsPrefix: true,
+  },
+  {
     method:     'grantPrincipalBlobReadWriteDelete',
     s3Actions:  ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
     keyPattern: 'tenants/*/principals/*',
@@ -120,7 +133,7 @@ function expectGrantedPolicy(grantCase: GrantCase, withKey: boolean): void {
     }),
   ];
 
-  if (withKey) {
+  if (withKey && grantCase.kmsActions.length > 0) {
     statements.push(Match.objectEquals({ Action: grantCase.kmsActions, Effect: 'Allow', Resource: keyArn }));
   }
 

@@ -70,6 +70,24 @@ describe('parseBlobId', () => {
     });
   });
 
+  it('splits a sieve id into script, path and MAC, with the MAC from the last colon', () => {
+    expect(parseBlobId(decodedBlobIdOf('sv:script-1:my:script.sieve:FiRUv2lHUdstMKypBppvLzg5obF40SX1x3iry6bWKm4'))).toEqual({
+      type:     'sieve',
+      entityId: 'script-1',
+      path:     'my:script.sieve',
+      mac:      'FiRUv2lHUdstMKypBppvLzg5obF40SX1x3iry6bWKm4',
+    });
+  });
+
+  it('parses a sieve id issued without a MAC to a null MAC', () => {
+    expect(parseBlobId(decodedBlobIdOf('sv:script-1:main.sieve'))).toEqual({
+      type:     'sieve',
+      entityId: 'script-1',
+      path:     'main.sieve',
+      mac:      null,
+    });
+  });
+
   it('parses a contact id with the whole remainder as its path', () => {
     expect(parseBlobId(decodedBlobIdOf('cnt:cardID:path:with:many:colons.jpg'))).toEqual({
       type:     'contact',

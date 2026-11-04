@@ -142,6 +142,25 @@ describe('AdminApiLambda IAM scoping', () => {
     }
   });
 
+  it('deletes sieve scripts under the sieve prefix and lists that prefix', () => {
+    Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectEquals({
+            Action:   's3:DeleteObject',
+            Effect:   'Allow',
+            Resource: { 'Fn::Join': ['', [Match.anyValue(), '/tenants/*/accounts/*/sieve/*']] },
+          }),
+          Match.objectLike({
+            Action:    's3:ListBucket',
+            Condition: { StringLike: { 's3:prefix': 'tenants/*/accounts/*/sieve/*' } },
+            Effect:    'Allow',
+          }),
+        ]),
+      },
+    });
+  });
+
   it('sets PAT_TABLE_NAME and requests the principal-revoke grant on the token table for itself', () => {
     Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
       Environment: { Variables: Match.objectLike({ PAT_TABLE_NAME: 'pat-table' }) },
