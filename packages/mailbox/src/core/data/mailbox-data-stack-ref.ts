@@ -3,6 +3,7 @@ import { IBucket, Bucket }               from 'aws-cdk-lib/aws-s3';
 import { Construct }                     from 'constructs';
 
 import { DataBlobStore, IDataBlobStore } from '../../resources/buckets/data-blob-store';
+import { DataConfigTable, IConfigTable } from '../../resources/tables/data-config-table';
 import { DataPatTable, IPatTable }       from '../../resources/tables/data-pat-table';
 import { DataTable, IDataTable }         from '../../resources/tables/data-tables';
 
@@ -23,13 +24,13 @@ export type MailboxDataStackRefProps =
  * from their ARNs (via `MailboxDataOverrideResolver`, either the sub-stack's real outputs or an
  * operator-supplied override). Internal only (not reachable from `src/index.ts`) — every table is
  * imported once as a CDK `ITable` and wrapped in `IDataTable`, except the token table, wrapped in
- * `IPatTable`; the raw `ITable` never leaves this class, and a consumer sees only `tableName`/`tableArn`
+ * `IPatTable`, and the config table, wrapped in `IConfigTable`; the raw `ITable` never leaves this class, and a consumer sees only `tableName`/`tableArn`
  * and the grant methods of its wrapper. The blob store's raw `IBucket` is the one deliberate exception: `blobStoreBucket` hands
  * it out unwrapped, alongside the grant-only `blobStore` handle, because two consumers genuinely
  * need the bucket object itself (see `blobStoreBucket`'s own comment).
  */
 export class MailboxDataStackRef extends Construct {
-  public readonly configTable: IDataTable;
+  public readonly configTable: IConfigTable;
   public readonly itemTable: IDataTable;
   public readonly changelogTable: IDataTable;
   public readonly auditLogTable: IDataTable;
@@ -50,7 +51,7 @@ export class MailboxDataStackRef extends Construct {
 
   constructor(scope: Construct, id: string, props: MailboxDataStackRefProps) {
     super(scope, id);
-    this.configTable       = new DataTable(this.importTable('config-table',       props.configTableArn));
+    this.configTable       = new DataConfigTable(this.importTable('config-table',       props.configTableArn));
     this.itemTable         = new DataTable(this.importTable('item-table',         props.itemTableArn));
     this.changelogTable    = new DataTable(this.importTable('changelog-table',    props.changelogTableArn));
     this.auditLogTable     = new DataTable(this.importTable('audit-log-table',    props.auditLogTableArn));

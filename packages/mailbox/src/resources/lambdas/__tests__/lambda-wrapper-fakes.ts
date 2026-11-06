@@ -19,6 +19,11 @@ export function fakeDataTable(name: string) {
   return { tableName: name, tableArn: `arn:fake:${name}`, grantRead: grantSpy(), grantReadWrite: grantSpy(), grantConditionCheck: grantSpy() };
 }
 
+/** Stands in for the `IConfigTable`: the `IDataTable` members plus the active-script pointer grant. */
+export function fakeConfigTable(name: string) {
+  return { ...fakeDataTable(name), grantActiveSieveScriptUpdate: grantSpy() };
+}
+
 /** Stands in for the `IMailLogTable`. */
 export function fakeMailLogTable(name: string) {
   return { tableName: name, grantRead: grantSpy(), grantWrite: grantSpy() };

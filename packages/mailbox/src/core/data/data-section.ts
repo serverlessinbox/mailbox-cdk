@@ -7,6 +7,7 @@ import { Construct }                                               from 'constru
 
 import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
 import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
+import type { IConfigTable }                                       from '../../resources/tables/data-config-table';
 import type { IPatTable }                                          from '../../resources/tables/data-pat-table';
 import type { IDataTable }                                         from '../../resources/tables/data-tables';
 
@@ -35,7 +36,7 @@ export class DataSection extends Construct {
   public readonly nameBase: string;
   /** The S3-safe name of the main stack, a deploy-time token. */
   public readonly mainStackNameBase: string;
-  public readonly configTable: IDataTable;
+  public readonly configTable: IConfigTable;
   public readonly itemTable: IDataTable;
   public readonly changelogTable: IDataTable;
   public readonly auditLogTable: IDataTable;

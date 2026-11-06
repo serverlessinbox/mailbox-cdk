@@ -14,6 +14,7 @@ import { ArtifactZone, PinnedArtifactResolver }          from '@serverlessinbox/
 import { VENDOR_ACCOUNT_ID }                             from '@serverlessinbox/mailbox-cdk-shared';
 import { Match, Template }                               from 'aws-cdk-lib/assertions';
 import { HttpApi }                                       from 'aws-cdk-lib/aws-apigatewayv2';
+import { AttributeType, Table }                          from 'aws-cdk-lib/aws-dynamodb';
 import { Function as LambdaFunction }                    from 'aws-cdk-lib/aws-lambda';
 import { Bucket }                                        from 'aws-cdk-lib/aws-s3';
 import * as cdk                                          from 'aws-cdk-lib';
@@ -23,6 +24,7 @@ import { DataBlobStore }                                 from '../../../resource
 import { AuditEventsQueue }                              from '../../../resources/queues/audit-events-queue';
 import { EmailSendingQueue }                             from '../../../resources/queues/email-sending-queue';
 import { AuthKeyStoreTable }                             from '../../../resources/tables/auth-key-store-table';
+import { DataConfigTable }                               from '../../../resources/tables/data-config-table';
 import { AuthMethod }                                    from '../../auth/auth-method';
 import type { IMailboxAuthProvider }                     from '../../auth/auth-provider';
 import type { IJmapApiAddon }                            from '../addons';
@@ -48,7 +50,7 @@ describe('JmapApi', () => {
       createAdminApiAddons:    () => [],
     };
     return {
-      configTable:          dataTable(stack, 'config-table'),
+      configTable:          new DataConfigTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
       itemTable:            dataTable(stack, 'item-table'),
       patTable:             patTable(stack, 'pat-table'),
       changelogTable:       dataTable(stack, 'changelog-table'),

@@ -12,6 +12,7 @@ import type { IAuditEventsQueue }                                               
 import type { IEmailSendingQueue }                                              from '../../resources/queues/email-sending-queue';
 import type { IImportJobsQueue }                                                from '../../resources/queues/import-jobs-queue';
 import type { IAuthKeyStoreTable }                                              from '../../resources/tables/auth-key-store-table';
+import type { IConfigTable }                                                    from '../../resources/tables/data-config-table';
 import type { IPatTable }                                                       from '../../resources/tables/data-pat-table';
 import type { IDataTable }                                                      from '../../resources/tables/data-tables';
 import type { IMailLogTable }                                                   from '../../resources/tables/mail-log-table';
@@ -31,7 +32,7 @@ import { WebSocketPush }                                                        
 
 /** What {@link ApisSection} uses of the data section. */
 export interface IApisDataInputs {
-  readonly configTable:       IDataTable;
+  readonly configTable:       IConfigTable;
   readonly itemTable:         IDataTable;
   readonly patTable:          IPatTable;
   readonly changelogTable:    IDataTable;

@@ -26,6 +26,7 @@ import { JmapApiLambda }                                                        
 import type { IAuditEventsQueue }                                               from '../../resources/queues/audit-events-queue';
 import type { IEmailSendingQueue }                                              from '../../resources/queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                              from '../../resources/tables/auth-key-store-table';
+import type { IConfigTable }                                                    from '../../resources/tables/data-config-table';
 import type { IPatTable }                                                       from '../../resources/tables/data-pat-table';
 import type { IDataTable }                                                      from '../../resources/tables/data-tables';
 import { IMailboxAuthProvider }                                                 from '../auth/auth-provider';
@@ -40,7 +41,7 @@ import type { ApiCustomDomainProps, ILogicalIdPin }                             
  * switches on the protected-resource metadata document.
  */
 export interface JmapApiProps {
-  readonly configTable:          IDataTable;
+  readonly configTable:          IConfigTable;
   readonly itemTable:            IDataTable;
   readonly changelogTable:       IDataTable;
   readonly authKeyStoreTable:    IAuthKeyStoreTable;

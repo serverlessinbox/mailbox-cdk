@@ -25,6 +25,7 @@ import { AuditEventsQueue }                                           from '../.
 import { EmailSendingQueue }                                          from '../../../resources/queues/email-sending-queue';
 import { ImportJobsQueue }                                            from '../../../resources/queues/import-jobs-queue';
 import { AuthKeyStoreTable }                                          from '../../../resources/tables/auth-key-store-table';
+import { DataConfigTable }                                            from '../../../resources/tables/data-config-table';
 import { DataTable }                                                  from '../../../resources/tables/data-tables';
 import { MailLogTable }                                               from '../../../resources/tables/mail-log-table';
 import { AuthMethod }                                                 from '../../auth/auth-method';
@@ -84,7 +85,7 @@ describe('ApisSection', () => {
       }),
       authProvider,
       data:       {
-        configTable:       dataTable('config-table'),
+        configTable:       new DataConfigTable(new Table(stack, 'config-table', { partitionKey: { name: 'pk', type: AttributeType.STRING } })),
         itemTable:         dataTable('item-table'),
         patTable:          patTable(stack, 'pat-table'),
         changelogTable:    dataTable('changelog-table'),

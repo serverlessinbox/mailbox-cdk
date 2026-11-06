@@ -10,6 +10,7 @@ import type { IDataBlobStore }                                            from '
 import type { IAuditEventsQueue }                                         from '../queues/audit-events-queue';
 import type { IEmailSendingQueue }                                        from '../queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                        from '../tables/auth-key-store-table';
+import type { IConfigTable }                                              from '../tables/data-config-table';
 import type { IDataTable }                                                from '../tables/data-tables';
 
 import type { IIdentityProvisioner }                                      from './identity-provisioner-lambda';
@@ -19,7 +20,7 @@ import type { IIdentityProvisioner }                                      from '
  * host, API base URL and OAuth scope map. The caller creates every resource here.
  */
 export interface JmapApiLambdaProps {
-  readonly configTable:          IDataTable;
+  readonly configTable:          IConfigTable;
   readonly itemTable:            IDataTable;
   readonly changelogTable:       IDataTable;
   readonly authKeyStoreTable:    IAuthKeyStoreTable;
@@ -71,6 +72,7 @@ export class JmapApiLambda extends GoLambda implements IWebSocketPushTargetWithU
     });
 
     props.configTable.grantRead(this);
+    props.configTable.grantActiveSieveScriptUpdate(this);
     props.authKeyStoreTable.grantReadHmac(this);
 
     props.itemTable.grantReadWrite(this);

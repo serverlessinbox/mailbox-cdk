@@ -9,6 +9,7 @@ import { Construct }                                                            
 import { MAILBOX_ARTIFACT_PACKAGE }                                             from '../../../contracts/mailbox-artifact-package';
 import type { IDataBlobStore }                                                  from '../../../resources/buckets/data-blob-store';
 import { MailboxDataDeployerWorkerLambda }                                      from '../../../resources/lambdas/mailbox-data-deployer-worker-lambda';
+import type { IConfigTable }                                                    from '../../../resources/tables/data-config-table';
 import type { IPatTable }                                                       from '../../../resources/tables/data-pat-table';
 import type { IDataTable }                                                      from '../../../resources/tables/data-tables';
 import { MailboxDataStackRef }                                                  from '../mailbox-data-stack-ref';
@@ -39,7 +40,7 @@ export interface MailboxDataDeployerProps {
 export class MailboxDataDeployer extends Construct {
   private static readonly TEMPLATE_OBJECT = 'data-stack-template.json';
 
-  public readonly configTable: IDataTable;
+  public readonly configTable: IConfigTable;
   public readonly itemTable: IDataTable;
   public readonly changelogTable: IDataTable;
   public readonly auditLogTable: IDataTable;

@@ -17,12 +17,12 @@ import { Permission }                                                           
 import { JmapApiLambda }                                                        from '../jmap-api-lambda';
 
 import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataBlobStore,
-  fakeDataTable, fakeIdentityProvisioner, fakeQueue }                           from './lambda-wrapper-fakes';
+  fakeConfigTable, fakeDataTable, fakeIdentityProvisioner, fakeQueue }          from './lambda-wrapper-fakes';
 import { arrangeWrapperStack, onlyLambdaOf }                                    from './lambda-wrapper-helpers';
 
 function synthesize(oauthProtectedResourceUrl?: string) {
   const { stack, artifactResolver } = arrangeWrapperStack();
-  const configTable                 = fakeDataTable('config-table');
+  const configTable                 = fakeConfigTable('config-table');
   const itemTable                   = fakeDataTable('item-table');
   const changelogTable              = fakeDataTable('changelog-table');
   const authKeyStoreTable           = fakeAuthKeyStoreTable('auth-key-store');
@@ -87,10 +87,11 @@ describe('JmapApiLambda', () => {
   });
 
   describe('grants it requests for itself', () => {
-    it('read on the config and auth key store tables', () => {
+    it('read and active Sieve script pointer update on the config table and read on the auth key store table', () => {
       const { lambda, configTable, authKeyStoreTable } = synthesize();
 
       expectGrantedOnceTo(configTable.grantRead, lambda);
+      expectGrantedOnceTo(configTable.grantActiveSieveScriptUpdate, lambda);
       expectGrantedOnceTo(authKeyStoreTable.grantReadHmac, lambda);
     });
 
