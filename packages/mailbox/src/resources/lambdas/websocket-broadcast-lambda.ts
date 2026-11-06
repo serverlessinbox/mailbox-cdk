@@ -4,16 +4,14 @@ import { Duration }               from 'aws-cdk-lib';
 import { Construct }              from 'constructs';
 
 import type { IWebSocketPushApi } from '../../contracts/websocket-push';
-import type { IDataTable }        from '../tables/data-tables';
 import { IWebSocketTable }        from '../tables/websocket-table';
 
 /**
- * The connections table it queries and prunes, the config table it reads, the WebSocket push API it posts to and the
- * artifact resolver for its code. The caller creates the tables and the push API.
+ * The connections table it queries and prunes, the WebSocket push API it posts to and the artifact resolver for its
+ * code. The caller creates the table and the push API.
  */
 export interface WebSocketBroadcastLambdaProps {
   readonly connectionsTable: IWebSocketTable;
-  readonly configTable:      IDataTable;
   readonly webSocketPushApi: IWebSocketPushApi;
   readonly artifactResolver: IArtifactResolver;
 }
@@ -29,14 +27,12 @@ export class WebSocketBroadcastLambda extends GoLambda {
       memorySize:       512,
       environment:      {
         CONNECTIONS_TABLE_NAME: props.connectionsTable.tableName,
-        CONFIG_TABLE_NAME:      props.configTable.tableName,
         WEBSOCKET_API_ENDPOINT: props.webSocketPushApi.managementEndpoint,
       },
     });
 
     props.connectionsTable.grantBroadcast(this);
     props.connectionsTable.grantRemoveConnection(this);
-    props.configTable.grantRead(this);
 
     props.webSocketPushApi.grantManageConnections(this);
   }

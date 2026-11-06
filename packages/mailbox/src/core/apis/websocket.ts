@@ -136,7 +136,6 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
 
     const disconnectLambda = new WebSocketDisconnectLambda(this, 'disconnect-handler', {
       connectionsTable: this.webSocketTable,
-      configTable:      props.configTable,
       artifactResolver: props.artifactResolver,
     });
 
@@ -151,7 +150,6 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
 
     const broadcastLambda = new WebSocketBroadcastLambda(this, 'broadcast-handler', {
       connectionsTable: this.webSocketTable,
-      configTable:      props.configTable,
       webSocketPushApi: this,
       artifactResolver: props.artifactResolver,
     });

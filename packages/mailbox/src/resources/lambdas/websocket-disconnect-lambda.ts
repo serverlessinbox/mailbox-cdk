@@ -3,16 +3,13 @@ import { GoLambda }               from '@serverlessinbox/mailbox-cdk-shared';
 import { Duration }               from 'aws-cdk-lib';
 import { Construct }              from 'constructs';
 
-import type { IDataTable }        from '../tables/data-tables';
 import { IWebSocketTable }        from '../tables/websocket-table';
 
 /**
- * The connections table the disconnect handler removes connections from and the config table it reads. The caller creates
- * both.
+ * The connections table the disconnect handler removes connections from. The caller creates it.
  */
 export interface WebSocketDisconnectLambdaProps {
   readonly connectionsTable: IWebSocketTable;
-  readonly configTable:      IDataTable;
   readonly artifactResolver: IArtifactResolver;
 }
 
@@ -27,11 +24,9 @@ export class WebSocketDisconnectLambda extends GoLambda {
       memorySize:       128,
       environment:      {
         CONNECTIONS_TABLE_NAME: props.connectionsTable.tableName,
-        CONFIG_TABLE_NAME:      props.configTable.tableName,
       },
     });
 
     props.connectionsTable.grantRemoveConnection(this);
-    props.configTable.grantRead(this);
   }
 }
