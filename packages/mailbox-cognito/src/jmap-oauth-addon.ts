@@ -11,6 +11,7 @@ import { Construct }                                                            
 
 import { JmapOAuthDcrLambda }                                                   from './resources/lambdas/jmap-oauth-dcr-lambda';
 import { DynamicClientRegistrationMode }                                        from './user-pool/dynamic-client-registration-mode';
+import { OfferedScopes }                                                        from './user-pool/offered-scopes';
 
 /** RFC 7591 Dynamic Client Registration path, mounted on the JMAP API's HttpApi. */
 const REGISTRATION_PATH      = '/oauth/register';
@@ -157,7 +158,7 @@ export class JmapOAuthAddon extends Construct implements IJmapApiAddon {
       ...(withRegistration
         ? { registration_endpoint: `${props.apiBaseUrl}${REGISTRATION_PATH}` }
         : {}),
-      scopes_supported:                      ['openid', 'email', 'profile', 'offline_access', 'si/mail.read', 'si/mail.write', 'si/mail.send', 'si/contacts.read', 'si/contacts.write'],
+      scopes_supported:                      OfferedScopes.all(),
       response_types_supported:              ['code'],
       response_modes_supported:              ['query'],
       grant_types_supported:                 ['authorization_code', 'refresh_token'],

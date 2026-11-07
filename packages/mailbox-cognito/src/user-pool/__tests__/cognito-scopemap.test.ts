@@ -4,14 +4,10 @@
  * Cognito mapping table of the authorization model plan.
  */
 
-import { Permission }                                                           from '@serverlessinbox/mailbox';
+import { Permission }                                          from '@serverlessinbox/mailbox';
 
-import {
-  CognitoScope,
-  CognitoScopeDescriptions,
-  CognitoScopeToPermissions,
-  DeprecatedCognitoScopes,
-}                                                                               from '../cognito-scopemap';
+import { CognitoScopeDescriptions, CognitoScopeToPermissions } from '../cognito-scopemap';
+import { CognitoScope, DeprecatedCognitoScopes }               from '../cognito-scope';
 
 const RESOURCE_SERVER_SCOPE_NAMES = [
   'mail.read',

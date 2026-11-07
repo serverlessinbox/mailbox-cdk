@@ -10,14 +10,14 @@ import * as cdk                                                                 
 import { Aws, Fn, RemovalPolicy }                                               from 'aws-cdk-lib';
 import { Construct }                                                            from 'constructs';
 
-import { CognitoScope, CognitoScopeDescriptions }                               from '../user-pool/cognito-scopemap';
+import { CognitoScopeDescriptions }                                             from '../user-pool/cognito-scopemap';
+import { CognitoScope, RESOURCE_SERVER_IDENTIFIER }                             from '../user-pool/cognito-scope';
 import { MfaMode }                                                              from '../user-pool/mfa-mode';
 
 import {
   ADMIN_GROUP_NAME,
   DEFAULT_MFA_MODE,
   DEFAULT_PASSWORD_MIN_LENGTH,
-  RESOURCE_SERVER_IDENTIFIER,
   USER_GROUP_NAME,
   type MailboxCognitoDataStackParameters,
 }                                                                               from './mailbox-cognito-data-stack-contract';

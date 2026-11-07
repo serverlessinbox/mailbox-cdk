@@ -9,20 +9,21 @@
  * refused by the API only at runtime, so these tests pin the synthesized clients and the policies.
  */
 
-import { ArtifactZone, PinnedArtifactResolver }    from '@serverlessinbox/artifact-registry-cdk';
-import { Permission }                              from '@serverlessinbox/mailbox';
-import { Match, Template }                         from 'aws-cdk-lib/assertions';
-import * as lambda                                 from 'aws-cdk-lib/aws-lambda';
-import * as route53                                from 'aws-cdk-lib/aws-route53';
-import { App, BootstraplessSynthesizer, Stack }    from 'aws-cdk-lib';
+import { ArtifactZone, PinnedArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { Permission }                            from '@serverlessinbox/mailbox';
+import { Match, Template }                       from 'aws-cdk-lib/assertions';
+import * as lambda                               from 'aws-cdk-lib/aws-lambda';
+import * as route53                              from 'aws-cdk-lib/aws-route53';
+import { App, BootstraplessSynthesizer, Stack }  from 'aws-cdk-lib';
 
-import { CognitoIdpUsersAdminApiAddon }            from '../../cognito-idp-users-addon';
-import { JmapOAuthAddon }                          from '../../jmap-oauth-addon';
-import { CognitoScope, CognitoScopeToPermissions } from '../cognito-scopemap';
-import { DynamicClientRegistrationMode }           from '../dynamic-client-registration-mode';
-import { MailboxUserPool, MailboxUserPoolProps }   from '../mailbox-user-pool';
-import { MfaMode }                                 from '../mfa-mode';
-import { UserPoolAudience }                        from '../user-pool-audience';
+import { CognitoIdpUsersAdminApiAddon }          from '../../cognito-idp-users-addon';
+import { JmapOAuthAddon }                        from '../../jmap-oauth-addon';
+import { CognitoScopeToPermissions }             from '../cognito-scopemap';
+import { CognitoScope }                          from '../cognito-scope';
+import { DynamicClientRegistrationMode }         from '../dynamic-client-registration-mode';
+import { MailboxUserPool, MailboxUserPoolProps } from '../mailbox-user-pool';
+import { MfaMode }                               from '../mfa-mode';
+import { UserPoolAudience }                      from '../user-pool-audience';
 
 const PINNED_VERSION = '0.0.1-test';
 

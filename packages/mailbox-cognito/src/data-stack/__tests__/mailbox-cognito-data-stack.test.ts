@@ -6,19 +6,19 @@
  * are pinned by those aspects; here only the values the stack passes to them are.
  */
 
-import { DEVELOPMENT_CONTEXT_KEY }                                              from '@serverlessinbox/mailbox-cdk-shared';
-import { Match, Template }                                                      from 'aws-cdk-lib/assertions';
-import { App, BootstraplessSynthesizer, CfnParameter }                          from 'aws-cdk-lib';
+import { DEVELOPMENT_CONTEXT_KEY }                     from '@serverlessinbox/mailbox-cdk-shared';
+import { Match, Template }                             from 'aws-cdk-lib/assertions';
+import { App, BootstraplessSynthesizer, CfnParameter } from 'aws-cdk-lib';
 
-import { CognitoScope, CognitoScopeDescriptions }                               from '../../user-pool/cognito-scopemap';
-import { MfaMode }                                                              from '../../user-pool/mfa-mode';
+import { CognitoScopeDescriptions }                    from '../../user-pool/cognito-scopemap';
+import { CognitoScope, RESOURCE_SERVER_IDENTIFIER }    from '../../user-pool/cognito-scope';
+import { MfaMode }                                     from '../../user-pool/mfa-mode';
 import {
   ADMIN_GROUP_NAME,
   DEFAULT_PASSWORD_MIN_LENGTH,
-  RESOURCE_SERVER_IDENTIFIER,
   USER_GROUP_NAME,
-}                                                                               from '../mailbox-cognito-data-stack-contract';
-import { MailboxCognitoDataStack }                                              from '../mailbox-cognito-data-stack';
+}                                                      from '../mailbox-cognito-data-stack-contract';
+import { MailboxCognitoDataStack }                     from '../mailbox-cognito-data-stack';
 
 function newDataStack(options: { development?: boolean; terminationProtection?: boolean } = {}): MailboxCognitoDataStack {
   const app = new App();

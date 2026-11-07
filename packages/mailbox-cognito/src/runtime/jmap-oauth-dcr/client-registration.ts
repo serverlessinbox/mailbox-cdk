@@ -1,6 +1,7 @@
 import { CaughtError, type LoggerBuffer, type TenantId }                  from '@serverlessinbox/mailbox-cdk-shared/lambda-runtime';
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 
+import { OfferedScopes }                                                  from '../../user-pool/offered-scopes';
 import type { ClientId, UserPoolId }                                      from '../shared/cognito-identifiers';
 import type { Scope }                                                     from '../shared/identity-identifiers';
 import type { IdentityProvisionerClient }                                 from '../shared/identity-provisioner-client';
@@ -11,7 +12,6 @@ import { isClientRegistrationRequest, type ClientRegistrationRequest }    from '
 import type { RedirectUriPolicy }                                         from './redirect-uri';
 import { RegistrationAnswers }                                            from './registration-answers';
 import { ScopePolicy }                                                    from './scope-policy';
-import { IDENTITY_SCOPES }                                                from './supported-scopes';
 
 const DEFAULT_CLIENT_NAME = 'Unnamed JMAP Client';
 
@@ -143,7 +143,7 @@ export class ClientRegistration {
     scope: string | undefined,
   ): APIGatewayProxyStructuredResultV2 {
     this.logger.info('jmap_oauth_dcr_dedup_hit', { tenantId, clientId });
-    return this.answerRegistered(request, clientId, scope ?? IDENTITY_SCOPES.join(' '), clientName);
+    return this.answerRegistered(request, clientId, scope ?? OfferedScopes.IDENTITY.join(' '), clientName);
   }
 
   // RFC 7591 §3.2.2: a registration error is HTTP 400. Cognito rejects a metadata value it will not accept

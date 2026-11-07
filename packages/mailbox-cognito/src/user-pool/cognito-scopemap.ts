@@ -1,26 +1,6 @@
-import { Permission } from '@serverlessinbox/mailbox';
+import { Permission }   from '@serverlessinbox/mailbox';
 
-/**
- * The scope names of the Cognito resource server. A scope exists only as a member here, with its entries in
- * `CognitoScopeToPermissions` and `CognitoScopeDescriptions`; a permission never adds a scope.
- */
-export enum CognitoScope {
-  MAIL_READ = 'mail.read',
-  MAIL_WRITE = 'mail.write',
-  MAIL_SEND = 'mail.send',
-  ACCOUNT_READ = 'account.read',
-  ALIAS_READ = 'alias.read',
-  ALIAS_WRITE = 'alias.write',
-  USER_READ = 'user.read',
-  PREFERENCES_READ = 'preferences.read',
-  PREFERENCES_WRITE = 'preferences.write',
-  CONTACTS_READ = 'contacts.read',
-  CONTACTS_WRITE = 'contacts.write',
-  SIEVE_READ = 'sieve.read',
-  SIEVE_WRITE = 'sieve.write',
-  ADMIN = 'admin',
-  TOKENS_MANAGE = 'tokens.manage',
-}
+import { CognitoScope } from './cognito-scope';
 
 /**
  * The rights each Cognito scope grants, in the order of `CognitoScope`. An IdP scope is mapped straight to
@@ -53,12 +33,6 @@ export const CognitoScopeToPermissions: Record<CognitoScope, Permission[]> = {
   [CognitoScope.ADMIN]:             [Permission.ADMIN],
   [CognitoScope.TOKENS_MANAGE]:     [Permission.TOKENS_MANAGE],
 };
-
-/**
- * Scopes that stay defined on the resource server so tokens and clients that still request them keep working,
- * and are removed in a later release. A right resolves only to a scope outside this set.
- */
-export const DeprecatedCognitoScopes: ReadonlySet<CognitoScope> = new Set([CognitoScope.USER_READ]);
 
 /** The description each Cognito scope carries on the resource server. */
 export const CognitoScopeDescriptions: Record<CognitoScope, string> = {

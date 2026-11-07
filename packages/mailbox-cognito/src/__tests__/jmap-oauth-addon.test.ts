@@ -31,8 +31,11 @@ import type { StrictValidator }               from 'typanion';
 import { JmapOAuthAddon }                     from '../jmap-oauth-addon';
 import { loadMailboxCognitoArtifactVersions } from '../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }   from '../mailbox-cognito-registry-record';
-import { SUPPORTED_SCOPES }                   from '../runtime/jmap-oauth-dcr/supported-scopes';
+import { ScopePolicy }                        from '../runtime/jmap-oauth-dcr/scope-policy';
 import { DynamicClientRegistrationMode }      from '../user-pool/dynamic-client-registration-mode';
+import { OfferedScopes }                      from '../user-pool/offered-scopes';
+
+const isScopeList = t.isArray(t.isString());
 
 const API_BASE_URL           = 'https://api.example.com';
 const REGISTRATION_ROUTE_KEY = 'POST /oauth/register';
@@ -319,7 +322,7 @@ describe('JmapOAuthAddon: dynamicClientRegistration gating', () => {
     assertDcrFullyDisabled(buildHarness(DynamicClientRegistrationMode.DISABLED));
   });
 
-  it('the discovery document advertises exactly the scopes the registration runtime supports', () => {
+  it('the discovery document advertises exactly the offered scopes', () => {
     const { stack, addon, api } = buildHarness(DynamicClientRegistrationMode.DISABLED);
     addon.addRoutes(api);
 
@@ -327,7 +330,25 @@ describe('JmapOAuthAddon: dynamicClientRegistration gating', () => {
     const scopesMatch             = /"scopes_supported":(\[[^\]]*\])/.exec(documentText);
     const advertisedList: unknown = scopesMatch ? JSON.parse(scopesMatch[1]) : undefined;
 
-    expect(advertisedList).toEqual([...SUPPORTED_SCOPES]);
+    expect(advertisedList).toEqual(OfferedScopes.all());
+  });
+
+  it('every advertised scope is granted by the registration policy, and every offered resource scope is advertised', () => {
+    const { stack, addon, api } = buildHarness(DynamicClientRegistrationMode.DISABLED);
+    addon.addRoutes(api);
+
+    const documentText     = renderLiteralText(findDiscoveryDocumentBody(Template.fromStack(stack)));
+    const scopesMatch      = /"scopes_supported":(\[[^\]]*\])/.exec(documentText);
+    const parsed: unknown  = scopesMatch ? JSON.parse(scopesMatch[1]) : undefined;
+    const errors: string[] = [];
+    if (!isScopeList(parsed, { errors })) {
+      throw new Error(`Invalid scopes_supported: ${errors.join('; ')}`);
+    }
+
+    expect(parsed).toEqual(expect.arrayContaining(OfferedScopes.resource()));
+    const requested = parsed.join(' ');
+    expect(ScopePolicy.droppedCount(requested)).toBe(0);
+    expect(ScopePolicy.grantFor(requested)).toEqual(parsed.filter((scope) => scope !== OfferedScopes.OFFLINE_ACCESS));
   });
 
   it('omitted dynamicClientRegistration: defaults to fully disabled, like the disabled literal', () => {

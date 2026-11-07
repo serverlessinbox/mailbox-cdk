@@ -12,9 +12,6 @@ export const COGNITO_DEPLOYED_STACK_NAME = 'cognito';
 /** The object name of the cognito data stack's CloudFormation template in the package's artifacts. */
 export const COGNITO_DATA_STACK_TEMPLATE_OBJECT = 'cognito-data-stack-template.json';
 
-/** The identifier of the resource server that carries the JMAP scopes. */
-export const RESOURCE_SERVER_IDENTIFIER = 'si';
-
 export const ADMIN_GROUP_NAME = 'admin';
 
 export const USER_GROUP_NAME = 'user';

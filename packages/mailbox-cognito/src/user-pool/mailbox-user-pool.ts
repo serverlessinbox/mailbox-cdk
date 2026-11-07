@@ -25,15 +25,15 @@ import { Construct }                                                            
 
 import { CognitoIdpUsersAdminApiAddon }                                         from '../cognito-idp-users-addon';
 import { MailboxCognitoDataDeployer }                                           from '../data-stack/mailbox-cognito-data-deployer';
-import { ADMIN_GROUP_NAME, DEFAULT_PASSWORD_MIN_LENGTH,
-  RESOURCE_SERVER_IDENTIFIER, USER_GROUP_NAME }                                 from '../data-stack/mailbox-cognito-data-stack-contract';
+import { ADMIN_GROUP_NAME, DEFAULT_PASSWORD_MIN_LENGTH, USER_GROUP_NAME }       from '../data-stack/mailbox-cognito-data-stack-contract';
 import { JmapOAuthAddon }                                                       from '../jmap-oauth-addon';
 import { loadMailboxCognitoArtifactVersions }                                   from '../mailbox-cognito-artifact-versions';
 import { loadMailboxCognitoRegistryRecord }                                     from '../mailbox-cognito-registry-record';
 import { CognitoBootstrapUserLambda }                                           from '../resources/lambdas/bootstrap-user-lambda';
 import type { BootstrapUserProperties }                                         from '../runtime/bootstrap-user/properties';
 
-import { CognitoScope, CognitoScopeToPermissions, DeprecatedCognitoScopes }     from './cognito-scopemap';
+import { CognitoScopeToPermissions }                                            from './cognito-scopemap';
+import { CognitoScope, DeprecatedCognitoScopes, RESOURCE_SERVER_IDENTIFIER }    from './cognito-scope';
 import { DynamicClientRegistrationMode }                                        from './dynamic-client-registration-mode';
 import type { MailboxUserPoolAdminUiConfig }                                    from './mailbox-user-pool-admin-ui-config';
 import type { MfaMode }                                                         from './mfa-mode';

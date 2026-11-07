@@ -58,6 +58,8 @@ tasks:
     sources:
       - src/runtime/jmap-oauth-dcr/**/*.ts
       - src/runtime/shared/**/*.ts
+      - src/user-pool/cognito-scope.ts
+      - src/user-pool/offered-scopes.ts
       - ../mailbox-cdk-shared/src/runtime/**/*.ts
     generates:
       - '{{.TASKFILE_DIR}}/dist/lambdas/jmap-oauth-dcr.zip'
