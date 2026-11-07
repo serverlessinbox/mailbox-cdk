@@ -4,6 +4,28 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.11](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.10...v0.5.11) (Sat Nov 07 2026)
+
+### feat
+
+* **auth** add the sieve/read and sieve/write scopes ([fbda935](https://github.com/serverlessinbox/mailbox-cdk/commit/fbda935febddd019241ac6d7467152235097700c))
+
+* **blob** add the sieve blob grants and edge blob kind ([8d7da74](https://github.com/serverlessinbox/mailbox-cdk/commit/8d7da74d47204d3e18f4cb3edf068ba45891a89e))
+
+* **email** give the email processor the system sender address ([ad3abd8](https://github.com/serverlessinbox/mailbox-cdk/commit/ad3abd82517016ea3aef5aaf0151394dccb33272))
+
+* **mailbox-cognito** offer every resource scope to third-party OAuth clients ([035149c](https://github.com/serverlessinbox/mailbox-cdk/commit/035149c9fc196fc795a17b9ea9d224eef601c57f))
+
+### fix
+
+* **websocket** drop the config table from disconnect and broadcast ([ae330ad](https://github.com/serverlessinbox/mailbox-cdk/commit/ae330ad8d6dfaeabe8ca37a5f70e4f58997869a9))
+
+* **jmap-api** let jmap-api set the active Sieve script pointer ([3df0f0b](https://github.com/serverlessinbox/mailbox-cdk/commit/3df0f0b7a887102651b0c3e30197f0b9828a7014))
+
+### chore
+
+* idl pointer ([7a92017](https://github.com/serverlessinbox/mailbox-cdk/commit/7a920174460007d5b0e952b92e6de4e25491f925))
+
 ## [0.5.10](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.9...v0.5.10) (Wed Nov 04 2026)
 
 ### feat
