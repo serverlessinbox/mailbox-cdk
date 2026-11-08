@@ -4,6 +4,18 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      bump-type:
+        description: Force this bump type
+        type: choice
+        required: false
+        default: auto
+        options:
+          - auto
+          - major
+          - minor
+          - patch
 
 permissions:
   contents: read
@@ -70,7 +82,15 @@ jobs:
             git commit -m "chore: refresh registry record"
             git push origin "HEAD:${GITHUB_REF}"
           fi
-      - run: yarn gitversion bump
+      - name: Bump versions
+        env:
+          BUMP_TYPE: ${{ inputs.bump-type }}
+        run: |
+          if [ -n "$BUMP_TYPE" ] && [ "$BUMP_TYPE" != "auto" ]; then
+            yarn gitversion bump --bump-type "$BUMP_TYPE"
+          else
+            yarn gitversion bump
+          fi
       - name: Resolve component artifact versions
         run: yarn resolve-artifacts --output "$RUNNER_TEMP/mailbox-external-pins.json"
       - name: Bake artifact versions
