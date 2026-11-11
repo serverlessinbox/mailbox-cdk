@@ -21,6 +21,7 @@ export enum CognitoScope {
   SIEVE_WRITE = 'sieve.write',
   ADMIN = 'admin',
   TOKENS_MANAGE = 'tokens.manage',
+  PUSH_MANAGE = 'push.manage',
 }
 
 /**

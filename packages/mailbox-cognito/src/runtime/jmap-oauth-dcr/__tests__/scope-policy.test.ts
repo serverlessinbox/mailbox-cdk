@@ -50,6 +50,10 @@ describe('the offered scopes against the Cognito resource server', () => {
     expect(resourceNames.filter((name) => !cognitoNames.includes(name))).toEqual([]);
   });
 
+  it('offers the push.manage scope to a delegated client', () => {
+    expect(OfferedScopes.resource()).toContain('si/push.manage');
+  });
+
   it('grants no admin or personal access token right through any offered scope', () => {
     const grantable                     = Object.values(CognitoScope).filter((scope) => OfferedScopes.resource().includes(`si/${scope}`));
     const rights: readonly Permission[] = grantable.flatMap((scope) => CognitoScopeToPermissions[scope]);

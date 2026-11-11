@@ -21,6 +21,7 @@ const EXPECTED_RESOURCE_SCOPES = [
   'si/contacts.write',
   'si/sieve.read',
   'si/sieve.write',
+  'si/push.manage',
 ];
 
 describe('OfferedScopes.resource', () => {

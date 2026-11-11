@@ -309,6 +309,7 @@ describe('MailboxUserPool UI client provisioning', () => {
         Permission.SIEVE_READ,
         Permission.SIEVE_WRITE,
         Permission.TOKENS_MANAGE,
+        Permission.PUSH_MANAGE,
       ],
       callbackUrls: ['https://w.example.com/cb'],
       logoutUrls:   ['https://w.example.com/'],
@@ -325,6 +326,7 @@ describe('MailboxUserPool UI client provisioning', () => {
       'si/sieve.read',
       'si/sieve.write',
       'si/tokens.manage',
+      'si/push.manage',
     ]);
     expect(client.requestScopeList).not.toContain('si/user.read');
   });

@@ -97,6 +97,7 @@ export class WebmailUi extends MailboxUi {
       Permission.SIEVE_READ,
       Permission.SIEVE_WRITE,
       Permission.TOKENS_MANAGE,
+      Permission.PUSH_MANAGE,
     ];
     this.oauthClient                       = props.authProvider.provisionJmapApiClient({
       name:         'webmail-ui',

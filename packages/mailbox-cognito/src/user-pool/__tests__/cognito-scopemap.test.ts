@@ -25,10 +25,11 @@ const RESOURCE_SERVER_SCOPE_NAMES = [
   'sieve.write',
   'admin',
   'tokens.manage',
+  'push.manage',
 ];
 
 describe('Cognito resource server scopes', () => {
-  it('keeps exactly the fifteen scope names, whatever permissions exist', () => {
+  it('keeps exactly the sixteen scope names, whatever permissions exist', () => {
     expect(Object.keys(CognitoScopeToPermissions)).toEqual(RESOURCE_SERVER_SCOPE_NAMES);
     expect(Object.values(CognitoScope)).toEqual(RESOURCE_SERVER_SCOPE_NAMES);
   });
@@ -50,6 +51,7 @@ describe('Cognito resource server scopes', () => {
       [CognitoScope.SIEVE_WRITE]:       'Write your Sieve filter scripts',
       [CognitoScope.ADMIN]:             'Admin access',
       [CognitoScope.TOKENS_MANAGE]:     'Manage your personal access tokens',
+      [CognitoScope.PUSH_MANAGE]:       'Manage your push subscriptions',
     });
   });
 
@@ -79,6 +81,7 @@ describe('Cognito resource server scopes', () => {
     [CognitoScope.SIEVE_WRITE,   [Permission.SIEVE_WRITE]],
     [CognitoScope.ADMIN,         [Permission.ADMIN]],
     [CognitoScope.TOKENS_MANAGE, [Permission.TOKENS_MANAGE]],
+    [CognitoScope.PUSH_MANAGE,   [Permission.PUSH_MANAGE]],
   ])('grants the rights of %s as the mapping table states', (scope, rights) => {
     expect(CognitoScopeToPermissions[scope]).toEqual(rights);
   });

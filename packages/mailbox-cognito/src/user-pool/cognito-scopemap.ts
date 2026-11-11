@@ -32,6 +32,7 @@ export const CognitoScopeToPermissions: Record<CognitoScope, Permission[]> = {
   [CognitoScope.SIEVE_WRITE]:       [Permission.SIEVE_WRITE],
   [CognitoScope.ADMIN]:             [Permission.ADMIN],
   [CognitoScope.TOKENS_MANAGE]:     [Permission.TOKENS_MANAGE],
+  [CognitoScope.PUSH_MANAGE]:       [Permission.PUSH_MANAGE],
 };
 
 /** The description each Cognito scope carries on the resource server. */
@@ -51,4 +52,5 @@ export const CognitoScopeDescriptions: Record<CognitoScope, string> = {
   [CognitoScope.SIEVE_WRITE]:       'Write your Sieve filter scripts',
   [CognitoScope.ADMIN]:             'Admin access',
   [CognitoScope.TOKENS_MANAGE]:     'Manage your personal access tokens',
+  [CognitoScope.PUSH_MANAGE]:       'Manage your push subscriptions',
 };

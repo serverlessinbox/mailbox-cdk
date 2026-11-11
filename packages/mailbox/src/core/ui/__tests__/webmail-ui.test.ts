@@ -109,10 +109,19 @@ describe('WebmailUi', () => {
         Permission.SIEVE_READ,
         Permission.SIEVE_WRITE,
         Permission.TOKENS_MANAGE,
+        Permission.PUSH_MANAGE,
       ],
       callbackUrls: [`https://${webmailUi.distributionDomainName}/auth/callback`],
       logoutUrls:   [`https://${webmailUi.distributionDomainName}/`],
     });
+  });
+
+  it('grants the webmail client the push/manage right to create and revoke its push subscriptions', () => {
+    createWebmailUi();
+
+    const [request] = provisionJmapApiClient.mock.calls[0];
+
+    expect(request.permissions).toContain(Permission.PUSH_MANAGE);
   });
 
   it('never grants admin to the webmail client', () => {
