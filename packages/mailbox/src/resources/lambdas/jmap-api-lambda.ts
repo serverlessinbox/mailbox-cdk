@@ -11,6 +11,7 @@ import type { IAuditEventsQueue }                                         from '
 import type { IEmailSendingQueue }                                        from '../queues/email-sending-queue';
 import type { IAuthKeyStoreTable }                                        from '../tables/auth-key-store-table';
 import type { IConfigTable }                                              from '../tables/data-config-table';
+import type { IPatTable }                                                 from '../tables/data-pat-table';
 import type { IDataTable }                                                from '../tables/data-tables';
 
 import type { IIdentityProvisioner }                                      from './identity-provisioner-lambda';
@@ -24,6 +25,7 @@ export interface JmapApiLambdaProps {
   readonly itemTable:            IDataTable;
   readonly changelogTable:       IDataTable;
   readonly authKeyStoreTable:    IAuthKeyStoreTable;
+  readonly patTable:             IPatTable;
   readonly blobStore:            IDataBlobStore;
   readonly emailSubmissionQueue: IEmailSendingQueue;
   readonly auditEventsQueue:     IAuditEventsQueue;
@@ -57,6 +59,7 @@ export class JmapApiLambda extends GoLambda implements IWebSocketPushTargetWithU
         ITEM_TABLE_NAME:                    props.itemTable.tableName,
         CHANGELOG_TABLE_NAME:               props.changelogTable.tableName,
         AUTH_KEY_STORE_TABLE_NAME:          props.authKeyStoreTable.tableName,
+        PAT_TABLE_NAME:                     props.patTable.tableName,
         CDN_HOST:                           props.cdnHost,
         API_BASE_URL:                       props.apiBaseUrl,
         BLOB_STORE_NAME:                    props.blobStore.bucketName,
@@ -74,6 +77,7 @@ export class JmapApiLambda extends GoLambda implements IWebSocketPushTargetWithU
     props.configTable.grantRead(this);
     props.configTable.grantActiveSieveScriptUpdate(this);
     props.authKeyStoreTable.grantReadHmac(this);
+    props.patTable.grantPatOwnerRead(this);
 
     props.itemTable.grantReadWrite(this);
     props.changelogTable.grantReadWrite(this);

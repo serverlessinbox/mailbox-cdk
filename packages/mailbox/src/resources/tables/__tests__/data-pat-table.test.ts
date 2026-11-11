@@ -41,6 +41,7 @@ const GRANT_METHODS: readonly GrantMethod[] = [
   'grantPatManage',
   'grantPatRevokeForPrincipal',
   'grantPatExpiryNotify',
+  'grantPatOwnerRead',
 ];
 
 function createStack(): cdk.Stack {
@@ -137,6 +138,16 @@ describe('DataPatTable', () => {
       },
       {
         actions:   ['dynamodb:BatchGetItem', 'dynamodb:GetItem', 'dynamodb:UpdateItem'],
+        resources: [TABLE_ARN],
+        condition: { 'ForAllValues:StringLike': { 'dynamodb:LeadingKeys': ['TENANT#*PAT_OWNER#*'] } },
+      },
+    ]);
+  });
+
+  it('grantPatOwnerRead reads an owner row under the tenant key prefix and nothing else', () => {
+    expect(grantedStatements('grantPatOwnerRead')).toEqual([
+      {
+        actions:   ['dynamodb:GetItem'],
         resources: [TABLE_ARN],
         condition: { 'ForAllValues:StringLike': { 'dynamodb:LeadingKeys': ['TENANT#*PAT_OWNER#*'] } },
       },

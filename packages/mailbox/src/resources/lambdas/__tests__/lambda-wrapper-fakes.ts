@@ -59,6 +59,7 @@ export function fakePatTable(name: string) {
     grantPatManage:             grantSpy(),
     grantPatRevokeForPrincipal: grantSpy(),
     grantPatExpiryNotify:       grantSpy(),
+    grantPatOwnerRead:          grantSpy(),
   };
 }
 

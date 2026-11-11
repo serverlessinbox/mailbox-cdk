@@ -8,17 +8,21 @@
  * grant renders is pinned by the resource that owns it.
  */
 
-import { statementsForAction }                                                  from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
+import { actionsOf, resourcesOf, statementsForAction }                          from '@serverlessinbox/mailbox-cdk-shared/cdk-test-support';
 import { VENDOR_ACCOUNT_ID }                                                    from '@serverlessinbox/mailbox-cdk-shared';
 import { Template }                                                             from 'aws-cdk-lib/assertions';
+import { Table }                                                                from 'aws-cdk-lib/aws-dynamodb';
 
 import type { IWebSocketBroadcastPublisher }                                    from '../../../contracts/websocket-push';
 import { Permission }                                                           from '../../../core/auth/jmap-scopes';
+import { DataPatTable }                                                         from '../../tables/data-pat-table';
 import { JmapApiLambda }                                                        from '../jmap-api-lambda';
 
 import { expectGrantedOnceTo, fakeAuthKeyStoreTable, fakeDataBlobStore,
   fakeConfigTable, fakeDataTable, fakeIdentityProvisioner, fakeQueue }          from './lambda-wrapper-fakes';
 import { arrangeWrapperStack, onlyLambdaOf }                                    from './lambda-wrapper-helpers';
+
+const PAT_TABLE_ARN = 'arn:aws:dynamodb:us-west-2:123456789012:table/pat-table';
 
 function synthesize(oauthProtectedResourceUrl?: string) {
   const { stack, artifactResolver } = arrangeWrapperStack();
@@ -26,6 +30,7 @@ function synthesize(oauthProtectedResourceUrl?: string) {
   const itemTable                   = fakeDataTable('item-table');
   const changelogTable              = fakeDataTable('changelog-table');
   const authKeyStoreTable           = fakeAuthKeyStoreTable('auth-key-store');
+  const patTable                    = new DataPatTable(Table.fromTableAttributes(stack, 'pat-table', { tableArn: PAT_TABLE_ARN }));
   const blobStore                   = fakeDataBlobStore('blob-store');
   const emailSubmissionQueue        = fakeQueue('email-submission');
   const auditEventsQueue            = fakeQueue('audit-events');
@@ -35,6 +40,7 @@ function synthesize(oauthProtectedResourceUrl?: string) {
     itemTable,
     changelogTable,
     authKeyStoreTable,
+    patTable,
     blobStore,
     emailSubmissionQueue,
     auditEventsQueue,
@@ -65,6 +71,7 @@ describe('JmapApiLambda', () => {
         ITEM_TABLE_NAME:                    'item-table',
         CHANGELOG_TABLE_NAME:               'changelog-table',
         AUTH_KEY_STORE_TABLE_NAME:          'auth-key-store',
+        PAT_TABLE_NAME:                     'pat-table',
         BLOB_STORE_NAME:                    'blob-store',
         EMAIL_SUBMISSION_QUEUE_URL:         'https://sqs.fake/email-submission',
         AUDIT_EVENTS_QUEUE_URL:             'https://sqs.fake/audit-events',
@@ -120,6 +127,22 @@ describe('JmapApiLambda', () => {
       expectGrantedOnceTo(auditEventsQueue.grantSend, lambda);
       expectGrantedOnceTo(identityProvisioner.grantInvoke, lambda);
     });
+  });
+
+  it('reads owner rows of the PAT table under the tenant key prefix and nothing else', () => {
+    const { statements } = synthesizeTemplate();
+
+    expect(statements.filter((statement) => actionsOf(statement).some((action) => action.startsWith('dynamodb:'))).map((statement) => ({
+      actions:   actionsOf(statement),
+      resources: resourcesOf(statement),
+      condition: statement.Condition,
+    }))).toEqual([
+      {
+        actions:   ['dynamodb:GetItem'],
+        resources: [PAT_TABLE_ARN],
+        condition: { 'ForAllValues:StringLike': { 'dynamodb:LeadingKeys': ['TENANT#*PAT_OWNER#*'] } },
+      },
+    ]);
   });
 
   it('scopes execute-api:Invoke to the grant-resource and revoke-resource paths of the vendor account', () => {

@@ -26,6 +26,9 @@ export interface IPatTable {
 
   /** Queries the gsi2 index, and reads (single and batch) and updates owner rows under the tenant key prefix. */
   grantPatExpiryNotify(grantee: IGrantable): void;
+
+  /** Reads an owner row under the tenant key prefix by its key: `GetItem` only. */
+  grantPatOwnerRead(grantee: IGrantable): void;
 }
 
 /**
@@ -106,6 +109,15 @@ export class DataPatTable implements IPatTable {
     Grant.addToPrincipal({
       grantee,
       actions:      ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:UpdateItem'],
+      resourceArns: [this.tableArn],
+      conditions:   { 'ForAllValues:StringLike': { 'dynamodb:LeadingKeys': ['TENANT#*PAT_OWNER#*'] } },
+    });
+  }
+
+  public grantPatOwnerRead(grantee: IGrantable): void {
+    Grant.addToPrincipal({
+      grantee,
+      actions:      ['dynamodb:GetItem'],
       resourceArns: [this.tableArn],
       conditions:   { 'ForAllValues:StringLike': { 'dynamodb:LeadingKeys': ['TENANT#*PAT_OWNER#*'] } },
     });

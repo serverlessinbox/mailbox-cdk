@@ -23,7 +23,7 @@ const PAT_TABLE_MARKER        = 'patTableArn';
 const SUBMISSION_QUEUE_MARKER = 'emailsubmissionsqueue';
 
 /** The Lambdas (by SERVICE_NAME) that hold a grant on the token table; a name matches when it starts with an entry. */
-const PAT_GRANTEE_SERVICES = ['authorizer-jmap-api', 'authorizer-user-api', 'authorizer-admin-api', 'user-api', 'admin-api', 'job-sweeper'];
+const PAT_GRANTEE_SERVICES = ['authorizer-jmap-api', 'authorizer-user-api', 'authorizer-admin-api', 'jmap-api', 'user-api', 'admin-api', 'job-sweeper'];
 
 interface PolicyStatement {
   readonly Action?:   string | string[];
@@ -70,6 +70,7 @@ function rolePolicies(resources: Record<string, CloudFormationResource>): RolePo
 describe('Mailbox personal access token table access (full stack walk)', () => {
   let resourcesOfStack: Record<string, CloudFormationResource>;
   let servicesOnTable: Set<string>;
+  let actionsOnTableByService: Map<string, Set<string>>;
   let tableStatements: PolicyStatement[];
   let servicesWithSes: Set<string>;
   let servicesWithSubmissionSend: Set<string>;
@@ -90,6 +91,7 @@ describe('Mailbox personal access token table access (full stack walk)', () => {
     resourcesOfStack           = resources;
     const servicesByRole       = serviceNamesByRole(resources);
     servicesOnTable            = new Set<string>();
+    actionsOnTableByService    = new Map<string, Set<string>>();
     servicesWithSes            = new Set<string>();
     servicesWithSubmissionSend = new Set<string>();
     tableStatements            = [];
@@ -103,6 +105,11 @@ describe('Mailbox personal access token table access (full stack walk)', () => {
         if (resource.includes(PAT_TABLE_MARKER)) {
           tableStatements.push(statement);
           services.forEach((service) => servicesOnTable.add(service));
+          for (const service of services) {
+            const actions = actionsOnTableByService.get(service) ?? new Set<string>();
+            actionsOf(statement).forEach((action) => actions.add(action));
+            actionsOnTableByService.set(service, actions);
+          }
         }
         if (actionsOf(statement).some((action) => action.startsWith('ses:'))) {
           services.forEach((service) => servicesWithSes.add(service));
@@ -125,11 +132,15 @@ describe('Mailbox personal access token table access (full stack walk)', () => {
     expect(variables).toHaveProperty('PAT_TABLE_NAME');
   });
 
-  it('names the token table only in statements of the authorizers, the user API, the admin API and the job sweeper', () => {
+  it('names the token table only in statements of the authorizers, the JMAP API, the user API, the admin API and the job sweeper', () => {
     expect(servicesOnTable.size).toBeGreaterThan(0);
     for (const service of servicesOnTable) {
       expect(PAT_GRANTEE_SERVICES.some((allowed) => service.startsWith(allowed))).toBe(true);
     }
+  });
+
+  it('gives the JMAP API handler only GetItem on the token table', () => {
+    expect([...(actionsOnTableByService.get('jmap-api') ?? [])]).toEqual(['dynamodb:GetItem']);
   });
 
   it('reaches the token table from the user API and the job sweeper', () => {

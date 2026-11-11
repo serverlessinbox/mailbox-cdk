@@ -192,6 +192,7 @@ export class JmapApi extends Construct {
       itemTable:                 props.itemTable,
       changelogTable:            props.changelogTable,
       authKeyStoreTable:         props.authKeyStoreTable,
+      patTable:                  props.patTable,
       blobStore:                 props.blobStore,
       emailSubmissionQueue:      props.emailSubmissionQueue,
       auditEventsQueue:          props.auditEventsQueue,
