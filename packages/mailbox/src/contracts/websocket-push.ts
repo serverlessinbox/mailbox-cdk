@@ -1,20 +1,16 @@
-import type { IGrantable } from 'aws-cdk-lib/aws-iam';
-import type { IFunction }  from 'aws-cdk-lib/aws-lambda';
+import type { IGrantable }         from 'aws-cdk-lib/aws-iam';
+import type { IFunction }          from 'aws-cdk-lib/aws-lambda';
 
-/** The capability to invoke the WebSocket broadcast function, without exposing the function itself. */
-export interface IWebSocketBroadcastPublisher {
-  readonly functionName: string;
-  grantInvoke(grantee: IGrantable): void;
-}
+import type { IStateChangeFanout } from './state-change-fanout';
 
-/** A Lambda that can be pointed at a WebSocket broadcaster; it needs no WebSocket URL. */
+/** A Lambda that can be pointed at the state-change fan-out; it needs no WebSocket URL. */
 export interface IWebSocketPushTarget extends IFunction {
-  enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void;
+  enableWebSocketPush(stateChangeFanout: IStateChangeFanout): void;
 }
 
-/** A Lambda that can be pointed at a WebSocket broadcaster and also needs the WebSocket URL. */
+/** A Lambda that can be pointed at the state-change fan-out and also needs the WebSocket URL. */
 export interface IWebSocketPushTargetWithUrl extends IFunction {
-  enableWebSocketPush(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void;
+  enableWebSocketPush(webSocketUrl: string, stateChangeFanout: IStateChangeFanout): void;
 }
 
 /**
