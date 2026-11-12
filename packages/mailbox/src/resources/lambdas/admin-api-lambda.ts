@@ -6,7 +6,8 @@ import { PolicyStatement, Effect }                                              
 import { Aws, Duration }                                                        from 'aws-cdk-lib';
 import { Construct }                                                            from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }              from '../../contracts/websocket-push';
+import type { IStateChangeFanout }                                              from '../../contracts/state-change-fanout';
+import type { IWebSocketPushTarget }                                            from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                                  from '../buckets/data-blob-store';
 import type { IAuditEventsQueue }                                               from '../queues/audit-events-queue';
 import type { IEmailSendingQueue }                                              from '../queues/email-sending-queue';
@@ -110,9 +111,9 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     props.identityProvisioner.grantInvoke(this);
   }
 
-  public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {
-    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
-    broadcaster.grantInvoke(this);
+  public enableWebSocketPush(stateChangeFanout: IStateChangeFanout): void {
+    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', stateChangeFanout.functionName);
+    stateChangeFanout.grantInvoke(this);
   }
 
   private grantStatusAccess(): void {

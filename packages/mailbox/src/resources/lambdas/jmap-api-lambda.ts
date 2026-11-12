@@ -1,20 +1,21 @@
-import type { IArtifactResolver }                                         from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                                                       from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement }                                                from 'aws-cdk-lib/aws-iam';
-import { Aws, Duration }                                                  from 'aws-cdk-lib';
-import { Construct }                                                      from 'constructs';
+import type { IArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                         from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }                  from 'aws-cdk-lib/aws-iam';
+import { Aws, Duration }                    from 'aws-cdk-lib';
+import { Construct }                        from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl } from '../../contracts/websocket-push';
-import type { ScopeMap }                                                  from '../../core/auth/jmap-scopes';
-import type { IDataBlobStore }                                            from '../buckets/data-blob-store';
-import type { IAuditEventsQueue }                                         from '../queues/audit-events-queue';
-import type { IEmailSendingQueue }                                        from '../queues/email-sending-queue';
-import type { IAuthKeyStoreTable }                                        from '../tables/auth-key-store-table';
-import type { IConfigTable }                                              from '../tables/data-config-table';
-import type { IPatTable }                                                 from '../tables/data-pat-table';
-import type { IDataTable }                                                from '../tables/data-tables';
+import type { IStateChangeFanout }          from '../../contracts/state-change-fanout';
+import type { IWebSocketPushTargetWithUrl } from '../../contracts/websocket-push';
+import type { ScopeMap }                    from '../../core/auth/jmap-scopes';
+import type { IDataBlobStore }              from '../buckets/data-blob-store';
+import type { IAuditEventsQueue }           from '../queues/audit-events-queue';
+import type { IEmailSendingQueue }          from '../queues/email-sending-queue';
+import type { IAuthKeyStoreTable }          from '../tables/auth-key-store-table';
+import type { IConfigTable }                from '../tables/data-config-table';
+import type { IPatTable }                   from '../tables/data-pat-table';
+import type { IDataTable }                  from '../tables/data-tables';
 
-import type { IIdentityProvisioner }                                      from './identity-provisioner-lambda';
+import type { IIdentityProvisioner }        from './identity-provisioner-lambda';
 
 /**
  * The tables, blob store, queues and identity provisioner the JMAP API reads and writes, plus its CDN
@@ -99,10 +100,10 @@ export class JmapApiLambda extends GoLambda implements IWebSocketPushTargetWithU
     this.grantLicenseApiAccess(props.vendorAccountIds);
   }
 
-  public enableWebSocketPush(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void {
+  public enableWebSocketPush(webSocketUrl: string, stateChangeFanout: IStateChangeFanout): void {
     this.addEnvironment('WEBSOCKET_URL', webSocketUrl);
-    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
-    broadcaster.grantInvoke(this);
+    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', stateChangeFanout.functionName);
+    stateChangeFanout.grantInvoke(this);
   }
 
   private grantLicenseApiAccess(vendorAccountIds: string[]) {

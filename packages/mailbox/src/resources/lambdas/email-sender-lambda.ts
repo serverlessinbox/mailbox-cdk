@@ -1,14 +1,15 @@
-import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                                                from '@serverlessinbox/mailbox-cdk-shared';
-import { Effect, PolicyStatement }                                 from 'aws-cdk-lib/aws-iam';
-import { Aws, Duration }                                           from 'aws-cdk-lib';
-import { Construct }                                               from 'constructs';
+import type { IArtifactResolver }          from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                        from '@serverlessinbox/mailbox-cdk-shared';
+import { Effect, PolicyStatement }         from 'aws-cdk-lib/aws-iam';
+import { Aws, Duration }                   from 'aws-cdk-lib';
+import { Construct }                       from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
-import type { IDataBlobStore }                                     from '../buckets/data-blob-store';
-import { EmailSubmissionsQueueEvent }                              from '../events/email-submissions-queue-event';
-import type { IEmailSendingQueueConsumer }                         from '../queues/email-sending-queue';
-import type { IDataTable }                                         from '../tables/data-tables';
+import type { IStateChangeFanout }         from '../../contracts/state-change-fanout';
+import type { IWebSocketPushTarget }       from '../../contracts/websocket-push';
+import type { IDataBlobStore }             from '../buckets/data-blob-store';
+import { EmailSubmissionsQueueEvent }      from '../events/email-submissions-queue-event';
+import type { IEmailSendingQueueConsumer } from '../queues/email-sending-queue';
+import type { IDataTable }                 from '../tables/data-tables';
 
 /**
  * The tables, blob store and submission queue the sender reads and writes, and the SES configuration
@@ -57,9 +58,9 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
     new EmailSubmissionsQueueEvent(this, 'email-submissions-queue', { target: this, queue: props.submissionQueue });
   }
 
-  public enableWebSocketPush(broadcaster: IWebSocketBroadcastPublisher): void {
-    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', broadcaster.functionName);
-    broadcaster.grantInvoke(this);
+  public enableWebSocketPush(stateChangeFanout: IStateChangeFanout): void {
+    this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', stateChangeFanout.functionName);
+    stateChangeFanout.grantInvoke(this);
   }
 
   private grantSesSendRawEmail(sesConfigSetName: string) {

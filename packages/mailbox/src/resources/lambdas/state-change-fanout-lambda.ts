@@ -1,13 +1,14 @@
-import type { IArtifactResolver }                               from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                                             from '@serverlessinbox/mailbox-cdk-shared';
-import { PolicyStatement }                                      from 'aws-cdk-lib/aws-iam';
-import { Duration }                                             from 'aws-cdk-lib';
-import { Construct }                                            from 'constructs';
+import type { IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                from '@serverlessinbox/mailbox-cdk-shared';
+import { PolicyStatement }         from 'aws-cdk-lib/aws-iam';
+import { Duration }                from 'aws-cdk-lib';
+import { Construct }               from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushApi } from '../../contracts/websocket-push';
-import type { IPatTable }                                       from '../tables/data-pat-table';
-import type { IDataTable }                                      from '../tables/data-tables';
-import { IWebSocketTable }                                      from '../tables/websocket-table';
+import type { IStateChangeFanout } from '../../contracts/state-change-fanout';
+import type { IWebSocketPushApi }  from '../../contracts/websocket-push';
+import type { IPatTable }          from '../tables/data-pat-table';
+import type { IDataTable }         from '../tables/data-tables';
+import { IWebSocketTable }         from '../tables/websocket-table';
 
 /**
  * The connections table it queries and prunes, the WebSocket push API it posts to, the config, item and token tables it
@@ -23,7 +24,7 @@ export interface StateChangeFanoutLambdaProps {
 }
 
 /** The Go Lambda that fans a state change out to the WebSocket connections and the push subscriptions that are owed it. */
-export class StateChangeFanoutLambda extends GoLambda implements IWebSocketBroadcastPublisher {
+export class StateChangeFanoutLambda extends GoLambda implements IStateChangeFanout {
   constructor(scope: Construct, id: string, props: StateChangeFanoutLambdaProps) {
     super(scope, id, {
       lambdaId:         'state-change-fanout',
