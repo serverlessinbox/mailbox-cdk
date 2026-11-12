@@ -3,7 +3,8 @@ import { ComponentDescription, type QueueEncryptionChoice }         from '@serve
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cdk-lib/aws-ses';
 import { Construct }                                                from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget }  from '../../contracts/websocket-push';
+import type { IStateChangeFanout }                                  from '../../contracts/state-change-fanout';
+import type { IWebSocketPushTarget }                                from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                      from '../../resources/buckets/data-blob-store';
 import { SesEventProcessorLambda }                                  from '../../resources/lambdas/ses-event-processor-lambda';
 import type { IAuditEventsQueue }                                   from '../../resources/queues/audit-events-queue';
@@ -79,7 +80,7 @@ export class SesEventProcessing extends Construct {
     });
   }
 
-  public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
-    this.sesEventProcessorLambda.enableWebSocketPush(broadcaster);
+  public enableWebSocketPublishing(stateChangeFanout: IStateChangeFanout): void {
+    this.sesEventProcessorLambda.enableWebSocketPush(stateChangeFanout);
   }
 }

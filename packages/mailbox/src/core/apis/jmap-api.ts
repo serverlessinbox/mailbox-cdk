@@ -18,7 +18,8 @@ import { Construct }                                                            
 import type { IConstruct }                                                      from 'constructs';
 
 import { AuthPolicyName }                                                       from '../../contracts/auth-names';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTargetWithUrl }       from '../../contracts/websocket-push';
+import type { IStateChangeFanout }                                              from '../../contracts/state-change-fanout';
+import type { IWebSocketPushTargetWithUrl }                                     from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                                  from '../../resources/buckets/data-blob-store';
 import { AuthorizerLambda }                                                     from '../../resources/lambdas/authorizer-lambda';
 import type { IIdentityProvisioner }                                            from '../../resources/lambdas/identity-provisioner-lambda';
@@ -155,9 +156,9 @@ export class JmapApi extends Construct {
     }
   }
 
-  /** Lets the handler Lambda publish through `broadcaster` to the WebSocket API at `webSocketUrl`. */
-  public enableWebSocketPublishing(webSocketUrl: string, broadcaster: IWebSocketBroadcastPublisher): void {
-    this.apiHandlerLambda.enableWebSocketPush(webSocketUrl, broadcaster);
+  /** Lets the handler Lambda publish through state-change fan-out to the WebSocket API at `webSocketUrl`. */
+  public enableWebSocketPublishing(webSocketUrl: string, stateChangeFanout: IStateChangeFanout): void {
+    this.apiHandlerLambda.enableWebSocketPush(webSocketUrl, stateChangeFanout);
   }
 
   private corsPreflight(allowedOrigins: string[] | undefined): CorsPreflightOptions | undefined {

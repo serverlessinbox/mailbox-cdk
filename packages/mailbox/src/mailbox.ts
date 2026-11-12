@@ -147,9 +147,9 @@ export class Mailbox extends Construct {
       enableMcp:           props.enableMcp,
     });
 
-    // The email and mail-import Lambdas can push over the WebSocket only once the endpoints' broadcaster exists.
-    email.enableWebSocketPublishing(endpoints.broadcaster);
-    jobs.enableWebSocketPublishing(endpoints.broadcaster);
+    // The email and mail-import Lambdas can push over the WebSocket only once the endpoints' state-change fan-out exists.
+    email.enableWebSocketPublishing(endpoints.stateChangeFanout);
+    jobs.enableWebSocketPublishing(endpoints.stateChangeFanout);
 
     // DNS records point at the UIs, the CDN and the API endpoints, so they come after all three.
     edge.addDns({ ui, blobCdn, apis: endpoints });

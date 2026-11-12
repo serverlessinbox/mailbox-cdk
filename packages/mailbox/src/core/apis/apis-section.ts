@@ -4,7 +4,7 @@ import type { VendorLink }                                                      
 import type * as acm                                                            from 'aws-cdk-lib/aws-certificatemanager';
 import { Construct }                                                            from 'constructs';
 
-import type { IWebSocketBroadcastPublisher }                                    from '../../contracts/websocket-push';
+import type { IStateChangeFanout }                                              from '../../contracts/state-change-fanout';
 import type { IDataBlobStore }                                                  from '../../resources/buckets/data-blob-store';
 import type { IIdentityProvisioner }                                            from '../../resources/lambdas/identity-provisioner-lambda';
 import type { IMailImportRunner }                                               from '../../resources/lambdas/mail-import-runner-lambda';
@@ -122,7 +122,7 @@ export interface ApisEndpointsProps {
 /** What the endpoints built by {@link ApisSection.addEndpoints} offer to the rest of the mail server. */
 export interface IApisEndpoints {
   /** The capability to publish changes to connected WebSocket clients. */
-  readonly broadcaster: IWebSocketBroadcastPublisher;
+  readonly stateChangeFanout: IStateChangeFanout;
   /** CNAME target of the shared API's custom domain, when it has one. */
   readonly apiDomainTarget?: string;
   /** CNAME target of the JMAP API custom domain, when it has one. */
@@ -228,7 +228,7 @@ export class ApisSection extends Construct {
     webSocketPush.domainLogicalIdPin?.overrideLogicalId('MailboxwebsocketpushdomainCACDAF3B');
 
     return {
-      broadcaster:           stateChangeFanout,
+      stateChangeFanout:     stateChangeFanout,
       apiDomainTarget:       gateway.domainTarget,
       jmapApiDomainTarget:   jmapApi.domainTarget,
       webSocketDomainTarget: webSocketPush.domainTarget,

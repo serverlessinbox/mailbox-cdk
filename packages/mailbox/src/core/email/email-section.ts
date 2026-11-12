@@ -1,23 +1,24 @@
-import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
-import type { QueueEncryptionChoice }                              from '@serverlessinbox/mailbox-cdk-shared';
-import { applyServerlessInboxComponentTag }                        from '@serverlessinbox/mailbox-cdk-shared';
-import type { IBucket }                                            from 'aws-cdk-lib/aws-s3';
-import type { IReceiptRuleSet }                                    from 'aws-cdk-lib/aws-ses';
-import { Construct }                                               from 'constructs';
+import type { IArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
+import type { QueueEncryptionChoice }       from '@serverlessinbox/mailbox-cdk-shared';
+import { applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
+import type { IBucket }                     from 'aws-cdk-lib/aws-s3';
+import type { IReceiptRuleSet }             from 'aws-cdk-lib/aws-ses';
+import { Construct }                        from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
-import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
-import { EmailProcessorLambda }                                    from '../../resources/lambdas/email-processor-lambda';
-import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
-import type { IEmailSendingQueue }                                 from '../../resources/queues/email-sending-queue';
-import type { DynamoTableEncryptionProps }                         from '../../resources/tables/data-table-props';
-import type { IDataTable }                                         from '../../resources/tables/data-tables';
-import type { IMailLogTable }                                      from '../../resources/tables/mail-log-table';
-import { MailLogTable }                                            from '../../resources/tables/mail-log-table';
+import type { IStateChangeFanout }          from '../../contracts/state-change-fanout';
+import type { IWebSocketPushTarget }        from '../../contracts/websocket-push';
+import type { IDataBlobStore }              from '../../resources/buckets/data-blob-store';
+import { EmailProcessorLambda }             from '../../resources/lambdas/email-processor-lambda';
+import type { IAuditEventsQueue }           from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }          from '../../resources/queues/email-sending-queue';
+import type { DynamoTableEncryptionProps }  from '../../resources/tables/data-table-props';
+import type { IDataTable }                  from '../../resources/tables/data-tables';
+import type { IMailLogTable }               from '../../resources/tables/mail-log-table';
+import { MailLogTable }                     from '../../resources/tables/mail-log-table';
 
-import { EmailSending }                                            from './email-sending';
-import { SesEventProcessing }                                      from './ses-event-processing';
-import { SesRules }                                                from './ses-rules';
+import { EmailSending }                     from './email-sending';
+import { SesEventProcessing }               from './ses-event-processing';
+import { SesRules }                         from './ses-rules';
 
 /** What {@link EmailSection} uses of the data section. */
 export interface IEmailDataInputs {
@@ -107,9 +108,9 @@ export class EmailSection extends Construct {
   }
 
   /** Enables WebSocket push emission from the ChangeTracker in each Lambda that records changelog state. */
-  public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
-    this.emailProcessorLambda.enableWebSocketPush(broadcaster);
-    this.emailSending.enableWebSocketPublishing(broadcaster);
-    this.sesEventProcessing.enableWebSocketPublishing(broadcaster);
+  public enableWebSocketPublishing(stateChangeFanout: IStateChangeFanout): void {
+    this.emailProcessorLambda.enableWebSocketPush(stateChangeFanout);
+    this.emailSending.enableWebSocketPublishing(stateChangeFanout);
+    this.sesEventProcessing.enableWebSocketPublishing(stateChangeFanout);
   }
 }

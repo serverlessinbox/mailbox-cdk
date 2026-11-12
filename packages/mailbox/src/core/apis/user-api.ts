@@ -1,23 +1,24 @@
-import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
-import { HttpLambdaAuthorizer }                                    from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpMethod }                                              from 'aws-cdk-lib/aws-apigatewayv2';
-import { Duration }                                                from 'aws-cdk-lib';
-import { Construct }                                               from 'constructs';
+import type { IArtifactResolver }    from '@serverlessinbox/artifact-registry-cdk';
+import { HttpLambdaAuthorizer }      from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpMethod }                from 'aws-cdk-lib/aws-apigatewayv2';
+import { Duration }                  from 'aws-cdk-lib';
+import { Construct }                 from 'constructs';
 
-import { AuthPolicyName }                                          from '../../contracts/auth-names';
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
-import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
-import { AuthorizerLambda }                                        from '../../resources/lambdas/authorizer-lambda';
-import type { IMailImportRunner }                                  from '../../resources/lambdas/mail-import-runner-lambda';
-import { UserApiLambda }                                           from '../../resources/lambdas/user-api-lambda';
-import type { IAuditEventsQueue }                                  from '../../resources/queues/audit-events-queue';
-import type { IImportJobsQueue }                                   from '../../resources/queues/import-jobs-queue';
-import type { IAuthKeyStoreTable }                                 from '../../resources/tables/auth-key-store-table';
-import type { IPatTable }                                          from '../../resources/tables/data-pat-table';
-import type { IDataTable }                                         from '../../resources/tables/data-tables';
-import type { ScopeMap }                                           from '../auth/jmap-scopes';
+import { AuthPolicyName }            from '../../contracts/auth-names';
+import type { IStateChangeFanout }   from '../../contracts/state-change-fanout';
+import type { IWebSocketPushTarget } from '../../contracts/websocket-push';
+import type { IDataBlobStore }       from '../../resources/buckets/data-blob-store';
+import { AuthorizerLambda }          from '../../resources/lambdas/authorizer-lambda';
+import type { IMailImportRunner }    from '../../resources/lambdas/mail-import-runner-lambda';
+import { UserApiLambda }             from '../../resources/lambdas/user-api-lambda';
+import type { IAuditEventsQueue }    from '../../resources/queues/audit-events-queue';
+import type { IImportJobsQueue }     from '../../resources/queues/import-jobs-queue';
+import type { IAuthKeyStoreTable }   from '../../resources/tables/auth-key-store-table';
+import type { IPatTable }            from '../../resources/tables/data-pat-table';
+import type { IDataTable }           from '../../resources/tables/data-tables';
+import type { ScopeMap }             from '../auth/jmap-scopes';
 
-import type { ApiRoute, IApiArea }                                 from './api-area';
+import type { ApiRoute, IApiArea }   from './api-area';
 
 /** Inputs of {@link UserApi}: the tables, queues, runner, resolver and OAuth scope map its Lambda and authorizer use. */
 export interface UserApiProps {
@@ -84,8 +85,8 @@ export class UserApi extends Construct implements IApiArea {
     }];
   }
 
-  /** Lets the handler Lambda publish through `broadcaster` to connected WebSocket clients. */
-  public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
-    this.apiHandlerLambda.enableWebSocketPush(broadcaster);
+  /** Lets the handler Lambda publish through state-change fan-out to connected WebSocket clients. */
+  public enableWebSocketPublishing(stateChangeFanout: IStateChangeFanout): void {
+    this.apiHandlerLambda.enableWebSocketPush(stateChangeFanout);
   }
 }

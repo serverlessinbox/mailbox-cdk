@@ -1,12 +1,13 @@
-import type { IArtifactResolver }                                  from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription, type QueueEncryptionChoice }        from '@serverlessinbox/mailbox-cdk-shared';
-import { Construct }                                               from 'constructs';
+import type { IArtifactResolver }                           from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription, type QueueEncryptionChoice } from '@serverlessinbox/mailbox-cdk-shared';
+import { Construct }                                        from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushTarget } from '../../contracts/websocket-push';
-import type { IDataBlobStore }                                     from '../../resources/buckets/data-blob-store';
-import { EmailSenderLambda }                                       from '../../resources/lambdas/email-sender-lambda';
-import { EmailSendingQueue, type IEmailSendingQueue }              from '../../resources/queues/email-sending-queue';
-import type { IDataTable }                                         from '../../resources/tables/data-tables';
+import type { IStateChangeFanout }                          from '../../contracts/state-change-fanout';
+import type { IWebSocketPushTarget }                        from '../../contracts/websocket-push';
+import type { IDataBlobStore }                              from '../../resources/buckets/data-blob-store';
+import { EmailSenderLambda }                                from '../../resources/lambdas/email-sender-lambda';
+import { EmailSendingQueue, type IEmailSendingQueue }       from '../../resources/queues/email-sending-queue';
+import type { IDataTable }                                  from '../../resources/tables/data-tables';
 
 /** Props of {@link EmailSending}. */
 export interface EmailSendingProps {
@@ -52,7 +53,7 @@ export class EmailSending extends Construct {
     });
   }
 
-  public enableWebSocketPublishing(broadcaster: IWebSocketBroadcastPublisher): void {
-    this.emailSenderLambda.enableWebSocketPush(broadcaster);
+  public enableWebSocketPublishing(stateChangeFanout: IStateChangeFanout): void {
+    this.emailSenderLambda.enableWebSocketPush(stateChangeFanout);
   }
 }
