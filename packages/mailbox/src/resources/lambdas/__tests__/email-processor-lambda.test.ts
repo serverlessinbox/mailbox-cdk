@@ -9,7 +9,7 @@
 
 import { Template }                                                             from 'aws-cdk-lib/assertions';
 
-import type { IWebSocketBroadcastPublisher }                                    from '../../../contracts/websocket-push';
+import type { IStateChangeFanout }                                              from '../../../contracts/state-change-fanout';
 import { EmailProcessingQueueEvent }                                            from '../../events/email-processing-queue-event';
 import { EmailProcessorLambda }                                                 from '../email-processor-lambda';
 
@@ -100,13 +100,13 @@ describe('EmailProcessorLambda', () => {
     expect(EmailProcessingQueueEvent).toHaveBeenCalledWith(lambda, 'email-processing-queue', { target: lambda, queue: emailProcessingQueue });
   });
 
-  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the broadcaster grant itself invokable', () => {
-    const { lambda, stack }                         = synthesize();
-    const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
+  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the state-change fan-out grant itself invokable', () => {
+    const { lambda, stack }                     = synthesize();
+    const stateChangeFanout: IStateChangeFanout = { functionName: 'fanout-function', grantInvoke: jest.fn() };
 
-    lambda.enableWebSocketPush(broadcaster);
+    lambda.enableWebSocketPush(stateChangeFanout);
 
-    expect(onlyLambdaOf(Template.fromStack(stack)).environment).toMatchObject({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcast-fn' });
-    expect(broadcaster.grantInvoke).toHaveBeenCalledWith(lambda);
+    expect(onlyLambdaOf(Template.fromStack(stack)).environment).toMatchObject({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'fanout-function' });
+    expect(stateChangeFanout.grantInvoke).toHaveBeenCalledWith(lambda);
   });
 });

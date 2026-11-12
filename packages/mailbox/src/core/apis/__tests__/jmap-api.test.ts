@@ -19,7 +19,7 @@ import { Function as LambdaFunction }                    from 'aws-cdk-lib/aws-l
 import { Bucket }                                        from 'aws-cdk-lib/aws-s3';
 import * as cdk                                          from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }             from '../../../contracts/websocket-push';
+import type { IStateChangeFanout }                       from '../../../contracts/state-change-fanout';
 import { DataBlobStore }                                 from '../../../resources/buckets/data-blob-store';
 import { AuditEventsQueue }                              from '../../../resources/queues/audit-events-queue';
 import { EmailSendingQueue }                             from '../../../resources/queues/email-sending-queue';
@@ -246,13 +246,13 @@ describe('JmapApi', () => {
   });
 
   describe('enableWebSocketPublishing', () => {
-    it('lets the handler Lambda invoke the broadcaster', () => {
-      const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
-      const sut                                       = new JmapApi(stack, 'jmap-api', propsWith());
+    it('lets the handler Lambda invoke the state-change fan-out', () => {
+      const stateChangeFanout: IStateChangeFanout = { functionName: 'fanout-function', grantInvoke: jest.fn() };
+      const sut                                   = new JmapApi(stack, 'jmap-api', propsWith());
 
-      sut.enableWebSocketPublishing('wss://ws.example.com', broadcaster);
+      sut.enableWebSocketPublishing('wss://ws.example.com', stateChangeFanout);
 
-      expect(broadcaster.grantInvoke).toHaveBeenCalledTimes(1);
+      expect(stateChangeFanout.grantInvoke).toHaveBeenCalledTimes(1);
     });
   });
 });

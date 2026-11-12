@@ -15,7 +15,7 @@ import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
 import { resourcesOfType }                      from '../../../__tests__/iam-test-helpers';
-import type { IWebSocketBroadcastPublisher }    from '../../../contracts/websocket-push';
+import type { IStateChangeFanout }              from '../../../contracts/state-change-fanout';
 import { DataBlobStore }                        from '../../buckets/data-blob-store';
 import { ImportJobsQueue }                      from '../../queues/import-jobs-queue';
 import { AuthKeyStoreTable }                    from '../../tables/auth-key-store-table';
@@ -67,9 +67,9 @@ function dataTable(stack: cdk.Stack, id: string): DataTable {
 
 /**
  * Synthesizes the runner with the real tables, blob bucket, queue and auth key store, encrypted with a customer key when asked.
- * When a broadcaster is given, the runner is pointed at it before the template is taken.
+ * When a state-change fan-out is given, the runner is pointed at it before the template is taken.
  */
-function arrangeRunner(encrypted: boolean, broadcaster?: IWebSocketBroadcastPublisher) {
+function arrangeRunner(encrypted: boolean, stateChangeFanout?: IStateChangeFanout) {
   const stack     = createStack();
   const itemTable = dataTable(stack, 'item-table');
   const key       = encrypted ? new kms.Key(stack, 'AuthKey') : undefined;
@@ -82,8 +82,8 @@ function arrangeRunner(encrypted: boolean, broadcaster?: IWebSocketBroadcastPubl
     importJobsQueue:   new ImportJobsQueue(stack, 'import-jobs-queue', { encryption: { kind: 'aws-managed' } }),
     authKeyStoreTable: new AuthKeyStoreTable(stack, 'auth-key-store', key),
   });
-  if (broadcaster) {
-    runner.enableWebSocketPush(broadcaster);
+  if (stateChangeFanout) {
+    runner.enableWebSocketPush(stateChangeFanout);
   }
 
   return { stack, runner, template: Template.fromStack(stack), itemTable };
@@ -157,11 +157,11 @@ describe('MailImportRunnerLambda', () => {
     expect(kmsStatementCount(arrangeRunner(true).template)).toBeGreaterThan(0);
   });
 
-  it('pushes over the WebSocket once enabled: the broadcaster name is in its environment and the runner is granted the invoke', () => {
+  it('pushes over the WebSocket once enabled: the state-change fan-out name is in its environment and the runner is granted the invoke', () => {
     const grantInvoke          = jest.fn();
-    const { runner, template } = arrangeRunner(false, { functionName: 'broadcaster-function', grantInvoke });
+    const { runner, template } = arrangeRunner(false, { functionName: 'fanout-function', grantInvoke });
 
-    expect(runnerProperties(template).Environment.Variables.WEBSOCKET_BROADCAST_FUNCTION_NAME).toBe('broadcaster-function');
+    expect(runnerProperties(template).Environment.Variables.WEBSOCKET_BROADCAST_FUNCTION_NAME).toBe('fanout-function');
     expect(grantInvoke).toHaveBeenCalledTimes(1);
     expect(grantInvoke).toHaveBeenCalledWith(runner);
   });

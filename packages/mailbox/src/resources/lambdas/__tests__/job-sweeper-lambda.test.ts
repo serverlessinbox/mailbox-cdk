@@ -12,7 +12,7 @@ import * as cdk                                                                 
 import { App, BootstraplessSynthesizer, Duration }                              from 'aws-cdk-lib';
 
 import { resourcesOfType }                                                      from '../../../__tests__/iam-test-helpers';
-import type { IWebSocketBroadcastPublisher }                                    from '../../../contracts/websocket-push';
+import type { IStateChangeFanout }                                              from '../../../contracts/state-change-fanout';
 import { DataTable }                                                            from '../../tables/data-tables';
 import { JobSweeperLambda }                                                     from '../job-sweeper-lambda';
 
@@ -31,7 +31,7 @@ interface FunctionProperties {
   readonly MemorySize:  number;
 }
 
-function arrangeSweeper(broadcaster?: IWebSocketBroadcastPublisher) {
+function arrangeSweeper(stateChangeFanout?: IStateChangeFanout) {
   const stack            = new cdk.Stack(new App(), 'TestStack', {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
@@ -65,8 +65,8 @@ function arrangeSweeper(broadcaster?: IWebSocketBroadcastPublisher) {
     staleAfter:          Duration.hours(2),
   });
 
-  if (broadcaster) {
-    lambda.enableWebSocketPush(broadcaster);
+  if (stateChangeFanout) {
+    lambda.enableWebSocketPush(stateChangeFanout);
   }
 
   return { stack, lambda, template: Template.fromStack(stack), itemTable, patTable, configTable, changelogTable, blobStore, auditEventsQueue };
@@ -131,13 +131,13 @@ describe('JobSweeperLambda', () => {
     });
   });
 
-  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the broadcaster grant itself invokable', () => {
-    const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
+  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the state-change fan-out grant itself invokable', () => {
+    const stateChangeFanout: IStateChangeFanout = { functionName: 'fanout-function', grantInvoke: jest.fn() };
 
-    const { lambda, template } = arrangeSweeper(broadcaster);
+    const { lambda, template } = arrangeSweeper(stateChangeFanout);
 
-    expect(sweeperProperties(template).Environment.Variables).toMatchObject({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcast-fn' });
-    expect(broadcaster.grantInvoke).toHaveBeenCalledWith(lambda);
+    expect(sweeperProperties(template).Environment.Variables).toMatchObject({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'fanout-function' });
+    expect(stateChangeFanout.grantInvoke).toHaveBeenCalledWith(lambda);
   });
 
   it('registers a schedule that invokes it every 15 minutes', () => {

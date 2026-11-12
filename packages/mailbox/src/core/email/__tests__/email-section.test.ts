@@ -13,7 +13,7 @@ import { CfnResource, TagManager }                     from 'aws-cdk-lib';
 import type { Stack }                                  from 'aws-cdk-lib';
 
 import { newDeployerTestStack, TEST_ARTIFACT_VERSION } from '../../../__tests__/deployer-test-helpers';
-import type { IWebSocketBroadcastPublisher }           from '../../../contracts/websocket-push';
+import type { IStateChangeFanout }                     from '../../../contracts/state-change-fanout';
 import { DataBlobStore }                               from '../../../resources/buckets/data-blob-store';
 import { AuditEventsQueue }                            from '../../../resources/queues/audit-events-queue';
 import { DataTable }                                   from '../../../resources/tables/data-tables';
@@ -75,18 +75,18 @@ describe('EmailSection', () => {
   });
 
   it('enableWebSocketPublishing reaches the three Lambdas that record changelog state', () => {
-    const { stack }                                 = newDeployerTestStack();
-    const section                                   = newSection(stack);
-    const broadcaster: IWebSocketBroadcastPublisher = {
-      functionName: 'broadcaster-function',
+    const { stack }                             = newDeployerTestStack();
+    const section                               = newSection(stack);
+    const stateChangeFanout: IStateChangeFanout = {
+      functionName: 'fanout-function',
       grantInvoke:  () => undefined,
     };
 
-    section.enableWebSocketPublishing(broadcaster);
+    section.enableWebSocketPublishing(stateChangeFanout);
 
     const publishing = Template.fromStack(stack).findResources('AWS::Lambda::Function', {
       Properties: {
-        Environment: { Variables: Match.objectLike({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcaster-function' }) },
+        Environment: { Variables: Match.objectLike({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'fanout-function' }) },
       },
     });
     expect(Object.keys(publishing)).toHaveLength(3);

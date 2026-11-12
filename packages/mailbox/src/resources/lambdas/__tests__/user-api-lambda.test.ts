@@ -13,7 +13,7 @@ import { AttributeType, Table }                                                 
 import * as cdk                                                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                                        from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }                                    from '../../../contracts/websocket-push';
+import type { IStateChangeFanout }                                              from '../../../contracts/state-change-fanout';
 import { Permission }                                                           from '../../../core/auth/jmap-scopes';
 import type { ScopeMap }                                                        from '../../../core/auth/jmap-scopes';
 import { AuditEventsQueue }                                                     from '../../queues/audit-events-queue';
@@ -46,7 +46,7 @@ describe('UserApiLambda', () => {
     }));
   }
 
-  function synthesize(broadcaster?: IWebSocketBroadcastPublisher): Template {
+  function synthesize(stateChangeFanout?: IStateChangeFanout): Template {
     const scopeMap: ScopeMap = { 'mail-reader': [Permission.MAIL_READ_ITEMS] };
 
     const configTable       = dataTable('config-table');
@@ -86,8 +86,8 @@ describe('UserApiLambda', () => {
     itemTableArnOf   = stack.resolve(itemTable.tableArn);
     configTableArnOf = stack.resolve(configTable.tableArn);
 
-    if (broadcaster) {
-      lambda.enableWebSocketPush(broadcaster);
+    if (stateChangeFanout) {
+      lambda.enableWebSocketPush(stateChangeFanout);
     }
 
     return Template.fromStack(stack);
@@ -202,14 +202,14 @@ describe('UserApiLambda', () => {
     expect(mailImportRunner.grantInvoke).toHaveBeenCalledTimes(1);
   });
 
-  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the broadcaster grant itself invokable', () => {
-    const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
+  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the state-change fan-out grant itself invokable', () => {
+    const stateChangeFanout: IStateChangeFanout = { functionName: 'fanout-function', grantInvoke: jest.fn() };
 
-    const template = synthesize(broadcaster);
+    const template = synthesize(stateChangeFanout);
 
     template.hasResourceProperties('AWS::Lambda::Function', {
-      Environment: { Variables: Match.objectLike({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcast-fn' }) },
+      Environment: { Variables: Match.objectLike({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'fanout-function' }) },
     });
-    expect(broadcaster.grantInvoke).toHaveBeenCalledWith(lambda);
+    expect(stateChangeFanout.grantInvoke).toHaveBeenCalledWith(lambda);
   });
 });

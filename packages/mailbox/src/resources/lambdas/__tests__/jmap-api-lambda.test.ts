@@ -13,7 +13,7 @@ import { VENDOR_ACCOUNT_ID }                                                    
 import { Template }                                                             from 'aws-cdk-lib/assertions';
 import { Table }                                                                from 'aws-cdk-lib/aws-dynamodb';
 
-import type { IWebSocketBroadcastPublisher }                                    from '../../../contracts/websocket-push';
+import type { IStateChangeFanout }                                              from '../../../contracts/state-change-fanout';
 import { Permission }                                                           from '../../../core/auth/jmap-scopes';
 import { DataPatTable }                                                         from '../../tables/data-pat-table';
 import { JmapApiLambda }                                                        from '../jmap-api-lambda';
@@ -159,16 +159,16 @@ describe('JmapApiLambda', () => {
     ]);
   });
 
-  it('enableWebSocketPush sets the websocket URL and broadcaster name and lets the broadcaster grant itself invokable', () => {
-    const { lambda, stack }                         = synthesize();
-    const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
+  it('enableWebSocketPush sets the websocket URL and state-change fan-out name and lets the state-change fan-out grant itself invokable', () => {
+    const { lambda, stack }                     = synthesize();
+    const stateChangeFanout: IStateChangeFanout = { functionName: 'fanout-function', grantInvoke: jest.fn() };
 
-    lambda.enableWebSocketPush('wss://ws.example.com', broadcaster);
+    lambda.enableWebSocketPush('wss://ws.example.com', stateChangeFanout);
 
     expect(onlyLambdaOf(Template.fromStack(stack)).environment).toMatchObject({
       WEBSOCKET_URL:                     'wss://ws.example.com',
-      WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcast-fn',
+      WEBSOCKET_BROADCAST_FUNCTION_NAME: 'fanout-function',
     });
-    expect(broadcaster.grantInvoke).toHaveBeenCalledWith(lambda);
+    expect(stateChangeFanout.grantInvoke).toHaveBeenCalledWith(lambda);
   });
 });

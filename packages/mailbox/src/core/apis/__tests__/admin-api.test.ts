@@ -14,7 +14,7 @@ import { HttpMethod }                                                           
 import type { IFunction }                                                       from 'aws-cdk-lib/aws-lambda';
 import * as cdk                                                                 from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }                                    from '../../../contracts/websocket-push';
+import type { IStateChangeFanout }                                              from '../../../contracts/state-change-fanout';
 import type { IAdminApiAddon }                                                  from '../addons';
 import { AdminApi }                                                             from '../admin-api';
 import type { AdminApiProps }                                                   from '../admin-api';
@@ -164,13 +164,13 @@ describe('AdminApi', () => {
   });
 
   describe('enableWebSocketPublishing', () => {
-    it('lets the handler Lambda invoke the broadcaster', () => {
-      const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
-      const sut                                       = new AdminApi(stack, 'admin', propsWith());
+    it('lets the handler Lambda invoke the state-change fan-out', () => {
+      const stateChangeFanout: IStateChangeFanout = { functionName: 'fanout-function', grantInvoke: jest.fn() };
+      const sut                                   = new AdminApi(stack, 'admin', propsWith());
 
-      sut.enableWebSocketPublishing(broadcaster);
+      sut.enableWebSocketPublishing(stateChangeFanout);
 
-      expect(broadcaster.grantInvoke).toHaveBeenCalledTimes(1);
+      expect(stateChangeFanout.grantInvoke).toHaveBeenCalledTimes(1);
     });
   });
 });

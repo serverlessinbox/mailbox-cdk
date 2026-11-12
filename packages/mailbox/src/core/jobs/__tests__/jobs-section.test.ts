@@ -175,18 +175,18 @@ describe('JobsSection', () => {
     expect(sweeper.Timeout).toBeLessThan(sweepInterval);
   });
 
-  it('enables WebSocket push on the runner and the sweeper: the broadcaster is in their environments and each is granted the invoke', () => {
+  it('enables WebSocket push on the runner and the sweeper: the state-change fan-out is in their environments and each is granted the invoke', () => {
     const stack       = createStack();
     const section     = new JobsSection(stack, 'jobs', sectionProps(stack, new AuthKeyStoreTable(stack, 'auth-key-store')));
     const grantInvoke = jest.fn();
 
-    section.enableWebSocketPublishing({ functionName: 'broadcaster-function', grantInvoke });
+    section.enableWebSocketPublishing({ functionName: 'fanout-function', grantInvoke });
 
     const template = Template.fromStack(stack);
     const runner   = functionWith(template, 'IMPORT_MESSAGES_PER_SECOND');
     const sweeper  = functionWith(template, 'JOB_STALE_AFTER');
-    expect(runner.Environment.Variables.WEBSOCKET_BROADCAST_FUNCTION_NAME).toBe('broadcaster-function');
-    expect(sweeper.Environment.Variables.WEBSOCKET_BROADCAST_FUNCTION_NAME).toBe('broadcaster-function');
+    expect(runner.Environment.Variables.WEBSOCKET_BROADCAST_FUNCTION_NAME).toBe('fanout-function');
+    expect(sweeper.Environment.Variables.WEBSOCKET_BROADCAST_FUNCTION_NAME).toBe('fanout-function');
     expect(grantInvoke).toHaveBeenCalledTimes(2);
     expect(grantInvoke).toHaveBeenCalledWith(section.mailImportRunner);
   });

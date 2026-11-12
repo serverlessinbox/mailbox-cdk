@@ -417,7 +417,7 @@ describe('ApisSection', () => {
     });
     expect(Object.keys(fanouts)).toHaveLength(1);
     const [fanoutId] = Object.keys(fanouts);
-    expect(stack.resolve(endpoints.broadcaster.functionName)).toEqual({ Ref: fanoutId });
+    expect(stack.resolve(endpoints.stateChangeFanout.functionName)).toEqual({ Ref: fanoutId });
     expect(fanoutId).not.toMatch(/websocketpush/i);
   });
 

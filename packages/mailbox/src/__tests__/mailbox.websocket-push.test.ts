@@ -2,8 +2,8 @@
 
 /**
  * Mailbox-level WebSocket push for the mail-import runner. The runner is built by the jobs section, and the Mailbox
- * points it at the endpoints' broadcaster once the endpoints exist. This synthesizes the full Mailbox and asserts the
- * runner function carries the broadcaster's name, so removing that wiring from the Mailbox turns this red.
+ * points it at the endpoints' state-change fan-out once the endpoints exist. This synthesizes the full Mailbox and asserts the
+ * runner function carries the state-change fan-out's name, so removing that wiring from the Mailbox turns this red.
  */
 
 import { Template }                                      from 'aws-cdk-lib/assertions';
@@ -20,7 +20,7 @@ interface FunctionProperties {
 }
 
 describe('Mailbox mail-import runner WebSocket push', () => {
-  it('gives the runner function the broadcaster name in its environment', () => {
+  it('gives the runner function the state-change fan-out name in its environment', () => {
     const app   = new App({
       context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT },
     });
@@ -42,7 +42,7 @@ describe('Mailbox mail-import runner WebSocket push', () => {
   it.each([
     ['user-api', 'MAIL_IMPORT_RUNNER_FUNCTION_NAME'],
     ['job-sweeper', 'JOB_STALE_AFTER'],
-  ])('gives the %s function the broadcaster name in its environment', (_name, marker) => {
+  ])('gives the %s function the state-change fan-out name in its environment', (_name, marker) => {
     const app   = new App({
       context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT },
     });

@@ -20,7 +20,7 @@ import { Function as LambdaFunction }                               from 'aws-cd
 import { Bucket }                                                   from 'aws-cdk-lib/aws-s3';
 import type * as cdk                                                from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }                        from '../../../contracts/websocket-push';
+import type { IStateChangeFanout }                                  from '../../../contracts/state-change-fanout';
 import { DataBlobStore }                                            from '../../buckets/data-blob-store';
 import { AuditEventsQueue }                                         from '../../queues/audit-events-queue';
 import { EmailSendingQueue }                                        from '../../queues/email-sending-queue';
@@ -262,15 +262,15 @@ describe('AdminApiLambda IAM scoping', () => {
     });
   });
 
-  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the broadcaster grant itself invokable', () => {
-    const broadcaster: IWebSocketBroadcastPublisher = { functionName: 'broadcast-fn', grantInvoke: jest.fn() };
+  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the state-change fan-out grant itself invokable', () => {
+    const stateChangeFanout: IStateChangeFanout = { functionName: 'fanout-function', grantInvoke: jest.fn() };
 
-    lambda.enableWebSocketPush(broadcaster);
+    lambda.enableWebSocketPush(stateChangeFanout);
 
     Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
-      Environment: { Variables: Match.objectLike({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcast-fn' }) },
+      Environment: { Variables: Match.objectLike({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'fanout-function' }) },
     });
-    expect(broadcaster.grantInvoke).toHaveBeenCalledWith(lambda);
+    expect(stateChangeFanout.grantInvoke).toHaveBeenCalledWith(lambda);
   });
 
   it('sets STACK_IDENTITY_TAG_VALUE to the deploy-time stack name', () => {

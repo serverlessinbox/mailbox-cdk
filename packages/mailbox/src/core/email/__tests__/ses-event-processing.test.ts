@@ -12,7 +12,7 @@ import { Bucket }                                           from 'aws-cdk-lib/aw
 import * as cdk                                             from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }                    from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }                from '../../../contracts/websocket-push';
+import type { IStateChangeFanout }                          from '../../../contracts/state-change-fanout';
 import { DataBlobStore }                                    from '../../../resources/buckets/data-blob-store';
 import { AuditEventsQueue }                                 from '../../../resources/queues/audit-events-queue';
 import { DataTable }                                        from '../../../resources/tables/data-tables';
@@ -86,21 +86,21 @@ describe('SesEventProcessing', () => {
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', { EventSourceArn: subscribedQueueArn.asObject() });
   });
 
-  it('enableWebSocketPublishing sets the broadcaster function name on the processor Lambda', () => {
-    const stack                                     = createStack();
-    const sut                                       = new SesEventProcessing(stack, 'ses-event-processing', createProps(stack));
-    const broadcaster: IWebSocketBroadcastPublisher = {
-      functionName: 'broadcaster-function',
+  it('enableWebSocketPublishing sets the state-change fan-out function name on the processor Lambda', () => {
+    const stack                                 = createStack();
+    const sut                                   = new SesEventProcessing(stack, 'ses-event-processing', createProps(stack));
+    const stateChangeFanout: IStateChangeFanout = {
+      functionName: 'fanout-function',
       grantInvoke:  () => undefined,
     };
 
-    sut.enableWebSocketPublishing(broadcaster);
+    sut.enableWebSocketPublishing(stateChangeFanout);
 
     const template = Template.fromStack(stack);
     template.resourceCountIs('AWS::Lambda::Function', 1);
     template.hasResourceProperties('AWS::Lambda::Function', {
       Environment: {
-        Variables: Match.objectLike({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcaster-function' }),
+        Variables: Match.objectLike({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'fanout-function' }),
       },
     });
   });

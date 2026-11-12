@@ -13,7 +13,7 @@ import { Bucket }                               from 'aws-cdk-lib/aws-s3';
 import * as cdk                                 from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer }        from 'aws-cdk-lib';
 
-import type { IWebSocketBroadcastPublisher }    from '../../../contracts/websocket-push';
+import type { IStateChangeFanout }              from '../../../contracts/state-change-fanout';
 import { DataBlobStore }                        from '../../../resources/buckets/data-blob-store';
 import { DataTable }                            from '../../../resources/tables/data-tables';
 import { EmailSending, type EmailSendingProps } from '../email-sending';
@@ -71,21 +71,21 @@ describe('EmailSending', () => {
     template.allResourcesProperties('AWS::SQS::Queue', { SqsManagedSseEnabled: false });
   });
 
-  it('enableWebSocketPublishing sets the broadcaster function name on the sender Lambda', () => {
-    const stack                                     = createStack();
-    const sut                                       = new EmailSending(stack, 'email-sending', createProps(stack, AWS_MANAGED));
-    const broadcaster: IWebSocketBroadcastPublisher = {
-      functionName: 'broadcaster-function',
+  it('enableWebSocketPublishing sets the state-change fan-out function name on the sender Lambda', () => {
+    const stack                                 = createStack();
+    const sut                                   = new EmailSending(stack, 'email-sending', createProps(stack, AWS_MANAGED));
+    const stateChangeFanout: IStateChangeFanout = {
+      functionName: 'fanout-function',
       grantInvoke:  () => undefined,
     };
 
-    sut.enableWebSocketPublishing(broadcaster);
+    sut.enableWebSocketPublishing(stateChangeFanout);
 
     const template = Template.fromStack(stack);
     template.resourceCountIs('AWS::Lambda::Function', 1);
     template.hasResourceProperties('AWS::Lambda::Function', {
       Environment: {
-        Variables: Match.objectLike({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'broadcaster-function' }),
+        Variables: Match.objectLike({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'fanout-function' }),
       },
     });
   });
