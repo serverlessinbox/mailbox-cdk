@@ -8,12 +8,12 @@
  * in a stack with an explicit env, where a region, account or partition taken from the stack would
  * render as a literal in the template instead of a Ref. Also pins the custom-domain wiring (stage
  * mapped onto the domain, the domain's logical id pin handed out), that only `$connect` is behind
- * the authorizer, the default subscription limit and the broadcaster handle.
+ * the authorizer, and the default subscription limit.
  */
 
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { ArtifactPin, IArtifactResolver }  from '@serverlessinbox/artifact-registry-cdk';
-import { Capture, Match, Template }             from 'aws-cdk-lib/assertions';
+import { Match, Template }                      from 'aws-cdk-lib/assertions';
 import * as iam                                 from 'aws-cdk-lib/aws-iam';
 import * as lambda                              from 'aws-cdk-lib/aws-lambda';
 import * as cdk                                 from 'aws-cdk-lib';
@@ -169,25 +169,6 @@ describe('WebSocketPush maxSubscriptions', () => {
     Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
       Environment: { Variables: Match.objectLike({ MAX_SUBSCRIPTIONS: '3' }) },
     });
-  });
-});
-
-describe('WebSocketPush.broadcaster', () => {
-  it('names the broadcast function and grants invoke on it', () => {
-    const stack = newApiStack();
-    const sut   = buildWebSocketPush(stack);
-    const role  = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
-
-    sut.broadcaster.grantInvoke(role);
-
-    const broadcastFunctionId = new Capture();
-    Template.fromStack(stack).hasResourceProperties('AWS::IAM::Policy', {
-      Roles:          [{ Ref: stack.getLogicalId(defaultCfnResource(role)) }],
-      PolicyDocument: {
-        Statement: [Match.objectLike({ Action: 'lambda:InvokeFunction', Resource: Match.arrayWith([{ 'Fn::GetAtt': [broadcastFunctionId, 'Arn'] }]) })],
-      },
-    });
-    expect(stack.resolve(sut.broadcaster.functionName)).toEqual({ Ref: broadcastFunctionId.asString() });
   });
 });
 

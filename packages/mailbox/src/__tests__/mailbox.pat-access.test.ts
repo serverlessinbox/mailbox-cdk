@@ -23,7 +23,7 @@ const PAT_TABLE_MARKER        = 'patTableArn';
 const SUBMISSION_QUEUE_MARKER = 'emailsubmissionsqueue';
 
 /** The Lambdas (by SERVICE_NAME) that hold a grant on the token table; a name matches when it starts with an entry. */
-const PAT_GRANTEE_SERVICES = ['authorizer-jmap-api', 'authorizer-user-api', 'authorizer-admin-api', 'jmap-api', 'user-api', 'admin-api', 'job-sweeper'];
+const PAT_GRANTEE_SERVICES = ['authorizer-jmap-api', 'authorizer-user-api', 'authorizer-admin-api', 'jmap-api', 'user-api', 'admin-api', 'state-change-fanout', 'job-sweeper'];
 
 interface PolicyStatement {
   readonly Action?:   string | string[];
@@ -132,7 +132,7 @@ describe('Mailbox personal access token table access (full stack walk)', () => {
     expect(variables).toHaveProperty('PAT_TABLE_NAME');
   });
 
-  it('names the token table only in statements of the authorizers, the JMAP API, the user API, the admin API and the job sweeper', () => {
+  it('names the token table only in statements of the authorizers, the JMAP API, the user API, the admin API, the state-change fan-out and the job sweeper', () => {
     expect(servicesOnTable.size).toBeGreaterThan(0);
     for (const service of servicesOnTable) {
       expect(PAT_GRANTEE_SERVICES.some((allowed) => service.startsWith(allowed))).toBe(true);
@@ -141,6 +141,10 @@ describe('Mailbox personal access token table access (full stack walk)', () => {
 
   it('gives the JMAP API handler only GetItem on the token table', () => {
     expect([...(actionsOnTableByService.get('jmap-api') ?? [])]).toEqual(['dynamodb:GetItem']);
+  });
+
+  it('gives the state-change fan-out only GetItem on the token table', () => {
+    expect([...(actionsOnTableByService.get('state-change-fanout') ?? [])]).toEqual(['dynamodb:GetItem']);
   });
 
   it('reaches the token table from the user API and the job sweeper', () => {

@@ -405,6 +405,22 @@ describe('ApisSection', () => {
     });
   });
 
+  it('returns as its publisher the state-change fan-out, built under the section and tagged messaging', () => {
+    const section   = newSection();
+    const endpoints = section.addEndpoints(endpointsProps());
+
+    const fanouts = Template.fromStack(stack).findResources('AWS::Lambda::Function', {
+      Properties: {
+        Environment: { Variables: { SERVICE_NAME: 'state-change-fanout' } },
+        Tags:        Match.arrayWith([{ Key: ServerlessInboxTagKeys.component, Value: 'messaging' }]),
+      },
+    });
+    expect(Object.keys(fanouts)).toHaveLength(1);
+    const [fanoutId] = Object.keys(fanouts);
+    expect(stack.resolve(endpoints.broadcaster.functionName)).toEqual({ Ref: fanoutId });
+    expect(fanoutId).not.toMatch(/websocketpush/i);
+  });
+
   it('addEndpoints throws when the MCP API is enabled and the edge section has no regional certificate', () => {
     const section = newSection();
 

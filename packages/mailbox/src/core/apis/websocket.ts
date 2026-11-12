@@ -1,27 +1,26 @@
-import type { IArtifactResolver }                               from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription }                                 from '@serverlessinbox/mailbox-cdk-shared';
-import { WebSocketLambdaAuthorizer }                            from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { WebSocketLambdaIntegration }                           from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import type { IArtifactResolver }                   from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }                     from '@serverlessinbox/mailbox-cdk-shared';
+import { WebSocketLambdaAuthorizer }                from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { WebSocketLambdaIntegration }               from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
   ApiMapping,
   WebSocketApi,
   WebSocketStage,
-}                                                               from 'aws-cdk-lib/aws-apigatewayv2';
-import { Effect, IGrantable, PolicyStatement }                  from 'aws-cdk-lib/aws-iam';
-import type { IFunction }                                       from 'aws-cdk-lib/aws-lambda';
-import { ArnFormat, Aws, Stack }                                from 'aws-cdk-lib';
-import { Construct }                                            from 'constructs';
+}                                                   from 'aws-cdk-lib/aws-apigatewayv2';
+import { Effect, IGrantable, PolicyStatement }      from 'aws-cdk-lib/aws-iam';
+import type { IFunction }                           from 'aws-cdk-lib/aws-lambda';
+import { ArnFormat, Aws, Stack }                    from 'aws-cdk-lib';
+import { Construct }                                from 'constructs';
 
-import type { IWebSocketBroadcastPublisher, IWebSocketPushApi } from '../../contracts/websocket-push';
-import { WebSocketBroadcastLambda }                             from '../../resources/lambdas/websocket-broadcast-lambda';
-import { WebSocketConnectLambda }                               from '../../resources/lambdas/websocket-connect-lambda';
-import { WebSocketDisconnectLambda }                            from '../../resources/lambdas/websocket-disconnect-lambda';
-import { WebSocketMessageLambda }                               from '../../resources/lambdas/websocket-message-lambda';
-import type { IDataTable }                                      from '../../resources/tables/data-tables';
-import { WebSocketTable, IWebSocketTable }                      from '../../resources/tables/websocket-table';
+import type { IWebSocketPushApi }                   from '../../contracts/websocket-push';
+import { WebSocketConnectLambda }                   from '../../resources/lambdas/websocket-connect-lambda';
+import { WebSocketDisconnectLambda }                from '../../resources/lambdas/websocket-disconnect-lambda';
+import { WebSocketMessageLambda }                   from '../../resources/lambdas/websocket-message-lambda';
+import type { IDataTable }                          from '../../resources/tables/data-tables';
+import { WebSocketTable, IWebSocketTable }          from '../../resources/tables/websocket-table';
 
-import { ApiCustomDomain }                                      from './api-custom-domain';
-import type { ApiCustomDomainProps, ILogicalIdPin }             from './api-custom-domain';
+import { ApiCustomDomain }                          from './api-custom-domain';
+import type { ApiCustomDomainProps, ILogicalIdPin } from './api-custom-domain';
 
 /** Inputs of {@link WebSocketPush}: the tables and authorizer its route handlers use, and the optional custom domain. */
 export interface WebSocketPushProps {
@@ -41,7 +40,7 @@ export interface WebSocketPushProps {
 /**
  * The WebSocket API used for JMAP Push State notifications: the `WebSocketApi` itself, its
  * single `prod` stage, the `$connect`/`$disconnect`/`$default` routes and Lambda authorizer, the
- * connections table, the route-handler/broadcast Lambdas, and the optional custom-domain mapping.
+ * connections table, the route-handler Lambdas, and the optional custom-domain mapping.
  * The underlying `WebSocketApi`/`WebSocketStage` never leave this construct — callers that need
  * to push messages or read the management endpoint go through `IWebSocketPushApi`.
  *
@@ -58,7 +57,6 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
   /** Fixes the logical id of the custom domain name. Present only when a custom domain is set. */
   public readonly domainLogicalIdPin?: ILogicalIdPin;
   public readonly webSocketTable: IWebSocketTable;
-  public readonly broadcaster: IWebSocketBroadcastPublisher;
   private readonly api: WebSocketApi;
   private readonly stage: WebSocketStage;
 
@@ -91,7 +89,7 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
       this.webSocketUrl = this.stage.url;
     }
 
-    this.broadcaster = this.addRouteHandlers(props);
+    this.addRouteHandlers(props);
   }
 
   /** Allows `execute-api:ManageConnections` on the POST `@connections` path of this API's stage. */
@@ -127,7 +125,7 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
     return domain;
   }
 
-  private addRouteHandlers(props: WebSocketPushProps): IWebSocketBroadcastPublisher {
+  private addRouteHandlers(props: WebSocketPushProps): void {
     const connectLambda = new WebSocketConnectLambda(this, 'connect-handler', {
       connectionsTable: this.webSocketTable,
       configTable:      props.configTable,
@@ -144,12 +142,6 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
       configTable:      props.configTable,
       itemTable:        props.itemTable,
       maxSubscriptions: props.maxSubscriptions ?? 10,
-      webSocketPushApi: this,
-      artifactResolver: props.artifactResolver,
-    });
-
-    const broadcastLambda = new WebSocketBroadcastLambda(this, 'broadcast-handler', {
-      connectionsTable: this.webSocketTable,
       webSocketPushApi: this,
       artifactResolver: props.artifactResolver,
     });
@@ -172,12 +164,5 @@ export class WebSocketPush extends Construct implements IWebSocketPushApi {
     this.api.addRoute('$default', {
       integration: new WebSocketLambdaIntegration('message-integration', messageLambda),
     });
-
-    return {
-      functionName: broadcastLambda.functionName,
-      grantInvoke:  (grantee) => {
-        broadcastLambda.grantInvoke(grantee);
-      },
-    };
   }
 }

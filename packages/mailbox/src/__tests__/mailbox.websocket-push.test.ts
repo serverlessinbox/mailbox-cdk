@@ -60,4 +60,25 @@ describe('Mailbox mail-import runner WebSocket push', () => {
     expect(functions).toHaveLength(1);
     expect(functions[0].Environment.Variables).toHaveProperty('WEBSOCKET_BROADCAST_FUNCTION_NAME');
   });
+
+  it('gives the state-change fan-out the item, config and token table names it reads', () => {
+    const app   = new App({
+      context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT },
+    });
+    const stack = new cdk.Stack(app, 'TestMailboxStateChangeFanout', {
+      env:         { account: '123456789012', region: 'us-west-2' },
+      synthesizer: new BootstraplessSynthesizer(),
+    });
+
+    new Mailbox(stack, 'mailbox', {
+      authProvider: createMockAuthProvider(),
+    });
+
+    const fanouts = resourcesOfType<FunctionProperties>(Template.fromStack(stack), 'AWS::Lambda::Function')
+      .filter((properties) => properties.Environment.Variables.SERVICE_NAME === 'state-change-fanout');
+    expect(fanouts).toHaveLength(1);
+    expect(fanouts[0].Environment.Variables).toHaveProperty('ITEM_TABLE_NAME');
+    expect(fanouts[0].Environment.Variables).toHaveProperty('CONFIG_TABLE_NAME');
+    expect(fanouts[0].Environment.Variables).toHaveProperty('PAT_TABLE_NAME');
+  });
 });

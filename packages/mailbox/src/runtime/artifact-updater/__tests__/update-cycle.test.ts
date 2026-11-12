@@ -330,6 +330,34 @@ describe('UpdateCycle', () => {
       expect(console.info).toHaveBeenCalledWith('artifact update cycle completed', { attempted: 2, failed: 1 });
     });
 
+    it('fails only the function whose artifact is missing', async () => {
+      const missingArtifact = 'missing-artifact.zip';
+      const missing         = lambdaWithType('code', 'arn:aws:lambda:us-east-1:123456789012:function:missing-artifact-fn');
+      const missingTagged   = {
+        ...missing,
+        Tags: missing.Tags?.map((tag) => (tag.Key === ServerlessInboxTagKeys.artifactName ? { ...tag, Value: missingArtifact } : tag)),
+      };
+      const present         = lambdaWithType('code', 'arn:aws:lambda:us-east-1:123456789012:function:admin-api');
+      taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [missingTagged, present] });
+      const { cycle, codeUpdater } = buildUpdaterParts();
+      jest.mocked(codeUpdater.advanceIfStale).mockImplementation(async (_scan, target) => {
+        if (target.artifactName === missingArtifact) {
+          throw new Error(`artifact ${missingArtifact} not found`);
+        }
+        return true;
+      });
+
+      await expect(cycle.run()).resolves.toBeUndefined();
+
+      expect(codeUpdater.advanceIfStale).toHaveBeenCalledTimes(2);
+      expect(console.error).toHaveBeenCalledTimes(1);
+      expect(console.error).toHaveBeenCalledWith('failed to update resource', {
+        arn:   missingTagged.ResourceARN,
+        error: `artifact ${missingArtifact} not found`,
+      });
+      expect(console.info).toHaveBeenCalledWith('artifact update cycle completed', { attempted: 2, failed: 1 });
+    });
+
     it('fails the cycle when every resource it tried failed, after trying them all', async () => {
       taggingMock.on(GetResourcesCommand).resolves({
         ResourceTagMappingList: [

@@ -8,6 +8,7 @@ import type { IWebSocketBroadcastPublisher }                                    
 import type { IDataBlobStore }                                                  from '../../resources/buckets/data-blob-store';
 import type { IIdentityProvisioner }                                            from '../../resources/lambdas/identity-provisioner-lambda';
 import type { IMailImportRunner }                                               from '../../resources/lambdas/mail-import-runner-lambda';
+import { StateChangeFanoutLambda }                                              from '../../resources/lambdas/state-change-fanout-lambda';
 import type { IAuditEventsQueue }                                               from '../../resources/queues/audit-events-queue';
 import type { IEmailSendingQueue }                                              from '../../resources/queues/email-sending-queue';
 import type { IImportJobsQueue }                                                from '../../resources/queues/import-jobs-queue';
@@ -189,6 +190,8 @@ export class ApisSection extends Construct {
       jmapApi,
     );
 
+    const stateChangeFanout = this.addStateChangeFanout(webSocketPush, props.data, props.artifactResolver);
+
     const adminApi = this.addAdminApi(
       this.adminApiAddons,
       props.data,
@@ -216,16 +219,16 @@ export class ApisSection extends Construct {
     gateway.mount(adminApi);
     gateway.mount(userApi);
 
-    jmapApi.enableWebSocketPublishing(webSocketPush.webSocketUrl, webSocketPush.broadcaster);
-    adminApi.enableWebSocketPublishing(webSocketPush.broadcaster);
-    userApi.enableWebSocketPublishing(webSocketPush.broadcaster);
+    jmapApi.enableWebSocketPublishing(webSocketPush.webSocketUrl, stateChangeFanout);
+    adminApi.enableWebSocketPublishing(stateChangeFanout);
+    userApi.enableWebSocketPublishing(stateChangeFanout);
 
     gateway.domainLogicalIdPin?.overrideLogicalId('Mailboxadminapidomain8793AE5D');
     jmapApi.domainLogicalIdPin?.overrideLogicalId('Mailboxjmapapidomain47B62A36');
     webSocketPush.domainLogicalIdPin?.overrideLogicalId('MailboxwebsocketpushdomainCACDAF3B');
 
     return {
-      broadcaster:           webSocketPush.broadcaster,
+      broadcaster:           stateChangeFanout,
       apiDomainTarget:       gateway.domainTarget,
       jmapApiDomainTarget:   jmapApi.domainTarget,
       webSocketDomainTarget: webSocketPush.domainTarget,
@@ -325,6 +328,20 @@ export class ApisSection extends Construct {
     applyServerlessInboxComponentTag(webSocketPush, 'messaging');
 
     return webSocketPush;
+  }
+
+  private addStateChangeFanout(webSocketPush: WebSocketPush, data: IApisDataInputs, artifactResolver: IArtifactResolver): StateChangeFanoutLambda {
+    const stateChangeFanout = new StateChangeFanoutLambda(this, 'state-change-fanout', {
+      connectionsTable: webSocketPush.webSocketTable,
+      webSocketPushApi: webSocketPush,
+      configTable:      data.configTable,
+      itemTable:        data.itemTable,
+      patTable:         data.patTable,
+      artifactResolver,
+    });
+    applyServerlessInboxComponentTag(stateChangeFanout, 'messaging');
+
+    return stateChangeFanout;
   }
 
   private addAdminApi(
