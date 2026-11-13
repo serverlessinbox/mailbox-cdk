@@ -180,7 +180,7 @@ describe('JobsSection', () => {
     const section     = new JobsSection(stack, 'jobs', sectionProps(stack, new AuthKeyStoreTable(stack, 'auth-key-store')));
     const grantInvoke = jest.fn();
 
-    section.enableWebSocketPublishing({ functionName: 'fanout-function', grantInvoke });
+    section.enableStateChangeFanout({ functionName: 'fanout-function', grantInvoke });
 
     const template = Template.fromStack(stack);
     const runner   = functionWith(template, 'IMPORT_MESSAGES_PER_SECOND');

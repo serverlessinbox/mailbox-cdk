@@ -2,7 +2,7 @@
 
 /**
  * SesEventProcessorLambda: the names it hands the Go handler, the grants it requests for itself on
- * its tables, blob store and queues, the queue event it registers, and the websocket push wiring.
+ * its tables, blob store and queues, the queue event it registers, and the state-change fan-out wiring.
  * The statement each grant renders and the mapping the event renders are pinned by the resource and
  * the event that own them, not here.
  */
@@ -88,11 +88,11 @@ describe('SesEventProcessorLambda', () => {
     expect(SesNotificationsQueueEvent).toHaveBeenCalledWith(lambda, 'ses-notifications-queue', { target: lambda, queue: sesEventQueue });
   });
 
-  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the state-change fan-out grant itself invokable', () => {
+  it('enableStateChangeFanout sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the state-change fan-out grant itself invokable', () => {
     const { lambda, stack }                     = synthesize();
     const stateChangeFanout: IStateChangeFanout = { functionName: 'fanout-function', grantInvoke: jest.fn() };
 
-    lambda.enableWebSocketPush(stateChangeFanout);
+    lambda.enableStateChangeFanout(stateChangeFanout);
 
     expect(onlyLambdaOf(Template.fromStack(stack)).environment).toMatchObject({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'fanout-function' });
     expect(stateChangeFanout.grantInvoke).toHaveBeenCalledWith(lambda);

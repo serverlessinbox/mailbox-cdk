@@ -1,7 +1,7 @@
 /**
  * EmailSection takes over the `email` group node. These tests pin what the section owns: the
  * component tag its subtree carries, the children it places at fixed ids (their paths are part of
- * every resource's logical ID, so a rename replaces deployed resources) and the WebSocket fan-out to
+ * every resource's logical ID, so a rename replaces deployed resources) and the state-change fan-out to
  * the Lambdas that record changelog state.
  */
 import { ArtifactZone, PinnedArtifactResolver }        from '@serverlessinbox/artifact-registry-cdk';
@@ -74,7 +74,7 @@ describe('EmailSection', () => {
     }
   });
 
-  it('enableWebSocketPublishing reaches the three Lambdas that record changelog state', () => {
+  it('enableStateChangeFanout reaches the three Lambdas that record changelog state', () => {
     const { stack }                             = newDeployerTestStack();
     const section                               = newSection(stack);
     const stateChangeFanout: IStateChangeFanout = {
@@ -82,7 +82,7 @@ describe('EmailSection', () => {
       grantInvoke:  () => undefined,
     };
 
-    section.enableWebSocketPublishing(stateChangeFanout);
+    section.enableStateChangeFanout(stateChangeFanout);
 
     const publishing = Template.fromStack(stack).findResources('AWS::Lambda::Function', {
       Properties: {

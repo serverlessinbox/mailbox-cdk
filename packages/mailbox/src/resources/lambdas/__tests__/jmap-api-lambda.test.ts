@@ -4,7 +4,7 @@
  * JmapApiLambda: the environment it hands the Go handler (resource names, hosts, the OAuth scope
  * map and the optional protected-resource URL), the grants it requests for itself on its tables,
  * blob store, queues and identity provisioner, the license API invoke statement it adds itself, and
- * the websocket push wiring it takes through enableWebSocketPush. The statement each requested
+ * the state-change fan-out wiring it takes through enableStateChangeFanout. The statement each requested
  * grant renders is pinned by the resource that owns it.
  */
 
@@ -159,16 +159,25 @@ describe('JmapApiLambda', () => {
     ]);
   });
 
-  it('enableWebSocketPush sets the websocket URL and state-change fan-out name and lets the state-change fan-out grant itself invokable', () => {
+  it('enableStateChangeFanout sets the state-change fan-out name and lets the state-change fan-out grant itself invokable', () => {
     const { lambda, stack }                     = synthesize();
     const stateChangeFanout: IStateChangeFanout = { functionName: 'fanout-function', grantInvoke: jest.fn() };
 
-    lambda.enableWebSocketPush('wss://ws.example.com', stateChangeFanout);
+    lambda.enableStateChangeFanout(stateChangeFanout);
 
     expect(onlyLambdaOf(Template.fromStack(stack)).environment).toMatchObject({
-      WEBSOCKET_URL:                     'wss://ws.example.com',
       WEBSOCKET_BROADCAST_FUNCTION_NAME: 'fanout-function',
     });
     expect(stateChangeFanout.grantInvoke).toHaveBeenCalledWith(lambda);
+  });
+
+  it('enableWebSocketCapability sets the websocket URL and no state-change fan-out name', () => {
+    const { lambda, stack } = synthesize();
+
+    lambda.enableWebSocketCapability('wss://ws.example.com');
+
+    const environment = onlyLambdaOf(Template.fromStack(stack)).environment;
+    expect(environment).toMatchObject({ WEBSOCKET_URL: 'wss://ws.example.com' });
+    expect(environment).not.toHaveProperty('WEBSOCKET_BROADCAST_FUNCTION_NAME');
   });
 });

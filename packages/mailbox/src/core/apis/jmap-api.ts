@@ -18,8 +18,8 @@ import { Construct }                                                            
 import type { IConstruct }                                                      from 'constructs';
 
 import { AuthPolicyName }                                                       from '../../contracts/auth-names';
-import type { IStateChangeFanout }                                              from '../../contracts/state-change-fanout';
-import type { IWebSocketPushTargetWithUrl }                                     from '../../contracts/websocket-push';
+import type { IStateChangeFanout, IStateChangeSource }                          from '../../contracts/state-change-fanout';
+import type { IWebSocketCapabilityAdvertiser }                                  from '../../contracts/websocket-push';
 import type { IDataBlobStore }                                                  from '../../resources/buckets/data-blob-store';
 import { AuthorizerLambda }                                                     from '../../resources/lambdas/authorizer-lambda';
 import type { IIdentityProvisioner }                                            from '../../resources/lambdas/identity-provisioner-lambda';
@@ -98,7 +98,7 @@ export class JmapApi extends Construct {
   public readonly authorizerLambda: IFunction;
   /** The underlying HTTP API, for constructs that add routes to it. */
   public readonly httpApi: IHttpApi;
-  private readonly apiHandlerLambda: IWebSocketPushTargetWithUrl;
+  private readonly stateChangeSource: IStateChangeSource & IWebSocketCapabilityAdvertiser;
   private readonly defaultStage: IHttpStage;
 
   constructor(scope: Construct, id: string, props: JmapApiProps) {
@@ -143,7 +143,7 @@ export class JmapApi extends Construct {
 
     this.httpApi = api;
 
-    this.apiHandlerLambda = this.createHandlerLambda(props);
+    this.stateChangeSource = this.createHandlerLambda(props);
 
     this.addJmapRoutes(api, lambdaAuthorizer);
 
@@ -156,9 +156,14 @@ export class JmapApi extends Construct {
     }
   }
 
-  /** Lets the handler Lambda publish through state-change fan-out to the WebSocket API at `webSocketUrl`. */
-  public enableWebSocketPublishing(webSocketUrl: string, stateChangeFanout: IStateChangeFanout): void {
-    this.apiHandlerLambda.enableWebSocketPush(webSocketUrl, stateChangeFanout);
+  /** Lets the handler Lambda hand its changes to the state-change fan-out. */
+  public enableStateChangeFanout(stateChangeFanout: IStateChangeFanout): void {
+    this.stateChangeSource.enableStateChangeFanout(stateChangeFanout);
+  }
+
+  /** Advertises the WebSocket API at `webSocketUrl` from the handler Lambda. */
+  public enableWebSocketCapability(webSocketUrl: string): void {
+    this.stateChangeSource.enableWebSocketCapability(webSocketUrl);
   }
 
   private corsPreflight(allowedOrigins: string[] | undefined): CorsPreflightOptions | undefined {
@@ -216,7 +221,7 @@ export class JmapApi extends Construct {
       resultsCacheTtl: Duration.seconds(0),
     });
 
-    const httpLambdaIntegration = new HttpLambdaIntegration('handler', this.apiHandlerLambda);
+    const httpLambdaIntegration = new HttpLambdaIntegration('handler', this.stateChangeSource);
 
     api.addRoutes({
       path:        '/.well-known/jmap',

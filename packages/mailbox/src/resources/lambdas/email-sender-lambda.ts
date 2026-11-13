@@ -1,15 +1,14 @@
-import type { IArtifactResolver }          from '@serverlessinbox/artifact-registry-cdk';
-import { GoLambda }                        from '@serverlessinbox/mailbox-cdk-shared';
-import { Effect, PolicyStatement }         from 'aws-cdk-lib/aws-iam';
-import { Aws, Duration }                   from 'aws-cdk-lib';
-import { Construct }                       from 'constructs';
+import type { IArtifactResolver }                      from '@serverlessinbox/artifact-registry-cdk';
+import { GoLambda }                                    from '@serverlessinbox/mailbox-cdk-shared';
+import { Effect, PolicyStatement }                     from 'aws-cdk-lib/aws-iam';
+import { Aws, Duration }                               from 'aws-cdk-lib';
+import { Construct }                                   from 'constructs';
 
-import type { IStateChangeFanout }         from '../../contracts/state-change-fanout';
-import type { IWebSocketPushTarget }       from '../../contracts/websocket-push';
-import type { IDataBlobStore }             from '../buckets/data-blob-store';
-import { EmailSubmissionsQueueEvent }      from '../events/email-submissions-queue-event';
-import type { IEmailSendingQueueConsumer } from '../queues/email-sending-queue';
-import type { IDataTable }                 from '../tables/data-tables';
+import type { IStateChangeFanout, IStateChangeSource } from '../../contracts/state-change-fanout';
+import type { IDataBlobStore }                         from '../buckets/data-blob-store';
+import { EmailSubmissionsQueueEvent }                  from '../events/email-submissions-queue-event';
+import type { IEmailSendingQueueConsumer }             from '../queues/email-sending-queue';
+import type { IDataTable }                             from '../tables/data-tables';
 
 /**
  * The tables, blob store and submission queue the sender reads and writes, and the SES configuration
@@ -29,7 +28,7 @@ export interface EmailSenderLambdaProps {
  * Consumes the email-submissions queue via its own SQS event source mapping. Owns both the mapping
  * and the consume grant; no other construct wires this Lambda to a queue.
  */
-export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget {
+export class EmailSenderLambda extends GoLambda implements IStateChangeSource {
   constructor(scope: Construct, id: string, props: EmailSenderLambdaProps) {
     super(scope, id, {
       lambdaId:         'email-sender',
@@ -58,7 +57,7 @@ export class EmailSenderLambda extends GoLambda implements IWebSocketPushTarget 
     new EmailSubmissionsQueueEvent(this, 'email-submissions-queue', { target: this, queue: props.submissionQueue });
   }
 
-  public enableWebSocketPush(stateChangeFanout: IStateChangeFanout): void {
+  public enableStateChangeFanout(stateChangeFanout: IStateChangeFanout): void {
     this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', stateChangeFanout.functionName);
     stateChangeFanout.grantInvoke(this);
   }

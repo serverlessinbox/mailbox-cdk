@@ -2,7 +2,7 @@
  * SesEventProcessing wires the SES configuration set, the notifications topic and queue, and the
  * `ses-event-processor` Lambda. These tests pin the wiring this construct owns: SES publishes to the
  * topic through the configuration set, the Lambda consumes the queue subscribed to that topic, and the
- * WebSocket capability reaches the Lambda. A break here silently drops bounce and complaint feedback.
+ * state-change fan-out reaches the Lambda. A break here silently drops bounce and complaint feedback.
  */
 import { ArtifactZone, PinnedArtifactResolver }             from '@serverlessinbox/artifact-registry-cdk';
 import type { IArtifactResolver }                           from '@serverlessinbox/artifact-registry-cdk';
@@ -86,7 +86,7 @@ describe('SesEventProcessing', () => {
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', { EventSourceArn: subscribedQueueArn.asObject() });
   });
 
-  it('enableWebSocketPublishing sets the state-change fan-out function name on the processor Lambda', () => {
+  it('enableStateChangeFanout sets the state-change fan-out function name on the processor Lambda', () => {
     const stack                                 = createStack();
     const sut                                   = new SesEventProcessing(stack, 'ses-event-processing', createProps(stack));
     const stateChangeFanout: IStateChangeFanout = {
@@ -94,7 +94,7 @@ describe('SesEventProcessing', () => {
       grantInvoke:  () => undefined,
     };
 
-    sut.enableWebSocketPublishing(stateChangeFanout);
+    sut.enableStateChangeFanout(stateChangeFanout);
 
     const template = Template.fromStack(stack);
     template.resourceCountIs('AWS::Lambda::Function', 1);

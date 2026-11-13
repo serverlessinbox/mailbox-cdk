@@ -83,7 +83,7 @@ function arrangeRunner(encrypted: boolean, stateChangeFanout?: IStateChangeFanou
     authKeyStoreTable: new AuthKeyStoreTable(stack, 'auth-key-store', key),
   });
   if (stateChangeFanout) {
-    runner.enableWebSocketPush(stateChangeFanout);
+    runner.enableStateChangeFanout(stateChangeFanout);
   }
 
   return { stack, runner, template: Template.fromStack(stack), itemTable };

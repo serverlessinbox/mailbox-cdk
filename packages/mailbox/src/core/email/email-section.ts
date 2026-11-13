@@ -1,24 +1,23 @@
-import type { IArtifactResolver }           from '@serverlessinbox/artifact-registry-cdk';
-import type { QueueEncryptionChoice }       from '@serverlessinbox/mailbox-cdk-shared';
-import { applyServerlessInboxComponentTag } from '@serverlessinbox/mailbox-cdk-shared';
-import type { IBucket }                     from 'aws-cdk-lib/aws-s3';
-import type { IReceiptRuleSet }             from 'aws-cdk-lib/aws-ses';
-import { Construct }                        from 'constructs';
+import type { IArtifactResolver }                      from '@serverlessinbox/artifact-registry-cdk';
+import type { QueueEncryptionChoice }                  from '@serverlessinbox/mailbox-cdk-shared';
+import { applyServerlessInboxComponentTag }            from '@serverlessinbox/mailbox-cdk-shared';
+import type { IBucket }                                from 'aws-cdk-lib/aws-s3';
+import type { IReceiptRuleSet }                        from 'aws-cdk-lib/aws-ses';
+import { Construct }                                   from 'constructs';
 
-import type { IStateChangeFanout }          from '../../contracts/state-change-fanout';
-import type { IWebSocketPushTarget }        from '../../contracts/websocket-push';
-import type { IDataBlobStore }              from '../../resources/buckets/data-blob-store';
-import { EmailProcessorLambda }             from '../../resources/lambdas/email-processor-lambda';
-import type { IAuditEventsQueue }           from '../../resources/queues/audit-events-queue';
-import type { IEmailSendingQueue }          from '../../resources/queues/email-sending-queue';
-import type { DynamoTableEncryptionProps }  from '../../resources/tables/data-table-props';
-import type { IDataTable }                  from '../../resources/tables/data-tables';
-import type { IMailLogTable }               from '../../resources/tables/mail-log-table';
-import { MailLogTable }                     from '../../resources/tables/mail-log-table';
+import type { IStateChangeFanout, IStateChangeSource } from '../../contracts/state-change-fanout';
+import type { IDataBlobStore }                         from '../../resources/buckets/data-blob-store';
+import { EmailProcessorLambda }                        from '../../resources/lambdas/email-processor-lambda';
+import type { IAuditEventsQueue }                      from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }                     from '../../resources/queues/email-sending-queue';
+import type { DynamoTableEncryptionProps }             from '../../resources/tables/data-table-props';
+import type { IDataTable }                             from '../../resources/tables/data-tables';
+import type { IMailLogTable }                          from '../../resources/tables/mail-log-table';
+import { MailLogTable }                                from '../../resources/tables/mail-log-table';
 
-import { EmailSending }                     from './email-sending';
-import { SesEventProcessing }               from './ses-event-processing';
-import { SesRules }                         from './ses-rules';
+import { EmailSending }                                from './email-sending';
+import { SesEventProcessing }                          from './ses-event-processing';
+import { SesRules }                                    from './ses-rules';
 
 /** What {@link EmailSection} uses of the data section. */
 export interface IEmailDataInputs {
@@ -51,7 +50,7 @@ export class EmailSection extends Construct {
 
   private readonly sesEventProcessing: SesEventProcessing;
   private readonly emailSending: EmailSending;
-  private readonly emailProcessorLambda: IWebSocketPushTarget;
+  private readonly stateChangeSource: IStateChangeSource;
 
   constructor(scope: Construct, id: string, props: EmailSectionProps) {
     super(scope, id);
@@ -90,7 +89,7 @@ export class EmailSection extends Construct {
 
     this.mailLogTable = new MailLogTable(this, 'mail-log-table', props.dynamoTables);
 
-    this.emailProcessorLambda = new EmailProcessorLambda(this, 'email-processor-lambda', {
+    this.stateChangeSource = new EmailProcessorLambda(this, 'email-processor-lambda', {
       configTable:          data.configTable,
       itemTable:            data.itemTable,
       changelogTable:       data.changelogTable,
@@ -107,10 +106,10 @@ export class EmailSection extends Construct {
     this.submissionQueue  = this.emailSending.submissionQueue;
   }
 
-  /** Enables WebSocket push emission from the ChangeTracker in each Lambda that records changelog state. */
-  public enableWebSocketPublishing(stateChangeFanout: IStateChangeFanout): void {
-    this.emailProcessorLambda.enableWebSocketPush(stateChangeFanout);
-    this.emailSending.enableWebSocketPublishing(stateChangeFanout);
-    this.sesEventProcessing.enableWebSocketPublishing(stateChangeFanout);
+  /** Hands the state changes of each Lambda that records changelog state to the state-change fan-out. */
+  public enableStateChangeFanout(stateChangeFanout: IStateChangeFanout): void {
+    this.stateChangeSource.enableStateChangeFanout(stateChangeFanout);
+    this.emailSending.enableStateChangeFanout(stateChangeFanout);
+    this.sesEventProcessing.enableStateChangeFanout(stateChangeFanout);
   }
 }

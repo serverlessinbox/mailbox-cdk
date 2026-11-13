@@ -3,7 +3,7 @@
 /**
  * EmailSenderLambda: the names and SES configuration set it hands the Go handler, the grants it
  * requests for itself on its tables, blob store and queue, the queue event it registers, the
- * websocket push wiring, and the one statement it adds itself: ses:SendRawEmail, scoped to the
+ * state-change fan-out wiring, and the one statement it adds itself: ses:SendRawEmail, scoped to the
  * identity and configuration-set ARNs with no condition because SES ignores resource-tag conditions
  * for SendRawEmail. The statement each requested grant renders is pinned by the resource that owns it.
  */
@@ -101,11 +101,11 @@ describe('EmailSenderLambda', () => {
     ]);
   });
 
-  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the state-change fan-out grant itself invokable', () => {
+  it('enableStateChangeFanout sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the state-change fan-out grant itself invokable', () => {
     const { lambda, stack }                     = synthesize();
     const stateChangeFanout: IStateChangeFanout = { functionName: 'fanout-function', grantInvoke: jest.fn() };
 
-    lambda.enableWebSocketPush(stateChangeFanout);
+    lambda.enableStateChangeFanout(stateChangeFanout);
 
     expect(onlyLambdaOf(Template.fromStack(stack)).environment).toMatchObject({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'fanout-function' });
     expect(stateChangeFanout.grantInvoke).toHaveBeenCalledWith(lambda);

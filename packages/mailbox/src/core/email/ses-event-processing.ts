@@ -3,8 +3,7 @@ import { ComponentDescription, type QueueEncryptionChoice }         from '@serve
 import { CfnConfigurationSet, CfnConfigurationSetEventDestination } from 'aws-cdk-lib/aws-ses';
 import { Construct }                                                from 'constructs';
 
-import type { IStateChangeFanout }                                  from '../../contracts/state-change-fanout';
-import type { IWebSocketPushTarget }                                from '../../contracts/websocket-push';
+import type { IStateChangeFanout, IStateChangeSource }              from '../../contracts/state-change-fanout';
 import type { IDataBlobStore }                                      from '../../resources/buckets/data-blob-store';
 import { SesEventProcessorLambda }                                  from '../../resources/lambdas/ses-event-processor-lambda';
 import type { IAuditEventsQueue }                                   from '../../resources/queues/audit-events-queue';
@@ -33,7 +32,7 @@ export interface SesEventProcessingProps {
  */
 export class SesEventProcessing extends Construct {
   public readonly sesConfigSetName: string;
-  private readonly sesEventProcessorLambda: IWebSocketPushTarget;
+  private readonly stateChangeSource: IStateChangeSource;
 
   constructor(scope: Construct, id: string, props: SesEventProcessingProps) {
     super(scope, id);
@@ -68,7 +67,7 @@ export class SesEventProcessing extends Construct {
       },
     });
 
-    this.sesEventProcessorLambda = new SesEventProcessorLambda(this, 'ses-event-processor', {
+    this.stateChangeSource = new SesEventProcessorLambda(this, 'ses-event-processor', {
       itemTable:         props.itemTable,
       changelogTable:    props.changelogTable,
       mailFeedbackTable: props.mailFeedbackTable,
@@ -80,7 +79,7 @@ export class SesEventProcessing extends Construct {
     });
   }
 
-  public enableWebSocketPublishing(stateChangeFanout: IStateChangeFanout): void {
-    this.sesEventProcessorLambda.enableWebSocketPush(stateChangeFanout);
+  public enableStateChangeFanout(stateChangeFanout: IStateChangeFanout): void {
+    this.stateChangeSource.enableStateChangeFanout(stateChangeFanout);
   }
 }

@@ -2,8 +2,7 @@ import type { IArtifactResolver }                           from '@serverlessinb
 import { ComponentDescription, type QueueEncryptionChoice } from '@serverlessinbox/mailbox-cdk-shared';
 import { Construct }                                        from 'constructs';
 
-import type { IStateChangeFanout }                          from '../../contracts/state-change-fanout';
-import type { IWebSocketPushTarget }                        from '../../contracts/websocket-push';
+import type { IStateChangeFanout, IStateChangeSource }      from '../../contracts/state-change-fanout';
 import type { IDataBlobStore }                              from '../../resources/buckets/data-blob-store';
 import { EmailSenderLambda }                                from '../../resources/lambdas/email-sender-lambda';
 import { EmailSendingQueue, type IEmailSendingQueue }       from '../../resources/queues/email-sending-queue';
@@ -31,7 +30,7 @@ export interface EmailSendingProps {
 export class EmailSending extends Construct {
   /** Send access to the email-submissions queue; grant methods only, no raw SQS object. */
   public readonly submissionQueue: IEmailSendingQueue;
-  private readonly emailSenderLambda: IWebSocketPushTarget;
+  private readonly stateChangeSource: IStateChangeSource;
 
   constructor(scope: Construct, id: string, props: EmailSendingProps) {
     super(scope, id);
@@ -42,7 +41,7 @@ export class EmailSending extends Construct {
     });
     this.submissionQueue  = submissionQueue;
 
-    this.emailSenderLambda = new EmailSenderLambda(this, 'email-sender', {
+    this.stateChangeSource = new EmailSenderLambda(this, 'email-sender', {
       configTable:      props.configTable,
       itemTable:        props.itemTable,
       changelogTable:   props.changelogTable,
@@ -53,7 +52,7 @@ export class EmailSending extends Construct {
     });
   }
 
-  public enableWebSocketPublishing(stateChangeFanout: IStateChangeFanout): void {
-    this.emailSenderLambda.enableWebSocketPush(stateChangeFanout);
+  public enableStateChangeFanout(stateChangeFanout: IStateChangeFanout): void {
+    this.stateChangeSource.enableStateChangeFanout(stateChangeFanout);
   }
 }

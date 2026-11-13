@@ -6,8 +6,7 @@ import { PolicyStatement, Effect }                                              
 import { Aws, Duration }                                                        from 'aws-cdk-lib';
 import { Construct }                                                            from 'constructs';
 
-import type { IStateChangeFanout }                                              from '../../contracts/state-change-fanout';
-import type { IWebSocketPushTarget }                                            from '../../contracts/websocket-push';
+import type { IStateChangeFanout, IStateChangeSource }                          from '../../contracts/state-change-fanout';
 import type { IDataBlobStore }                                                  from '../buckets/data-blob-store';
 import type { IAuditEventsQueue }                                               from '../queues/audit-events-queue';
 import type { IEmailSendingQueue }                                              from '../queues/email-sending-queue';
@@ -47,10 +46,10 @@ export interface AdminApiLambdaProps {
 
 /**
  * The admin-api Lambda and its role. The role holds every grant the admin API needs, as named
- * grant methods. The websocket push variable is not part of construction; `enableWebSocketPush`
+ * grant methods. The fan-out function name is not part of construction; `enableStateChangeFanout`
  * sets it together with its invoke grant.
  */
-export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
+export class AdminApiLambda extends GoLambda implements IStateChangeSource {
   constructor(scope: Construct, id: string, props: AdminApiLambdaProps) {
     super(scope, id, {
       lambdaId:         'admin-api',
@@ -111,7 +110,7 @@ export class AdminApiLambda extends GoLambda implements IWebSocketPushTarget {
     props.identityProvisioner.grantInvoke(this);
   }
 
-  public enableWebSocketPush(stateChangeFanout: IStateChangeFanout): void {
+  public enableStateChangeFanout(stateChangeFanout: IStateChangeFanout): void {
     this.addEnvironment('WEBSOCKET_BROADCAST_FUNCTION_NAME', stateChangeFanout.functionName);
     stateChangeFanout.grantInvoke(this);
   }

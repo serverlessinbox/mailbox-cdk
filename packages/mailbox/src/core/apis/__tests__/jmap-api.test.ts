@@ -245,14 +245,26 @@ describe('JmapApi', () => {
     });
   });
 
-  describe('enableWebSocketPublishing', () => {
+  describe('enableStateChangeFanout', () => {
     it('lets the handler Lambda invoke the state-change fan-out', () => {
       const stateChangeFanout: IStateChangeFanout = { functionName: 'fanout-function', grantInvoke: jest.fn() };
       const sut                                   = new JmapApi(stack, 'jmap-api', propsWith());
 
-      sut.enableWebSocketPublishing('wss://ws.example.com', stateChangeFanout);
+      sut.enableStateChangeFanout(stateChangeFanout);
 
       expect(stateChangeFanout.grantInvoke).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('enableWebSocketCapability', () => {
+    it('advertises the WebSocket URL from the handler Lambda', () => {
+      const sut = new JmapApi(stack, 'jmap-api', propsWith());
+
+      sut.enableWebSocketCapability('wss://ws.example.com');
+
+      expect(Template.fromStack(stack).findResources('AWS::Lambda::Function', {
+        Properties: { Environment: { Variables: { WEBSOCKET_URL: 'wss://ws.example.com' } } },
+      })).not.toEqual({});
     });
   });
 });

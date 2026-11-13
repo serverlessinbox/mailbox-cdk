@@ -1,8 +1,8 @@
 /**
  * EmailSending wires the email-submissions queue to the `email-sender` Lambda. These tests pin the
  * wiring this construct owns: the exposed queue is the one the Lambda consumes, the encryption the
- * caller passes reaches that queue, and the WebSocket capability reaches the Lambda. A break here leaves
- * submissions enqueued that nothing sends, or a sender that never publishes WebSocket updates.
+ * caller passes reaches that queue, and the state-change fan-out reaches the Lambda. A break here leaves
+ * submissions enqueued that nothing sends, or a sender that never hands its changes to the fan-out.
  */
 import { ArtifactZone, PinnedArtifactResolver } from '@serverlessinbox/artifact-registry-cdk';
 import type { IArtifactResolver }               from '@serverlessinbox/artifact-registry-cdk';
@@ -71,7 +71,7 @@ describe('EmailSending', () => {
     template.allResourcesProperties('AWS::SQS::Queue', { SqsManagedSseEnabled: false });
   });
 
-  it('enableWebSocketPublishing sets the state-change fan-out function name on the sender Lambda', () => {
+  it('enableStateChangeFanout sets the state-change fan-out function name on the sender Lambda', () => {
     const stack                                 = createStack();
     const sut                                   = new EmailSending(stack, 'email-sending', createProps(stack, AWS_MANAGED));
     const stateChangeFanout: IStateChangeFanout = {
@@ -79,7 +79,7 @@ describe('EmailSending', () => {
       grantInvoke:  () => undefined,
     };
 
-    sut.enableWebSocketPublishing(stateChangeFanout);
+    sut.enableStateChangeFanout(stateChangeFanout);
 
     const template = Template.fromStack(stack);
     template.resourceCountIs('AWS::Lambda::Function', 1);

@@ -2,8 +2,8 @@
 
 /**
  * EmailProcessorLambda: the table, blob store and system sender address names it hands the Go handler, the grants it requests
- * for itself on its tables, blob store and queue, the queue event it registers, and the websocket
- * push wiring it takes through enableWebSocketPush. The statement each grant renders and the mapping
+ * for itself on its tables, blob store and queue, the queue event it registers, and the state-change
+ * fan-out wiring it takes through enableStateChangeFanout. The statement each grant renders and the mapping
  * the event renders are pinned by the resource and the event that own them, not here.
  */
 
@@ -100,11 +100,11 @@ describe('EmailProcessorLambda', () => {
     expect(EmailProcessingQueueEvent).toHaveBeenCalledWith(lambda, 'email-processing-queue', { target: lambda, queue: emailProcessingQueue });
   });
 
-  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the state-change fan-out grant itself invokable', () => {
+  it('enableStateChangeFanout sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the state-change fan-out grant itself invokable', () => {
     const { lambda, stack }                     = synthesize();
     const stateChangeFanout: IStateChangeFanout = { functionName: 'fanout-function', grantInvoke: jest.fn() };
 
-    lambda.enableWebSocketPush(stateChangeFanout);
+    lambda.enableStateChangeFanout(stateChangeFanout);
 
     expect(onlyLambdaOf(Template.fromStack(stack)).environment).toMatchObject({ WEBSOCKET_BROADCAST_FUNCTION_NAME: 'fanout-function' });
     expect(stateChangeFanout.grantInvoke).toHaveBeenCalledWith(lambda);

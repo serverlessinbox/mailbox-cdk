@@ -4,8 +4,7 @@ import { applyServerlessInboxComponentTag }               from '@serverlessinbox
 import { Duration }                                       from 'aws-cdk-lib';
 import { Construct }                                      from 'constructs';
 
-import type { IStateChangeFanout }                        from '../../contracts/state-change-fanout';
-import type { IWebSocketPushTarget }                      from '../../contracts/websocket-push';
+import type { IStateChangeFanout, IStateChangeSource }    from '../../contracts/state-change-fanout';
 import type { IDataBlobStore }                            from '../../resources/buckets/data-blob-store';
 import { JobSweeperLambda }                               from '../../resources/lambdas/job-sweeper-lambda';
 import { MailImportRunnerLambda }                         from '../../resources/lambdas/mail-import-runner-lambda';
@@ -53,8 +52,8 @@ export class JobsSection extends Construct {
   public readonly importJobsQueue: IImportJobsQueueConsumer;
   public readonly mailImportRunner: IMailImportRunner;
 
-  private readonly mailImportRunnerLambda: IWebSocketPushTarget;
-  private readonly jobSweeperLambda:        IWebSocketPushTarget;
+  private readonly mailImportRunnerStateChangeSource: IStateChangeSource;
+  private readonly jobSweeperStateChangeSource:       IStateChangeSource;
 
   constructor(scope: Construct, id: string, props: JobsSectionProps) {
     super(scope, id);
@@ -62,7 +61,7 @@ export class JobsSection extends Construct {
 
     this.importJobsQueue = new ImportJobsQueue(this, 'import-jobs-queue', { encryption: props.queueEncryption });
 
-    const runner                = new MailImportRunnerLambda(this, 'mail-import-runner', {
+    const runner                           = new MailImportRunnerLambda(this, 'mail-import-runner', {
       artifactResolver:  props.artifactResolver,
       itemTable:         props.data.itemTable,
       configTable:       props.data.configTable,
@@ -71,10 +70,10 @@ export class JobsSection extends Construct {
       importJobsQueue:   this.importJobsQueue,
       authKeyStoreTable: props.auth.authKeyStoreTable,
     });
-    this.mailImportRunner       = runner;
-    this.mailImportRunnerLambda = runner;
+    this.mailImportRunner                  = runner;
+    this.mailImportRunnerStateChangeSource = runner;
 
-    this.jobSweeperLambda = new JobSweeperLambda(this, 'job-sweeper', {
+    this.jobSweeperStateChangeSource = new JobSweeperLambda(this, 'job-sweeper', {
       artifactResolver:    props.artifactResolver,
       itemTable:           props.data.itemTable,
       patTable:            props.data.patTable,
@@ -88,9 +87,9 @@ export class JobsSection extends Construct {
     });
   }
 
-  /** Enables WebSocket push emission from the mail-import runner's and the job sweeper's ChangeTracker. */
-  public enableWebSocketPublishing(stateChangeFanout: IStateChangeFanout): void {
-    this.mailImportRunnerLambda.enableWebSocketPush(stateChangeFanout);
-    this.jobSweeperLambda.enableWebSocketPush(stateChangeFanout);
+  /** Hands the state changes of the mail-import runner and the job sweeper to the state-change fan-out. */
+  public enableStateChangeFanout(stateChangeFanout: IStateChangeFanout): void {
+    this.mailImportRunnerStateChangeSource.enableStateChangeFanout(stateChangeFanout);
+    this.jobSweeperStateChangeSource.enableStateChangeFanout(stateChangeFanout);
   }
 }

@@ -87,7 +87,7 @@ describe('UserApiLambda', () => {
     configTableArnOf = stack.resolve(configTable.tableArn);
 
     if (stateChangeFanout) {
-      lambda.enableWebSocketPush(stateChangeFanout);
+      lambda.enableStateChangeFanout(stateChangeFanout);
     }
 
     return Template.fromStack(stack);
@@ -202,7 +202,7 @@ describe('UserApiLambda', () => {
     expect(mailImportRunner.grantInvoke).toHaveBeenCalledTimes(1);
   });
 
-  it('enableWebSocketPush sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the state-change fan-out grant itself invokable', () => {
+  it('enableStateChangeFanout sets WEBSOCKET_BROADCAST_FUNCTION_NAME and lets the state-change fan-out grant itself invokable', () => {
     const stateChangeFanout: IStateChangeFanout = { functionName: 'fanout-function', grantInvoke: jest.fn() };
 
     const template = synthesize(stateChangeFanout);

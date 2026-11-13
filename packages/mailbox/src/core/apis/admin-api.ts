@@ -1,28 +1,27 @@
-import type { IArtifactResolver }    from '@serverlessinbox/artifact-registry-cdk';
-import { ComponentDescription }      from '@serverlessinbox/mailbox-cdk-shared';
-import type { VendorLink }           from '@serverlessinbox/mailbox-cdk-shared';
-import { HttpLambdaAuthorizer }      from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpMethod }                from 'aws-cdk-lib/aws-apigatewayv2';
-import { Duration }                  from 'aws-cdk-lib';
-import { Construct }                 from 'constructs';
+import type { IArtifactResolver }                      from '@serverlessinbox/artifact-registry-cdk';
+import { ComponentDescription }                        from '@serverlessinbox/mailbox-cdk-shared';
+import type { VendorLink }                             from '@serverlessinbox/mailbox-cdk-shared';
+import { HttpLambdaAuthorizer }                        from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import { HttpMethod }                                  from 'aws-cdk-lib/aws-apigatewayv2';
+import { Duration }                                    from 'aws-cdk-lib';
+import { Construct }                                   from 'constructs';
 
-import { AuthPolicyName }            from '../../contracts/auth-names';
-import type { IStateChangeFanout }   from '../../contracts/state-change-fanout';
-import type { IWebSocketPushTarget } from '../../contracts/websocket-push';
-import type { IDataBlobStore }       from '../../resources/buckets/data-blob-store';
-import { AdminApiLambda }            from '../../resources/lambdas/admin-api-lambda';
-import { AuthorizerLambda }          from '../../resources/lambdas/authorizer-lambda';
-import type { IIdentityProvisioner } from '../../resources/lambdas/identity-provisioner-lambda';
-import type { IAuditEventsQueue }    from '../../resources/queues/audit-events-queue';
-import type { IEmailSendingQueue }   from '../../resources/queues/email-sending-queue';
-import type { IAuthKeyStoreTable }   from '../../resources/tables/auth-key-store-table';
-import type { IPatTable }            from '../../resources/tables/data-pat-table';
-import type { IDataTable }           from '../../resources/tables/data-tables';
-import type { IMailLogTable }        from '../../resources/tables/mail-log-table';
-import type { ScopeMap }             from '../auth/jmap-scopes';
+import { AuthPolicyName }                              from '../../contracts/auth-names';
+import type { IStateChangeFanout, IStateChangeSource } from '../../contracts/state-change-fanout';
+import type { IDataBlobStore }                         from '../../resources/buckets/data-blob-store';
+import { AdminApiLambda }                              from '../../resources/lambdas/admin-api-lambda';
+import { AuthorizerLambda }                            from '../../resources/lambdas/authorizer-lambda';
+import type { IIdentityProvisioner }                   from '../../resources/lambdas/identity-provisioner-lambda';
+import type { IAuditEventsQueue }                      from '../../resources/queues/audit-events-queue';
+import type { IEmailSendingQueue }                     from '../../resources/queues/email-sending-queue';
+import type { IAuthKeyStoreTable }                     from '../../resources/tables/auth-key-store-table';
+import type { IPatTable }                              from '../../resources/tables/data-pat-table';
+import type { IDataTable }                             from '../../resources/tables/data-tables';
+import type { IMailLogTable }                          from '../../resources/tables/mail-log-table';
+import type { ScopeMap }                               from '../auth/jmap-scopes';
 
-import type { IAdminApiAddon }       from './addons';
-import type { ApiRoute, IApiArea }   from './api-area';
+import type { IAdminApiAddon }                         from './addons';
+import type { ApiRoute, IApiArea }                     from './api-area';
 
 /**
  * Inputs of {@link AdminApi}: the tables, queues and blob store its handler Lambda works on, and the
@@ -67,7 +66,7 @@ export class AdminApi extends Construct implements IApiArea {
   /** The area's routes: the addon routes, then the handler route. */
   public readonly routes: ApiRoute[];
 
-  private readonly apiHandlerLambda: IWebSocketPushTarget;
+  private readonly stateChangeSource: IStateChangeSource;
 
   constructor(scope: Construct, id: string, props: AdminApiProps) {
     super(scope, id);
@@ -77,7 +76,7 @@ export class AdminApi extends Construct implements IApiArea {
     const httpLambdaAuthorize = this.createAuthorizer(props);
     const lookupAuthorize     = this.createLookupAuthorizer(props);
 
-    this.apiHandlerLambda = handler;
+    this.stateChangeSource = handler;
 
     this.routes = [
       ...this.addonRoutes(lookupAuthorize, props.addons ?? []),
@@ -92,8 +91,8 @@ export class AdminApi extends Construct implements IApiArea {
   }
 
   /** Lets the handler Lambda publish through state-change fan-out to connected WebSocket clients. */
-  public enableWebSocketPublishing(stateChangeFanout: IStateChangeFanout): void {
-    this.apiHandlerLambda.enableWebSocketPush(stateChangeFanout);
+  public enableStateChangeFanout(stateChangeFanout: IStateChangeFanout): void {
+    this.stateChangeSource.enableStateChangeFanout(stateChangeFanout);
   }
 
   private addonRoutes(authorizer: HttpLambdaAuthorizer, addons: IAdminApiAddon[]): ApiRoute[] {

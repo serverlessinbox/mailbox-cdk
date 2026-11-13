@@ -163,12 +163,12 @@ describe('AdminApi', () => {
     );
   });
 
-  describe('enableWebSocketPublishing', () => {
+  describe('enableStateChangeFanout', () => {
     it('lets the handler Lambda invoke the state-change fan-out', () => {
       const stateChangeFanout: IStateChangeFanout = { functionName: 'fanout-function', grantInvoke: jest.fn() };
       const sut                                   = new AdminApi(stack, 'admin', propsWith());
 
-      sut.enableWebSocketPublishing(stateChangeFanout);
+      sut.enableStateChangeFanout(stateChangeFanout);
 
       expect(stateChangeFanout.grantInvoke).toHaveBeenCalledTimes(1);
     });
