@@ -41,7 +41,7 @@ describe('Mailbox mail-import runner WebSocket push', () => {
 
   it.each([
     ['user-api', 'MAIL_IMPORT_RUNNER_FUNCTION_NAME'],
-    ['job-sweeper', 'JOB_STALE_AFTER'],
+    ['expiry-sweeper', 'JOB_STALE_AFTER'],
   ])('gives the %s function the state-change fan-out name in its environment', (_name, marker) => {
     const app = new App({
       context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT },

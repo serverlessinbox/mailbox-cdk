@@ -1,28 +1,22 @@
 import type { IArtifactResolver }                         from '@serverlessinbox/artifact-registry-cdk';
 import type { QueueEncryptionChoice }                     from '@serverlessinbox/mailbox-cdk-shared';
 import { applyServerlessInboxComponentTag }               from '@serverlessinbox/mailbox-cdk-shared';
-import { Duration }                                       from 'aws-cdk-lib';
 import { Construct }                                      from 'constructs';
 
 import type { IStateChangeFanout, IStateChangeSource }    from '../../contracts/state-change-fanout';
 import type { IDataBlobStore }                            from '../../resources/buckets/data-blob-store';
-import { JobSweeperLambda }                               from '../../resources/lambdas/job-sweeper-lambda';
 import { MailImportRunnerLambda }                         from '../../resources/lambdas/mail-import-runner-lambda';
 import type { IMailImportRunner }                         from '../../resources/lambdas/mail-import-runner-lambda';
-import type { IAuditEventsQueue }                         from '../../resources/queues/audit-events-queue';
 import { ImportJobsQueue, type IImportJobsQueueConsumer } from '../../resources/queues/import-jobs-queue';
 import type { IAuthKeyStoreTable }                        from '../../resources/tables/auth-key-store-table';
-import type { IPatTable }                                 from '../../resources/tables/data-pat-table';
 import type { IDataTable }                                from '../../resources/tables/data-tables';
 
 /** What {@link JobsSection} uses of the data section. */
 export interface IJobsDataInputs {
-  readonly itemTable:        IDataTable;
-  readonly patTable:         IPatTable;
-  readonly configTable:      IDataTable;
-  readonly changelogTable:   IDataTable;
-  readonly blobStore:        IDataBlobStore;
-  readonly auditEventsQueue: IAuditEventsQueue;
+  readonly itemTable:      IDataTable;
+  readonly configTable:    IDataTable;
+  readonly changelogTable: IDataTable;
+  readonly blobStore:      IDataBlobStore;
 }
 
 /** What {@link JobsSection} uses of the auth section. */
@@ -37,23 +31,17 @@ export interface JobsSectionProps {
   readonly artifactResolver: IArtifactResolver;
   readonly data:             IJobsDataInputs;
   readonly auth:             IJobsAuthInputs;
-  /** System sender email address (e.g. noreply@example.com) that the sweeper's token expiry notices are sent from. */
-  readonly systemSenderAddress: string;
 }
 
 /**
- * The mail-import data plane: the import-jobs queue with its dead-letter queue, the runner that consumes it and
- * the sweeper that terminalises stale jobs. The queue and the runner are exposed through their narrow interfaces.
+ * The mail-import data plane: the import-jobs queue with its dead-letter queue and the runner that consumes it.
+ * The queue and the runner are exposed through their narrow interfaces.
  */
 export class JobsSection extends Construct {
-  private static readonly SWEEP_INTERVAL  = Duration.minutes(15);
-  private static readonly JOB_STALE_AFTER = Duration.hours(2);
-
   public readonly importJobsQueue: IImportJobsQueueConsumer;
   public readonly mailImportRunner: IMailImportRunner;
 
-  private readonly mailImportRunnerStateChangeSource: IStateChangeSource;
-  private readonly jobSweeperStateChangeSource:       IStateChangeSource;
+  private readonly stateChangeSource: IStateChangeSource;
 
   constructor(scope: Construct, id: string, props: JobsSectionProps) {
     super(scope, id);
@@ -70,26 +58,12 @@ export class JobsSection extends Construct {
       importJobsQueue:   this.importJobsQueue,
       authKeyStoreTable: props.auth.authKeyStoreTable,
     });
-    this.mailImportRunner                  = runner;
-    this.mailImportRunnerStateChangeSource = runner;
-
-    this.jobSweeperStateChangeSource = new JobSweeperLambda(this, 'job-sweeper', {
-      artifactResolver:    props.artifactResolver,
-      itemTable:           props.data.itemTable,
-      patTable:            props.data.patTable,
-      configTable:         props.data.configTable,
-      changelogTable:      props.data.changelogTable,
-      blobStore:           props.data.blobStore,
-      auditEventsQueue:    props.data.auditEventsQueue,
-      systemSenderAddress: props.systemSenderAddress,
-      sweepInterval:       JobsSection.SWEEP_INTERVAL,
-      staleAfter:          JobsSection.JOB_STALE_AFTER,
-    });
+    this.mailImportRunner  = runner;
+    this.stateChangeSource = runner;
   }
 
-  /** Hands the state changes of the mail-import runner and the job sweeper to the state-change fan-out. */
+  /** Hands the state changes of the mail-import runner to the state-change fan-out. */
   public enableStateChangeFanout(stateChangeFanout: IStateChangeFanout): void {
-    this.mailImportRunnerStateChangeSource.enableStateChangeFanout(stateChangeFanout);
-    this.jobSweeperStateChangeSource.enableStateChangeFanout(stateChangeFanout);
+    this.stateChangeSource.enableStateChangeFanout(stateChangeFanout);
   }
 }

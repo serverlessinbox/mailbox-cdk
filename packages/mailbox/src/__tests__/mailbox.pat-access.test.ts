@@ -23,7 +23,7 @@ const PAT_TABLE_MARKER        = 'patTableArn';
 const SUBMISSION_QUEUE_MARKER = 'emailsubmissionsqueue';
 
 /** The Lambdas (by SERVICE_NAME) that hold a grant on the token table; a name matches when it starts with an entry. */
-const PAT_GRANTEE_SERVICES = ['authorizer-jmap-api', 'authorizer-user-api', 'authorizer-admin-api', 'jmap-api', 'user-api', 'admin-api', 'state-change-fanout', 'job-sweeper'];
+const PAT_GRANTEE_SERVICES = ['authorizer-jmap-api', 'authorizer-user-api', 'authorizer-admin-api', 'jmap-api', 'user-api', 'admin-api', 'state-change-fanout', 'expiry-sweeper'];
 
 interface PolicyStatement {
   readonly Action?:   string | string[];
@@ -132,7 +132,7 @@ describe('Mailbox personal access token table access (full stack walk)', () => {
     expect(variables).toHaveProperty('PAT_TABLE_NAME');
   });
 
-  it('names the token table only in statements of the authorizers, the JMAP API, the user API, the admin API, the state-change fan-out and the job sweeper', () => {
+  it('names the token table only in statements of the authorizers, the JMAP API, the user API, the admin API, the state-change fan-out and the expiry sweeper', () => {
     expect(servicesOnTable.size).toBeGreaterThan(0);
     for (const service of servicesOnTable) {
       expect(PAT_GRANTEE_SERVICES.some((allowed) => service.startsWith(allowed))).toBe(true);
@@ -147,9 +147,9 @@ describe('Mailbox personal access token table access (full stack walk)', () => {
     expect([...(actionsOnTableByService.get('state-change-fanout') ?? [])]).toEqual(['dynamodb:GetItem']);
   });
 
-  it('reaches the token table from the user API and the job sweeper', () => {
+  it('reaches the token table from the user API and the expiry sweeper', () => {
     expect(servicesOnTable).toContain('user-api');
-    expect(servicesOnTable).toContain('job-sweeper');
+    expect(servicesOnTable).toContain('expiry-sweeper');
   });
 
   it('adds no kms statement for the token table', () => {
@@ -158,15 +158,15 @@ describe('Mailbox personal access token table access (full stack walk)', () => {
     expect(kmsActions).toEqual([]);
   });
 
-  it('gives the user API and the job sweeper no SES action, while the admin API keeps its own', () => {
+  it('gives the user API and the expiry sweeper no SES action, while the admin API keeps its own', () => {
     expect(servicesWithSes).toContain('admin-api');
     expect(servicesWithSes).not.toContain('user-api');
-    expect(servicesWithSes).not.toContain('job-sweeper');
+    expect(servicesWithSes).not.toContain('expiry-sweeper');
   });
 
-  it('gives the user API and the job sweeper no send on the submission queue, while the admin API keeps its own', () => {
+  it('gives the user API and the expiry sweeper no send on the submission queue, while the admin API keeps its own', () => {
     expect(servicesWithSubmissionSend).toContain('admin-api');
     expect(servicesWithSubmissionSend).not.toContain('user-api');
-    expect(servicesWithSubmissionSend).not.toContain('job-sweeper');
+    expect(servicesWithSubmissionSend).not.toContain('expiry-sweeper');
   });
 });

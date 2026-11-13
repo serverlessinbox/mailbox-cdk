@@ -11,6 +11,7 @@ import { MailboxAddressing }                                            from './
 import type { MailboxEnabledUis }                                       from './core/domains/mailbox-addressing';
 import { EdgeSection }                                                  from './core/edge/edge-section';
 import { EmailSection }                                                 from './core/email/email-section';
+import { ExpirySection }                                                from './core/expiry/expiry-section';
 import { JobsSection }                                                  from './core/jobs/jobs-section';
 import { SearchSection }                                                from './core/search/search-section';
 import { UiSection }                                                    from './core/ui/ui-section';
@@ -90,8 +91,10 @@ export class Mailbox extends Construct {
       adminUiUrl: addressing.urls.adminUi,
     });
 
-    const jobs = new JobsSection(this, 'jobs', {
-      queueEncryption, artifactResolver, data, auth,
+    const jobs = new JobsSection(this, 'jobs', { queueEncryption, artifactResolver, data, auth });
+
+    const expiry = new ExpirySection(this, 'expiry', {
+      artifactResolver, data,
       systemSenderAddress: `noreply@${addressing.domains.domainName}`,
     });
 
@@ -147,9 +150,10 @@ export class Mailbox extends Construct {
       enableMcp:           props.enableMcp,
     });
 
-    // The email and mail-import Lambdas hand changes to the state-change fan-out only once the endpoints have built it.
+    // The email, mail-import and expiry Lambdas hand changes to the state-change fan-out only once the endpoints have built it.
     email.enableStateChangeFanout(addedApis.stateChangeFanout);
     jobs.enableStateChangeFanout(addedApis.stateChangeFanout);
+    expiry.enableStateChangeFanout(addedApis.stateChangeFanout);
 
     // DNS records point at the UIs, the CDN and the API endpoints, so they come after all three.
     edge.addDns({ ui, blobCdn, apis: addedApis.endpoints });

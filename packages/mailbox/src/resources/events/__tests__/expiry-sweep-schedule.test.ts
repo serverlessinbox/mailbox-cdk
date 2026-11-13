@@ -1,8 +1,8 @@
 /// <reference types="jest" />
 
 /**
- * JobSweepSchedule tests: the rule that invokes the sweeper at the interval it is given, read from the synthesized
- * rule and its target.
+ * ExpirySweepSchedule tests: the rule that invokes the expiry sweeper at the interval it is given, read from the
+ * synthesized rule and its target.
  */
 
 import { Template }                                  from 'aws-cdk-lib/assertions';
@@ -10,7 +10,7 @@ import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambd
 import * as cdk                                      from 'aws-cdk-lib';
 import { App, BootstraplessSynthesizer, Duration }   from 'aws-cdk-lib';
 
-import { JobSweepSchedule }                          from '../job-sweep-schedule';
+import { ExpirySweepSchedule }                       from '../expiry-sweep-schedule';
 
 function arrangeSchedule(interval: Duration) {
   const stack = new cdk.Stack(new App(), 'TestStack', {
@@ -22,12 +22,12 @@ function arrangeSchedule(interval: Duration) {
     handler: 'index.handler',
     code:    Code.fromInline('exports.handler = async () => undefined;'),
   });
-  new JobSweepSchedule(stack, 'sweep-schedule', { target, interval });
+  new ExpirySweepSchedule(stack, 'sweep-schedule', { target, interval });
 
   return { stack, template: Template.fromStack(stack), target };
 }
 
-describe('JobSweepSchedule', () => {
+describe('ExpirySweepSchedule', () => {
   it('invokes its target at the rate of the interval it is given', () => {
     const { template } = arrangeSchedule(Duration.minutes(15));
 

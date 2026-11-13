@@ -5,13 +5,13 @@ import { Construct }                                   from 'constructs';
 
 import type { IStateChangeFanout, IStateChangeSource } from '../../contracts/state-change-fanout';
 import type { IDataBlobStore }                         from '../buckets/data-blob-store';
-import { JobSweepSchedule }                            from '../events/job-sweep-schedule';
+import { ExpirySweepSchedule }                         from '../events/expiry-sweep-schedule';
 import type { IAuditEventsQueue }                      from '../queues/audit-events-queue';
 import type { IPatTable }                              from '../tables/data-pat-table';
 import type { IDataTable }                             from '../tables/data-tables';
 
-/** The table, periods and artifact resolver the job sweeper is wired to. The caller creates the table. */
-export interface JobSweeperLambdaProps {
+/** The tables, periods and artifact resolver the expiry sweeper is wired to. The caller creates the tables. */
+export interface ExpirySweeperLambdaProps {
   readonly artifactResolver: IArtifactResolver;
   readonly itemTable:        IDataTable;
   readonly patTable:         IPatTable;
@@ -28,13 +28,13 @@ export interface JobSweeperLambdaProps {
 }
 
 /**
- * The job sweeper: on a schedule, terminalises stale import and export jobs, and removes connections whose
- * time has run out, and sends the expiry notices of personal access tokens.
+ * The expiry sweeper: the Lambda behind the expiry schedule, which runs the mail server's expiry passes on every
+ * invocation.
  */
-export class JobSweeperLambda extends GoLambda implements IStateChangeSource {
-  constructor(scope: Construct, id: string, props: JobSweeperLambdaProps) {
+export class ExpirySweeperLambda extends GoLambda implements IStateChangeSource {
+  constructor(scope: Construct, id: string, props: ExpirySweeperLambdaProps) {
     super(scope, id, {
-      lambdaId:         'job-sweeper',
+      lambdaId:         'expiry-sweeper',
       pipeline:         'infra',
       artifactResolver: props.artifactResolver,
       memorySize:       256,
@@ -59,7 +59,7 @@ export class JobSweeperLambda extends GoLambda implements IStateChangeSource {
     props.changelogTable.grantReadWrite(this);
     props.auditEventsQueue.grantSend(this);
 
-    new JobSweepSchedule(this, 'sweep-schedule', { target: this, interval: props.sweepInterval });
+    new ExpirySweepSchedule(this, 'sweep-schedule', { target: this, interval: props.sweepInterval });
   }
 
   public enableStateChangeFanout(stateChangeFanout: IStateChangeFanout): void {

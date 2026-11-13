@@ -1,7 +1,7 @@
 /// <reference types="jest" />
 
 /**
- * JobSweeperLambda tests: the environment the sweeper is given, the item-table grant it gives itself, its memory and
+ * ExpirySweeperLambda tests: the environment the sweeper is given, the item-table grant it gives itself, its memory and
  * timeout, and the schedule it registers. Read from the synthesized template with a real item table.
  */
 
@@ -14,7 +14,7 @@ import { App, BootstraplessSynthesizer, Duration }                              
 import { resourcesOfType }                                                      from '../../../__tests__/iam-test-helpers';
 import type { IStateChangeFanout }                                              from '../../../contracts/state-change-fanout';
 import { DataTable }                                                            from '../../tables/data-tables';
-import { JobSweeperLambda }                                                     from '../job-sweeper-lambda';
+import { ExpirySweeperLambda }                                                  from '../expiry-sweeper-lambda';
 
 import { expectGrantedOnceTo, fakeDataBlobStore, fakeDataTable, fakePatTable,
   fakeQueue }                                                                   from './lambda-wrapper-fakes';
@@ -45,7 +45,7 @@ function arrangeSweeper(stateChangeFanout?: IStateChangeFanout) {
   const changelogTable   = fakeDataTable('changelog-table');
   const blobStore        = fakeDataBlobStore('blob-store');
   const auditEventsQueue = fakeQueue('audit-events');
-  const lambda           = new JobSweeperLambda(stack, 'job-sweeper', {
+  const lambda           = new ExpirySweeperLambda(stack, 'expiry-sweeper', {
     artifactResolver: new PinnedArtifactResolver({
       packages:         {
         'mailbox-cdk': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
@@ -79,7 +79,7 @@ function sweeperProperties(template: Template): FunctionProperties {
   return sweepers[0];
 }
 
-describe('JobSweeperLambda', () => {
+describe('ExpirySweeperLambda', () => {
   it('gives the function exactly the environment names its Go config reads, with both periods in seconds', () => {
     const { template } = arrangeSweeper();
 
