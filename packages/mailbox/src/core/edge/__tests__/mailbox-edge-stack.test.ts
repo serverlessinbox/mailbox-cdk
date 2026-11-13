@@ -45,7 +45,7 @@ const isParameterTable = t.isRecord(t.isPartial({
   Default:        t.isOptional(t.isString()),
   AllowedPattern: t.isOptional(t.isString()),
 }));
-const isHostParameter  = t.isPartial({
+const isHostParameter = t.isPartial({
   Type:           t.isLiteral('String'),
   Default:        t.isLiteral(''),
   AllowedPattern: t.isString(),

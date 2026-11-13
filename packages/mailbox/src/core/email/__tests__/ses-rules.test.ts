@@ -24,7 +24,7 @@ describe('SesRules', () => {
   let sut: SesRules;
 
   beforeEach(() => {
-    stack     = new cdk.Stack(new App(), 'TestStack', {
+    stack = new cdk.Stack(new App(), 'TestStack', {
       env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });

@@ -128,7 +128,7 @@ const isStackFailureDetectorWorkerInput = t.isPartial({
   target:      isStackFailureDetectorSweepParts,
   ...workerRootStackFields,
 });
-const isSweeperRoleWorkerInput          = t.isPartial({ removalType: t.isLiteral('sweeper-role'), ...sweeperRoleTargetFields, ...workerRootStackFields });
+const isSweeperRoleWorkerInput = t.isPartial({ removalType: t.isLiteral('sweeper-role'), ...sweeperRoleTargetFields, ...workerRootStackFields });
 
 /** The ACM certificate to sweep, as the custom resource's `ResourceProperties` entry carries it. */
 export type CertRemovalTarget = t.InferType<typeof isCertRemovalTarget>;

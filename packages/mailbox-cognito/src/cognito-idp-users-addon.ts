@@ -83,7 +83,7 @@ export class CognitoIdpUsersAdminApiAddon extends Construct implements IAdminApi
       adminGroups:         authorization?.adminGroups,
       userGroups:          authorization?.userGroups,
     });
-    this.routeSpec      = {
+    this.routeSpec = {
       basePath: this.basePath,
       methods:  [HttpMethod.POST],
       handler:  this.lambdaFunction,

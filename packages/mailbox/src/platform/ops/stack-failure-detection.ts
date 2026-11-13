@@ -64,7 +64,7 @@ export class StackFailureDetection extends Construct {
       expression: Fn.conditionEquals(props.mode, SendStackFailuresMode.ENABLED),
     });
 
-    const infra       = new StackFailureDetectionInfra(this, 'infra', {
+    const infra = new StackFailureDetectionInfra(this, 'infra', {
       artifactResolver: props.artifactResolver,
       vendorAccountIds: props.vendorAccountIds,
     });

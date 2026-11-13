@@ -37,7 +37,7 @@ describe('TemplateDiffer', () => {
         Properties: { Environment: { Variables: { KEPT: 'a', CHANGED: 'old', REMOVED: 'x' } }, Tags: [{ Key: 'a' }, { Key: 'b' }] },
       },
     });
-    const after  = resources({
+    const after = resources({
       Fn: {
         Type:       'AWS::Lambda::Function',
         Properties: { Environment: { Variables: { KEPT: 'a', CHANGED: 'new', ADDED: 'y' } }, Tags: [{ Key: 'a' }, { Key: 'c' }, { Key: 'd' }] },

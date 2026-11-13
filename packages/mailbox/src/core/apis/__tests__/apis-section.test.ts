@@ -73,7 +73,7 @@ describe('ApisSection', () => {
       },
       ...options.authProvider,
     };
-    const inputs: SectionInputs              = {
+    const inputs: SectionInputs = {
       artifactResolver: new PinnedArtifactResolver({
         packages:         {
           'mailbox-cdk':        { version: '1.0.0', zone: ArtifactZone.REGIONAL },
@@ -110,7 +110,7 @@ describe('ApisSection', () => {
       },
       vendorLink: { vendorAccountIds: [VENDOR_ACCOUNT_ID], stackIdentityTagKey: 'serverless-inbox:stack' },
     };
-    sectionInputs                            = inputs;
+    sectionInputs = inputs;
 
     return new ApisSection(stack, 'apis', {
       ...inputs,
@@ -437,7 +437,7 @@ describe('ApisSection', () => {
     const jmapFunctions    = template.findResources('AWS::Lambda::Function', {
       Properties: { Environment: { Variables: { SERVICE_NAME: 'jmap-api' } } },
     });
-    const [jmapFunction]   = Object.values(jmapFunctions) as Array<{ Properties: { Environment: { Variables: Record<string, unknown> } } }>;
+    const [jmapFunction] = Object.values(jmapFunctions) as Array<{ Properties: { Environment: { Variables: Record<string, unknown> } } }>;
 
     const webSocketUrl = jmapFunction.Properties.Environment.Variables.WEBSOCKET_URL as { 'Fn::Join': [string, unknown[]] };
     expect(webSocketUrl['Fn::Join'][1].slice(0, 2)).toEqual(['wss://', { Ref: webSocketApiId }]);

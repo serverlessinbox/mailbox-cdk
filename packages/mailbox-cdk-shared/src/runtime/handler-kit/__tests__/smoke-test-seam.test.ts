@@ -52,7 +52,7 @@ describe('SmokeTestSeam', () => {
     });
 
     it('is unhealthy at the first check that throws, and the remaining checks do not run', async () => {
-      const failingCheck   = jest.fn(async () => {
+      const failingCheck = jest.fn(async () => {
         throw new Error('Config validation failed');
       });
       const unreachedCheck = jest.fn(async () => undefined);

@@ -61,7 +61,7 @@ export class JobsSection extends Construct {
 
     this.importJobsQueue = new ImportJobsQueue(this, 'import-jobs-queue', { encryption: props.queueEncryption });
 
-    const runner                           = new MailImportRunnerLambda(this, 'mail-import-runner', {
+    const runner = new MailImportRunnerLambda(this, 'mail-import-runner', {
       artifactResolver:  props.artifactResolver,
       itemTable:         props.data.itemTable,
       configTable:       props.data.configTable,

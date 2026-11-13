@@ -26,9 +26,9 @@ import { newRemovals, resolveStatements }                                     fr
 
 const RETAINED = { deletionPolicy: 'RetainExceptOnCreate', updateReplacePolicy: 'Retain' };
 
-const isRoleProperties          = t.isPartial({ RoleName: t.isOptional(isTemplateValue) });
-const isLogGroupProperties      = t.isPartial({ LogGroupName: isTemplateValue });
-const isPolicyProperties        = t.isPartial({
+const isRoleProperties     = t.isPartial({ RoleName: t.isOptional(isTemplateValue) });
+const isLogGroupProperties = t.isPartial({ LogGroupName: isTemplateValue });
+const isPolicyProperties   = t.isPartial({
   PolicyName:     t.isString(),
   Roles:          t.isArray(t.isPartial({ Ref: t.isString() })),
   PolicyDocument: t.isPartial({ Statement: t.isArray(t.isPartial({})) }),
@@ -92,13 +92,13 @@ describe('SweeperInfra', () => {
     it('has only the named execution policy attached, so the boundary cannot cut a statement it holds', () => {
       const { template } = synthesize('ExecutionOnlyPolicyStack');
 
-      const [executionRole]  = resourcesOfType(template, 'AWS::IAM::Role', isRoleProperties).filter((role) =>
+      const [executionRole] = resourcesOfType(template, 'AWS::IAM::Role', isRoleProperties).filter((role) =>
         renderLiteralText(role.properties.RoleName).startsWith('mailbox-sweeper-exec-'),
       );
       const attachedPolicies = resourcesOfType(template, 'AWS::IAM::Policy', isPolicyProperties).filter((policy) =>
         policy.properties.Roles.some((role) => role.Ref === executionRole.logicalId),
       );
-      const [boundary]       = resourcesOfType(template, 'AWS::IAM::ManagedPolicy', isManagedPolicyProperties);
+      const [boundary] = resourcesOfType(template, 'AWS::IAM::ManagedPolicy', isManagedPolicyProperties);
 
       expect(attachedPolicies.map((policy) => policy.properties.PolicyName)).toEqual([SweeperPolicyNames.executionPolicy]);
       expect(boundary.properties.PolicyDocument.Statement).toEqual(
@@ -133,7 +133,7 @@ describe('SweeperInfra', () => {
       const [executionPolicy] = resourcesOfType(template, 'AWS::IAM::Policy', isPolicyProperties).filter(
         (policy) => policy.properties.PolicyName === SweeperPolicyNames.executionPolicy,
       );
-      const [stateMachine]    = resourcesOfType(template, 'AWS::StepFunctions::StateMachine', isStateMachineProperties);
+      const [stateMachine] = resourcesOfType(template, 'AWS::StepFunctions::StateMachine', isStateMachineProperties);
 
       expect(stateMachine.dependsOn).toContain(executionPolicy.logicalId);
     });
@@ -153,7 +153,7 @@ describe('SweeperInfra', () => {
         ...removals.flatMap((removal) => removal.grantStatements()),
         ...workerRoleRemoval.grantStatements(),
       ]);
-      const [workerLogGroup]  = resourcesOfType(template, 'AWS::Logs::LogGroup', isLogGroupProperties).filter((group) =>
+      const [workerLogGroup] = resourcesOfType(template, 'AWS::Logs::LogGroup', isLogGroupProperties).filter((group) =>
         renderLiteralText(group.properties.LogGroupName).includes('/infra-'),
       );
       const workerLogGroupId  = workerLogGroup.logicalId;
@@ -179,14 +179,14 @@ describe('SweeperInfra', () => {
     it('retains what the sweeper needs after the stack is deleted, and not the starter', () => {
       const { template } = synthesize('RetentionStack');
 
-      const sweeperRoles    = resourcesOfType(template, 'AWS::IAM::Role', isRoleProperties).filter((role) =>
+      const sweeperRoles = resourcesOfType(template, 'AWS::IAM::Role', isRoleProperties).filter((role) =>
         renderLiteralText(role.properties.RoleName).startsWith('mailbox-sweeper-'),
       );
       const sweeperPolicies = resourcesOfType(template, 'AWS::IAM::Policy', isPolicyProperties).filter((policy) =>
         Object.values(SweeperPolicyNames).some((name) => name === policy.properties.PolicyName),
       );
-      const worker          = functionWithHandler(template, 'index.workerHandler');
-      const starter         = functionWithHandler(template, 'index.starterHandler');
+      const worker  = functionWithHandler(template, 'index.workerHandler');
+      const starter = functionWithHandler(template, 'index.starterHandler');
 
       expect(sweeperRoles).toHaveLength(2);
       expect(sweeperPolicies).toHaveLength(2);

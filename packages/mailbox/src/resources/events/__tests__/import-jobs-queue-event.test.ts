@@ -14,7 +14,7 @@ import { ImportJobsQueue }                           from '../../queues/import-j
 import { ImportJobsQueueEvent }                      from '../import-jobs-queue-event';
 
 function arrangeEvent() {
-  const stack  = new cdk.Stack(new App(), 'TestStack', {
+  const stack = new cdk.Stack(new App(), 'TestStack', {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });

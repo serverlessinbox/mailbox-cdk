@@ -166,12 +166,12 @@ describe('MailboxUserPool addons', () => {
     functionName: 'identity-provisioner',
     grantInvoke:  () => {},
   };
-  const auditEventsQueue    = {
+  const auditEventsQueue = {
     queueUrl:  'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
     queueArn:  'arn:aws:sqs:us-west-2:123456789012:audit-events',
     grantSend: () => {},
   };
-  const table               = { tableName: 'table', tableArn: 'arn:aws:dynamodb:us-west-2:123456789012:table/table', grantRead: () => {}, grantReadWrite: () => {}, grantConditionCheck: () => {} };
+  const table = { tableName: 'table', tableArn: 'arn:aws:dynamodb:us-west-2:123456789012:table/table', grantRead: () => {}, grantReadWrite: () => {}, grantConditionCheck: () => {} };
 
   it('creates the users admin API addon with the identity provider config and the groups of the pool', () => {
     const { pool, stack } = createUserPool({ authorization: { adminGroups: ['ops'], userGroups: ['staff'] } });

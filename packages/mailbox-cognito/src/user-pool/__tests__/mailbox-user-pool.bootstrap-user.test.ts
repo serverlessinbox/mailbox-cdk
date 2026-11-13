@@ -24,7 +24,7 @@ const isPropertyValue = t.isOneOf([t.isString(), t.isNumber(), t.isBoolean(), t.
 const isBootstrapUserResource = t.isPartial({ Properties: t.isRecord(isPropertyValue) });
 
 function synthesizeBootstrapUser(passwordMinLength?: number): Record<string, t.InferType<typeof isPropertyValue>> {
-  const app   = new App({
+  const app = new App({
     context: {
       'serverlessinbox:artifacts':         {
         bucketBase: 'test-artifacts',
@@ -42,7 +42,7 @@ function synthesizeBootstrapUser(passwordMinLength?: number): Record<string, t.I
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
-  const pool  = new MailboxUserPool(stack, 'user-pool', {
+  const pool = new MailboxUserPool(stack, 'user-pool', {
     domain:           { kind: 'cognito', cognitoDomainPrefix: 'test-bootstrap' },
     artifactResolver: MailboxArtifactResolverFactory.fromContext(stack, loadMailboxCognitoRegistryRecord(), loadMailboxCognitoArtifactVersions()),
     ...(passwordMinLength !== undefined ? { passwordMinLength } : {}),

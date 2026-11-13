@@ -30,8 +30,8 @@ export function arrangeWrapperStack(
   bucketBase: string = DEFAULT_BUCKET_BASE,
   project: string = DEFAULT_PROJECT,
 ): WrapperArrangement {
-  const app              = new App();
-  const stack            = new Stack(app, 'TestStack', {
+  const app   = new App();
+  const stack = new Stack(app, 'TestStack', {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });

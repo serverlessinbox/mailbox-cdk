@@ -71,7 +71,7 @@ const GO_ARTIFACTS = new Set<string>([
 ]);
 
 function synthesizeMailbox(): Template {
-  const app   = new App({
+  const app = new App({
     context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT },
   });
   const stack = new cdk.Stack(app, 'TestManagedLambdas', {

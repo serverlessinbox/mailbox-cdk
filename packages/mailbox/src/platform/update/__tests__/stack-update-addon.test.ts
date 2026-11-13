@@ -118,7 +118,7 @@ describe('StackUpdateAddon routes', () => {
   });
 
   it('routes that path to the stack-update Lambda', () => {
-    const [lambdaId]         = Object.keys(template.findResources('AWS::Lambda::Function', {
+    const [lambdaId] = Object.keys(template.findResources('AWS::Lambda::Function', {
       Properties: { Environment: { Variables: { ROOT_STACK_ARN: Match.anyValue() } } },
     }));
     const integrationTargets = resourcesOfType(template, 'AWS::ApiGatewayV2::Integration', isIntegrationProperties).map((integration) =>

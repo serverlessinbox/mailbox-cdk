@@ -105,9 +105,9 @@ describe('MailLogTable', () => {
   });
 
   it('adds the KMS write actions on its customer-managed key to grantWrite', () => {
-    const stack             = createStack();
-    const key               = new kms.Key(stack, 'key');
-    const table             = new MailLogTable(stack, 'mail-log-table', {
+    const stack = createStack();
+    const key   = new kms.Key(stack, 'key');
+    const table = new MailLogTable(stack, 'mail-log-table', {
       encryption:    TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: key,
     });

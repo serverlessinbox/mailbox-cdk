@@ -48,7 +48,7 @@ export class UserApi extends Construct implements IApiArea {
   constructor(scope: Construct, id: string, props: UserApiProps) {
     super(scope, id);
 
-    const handler          = new UserApiLambda(this, 'handler', {
+    const handler = new UserApiLambda(this, 'handler', {
       configTable:         props.configTable,
       itemTable:           props.itemTable,
       auditEventsQueue:    props.auditEventsQueue,

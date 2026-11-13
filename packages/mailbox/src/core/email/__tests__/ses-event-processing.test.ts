@@ -31,7 +31,7 @@ function createProps(stack: cdk.Stack): SesEventProcessingProps {
     location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
-  const dataTable                           = (id: string) => new DataTable(new Table(stack, id, {
+  const dataTable = (id: string) => new DataTable(new Table(stack, id, {
     partitionKey: { name: 'pk', type: AttributeType.STRING },
   }));
 

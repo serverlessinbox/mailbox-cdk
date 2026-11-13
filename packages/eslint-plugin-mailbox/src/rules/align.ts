@@ -8,6 +8,9 @@ import { createRule }                                                    from '.
 // ends: a blank line, a comment line or a member that does not take part ends it. Every group
 // aligns, including a group of one, so a lone entry gets exactly one space. An entry whose `=`
 // or value would start past ALIGN_CAP_COLUMN is over the cap: it is a group of its own.
+// A declaration or assignment that spans more than one line joins the group above it, so its `=`
+// aligns with the single-line entries before it, and it ends that group: the statement after it
+// starts a new group. Object, interface and type-literal members are not affected by this.
 // Only the whitespace right before the `=` / after the `:` is rewritten.
 
 type AlignMessageId = 'alignEquals' | 'alignValue';
@@ -24,6 +27,7 @@ interface AlignEntry {
   gapStart:    number;
   gapEnd:      number;
   overCap:     boolean;
+  endsGroup:   boolean;
 }
 
 interface AlignedPair {
@@ -100,7 +104,7 @@ class AlignChecker {
     if (last === undefined) {
       return true;
     }
-    if (last.overCap || entry.overCap) {
+    if (last.overCap || entry.overCap || last.endsGroup) {
       return false;
     }
 
@@ -195,9 +199,10 @@ class AlignChecker {
       reportToken,
       messageId,
       column,
-      gapStart: gapStart.range[1],
-      gapEnd:   gapEnd.range[0],
-      overCap:  column + 1 > ALIGN_CAP_COLUMN,
+      gapStart:  gapStart.range[1],
+      gapEnd:    gapEnd.range[0],
+      overCap:   column + 1 > ALIGN_CAP_COLUMN,
+      endsGroup: messageId === 'alignEquals' && node.loc.end.line !== node.loc.start.line,
     };
   }
 

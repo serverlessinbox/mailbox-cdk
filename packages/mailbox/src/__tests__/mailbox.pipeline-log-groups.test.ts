@@ -32,7 +32,7 @@ const isFunctionProperties = t.isPartial({
 
 describe('Mailbox stack pipeline log groups', () => {
   function synth() {
-    const app   = new App({
+    const app = new App({
       context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT },
     });
     const stack = new cdk.Stack(app, 'TestMailboxPipelineLogGroups', {

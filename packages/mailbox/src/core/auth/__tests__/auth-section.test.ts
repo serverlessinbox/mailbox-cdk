@@ -211,7 +211,7 @@ describe('AuthSection', () => {
   });
 
   describe('with enabled UIs', () => {
-    const adminUi: IOAuthUi   = {
+    const adminUi: IOAuthUi = {
       oauthClient:      { clientId: 'admin-client', requestScopeList: ['admin-api/admin'], groups: ['admins'] },
       oauthRedirectUri: 'https://admin.example.com/callback',
     };

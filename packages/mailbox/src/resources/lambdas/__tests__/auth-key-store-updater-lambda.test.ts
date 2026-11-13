@@ -25,7 +25,7 @@ function synthesize() {
     authKeyStoreTable,
     artifactResolver,
   });
-  const template                    = Template.fromStack(stack);
+  const template = Template.fromStack(stack);
 
   return { lambda, authKeyStoreTable, template, ...onlyLambdaOf(template) };
 }

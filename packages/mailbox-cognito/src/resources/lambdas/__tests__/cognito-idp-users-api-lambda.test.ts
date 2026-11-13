@@ -19,8 +19,8 @@ import { CognitoIdpUsersApiLambda, type CognitoIdpUsersApiLambdaProps } from '..
 const USER_POOL_ARN = 'arn:aws:cognito-idp:us-west-2:123456789012:userpool/us-west-2_abcdefgh';
 
 describe('CognitoIdpUsersApiLambda', () => {
-  const grantAdminAccess                          = jest.fn();
-  const auditEventsQueue: IAuditEventsQueue       = {
+  const grantAdminAccess                    = jest.fn();
+  const auditEventsQueue: IAuditEventsQueue = {
     queueUrl:  'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
     queueArn:  'arn:aws:sqs:us-west-2:123456789012:audit-events',
     grantSend: jest.fn(),
@@ -32,7 +32,7 @@ describe('CognitoIdpUsersApiLambda', () => {
   };
 
   function synthesize(groups: Pick<CognitoIdpUsersApiLambdaProps, 'adminGroups' | 'userGroups'>): { template: Template; lambda: CognitoIdpUsersApiLambda } {
-    const stack            = new Stack(new App(), 'TestStack', {
+    const stack = new Stack(new App(), 'TestStack', {
       env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });

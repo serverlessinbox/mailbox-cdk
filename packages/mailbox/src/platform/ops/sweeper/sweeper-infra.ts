@@ -67,7 +67,7 @@ export class SweeperInfra extends Construct {
       workerRoleArn,
       workerRolePolicyName: SweeperPolicyNames.workerPolicy,
     });
-    const removals         = [...props.removals, this.workerRoleRemoval];
+    const removals = [...props.removals, this.workerRoleRemoval];
 
     // Worker Lambda (RETAIN'd — invoked by the state machine after the stack is deleted)
     const worker = new ResourceSweeperWorkerLambda(this, 'worker', {

@@ -23,7 +23,7 @@ function newSection(stack: Stack): EmailSection {
   const dataTable = (id: string) => new DataTable(new Table(stack, id, {
     partitionKey: { name: 'pk', type: AttributeType.STRING },
   }));
-  const bucket    = new Bucket(stack, 'blob-store');
+  const bucket = new Bucket(stack, 'blob-store');
 
   return new EmailSection(stack, 'email', {
     artifactResolver:    new PinnedArtifactResolver({

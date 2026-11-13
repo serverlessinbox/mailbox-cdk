@@ -45,7 +45,7 @@ export interface DeployerTestStack {
 
 /** A stack with an explicit environment and a resolver that pins the package the deployer Lambdas ship in. */
 export function newDeployerTestStack(): DeployerTestStack {
-  const stack            = new Stack(new App(), 'TestStack', {
+  const stack = new Stack(new App(), 'TestStack', {
     env:         { account: TEST_ACCOUNT, region: TEST_REGION },
     synthesizer: new BootstraplessSynthesizer(),
   });
@@ -84,7 +84,7 @@ export function starterServiceName(deployedStackName: string): string {
   });
   new DeployerStarterLambda(stack, 'starter', { artifactResolver, workflow, deployedStackName, deployedStack: new DeployedStack('arn:aws:cloudformation:us-east-1:123456789012:stack/probe/*') });
 
-  const starters         = Object.values(
+  const starters = Object.values(
     Template.fromStack(stack).findResources('AWS::Lambda::Function', { Properties: { Handler: 'index.starterHandler' } }),
   );
   const errors: string[] = [];

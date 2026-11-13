@@ -117,7 +117,7 @@ describe('StackFailureDetection', () => {
       const policyNamesOnRole = resourcesOfType(template, 'AWS::IAM::Policy', isPolicyProperties)
         .filter((policy) => policy.properties.Roles.some((role) => roleIds.includes(role.Ref)))
         .map((policy) => policy.properties.PolicyName);
-      const ruleTargetIds     = resourcesOfType(template, 'AWS::Events::Rule', isRuleProperties)
+      const ruleTargetIds = resourcesOfType(template, 'AWS::Events::Rule', isRuleProperties)
         .flatMap((rule) => rule.properties.Targets.map((target) => target.Id));
 
       expect(policyNamesOnRole).toEqual([targets.detectorRolePolicyName]);

@@ -31,7 +31,7 @@ function synthesize() {
     scheduleHour:     '5',
     scheduleMinute:   '9',
   });
-  const template                    = Template.fromStack(stack);
+  const template = Template.fromStack(stack);
 
   return { lambda, configTable, template, ...onlyLambdaOf(template) };
 }

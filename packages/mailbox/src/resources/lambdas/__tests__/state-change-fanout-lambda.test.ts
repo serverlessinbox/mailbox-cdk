@@ -168,7 +168,7 @@ describe('StateChangeFanoutLambda.grantInvoke', () => {
       patTable:         fakePatTable('pat-table'),
       artifactResolver,
     });
-    const role                        = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
+    const role = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
 
     lambda.grantInvoke(role);
 

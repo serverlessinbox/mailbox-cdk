@@ -22,7 +22,7 @@ import { createMockAuthProvider, TEST_ARTIFACT_CONTEXT } from './mailbox-helpers
 
 describe('Mailbox stack SERVICE_NAME uniqueness', () => {
   it('no two Lambda functions share a SERVICE_NAME value', () => {
-    const app   = new App({
+    const app = new App({
       context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT },
     });
     const stack = new cdk.Stack(app, 'TestMailboxServiceName', {

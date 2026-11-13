@@ -161,8 +161,8 @@ describe('JmapApi', () => {
     it('serves the session document anonymously and everything else behind the authorizer', () => {
       new JmapApi(stack, 'jmap-api', propsWith());
 
-      const template          = Template.fromStack(stack);
-      const [anonymousId]     = Object.keys(template.findResources('AWS::ApiGatewayV2::Authorizer', {
+      const template      = Template.fromStack(stack);
+      const [anonymousId] = Object.keys(template.findResources('AWS::ApiGatewayV2::Authorizer', {
         Properties: { AuthorizerResultTtlInSeconds: 0, IdentitySource: [] },
       }));
       const [authenticatedId] = Object.keys(template.findResources('AWS::ApiGatewayV2::Authorizer', {

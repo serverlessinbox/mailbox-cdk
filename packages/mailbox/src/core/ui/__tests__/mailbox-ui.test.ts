@@ -178,7 +178,7 @@ describe('MailboxUi', () => {
 
     it('requires TLS 1.2 2021 as the minimum viewer protocol when a certificate is given', () => {
       // The feature flag is off, so CDK's own default is TLS 1.2 2019 and only the explicit setting yields 2021.
-      stack             = new cdk.Stack(new App({ context: { '@aws-cdk/aws-cloudfront:defaultSecurityPolicyTLSv1.2_2021': false } }), 'TestStack', {
+      stack = new cdk.Stack(new App({ context: { '@aws-cdk/aws-cloudfront:defaultSecurityPolicyTLSv1.2_2021': false } }), 'TestStack', {
         env:         { account: '123456789012', region: 'us-west-2' },
         synthesizer: new BootstraplessSynthesizer(),
       });

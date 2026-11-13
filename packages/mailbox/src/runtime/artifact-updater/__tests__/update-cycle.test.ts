@@ -337,7 +337,7 @@ describe('UpdateCycle', () => {
         ...missing,
         Tags: missing.Tags?.map((tag) => (tag.Key === ServerlessInboxTagKeys.artifactName ? { ...tag, Value: missingArtifact } : tag)),
       };
-      const present         = lambdaWithType('code', 'arn:aws:lambda:us-east-1:123456789012:function:admin-api');
+      const present = lambdaWithType('code', 'arn:aws:lambda:us-east-1:123456789012:function:admin-api');
       taggingMock.on(GetResourcesCommand).resolves({ ResourceTagMappingList: [missingTagged, present] });
       const { cycle, codeUpdater } = buildUpdaterParts();
       jest.mocked(codeUpdater.advanceIfStale).mockImplementation(async (_scan, target) => {

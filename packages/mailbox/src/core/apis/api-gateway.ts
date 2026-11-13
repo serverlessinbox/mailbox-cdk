@@ -44,7 +44,7 @@ export class ApiGateway extends Construct {
     super(scope, id);
     ComponentDescription.describe(this, 'Shared HTTP API that serves the admin and user API endpoints.');
 
-    this.api          = new HttpApi(this, 'admin-api', {
+    this.api = new HttpApi(this, 'admin-api', {
       apiName:            `Mailbox ${Aws.STACK_NAME} API`,
       createDefaultStage: false,
       description:        'This service serves the mailbox admin and user API endpoints.',

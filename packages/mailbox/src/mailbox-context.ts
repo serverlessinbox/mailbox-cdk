@@ -46,7 +46,7 @@ export class MailboxContext {
     // overridden by CDK context.
     const artifactResolver: IArtifactResolver = props.artifactResolver
       ?? MailboxArtifactResolverFactory.fromContext(scope, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
-    const stackVersion                        = artifactResolver.getVersion(MAILBOX_ARTIFACT_PACKAGE);
+    const stackVersion = artifactResolver.getVersion(MAILBOX_ARTIFACT_PACKAGE);
 
     // The Mailbox is the root stack of its own deployment.
     applyServerlessInboxBaseTags(scope, { rootStack: Aws.STACK_NAME });

@@ -24,11 +24,11 @@ const DETECTOR: StackFailureDetectorRemovalTarget = {
   detectorRoleArn:        'arn:aws:iam::123456789012:role/mailbox-diag-role',
   detectorRolePolicyName: 'stack-failure-detector-policy',
 };
-const NEW_RULE_ARN                                = 'arn:aws:events:us-west-2:123456789012:rule/rule-new';
-const NEW_FN_ARN                                  = 'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-2';
-const NEW_ROLE_ARN                                = 'arn:aws:iam::123456789012:role/mailbox-diag-role-2';
+const NEW_RULE_ARN = 'arn:aws:events:us-west-2:123456789012:rule/rule-new';
+const NEW_FN_ARN   = 'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-2';
+const NEW_ROLE_ARN = 'arn:aws:iam::123456789012:role/mailbox-diag-role-2';
 
-const SWEEPER_ROLE_OLD     = {
+const SWEEPER_ROLE_OLD = {
   workerRoleArn:        'arn:aws:iam::123456789012:role/mailbox-sweeper-worker-aaaa1111-bbbb2222',
   workerRolePolicyName: 'worker-policy',
 };

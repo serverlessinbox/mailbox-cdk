@@ -87,7 +87,7 @@ export class StaticContentDeployer extends TypeScriptLambda {
       targetBucket: props.targetBucket.bucketName,
       sources:      [props.source.spec],
     };
-    const resource                                      = new CustomResource(scope, id, {
+    const resource = new CustomResource(scope, id, {
       serviceToken:   this.functionArn,
       serviceTimeout: Duration.minutes(15),
       resourceType:   'Custom::ContentDeployment',
@@ -115,7 +115,7 @@ export class StaticContentDeployer extends TypeScriptLambda {
       invalidationPaths: props.paths,
       deploymentNonce:   this.deploymentNonce(deployments),
     };
-    const resource                                      = new CustomResource(scope, id, {
+    const resource = new CustomResource(scope, id, {
       serviceToken:   this.functionArn,
       serviceTimeout: Duration.minutes(15),
       resourceType:   'Custom::ContentInvalidation',

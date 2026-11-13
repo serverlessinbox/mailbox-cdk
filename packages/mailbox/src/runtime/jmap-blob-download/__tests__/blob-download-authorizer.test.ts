@@ -122,7 +122,7 @@ describe('BlobDownloadAuthorizer', () => {
       hmac: new HmacVerifier(dynamodb),
       pat:  new PatVerifier(dynamodb, () => Date.now()),
     }));
-    authorizer   = new BlobDownloadAuthorizer(logger, verifiersFor);
+    authorizer = new BlobDownloadAuthorizer(logger, verifiersFor);
   });
 
   afterEach(() => {

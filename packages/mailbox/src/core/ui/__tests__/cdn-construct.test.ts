@@ -52,7 +52,7 @@ function synthesizeCdn(overrides: Partial<CdnProps> = {}): SynthesizedCdn {
     synthesizer: new BootstraplessSynthesizer(),
     env:         { account: '123456789012', region: 'eu-west-1' },
   });
-  const cdn   = new Cdn(stack, 'blob-cdn', {
+  const cdn = new Cdn(stack, 'blob-cdn', {
     blobStore:               s3.Bucket.fromBucketName(stack, 'blob-store', 'blob-bucket'),
     authKeyStoreTable:       fakeAuthKeyStoreTable('auth-key-store-table'),
     patTable:                fakePatTable('pat-table'),

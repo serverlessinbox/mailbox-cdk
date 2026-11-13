@@ -184,8 +184,8 @@ export function buildUpdaterParts(overrides: UpdaterOverrides = {}): UpdaterPart
     logger,
     overrides.sleep ?? noSleep,
   );
-  const uiUpdater          = new UiBucketUpdater(clients.registryS3, clients.deployment, clients.cloudFront, releases, logger);
-  const cycle              = new UpdateCycle(testConfig, clients, rootStackResources, logger, codeUpdater, edgeUpdater, uiUpdater);
+  const uiUpdater = new UiBucketUpdater(clients.registryS3, clients.deployment, clients.cloudFront, releases, logger);
+  const cycle     = new UpdateCycle(testConfig, clients, rootStackResources, logger, codeUpdater, edgeUpdater, uiUpdater);
   return { cycle, clients, codeUpdater, edgeUpdater, uiUpdater };
 }
 
@@ -222,7 +222,7 @@ export function fakeCloudFormationClient(): CloudFormationClient {
  * The properties are strings, as they arrive.
  */
 export function deployEndTriggerEvent(requestType: 'Create' | 'Update' | 'Delete'): CloudFormationCustomResourceEvent {
-  const base       = {
+  const base = {
     ServiceToken:      'arn:aws:lambda:us-east-1:123456789012:function:artifact-updater',
     ResponseURL:       'https://cloudformation-custom-resource-response-url.example.com/',
     StackId:           'arn:aws:cloudformation:us-east-1:123456789012:stack/my-stack/guid',

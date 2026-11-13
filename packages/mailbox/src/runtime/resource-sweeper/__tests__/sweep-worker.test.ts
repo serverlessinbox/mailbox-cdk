@@ -13,12 +13,12 @@ import { SweepWorker }                                                          
 
 const SWEPT: TargetResult = { target: 'cert', status: 'SUCCESS' };
 
-const CERT_INPUT: CertRemovalInput                       = {
+const CERT_INPUT: CertRemovalInput = {
   certArn:       'arn:aws:acm:us-west-2:123456789012:certificate/abc',
   rootStackName: 'test-stack',
   rootStackId:   'guid-1',
 };
-const EDGE_INPUT: EdgeFunctionRemovalInput               = {
+const EDGE_INPUT: EdgeFunctionRemovalInput = {
   edgeFnArn:     'arn:aws:lambda:us-east-1:123456789012:function:edge',
   rootStackName: 'test-stack',
   rootStackId:   'guid-1',
@@ -57,7 +57,7 @@ describe('SweepWorker', () => {
 
   describe('sweeper-role', () => {
     it('hands the worker role payload to the sweeper of that type and reports its outcome', async () => {
-      const payload                       = {
+      const payload = {
         removalType:          'sweeper-role',
         workerRoleArn:        'arn:aws:iam::123456789012:role/mailbox-sweeper-worker-aaaa1111-bbbb2222',
         workerRolePolicyName: 'worker-policy',

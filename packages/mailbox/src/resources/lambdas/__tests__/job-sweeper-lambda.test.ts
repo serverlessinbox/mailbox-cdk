@@ -23,7 +23,7 @@ const SWEEPER_ENVIRONMENT_NAMES = [
   'AUDIT_EVENTS_QUEUE_URL', 'BLOB_STORAGE_NAME', 'CHANGELOG_TABLE_NAME', 'CONFIG_TABLE_NAME', 'ITEM_TABLE_NAME',
   'JOB_STALE_AFTER', 'PAT_TABLE_NAME', 'SERVICE_NAME', 'SWEEP_INTERVAL', 'SYSTEM_SENDER_ADDRESS',
 ];
-const ITEM_TABLE_ACTIONS        = ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem'];
+const ITEM_TABLE_ACTIONS = ['dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem'];
 
 interface FunctionProperties {
   readonly Environment: { readonly Variables: Record<string, string> };
@@ -32,11 +32,11 @@ interface FunctionProperties {
 }
 
 function arrangeSweeper(stateChangeFanout?: IStateChangeFanout) {
-  const stack            = new cdk.Stack(new App(), 'TestStack', {
+  const stack = new cdk.Stack(new App(), 'TestStack', {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
-  const itemTable        = new DataTable(new Table(stack, 'item-table', {
+  const itemTable = new DataTable(new Table(stack, 'item-table', {
     partitionKey: { name: 'pk', type: AttributeType.STRING },
     sortKey:      { name: 'sk', type: AttributeType.STRING },
   }));

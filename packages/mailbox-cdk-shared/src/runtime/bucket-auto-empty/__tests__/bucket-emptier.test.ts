@@ -122,7 +122,7 @@ describe('BucketEmptier', () => {
   });
 
   describe('when S3 reports versions it did not delete', () => {
-    const TWO_VERSIONS  = {
+    const TWO_VERSIONS = {
       Versions:    [
         { Key: 'file1.txt', VersionId: 'v1' },
         { Key: 'file2.txt', VersionId: 'v2' },

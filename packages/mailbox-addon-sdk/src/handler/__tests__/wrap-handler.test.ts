@@ -53,7 +53,7 @@ describe('wrapHandler', () => {
       await context.recordAudit({ status: 'success', entityId: body.name });
       return {};
     });
-    const { handler, sink }    = wrapped(recording);
+    const { handler, sink } = wrapped(recording);
 
     await handler(authorizedEvent({ path: '/things/create', body: '{"name":"widget"}' }));
 

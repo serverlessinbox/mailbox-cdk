@@ -54,7 +54,7 @@ describe('StackHelpers', () => {
       'zone-name',
       'Z123',
     );
-    const template                                     = Template.fromStack(zoneStack);
+    const template = Template.fromStack(zoneStack);
 
     it('attaches a Custom::StackHelpers resource with the properties the Lambda reads', () => {
       template.hasResourceProperties('Custom::StackHelpers', {
@@ -121,7 +121,7 @@ describe('StackHelpers', () => {
       's3-safe-name',
       'my-data-stack',
     );
-    const template                                     = Template.fromStack(nameStack);
+    const template = Template.fromStack(nameStack);
 
     it('attaches a Custom::StackHelpers resource with the stack name and no hosted zone', () => {
       template.hasResourceProperties('Custom::StackHelpers', {
@@ -145,7 +145,7 @@ describe('StackHelpers', () => {
       'cognito-prefix',
       'mail.example.com',
     );
-    const template                                           = Template.fromStack(cognitoStack);
+    const template = Template.fromStack(cognitoStack);
 
     it('attaches a Custom::StackHelpers resource sending the domain name, with no hosted zone, falling back to the stack name', () => {
       template.hasResourceProperties('Custom::StackHelpers', {
@@ -169,7 +169,7 @@ describe('StackHelpers', () => {
       'seeded-number',
       { salt: 'some-purpose', range: 24 },
     );
-    const template                                         = Template.fromStack(seededStack);
+    const template = Template.fromStack(seededStack);
 
     it('attaches a Custom::StackHelpers resource sending the salt and the range as strings', () => {
       template.hasResourceProperties('Custom::StackHelpers', {

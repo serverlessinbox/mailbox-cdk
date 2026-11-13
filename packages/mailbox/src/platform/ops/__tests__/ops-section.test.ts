@@ -144,8 +144,8 @@ describe('OpsSection', () => {
   });
 
   it('registers the certificate removal only when a regional certificate was created', () => {
-    const certStack   = newTestStack('test-stack');
-    const withCert    = newSection(certStack, {
+    const certStack = newTestStack('test-stack');
+    const withCert  = newSection(certStack, {
       edge: {
         jmapBlobDownloadVersionArn: VERSION_ARN,
         regionalCertificate:        acm.Certificate.fromCertificateArn(certStack, 'regional-cert', 'arn:aws:acm:us-west-2:111122223333:certificate/regional'),

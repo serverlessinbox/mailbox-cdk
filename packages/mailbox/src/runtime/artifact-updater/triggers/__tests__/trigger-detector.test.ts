@@ -34,7 +34,7 @@ describe('TriggerDetector', () => {
     httpTrigger:      jest.fn().mockReturnValue(httpTrigger),
     scheduledTrigger: jest.fn().mockReturnValue(scheduledTrigger),
   };
-  const detector                             = new TriggerDetector(builder);
+  const detector = new TriggerDetector(builder);
 
   beforeEach(() => {
     jest.clearAllMocks();

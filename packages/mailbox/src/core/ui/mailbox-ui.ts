@@ -137,7 +137,7 @@ export class MailboxUi extends Construct {
         },
       ],
     });
-    this.distribution  = distribution;
+    this.distribution = distribution;
 
     // Always route /config/* to the bucket's /config/* (not /content/config/*).
     // Disable caching so CDK-driven config updates propagate immediately.

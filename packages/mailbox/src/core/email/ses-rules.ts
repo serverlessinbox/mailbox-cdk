@@ -39,7 +39,7 @@ export class SesRules extends Construct {
     const emailProcessingQueue = new EmailProcessingQueue(this, 'email-processing-queue', {
       encryption: props.queueEncryption,
     });
-    this.emailProcessingQueue  = emailProcessingQueue;
+    this.emailProcessingQueue = emailProcessingQueue;
 
     // SES's SNS action has a hard 150 KB limit on the inbound email, so the notification goes
     // through a forwarder Lambda that enqueues it on SQS instead.

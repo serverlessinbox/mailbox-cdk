@@ -13,7 +13,7 @@ import { App, BootstraplessSynthesizer, Duration }   from 'aws-cdk-lib';
 import { JobSweepSchedule }                          from '../job-sweep-schedule';
 
 function arrangeSchedule(interval: Duration) {
-  const stack  = new cdk.Stack(new App(), 'TestStack', {
+  const stack = new cdk.Stack(new App(), 'TestStack', {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });

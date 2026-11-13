@@ -47,7 +47,7 @@ export class McpApi extends Construct {
     super(scope, id);
     ComponentDescription.describe(this, 'Model Context Protocol (MCP) endpoint exposing mailbox tools to AI clients.');
 
-    const api          = new HttpApi(this, 'mcp-api', {
+    const api = new HttpApi(this, 'mcp-api', {
       apiName:                   `Mailbox ${Aws.STACK_NAME} MCP API`,
       createDefaultStage:        false,
       description:               'This service serves MCP (Model Context Protocol) endpoints.',

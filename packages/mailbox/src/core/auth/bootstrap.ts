@@ -82,7 +82,7 @@ export class Bootstrap extends Construct {
       vendorLink:        props.vendorLink,
     });
 
-    const bootstrapResource      = new CustomResource(this, 'resource', {
+    const bootstrapResource = new CustomResource(this, 'resource', {
       resourceType:   'Custom::Bootstrap',
       serviceToken:   this.handler.functionArn,
       serviceTimeout: BOOTSTRAP_LAMBDA_TIMEOUT.plus(SERVICE_TIMEOUT_MARGIN),

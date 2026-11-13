@@ -25,7 +25,7 @@ interface LambdaFixture {
 }
 
 function newFixture(): LambdaFixture {
-  const stack            = new Stack(new App(), 'TestStack', {
+  const stack = new Stack(new App(), 'TestStack', {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });

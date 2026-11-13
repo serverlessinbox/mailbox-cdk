@@ -24,8 +24,8 @@ describe('DiffCommand', () => {
         callback();
       },
     });
-    const command          = Cli.from([DiffCommand]).process(['diff', '--package', packageDir], { stdout });
-    const exitCode         = await command.validateAndExecute();
+    const command  = Cli.from([DiffCommand]).process(['diff', '--package', packageDir], { stdout });
+    const exitCode = await command.validateAndExecute();
     return { exitCode, stdout: chunks.join('') };
   }
 

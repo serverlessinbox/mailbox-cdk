@@ -35,8 +35,8 @@ describe('JmapOAuthDcrLambda', () => {
   let originalEnvironment: NodeJS.ProcessEnv;
 
   beforeEach(() => {
-    originalEnvironment    = { ...process.env };
-    const stack            = new Stack(new App(), 'TestStack', {
+    originalEnvironment = { ...process.env };
+    const stack         = new Stack(new App(), 'TestStack', {
       env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
@@ -46,7 +46,7 @@ describe('JmapOAuthDcrLambda', () => {
       deploymentRegion: stack.region,
     });
 
-    lambda   = new JmapOAuthDcrLambda(stack, 'dcr-lambda', {
+    lambda = new JmapOAuthDcrLambda(stack, 'dcr-lambda', {
       artifactResolver,
       identityProvisioner,
       userPool: UserPool.fromUserPoolArn(stack, 'user-pool', USER_POOL_ARN),

@@ -203,7 +203,7 @@ describe('StaticContentDeployer', () => {
         targetBucket: targetBucket(),
         source:       StaticContentSource.zipFromBucket(artifactsBucket,'admin-ui.zip', 'content/'),
       });
-      const uiConfig   = deployer.deploy(uiScope, 'config', {
+      const uiConfig = deployer.deploy(uiScope, 'config', {
         targetBucket: targetBucket(),
         source:       StaticContentSource.data('config.json', '{}'),
       });

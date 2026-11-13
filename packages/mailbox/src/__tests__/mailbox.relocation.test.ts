@@ -50,8 +50,8 @@ const EXPECTED_OFFENDERS: string[] = [
 ];
 
 function explicitNamesAfterSynth(underIntermediateConstruct: boolean): Set<string> {
-  const app    = new App({ context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT } });
-  const stack  = new cdk.Stack(app, 'TestRelocation', {
+  const app   = new App({ context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT } });
+  const stack = new cdk.Stack(app, 'TestRelocation', {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });

@@ -30,7 +30,7 @@ export class LambdaZipBundler {
   }
 
   private static async bundleEntry(spec: LambdaZipSpec): Promise<Uint8Array> {
-    const result       = await build({
+    const result = await build({
       entryPoints: [spec.entryPath],
       outfile:     entryName,
       platform:    'node',

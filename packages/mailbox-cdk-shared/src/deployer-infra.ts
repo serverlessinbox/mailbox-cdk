@@ -55,7 +55,7 @@ export class DeployerInfra extends Construct {
       stateMachineName: this.stateMachineName(props.stateMachineNamePrefix),
     });
 
-    const starter   = new DeployerStarterLambda(this, 'starter', {
+    const starter = new DeployerStarterLambda(this, 'starter', {
       artifactResolver:  props.artifactResolver,
       workflow:          this.workflow,
       deployedStackName: props.deployedStackName,

@@ -20,7 +20,7 @@ function synthSection(stack: Stack): SearchSection {
   const dataTable = (id: string) => new DataTable(new Table(stack, id, {
     partitionKey: { name: 'pk', type: AttributeType.STRING },
   }));
-  const section   = new SearchSection(stack, 'search', {
+  const section = new SearchSection(stack, 'search', {
     artifactResolver: new PinnedArtifactResolver({
       packages:         { 'mailbox-go': { version: TEST_ARTIFACT_VERSION, zone: ArtifactZone.REGIONAL } },
       location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },

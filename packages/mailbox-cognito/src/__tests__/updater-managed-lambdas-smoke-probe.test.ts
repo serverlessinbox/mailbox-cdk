@@ -66,7 +66,7 @@ function adminApiAddonContextOf(artifactResolver: IArtifactResolver): AdminApiAd
 }
 
 function synthesizeUserPool(): Template {
-  const app      = new App({
+  const app = new App({
     context: {
       'serverlessinbox:artifacts':         {
         bucketBase: 'test-artifacts',
@@ -80,7 +80,7 @@ function synthesizeUserPool(): Template {
       'serverlessinbox:artifact_versions': {},
     },
   });
-  const stack    = new cdk.Stack(app, 'TestManagedCognitoLambdas', {
+  const stack = new cdk.Stack(app, 'TestManagedCognitoLambdas', {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });

@@ -60,11 +60,11 @@ export interface DetectorRemovalFixture {
 }
 
 export function newDetectorRemoval(scope: Construct, gracePeriod?: Duration): DetectorRemovalFixture {
-  const role             = new iam.Role(scope, 'detector-role', {
+  const role = new iam.Role(scope, 'detector-role', {
     roleName:  'mailbox-diag-role-test',
     assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
   });
-  const detector         = lambda.Function.fromFunctionArn(
+  const detector = lambda.Function.fromFunctionArn(
     scope,
     'detector-fn-ref',
     'arn:aws:lambda:us-west-2:123456789012:function:mailbox-diag-fn-test',

@@ -163,7 +163,7 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
    * aws:TagKeys.
    */
   private grantLambdaFunctionLifecycle(edgeStackNamePattern: string, rootStack: RootStack): void {
-    const edgeLambdaActions   = [
+    const edgeLambdaActions = [
       'lambda:CreateFunction',
       'lambda:DeleteFunction',
       'lambda:UpdateFunctionCode',
@@ -205,7 +205,7 @@ export class MailboxEdgeDeployerWorkerLambda extends DeployerWorkerLambda {
       resourceName: '*',
       arnFormat:    ArnFormat.COLON_RESOURCE_NAME,
     });
-    const edgeTagKey             = `aws:ResourceTag/${ServerlessInboxTagKeys.edge}`;
+    const edgeTagKey = `aws:ResourceTag/${ServerlessInboxTagKeys.edge}`;
     for (const conditions of rootStackResourceTagConditions(rootStack)) {
       this.addToRolePolicy(
         new PolicyStatement({

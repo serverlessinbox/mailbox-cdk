@@ -26,7 +26,7 @@ function synthStarter() {
     handler:          newWorkerStandIn(stack, 'worker'),
     stateMachineName: 'test-deployer-machine',
   });
-  const starter                     = new DeployerStarterLambda(stack, 'starter', { artifactResolver, workflow, deployedStackName: 'edge', deployedStack });
+  const starter = new DeployerStarterLambda(stack, 'starter', { artifactResolver, workflow, deployedStackName: 'edge', deployedStack });
   return { stack, workflow, starter, template: Template.fromStack(stack) };
 }
 

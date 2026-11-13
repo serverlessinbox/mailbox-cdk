@@ -70,7 +70,7 @@ export async function deletePrefix(s3: S3Client, bucket: string, prefix: string)
           },
         }),
       );
-      const failed          = response.Errors ?? [];
+      const failed = response.Errors ?? [];
       if (failed.length > 0) {
         throw new Error(
           `Failed to delete ${failed.length} object(s) in ${bucket}: ${failed.map((error) => `${error.Key} (${error.Code})`).join(', ')}`,

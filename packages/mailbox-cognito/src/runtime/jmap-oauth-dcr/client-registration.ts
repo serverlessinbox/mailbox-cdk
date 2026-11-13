@@ -93,7 +93,7 @@ export class ClientRegistration {
         clientName,
         scope: grantedScope,
       });
-      persistStatus   = persisted.status;
+      persistStatus = persisted.status;
     } catch (failure) {
       return this.answerPersistFailure(failure, tenantId, clientId);
     }

@@ -54,7 +54,7 @@ describe('HostedZoneLookup', () => {
   });
 
   it('resolves the artifacts from the pinned versions of the package when no resolver is given', () => {
-    const app   = new App({
+    const app = new App({
       context: {
         'serverlessinbox:artifacts': {
           bucketBase: 'test-artifacts',

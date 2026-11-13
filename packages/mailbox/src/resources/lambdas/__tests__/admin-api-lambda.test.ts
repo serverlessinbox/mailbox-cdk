@@ -45,19 +45,19 @@ describe('AdminApiLambda IAM scoping', () => {
     const arrangement = arrangeWrapperStack();
     stack             = arrangement.stack;
 
-    const configTable                 = new DataTable(new Table(stack, 'config-table', {
+    const configTable = new DataTable(new Table(stack, 'config-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const itemTable                   = new DataTable(new Table(stack, 'item-table', {
+    const itemTable = new DataTable(new Table(stack, 'item-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const auditLogTable               = new DataTable(new Table(stack, 'audit-log-table', {
+    const auditLogTable = new DataTable(new Table(stack, 'audit-log-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const changelogTable              = new DataTable(new Table(stack, 'changelog-table', {
+    const changelogTable = new DataTable(new Table(stack, 'changelog-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
-    const mailFeedbackTable           = new DataTable(new Table(stack, 'mail-feedback-table', {
+    const mailFeedbackTable = new DataTable(new Table(stack, 'mail-feedback-table', {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
     }));
     const blobStore                   = new DataBlobStore(new Bucket(stack, 'blob-store'));
@@ -119,8 +119,8 @@ describe('AdminApiLambda IAM scoping', () => {
     const identityArn = {
       'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':ses:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':identity/*']],
     };
-    const tagKeys     = { 'aws:TagKeys': [ServerlessInboxTagKeys.rootStack, ServerlessInboxTagKeys.rootStackId] };
-    const conditions  = [
+    const tagKeys    = { 'aws:TagKeys': [ServerlessInboxTagKeys.rootStack, ServerlessInboxTagKeys.rootStackId] };
+    const conditions = [
       Match.objectEquals({
         StringEquals:                { [`aws:RequestTag/${ServerlessInboxTagKeys.rootStackId}`]: rootStackId },
         'ForAllValues:StringEquals': tagKeys,

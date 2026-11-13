@@ -27,7 +27,7 @@ interface AddonOptions {
 }
 
 describe('CognitoIdpUsersAdminApiAddon', () => {
-  const auditEventsQueue: IAuditEventsQueue       = {
+  const auditEventsQueue: IAuditEventsQueue = {
     queueUrl:  'https://sqs.us-west-2.amazonaws.com/123456789012/audit-events',
     queueArn:  'arn:aws:sqs:us-west-2:123456789012:audit-events',
     grantSend: () => {},
@@ -39,8 +39,8 @@ describe('CognitoIdpUsersAdminApiAddon', () => {
   };
 
   function createAddon(stack: Stack, options: AddonOptions): CognitoIdpUsersAdminApiAddon {
-    const { authorization }                = options;
-    const artifactResolver                 = new PinnedArtifactResolver({
+    const { authorization } = options;
+    const artifactResolver  = new PinnedArtifactResolver({
       packages:         { 'mailbox-cognito': { version: '1.0.0', zone: ArtifactZone.REGIONAL } },
       location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
       deploymentRegion: stack.region,

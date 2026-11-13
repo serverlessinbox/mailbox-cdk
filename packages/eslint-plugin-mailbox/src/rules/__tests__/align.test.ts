@@ -3,9 +3,11 @@ import typescriptEslint from 'typescript-eslint';
 
 import { align }        from '../align';
 
-// Pins the alignment of `=` and `:`: group membership by line adjacency, the column-80 cap, and
-// the one-space gap of a lone entry. Boundary cases use names of 73 and 74 characters for `=`
-// (the `=` on column 80, then one past it) and 76 and 77 characters for `:` (the value likewise).
+// Pins the alignment of `=` and `:`: group membership by line adjacency, a multi-line statement
+// joining the group above it and ending that group, the column-80 cap, and the one-space gap of a
+// lone entry. Boundary cases use
+// names of 73 and 74 characters for `=` (the `=` on column 80, then one past it) and 76 and 77
+// characters for `:` (the value likewise).
 
 const code = (...rows: string[]): string => rows.join('\n');
 
@@ -36,6 +38,14 @@ tester.run('align', align, {
     {
       name: 'a declaration without initializer and a call end a group',
       code: code('const a = 1;', 'let b;', 'const cde = 2;', 'run();', 'const fghij = 3;'),
+    },
+    {
+      name: 'the statement after a multi-line statement starts a new group',
+      code: code('const a = {', '  x: 1,', '};', 'const bcd = 2;'),
+    },
+    {
+      name: 'two multi-line statements in a row do not align with each other',
+      code: code('const a = {', '  x: 1,', '};', 'const bcd = {', '  y: 2,', '};'),
     },
     {
       name: 'members on one line are not a group',
@@ -80,10 +90,28 @@ tester.run('align', align, {
       errors: [{ messageId: 'alignEquals' }, { messageId: 'alignEquals' }],
     },
     {
-      name:   'a multi-line statement with = on its first line takes part',
-      code:   code('const a = {', '  x: 1,', '};', 'const bcd = 2;'),
-      output: code('const a   = {', '  x: 1,', '};', 'const bcd = 2;'),
+      name:   'a single declaration before a multi-line one aligns with it',
+      code:   code('const a = 1;', 'const bcd = {', '  x: 1,', '};'),
+      output: code('const a   = 1;', 'const bcd = {', '  x: 1,', '};'),
       errors: [{ messageId: 'alignEquals' }],
+    },
+    {
+      name:   'a multi-line declaration joins the single declaration above it and ends the group',
+      code:   code('const app = new App({ context: 1 });', 'const stack = new Stack(app, {', '  env: 2,', '});', 'bcd = 3;'),
+      output: code('const app   = new App({ context: 1 });', 'const stack = new Stack(app, {', '  env: 2,', '});', 'bcd = 3;'),
+      errors: [{ messageId: 'alignEquals' }],
+    },
+    {
+      name:   'single-line assignments after a multi-line declaration align among themselves only',
+      code:   code('const m = {', '  x: 1,', '};', 'bcd = 2;', 'efghij = 3;'),
+      output: code('const m = {', '  x: 1,', '};', 'bcd    = 2;', 'efghij = 3;'),
+      errors: [{ messageId: 'alignEquals' }],
+    },
+    {
+      name:   'a multi-line object member still aligns with its neighbours',
+      code:   code('const o = {', '  a: 1,', '  bcd: {', '    x: 1,', '  },', '  efghij: 2,', '};'),
+      output: code('const o = {', '  a:      1,', '  bcd:    {', '    x: 1,', '  },', '  efghij: 2,', '};'),
+      errors: [{ messageId: 'alignValue' }, { messageId: 'alignValue' }],
     },
     {
       name:   'object keys align',

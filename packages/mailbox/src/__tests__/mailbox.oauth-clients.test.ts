@@ -35,7 +35,7 @@ describe('Mailbox OAuth client wiring', () => {
   }
 
   function synthesize(extraProps: Partial<MailboxProps> = {}): { mailbox: Mailbox; template: Template } {
-    const app   = new App({
+    const app = new App({
       context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT },
     });
     const stack = new cdk.Stack(app, 'TestMailboxOAuthClients', {

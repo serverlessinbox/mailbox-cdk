@@ -498,13 +498,13 @@ describe('CognitoIdpUsersService', () => {
       readonly failWith:  (error: Error) => void;
     }
 
-    const createRequest                 = create(CreateIdpUserRequestSchema, { username: 'alice', password: 'Passw0rd!' });
-    const getUser: FailingOperation     = {
+    const createRequest             = create(CreateIdpUserRequestSchema, { username: 'alice', password: 'Passw0rd!' });
+    const getUser: FailingOperation = {
       operation: 'getIdpUser',
       invoke:    (service) => service.getIdpUser(context(), create(GetIdpUserRequestSchema, { username: 'alice' })),
       failWith:  (error) => cognitoMock.on(AdminGetUserCommand).rejects(error),
     };
-    const setEnabled: FailingOperation  = {
+    const setEnabled: FailingOperation = {
       operation: 'setIdpUserEnabled',
       invoke:    (service) => service.setIdpUserEnabled(context(), create(SetIdpUserEnabledRequestSchema, { username: 'alice', enabled: true })),
       failWith:  (error) => cognitoMock.on(AdminEnableUserCommand).rejects(error),
@@ -514,12 +514,12 @@ describe('CognitoIdpUsersService', () => {
       invoke:    (service) => service.setIdpUserPassword(context(), create(SetIdpUserPasswordRequestSchema, { username: 'alice', password: 'Passw0rd!' })),
       failWith:  (error) => cognitoMock.on(AdminSetUserPasswordCommand).rejects(error),
     };
-    const createUser: FailingOperation  = {
+    const createUser: FailingOperation = {
       operation: 'createIdpUser creating the user',
       invoke:    (service) => service.createIdpUser(context(), createRequest),
       failWith:  (error) => cognitoMock.on(AdminCreateUserCommand).rejects(error),
     };
-    const deleteUser: FailingOperation  = {
+    const deleteUser: FailingOperation = {
       operation: 'deleteIdpUser',
       invoke:    (service) => service.deleteIdpUser(context(), create(DeleteIdpUserRequestSchema, { username: 'alice' })),
       failWith:  (error) => cognitoMock.on(AdminDeleteUserCommand).rejects(error),

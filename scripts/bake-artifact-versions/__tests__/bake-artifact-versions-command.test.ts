@@ -44,7 +44,7 @@ describe('BakeArtifactVersionsCommand', () => {
         callback();
       },
     });
-    const exitCode         = await Cli.from([BakeArtifactVersionsCommand]).run(args, { stdout });
+    const exitCode = await Cli.from([BakeArtifactVersionsCommand]).run(args, { stdout });
     return { exitCode, stdout: chunks.join('') };
   }
 

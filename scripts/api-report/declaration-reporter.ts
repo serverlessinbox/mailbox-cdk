@@ -36,7 +36,7 @@ export class DeclarationReporter {
       outDir:              VIRTUAL_OUT_DIR,
       rootDir:             path.join(this.packageDir, 'src'),
     };
-    const program                             = typescript.createProgram({ rootNames: parsed.fileNames, options });
+    const program = typescript.createProgram({ rootNames: parsed.fileNames, options });
 
     this.assertNoErrors(typescript.getPreEmitDiagnostics(program));
 

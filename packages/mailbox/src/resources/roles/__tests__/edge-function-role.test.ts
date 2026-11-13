@@ -23,7 +23,7 @@ const PAT_TABLE_ARN           = 'arn:aws:dynamodb:us-east-1:123456789012:table/p
 const REPLICA_LOG_GROUP_ARN   = {
   'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':logs:*:', { Ref: 'AWS::AccountId' }, `:log-group:/aws/lambda/us-east-1.${EDGE_STACK_NAME_PATTERN}`]],
 };
-const REPLICA_LOG_STREAM_ARN  = {
+const REPLICA_LOG_STREAM_ARN = {
   'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':logs:*:', { Ref: 'AWS::AccountId' }, `:log-group:/aws/lambda/us-east-1.${EDGE_STACK_NAME_PATTERN}:*`]],
 };
 

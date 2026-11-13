@@ -13,7 +13,7 @@ export interface DeployerTestStack {
 
 /** A stack with an explicit environment and a resolver pinning every package the sub-stack deployers resolve artifacts from. */
 export function newDeployerTestStack(): DeployerTestStack {
-  const stack            = new Stack(new App(), 'test-stack', {
+  const stack = new Stack(new App(), 'test-stack', {
     env:         { account: TEST_ACCOUNT, region: TEST_REGION },
     synthesizer: new BootstraplessSynthesizer(),
   });

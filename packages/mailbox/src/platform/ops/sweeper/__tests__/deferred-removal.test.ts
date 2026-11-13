@@ -38,7 +38,7 @@ describe('DeferredRemoval', () => {
       functionArn:     'arn:aws:lambda:us-west-2:123456789012:function:sweeper-starter',
       sameEnvironment: true,
     });
-    const removals       = withCertificate
+    const removals = withCertificate
       ? [newCertificateRemoval(stack), newEdgeFunctionRemoval(stack)]
       : [newEdgeFunctionRemoval(stack)];
     new DeferredRemoval(stack, 'deferred-removal', { sweeperStarter, removals });

@@ -119,7 +119,7 @@ export class JmapApi extends Construct {
 
     this.authorizerLambda = lambdaAuthorizer;
 
-    const api         = new HttpApi(this, 'jmap-api', {
+    const api = new HttpApi(this, 'jmap-api', {
       apiName:            `Mailbox ${Aws.STACK_NAME} JMAP API`,
       createDefaultStage: false,
       description:        'This service serves mailbox operations.',
@@ -216,7 +216,7 @@ export class JmapApi extends Construct {
     const authenticatedAuthorizer = new HttpLambdaAuthorizer('authorizer', lambdaAuthorizer, {
       resultsCacheTtl: Duration.minutes(5),
     });
-    const anonymousAuthorizer     = new HttpLambdaAuthorizer('authorizer-anonymous', lambdaAuthorizer, {
+    const anonymousAuthorizer = new HttpLambdaAuthorizer('authorizer-anonymous', lambdaAuthorizer, {
       identitySource:  [],
       resultsCacheTtl: Duration.seconds(0),
     });

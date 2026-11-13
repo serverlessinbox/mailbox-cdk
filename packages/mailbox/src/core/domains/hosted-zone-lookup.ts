@@ -54,7 +54,7 @@ export class HostedZoneLookup extends Construct {
 
     const artifactResolver = props.artifactResolver
       ?? MailboxArtifactResolverFactory.fromContext(this, loadMailboxRegistryRecord(), loadMailboxArtifactVersions());
-    const zoneName         = StackHelpers.getOrCreate(this, artifactResolver)
+    const zoneName = StackHelpers.getOrCreate(this, artifactResolver)
       .resolveHostedZoneName(this, 'resource', props.hostedZoneId);
 
     this.hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'zone', {

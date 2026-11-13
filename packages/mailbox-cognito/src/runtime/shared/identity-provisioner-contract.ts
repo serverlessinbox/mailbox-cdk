@@ -65,8 +65,8 @@ export const isResolveTenantResponse = t.isObject({ tenantId: isTenantId });
 /** The tenant the request belongs to. */
 export type ResolveTenantResponse = t.InferType<typeof isResolveTenantResponse>;
 
-const isDcrProceedResponse     = t.isObject({ status: t.isLiteral('proceed') });
-const isDcrDedupHitResponse    = t.isObject({
+const isDcrProceedResponse  = t.isObject({ status: t.isLiteral('proceed') });
+const isDcrDedupHitResponse = t.isObject({
   status:   t.isLiteral('dedup_hit'),
   clientId: isClientId,
   scope:    t.isOptional(t.isString()),

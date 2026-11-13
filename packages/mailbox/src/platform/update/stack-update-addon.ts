@@ -61,7 +61,7 @@ export class StackUpdateAddon extends Construct implements IAdminApiAddon {
 
     const artifactLocation = props.artifactResolver.location;
 
-    const pointerKey    = buildReleasePointerKey('template', props.templateName, {
+    const pointerKey = buildReleasePointerKey('template', props.templateName, {
       distTag: props.distTag ?? DEFAULT_DIST_TAG,
       project: artifactLocation.project,
     });

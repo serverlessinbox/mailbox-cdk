@@ -28,7 +28,7 @@ function buildWebSocketPush(stack: cdk.Stack, overrides: Partial<WebSocketPushPr
   const packages: Record<string, ArtifactPin> = {
     'mailbox-go': { version: '1.0.0', zone: ArtifactZone.REGIONAL },
   };
-  const artifactResolver: IArtifactResolver   = new PinnedArtifactResolver({
+  const artifactResolver: IArtifactResolver = new PinnedArtifactResolver({
     packages,
     location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,

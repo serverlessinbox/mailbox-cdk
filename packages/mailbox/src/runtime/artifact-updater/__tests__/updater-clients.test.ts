@@ -31,8 +31,8 @@ describe('RootStackResources', () => {
   const rootStackResources = new RootStackResources('my-stack', 'guid-1');
 
   function answerQuery(tagKey: string, ...pages: ResourceTagMapping[][]): void {
-    const matcher  = { TagFilters: [{ Key: tagKey, Values: [tagKey === ID_KEY ? 'guid-1' : 'my-stack'] }] };
-    const answers  = pages.map((page, index) => ({
+    const matcher = { TagFilters: [{ Key: tagKey, Values: [tagKey === ID_KEY ? 'guid-1' : 'my-stack'] }] };
+    const answers = pages.map((page, index) => ({
       ResourceTagMappingList: page,
       PaginationToken:        index < pages.length - 1 ? `page-${index + 2}` : '',
     }));

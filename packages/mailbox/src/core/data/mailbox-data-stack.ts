@@ -94,7 +94,7 @@ export class MailboxDataStack extends cdk.Stack {
       ...(dynamoEncryption.encryptionKey && { encryptionKey: dynamoEncryption.encryptionKey }),
     };
 
-    const blobStore         = new BlobStore(this, {
+    const blobStore = new BlobStore(this, {
       encryptionKey: encryptionPlan.blobStore.encryptionKey,
       nameBase:      nameBaseParam.valueAsString,
       removalPolicy: removalPolicyForRetainedResources(this),

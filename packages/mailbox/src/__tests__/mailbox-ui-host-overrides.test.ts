@@ -18,7 +18,7 @@ import { Mailbox }                                       from '../mailbox';
 import { createMockAuthProvider, TEST_ARTIFACT_CONTEXT } from './mailbox-helpers';
 import { resourcesOfType }                               from './template-resources';
 
-const isDeployerProperties     = t.isPartial({
+const isDeployerProperties = t.isPartial({
   parameters: t.isPartial({
     webmailHost: t.isString(),
     adminHost:   t.isString(),

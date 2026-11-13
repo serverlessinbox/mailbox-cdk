@@ -21,7 +21,7 @@ describe('withSmokeTest', () => {
     const failingCheck = jest.fn(() => {
       throw new Error('Config validation failed');
     });
-    const wrapped      = withSmokeTest(jest.fn(async () => ({})), failingCheck);
+    const wrapped = withSmokeTest(jest.fn(async () => ({})), failingCheck);
 
     const result = await wrapped({ serverlessInboxSmokeTest: true }, {});
 
@@ -52,7 +52,7 @@ describe('withSmokeTest', () => {
     const handlerMock = jest.fn(async () => {
       throw new Error('Handler failed');
     });
-    const wrapped     = withSmokeTest(handlerMock);
+    const wrapped = withSmokeTest(handlerMock);
 
     await expect(wrapped({ method: 'GET' }, {})).rejects.toThrow('Handler failed');
   });

@@ -27,9 +27,9 @@ function synthStore(withCustomerKey = false): SynthesizedStore {
   const dynamoTables                = withCustomerKey
     ? { encryption: TableEncryption.CUSTOMER_MANAGED, encryptionKey: new kms.Key(stack, 'customer-key') }
     : { encryption: TableEncryption.AWS_MANAGED };
-  const store                       = new AuthKeyStore(stack, 'auth-key-store', { issuers: [ISSUER_A, ISSUER_B], artifactResolver, dynamoTables });
-  const template                    = Template.fromStack(stack);
-  const tableLogicalIds             = Object.keys(template.findResources('AWS::DynamoDB::Table'));
+  const store           = new AuthKeyStore(stack, 'auth-key-store', { issuers: [ISSUER_A, ISSUER_B], artifactResolver, dynamoTables });
+  const template        = Template.fromStack(stack);
+  const tableLogicalIds = Object.keys(template.findResources('AWS::DynamoDB::Table'));
   expect(tableLogicalIds).toHaveLength(1);
   return { stack, store, template, tableLogicalId: tableLogicalIds[0] ?? '' };
 }

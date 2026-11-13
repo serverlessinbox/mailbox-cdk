@@ -82,7 +82,7 @@ describe('StackFailureDetectorLambda', () => {
 
     const attachedPolicies = resourcesOfType(template, 'AWS::IAM::Policy', isPolicyProperties)
       .filter(({ properties }) => (properties.Roles ?? []).some((roleRef) => roleRef.Ref === roleLogicalId));
-    const inlinePolicies   = resourcesOfType(template, 'AWS::IAM::Role', isRoleProperties)
+    const inlinePolicies = resourcesOfType(template, 'AWS::IAM::Role', isRoleProperties)
       .filter(({ logicalId }) => logicalId === roleLogicalId)
       .flatMap(({ properties }) => properties.Policies ?? []);
 

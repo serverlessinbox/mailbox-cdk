@@ -42,7 +42,7 @@ function grantOnQueue(grant: 'grantSend' | 'grantConsume', withKey: boolean): Gr
   const queue = new BaseQueue(stack, 'jobs', {
     encryption: withKey ? { kind: 'kms', key } : AWS_MANAGED,
   });
-  const role  = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
+  const role = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
 
   queue[grant](role);
 

@@ -110,7 +110,7 @@ function renderedActions(actions: string[]): string | string[] {
 
 /** Asserts the role's policy after `grantCase` is granted on a bucket that has a customer-managed key when `withKey` is set. */
 function expectGrantedPolicy(grantCase: GrantCase, withKey: boolean): void {
-  const stack  = new cdk.Stack(new App(), 'TestStack', {
+  const stack = new cdk.Stack(new App(), 'TestStack', {
     env:         { account: '123456789012', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });
@@ -118,7 +118,7 @@ function expectGrantedPolicy(grantCase: GrantCase, withKey: boolean): void {
   const bucket = withKey
     ? new s3.Bucket(stack, 'TestBucket', { encryption: s3.BucketEncryption.KMS, encryptionKey: key })
     : new s3.Bucket(stack, 'TestBucket');
-  const role   = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
+  const role = new iam.Role(stack, 'TestRole', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
 
   new DataBlobStore(bucket)[grantCase.method](role);
 

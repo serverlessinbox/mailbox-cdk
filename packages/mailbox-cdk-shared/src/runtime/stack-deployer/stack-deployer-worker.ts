@@ -106,7 +106,7 @@ export class StackDeployerWorker implements StackFailureAnswerer {
       deleteRetryCount: event.deleteRetryCount ?? 0,
       createRetryCount: event.createRetryCount ?? 0,
     };
-    const attempt              = event.attempt ?? 0;
+    const attempt = event.attempt ?? 0;
 
     const stack = await this.describeForCheck(event.op);
     if (event.op.requestType === 'Delete') {

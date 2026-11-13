@@ -26,7 +26,7 @@ const isRoleProperties            = t.isPartial({ RoleName: t.isOptional(isTempl
 const isLambdaFunctionProperties  = t.isPartial({ FunctionName: t.isOptional(isTemplateValue) });
 
 function synthMailboxTemplate(sendStackFailures?: SendStackFailuresMode): Template {
-  const app   = new App({
+  const app = new App({
     context: { 'serverlessinbox:artifacts': TEST_ARTIFACT_CONTEXT },
   });
   const stack = new Stack(app, `TestMailboxSweeperRemovalWiring-${sendStackFailures ?? 'default'}`, {

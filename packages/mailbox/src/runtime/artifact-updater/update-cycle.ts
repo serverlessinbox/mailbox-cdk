@@ -132,7 +132,7 @@ export class UpdateCycle {
       this.reportScanFailure(scan, thrown);
     }
 
-    const updatable      = mappings
+    const updatable = mappings
       .map((mapping) => this.readUpdatableResource(mapping))
       .filter((resource): resource is UpdatableResource => resource !== undefined);
     const edgeResources  = updatable.filter((resource) => resource.updateType === 'edge');

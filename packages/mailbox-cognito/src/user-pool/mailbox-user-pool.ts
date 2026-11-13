@@ -317,9 +317,9 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       adminGroups: props.authorization?.adminGroups ?? [ADMIN_GROUP_NAME],
       userGroups:  props.authorization?.userGroups ?? [USER_GROUP_NAME],
     };
-    this.scopeMap    = this.buildScopeMap();
-    this.policies    = this.buildPolicies();
-    this.authFlows   = props.authFlows ?? {
+    this.scopeMap  = this.buildScopeMap();
+    this.policies  = this.buildPolicies();
+    this.authFlows = props.authFlows ?? {
       userPassword: false,
       userSrp:      false,
     };
@@ -338,7 +338,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       deployerType,
       rootStack: { name: Aws.STACK_NAME, id: StackIdentity.guid },
     });
-    const stackRef        = cognitoDeployer.dataStackRef;
+    const stackRef = cognitoDeployer.dataStackRef;
 
     this.userPool              = stackRef.userPool;
     this.oauthDomain           = stackRef.oauthDomain;
@@ -488,7 +488,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
       // Force re-invocation when response contract changes (e.g., Data field added)
       responseContractVersion: '1',
     };
-    const customResource                      = new CustomResource(this, constructId, {
+    const customResource = new CustomResource(this, constructId, {
       resourceType: 'Custom::CognitoBootstrapUser',
       serviceToken: handler.functionArn,
       properties,
@@ -650,7 +650,7 @@ export class MailboxUserPool extends Construct implements IMailboxAuthProviderBa
   private toOAuthScope(permission: Permission): string {
     const containingScopes = Object.values(CognitoScope)
       .filter((cognitoScope: CognitoScope) => !DeprecatedCognitoScopes.has(cognitoScope) && CognitoScopeToPermissions[cognitoScope].includes(permission));
-    const [cognitoScope]   = containingScopes;
+    const [cognitoScope] = containingScopes;
     if (containingScopes.length !== 1 || cognitoScope === undefined) {
       throw new Error(`Right ${permission} is in ${containingScopes.length} Cognito scopes of CognitoScopeToPermissions (${containingScopes.join(', ') || 'none'}); a right must be in exactly one.`);
     }

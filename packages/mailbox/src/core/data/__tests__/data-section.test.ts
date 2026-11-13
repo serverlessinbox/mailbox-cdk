@@ -23,7 +23,7 @@ function synthSection(stack: Stack): DataSection {
     location:         { bucketBase: 'test-artifacts', project: 'serverlessinbox' },
     deploymentRegion: stack.region,
   });
-  const section          = new DataSection(stack, 'data', {
+  const section = new DataSection(stack, 'data', {
     artifactResolver,
     deployerType:    'cdk',
     stackHelpers:    StackHelpers.getOrCreate(stack, artifactResolver),

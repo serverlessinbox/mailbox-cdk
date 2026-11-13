@@ -10,7 +10,7 @@ export interface ProbeStack {
 
 /** A fresh stack with an explicit environment, holding nothing, so what a probe renders is all it contains. */
 export function newProbeStack(): ProbeStack {
-  const stack            = new Stack(new App(), 'shared-probe', {
+  const stack = new Stack(new App(), 'shared-probe', {
     env:         { account: '111122223333', region: 'us-west-2' },
     synthesizer: new BootstraplessSynthesizer(),
   });

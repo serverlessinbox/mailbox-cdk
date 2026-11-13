@@ -73,7 +73,7 @@ function matchesPattern(pattern: string, arn: string): boolean {
 }
 
 describe('StackFailureDetectorRemoval', () => {
-  const anyRule             = {
+  const anyRule = {
     'Fn::Join': [
       '',
       ['arn:', { Ref: 'AWS::Partition' }, ':events:', { Ref: 'AWS::Region' }, ':', { Ref: 'AWS::AccountId' }, ':rule/*'],

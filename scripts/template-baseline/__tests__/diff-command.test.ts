@@ -16,7 +16,7 @@ import type { StackTemplate }  from '../stack-template';
  * removed or changed belongs to `TemplateDiffer`.
  */
 describe('DiffCommand', () => {
-  const synthesized: StackTemplate[]   = [
+  const synthesized: StackTemplate[] = [
     { stackName: 'alpha', template: { Resources: { Kept: { Type: 'AWS::SNS::Topic' }, Added: { Type: 'AWS::SQS::Queue' }, Changed: { Type: 'AWS::S3::Bucket' } } } },
     { stackName: 'beta', template: { Resources: { Same: { Type: 'AWS::SNS::Topic' } } } },
   ];

@@ -55,7 +55,7 @@ describe('SweeperWorkflow', () => {
   }
 
   function synthesize(stackId: string, overrides: Partial<SweeperWorkflowProps> = {}): Synthesized {
-    const stack           = new Stack(new App(), stackId, {
+    const stack = new Stack(new App(), stackId, {
       env:         { account: '123456789012', region: 'us-west-2' },
       synthesizer: new BootstraplessSynthesizer(),
     });
@@ -72,7 +72,7 @@ describe('SweeperWorkflow', () => {
       removals:         [recordingRemoval(stack, 'FirstRemoval', built), recordingRemoval(stack, 'SecondRemoval', built)],
       ...overrides,
     });
-    const grantee  = new iam.Role(stack, 'grantee', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
+    const grantee = new iam.Role(stack, 'grantee', { assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com') });
     workflow.grantStartExecutionByArn(grantee);
     workflow.grantExecutionReaping(grantee);
 

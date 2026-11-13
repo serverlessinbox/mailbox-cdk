@@ -30,7 +30,7 @@ export class AuditWriting extends Construct {
     const auditEventsQueue = new AuditEventsQueue(this, 'audit-events-queue', {
       encryption: props.queueEncryption,
     });
-    this.auditEventsQueue  = auditEventsQueue;
+    this.auditEventsQueue = auditEventsQueue;
 
     new AuditWriterLambda(this, 'audit-writer', {
       auditLogTable: props.auditLogTable,

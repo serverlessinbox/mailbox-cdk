@@ -23,10 +23,10 @@ import { LambdaCodeRollback }                                                   
 import { LambdaFunctionCode }                                                   from '../lambda-function-code';
 
 describe('LambdaCodeRollback', () => {
-  const lambdaMock                         = mockClient(LambdaClient);
-  const lambda                             = new LambdaClient({ region: 'us-east-1' });
-  const target                             = lambdaTarget();
-  const stale: StaleTarget                 = {
+  const lambdaMock         = mockClient(LambdaClient);
+  const lambda             = new LambdaClient({ region: 'us-east-1' });
+  const target             = lambdaTarget();
+  const stale: StaleTarget = {
     version:  NEWER_VERSION,
     parsed:   new SemVer('1.2.4'),
     deployed: new SemVer('1.2.3'),

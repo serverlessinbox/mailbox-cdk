@@ -105,7 +105,7 @@ describe('ArtifactVersionsBaker', () => {
   });
 
   it('validates the merged pin set under the output file name and writes nothing when it is rejected', async () => {
-    const parsePins                  = jest.spyOn(PinnedArtifactResolver, 'parsePins').mockImplementation(() => {
+    const parsePins = jest.spyOn(PinnedArtifactResolver, 'parsePins').mockImplementation(() => {
       throw new Error('rejected pin set');
     });
     const bakedPackage: BakedPackage = {

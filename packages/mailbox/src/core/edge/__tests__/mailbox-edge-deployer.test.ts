@@ -45,7 +45,7 @@ const isDeployerResource = t.isPartial({
 const REPLICA_LOG_GROUP_ARN = {
   'Fn::Join': ['', ['arn:', { Ref: 'AWS::Partition' }, ':logs:*:', { Ref: 'AWS::AccountId' }, ':log-group:/aws/lambda/us-east-1.', STACK_NAME_REF, '-edge-*']],
 };
-const ROOT_STACK_NAME       = 'mystack';
+const ROOT_STACK_NAME = 'mystack';
 
 /** A statement's `Resource` as rendered ARN strings, whether the statement lists one resource or several. */
 function renderResources(resource: unknown): string[] {

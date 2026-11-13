@@ -39,7 +39,7 @@ export class EmailSending extends Construct {
     const submissionQueue = new EmailSendingQueue(this, 'email-submissions-queue', {
       encryption: props.queueEncryption,
     });
-    this.submissionQueue  = submissionQueue;
+    this.submissionQueue = submissionQueue;
 
     this.stateChangeSource = new EmailSenderLambda(this, 'email-sender', {
       configTable:      props.configTable,

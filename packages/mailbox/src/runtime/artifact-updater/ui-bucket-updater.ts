@@ -60,7 +60,7 @@ export class UiBucketUpdater {
         deploymentRegion: this.deployment.region,
       });
 
-      const deployed     = await deployZipToPrefix(this.registryS3, {
+      const deployed = await deployZipToPrefix(this.registryS3, {
         sourceBucket: location.bucket,
         sourceKey:    location.key,
         targetBucket: target.bucketName,
