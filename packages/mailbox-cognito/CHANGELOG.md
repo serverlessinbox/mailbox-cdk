@@ -4,6 +4,14 @@
 All notable changes to this project will be documented in this file
 
 
+## [0.5.11](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.10...v0.5.11) (Sat Nov 07 2026)
+
+### feat
+
+* **auth** add the sieve/read and sieve/write scopes ([fbda935](https://github.com/serverlessinbox/mailbox-cdk/commit/fbda935febddd019241ac6d7467152235097700c))
+
+* **mailbox-cognito** offer every resource scope to third-party OAuth clients ([035149c](https://github.com/serverlessinbox/mailbox-cdk/commit/035149c9fc196fc795a17b9ea9d224eef601c57f))
+
 ## [0.5.10](https://github.com/serverlessinbox/mailbox-cdk/compare/v0.5.9...v0.5.10) (Wed Nov 04 2026)
 
 ### feat
