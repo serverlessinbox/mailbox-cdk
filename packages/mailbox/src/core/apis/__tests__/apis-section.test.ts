@@ -378,7 +378,7 @@ describe('ApisSection', () => {
     it('offers each API its own custom domain as CNAME target', () => {
       const section = newSection();
 
-      const endpoints = section.addEndpoints(endpointsProps({
+      const { endpoints } = section.addEndpoints(endpointsProps({
         enableMcp: true,
         edge:      { ...edgeWithAllCertificates(), regionalCertificate: importedCertificate('regional-certificate') },
       }));
@@ -398,7 +398,7 @@ describe('ApisSection', () => {
     it('serves the WebSocket API on no custom domain when the edge section offers no WebSocket certificate', () => {
       const section = newSection();
 
-      const endpoints = section.addEndpoints(endpointsProps({ edge: { apiCertificate: importedCertificate('api-certificate') } }));
+      const { endpoints } = section.addEndpoints(endpointsProps({ edge: { apiCertificate: importedCertificate('api-certificate') } }));
 
       Template.fromStack(stack).resourcePropertiesCountIs('AWS::ApiGatewayV2::DomainName', { DomainName: 'ws.example.com' }, 0);
       expect(endpoints.webSocketDomainTarget).toBeUndefined();
@@ -406,8 +406,8 @@ describe('ApisSection', () => {
   });
 
   it('returns as its publisher the state-change fan-out, built under the section and tagged messaging', () => {
-    const section   = newSection();
-    const endpoints = section.addEndpoints(endpointsProps());
+    const section               = newSection();
+    const { stateChangeFanout } = section.addEndpoints(endpointsProps());
 
     const fanouts = Template.fromStack(stack).findResources('AWS::Lambda::Function', {
       Properties: {
@@ -417,8 +417,30 @@ describe('ApisSection', () => {
     });
     expect(Object.keys(fanouts)).toHaveLength(1);
     const [fanoutId] = Object.keys(fanouts);
-    expect(stack.resolve(endpoints.stateChangeFanout.functionName)).toEqual({ Ref: fanoutId });
+    expect(stack.resolve(stateChangeFanout.functionName)).toEqual({ Ref: fanoutId });
     expect(fanoutId).not.toMatch(/websocketpush/i);
+  });
+
+  it('returns the DNS targets without the state-change fan-out', () => {
+    const section       = newSection();
+    const { endpoints } = section.addEndpoints(endpointsProps());
+
+    expect(endpoints).not.toHaveProperty('stateChangeFanout');
+  });
+
+  it('gives the JMAP API function the URL of the WebSocket API', () => {
+    const section = newSection();
+    section.addEndpoints(endpointsProps());
+
+    const template         = Template.fromStack(stack);
+    const [webSocketApiId] = Object.keys(template.findResources('AWS::ApiGatewayV2::Api', { Properties: { ProtocolType: 'WEBSOCKET' } }));
+    const jmapFunctions    = template.findResources('AWS::Lambda::Function', {
+      Properties: { Environment: { Variables: { SERVICE_NAME: 'jmap-api' } } },
+    });
+    const [jmapFunction]   = Object.values(jmapFunctions) as Array<{ Properties: { Environment: { Variables: Record<string, unknown> } } }>;
+
+    const webSocketUrl = jmapFunction.Properties.Environment.Variables.WEBSOCKET_URL as { 'Fn::Join': [string, unknown[]] };
+    expect(webSocketUrl['Fn::Join'][1].slice(0, 2)).toEqual(['wss://', { Ref: webSocketApiId }]);
   });
 
   it('addEndpoints throws when the MCP API is enabled and the edge section has no regional certificate', () => {

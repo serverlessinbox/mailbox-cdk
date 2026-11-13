@@ -139,7 +139,7 @@ export class Mailbox extends Construct {
     const blobCdn = edge.addBlobCdn({ ui, extraAllowedOrigins: props.extraAllowedOrigins });
 
     // The API endpoints need the CDN host and the UI origins, so they follow both.
-    const endpoints = apis.addEndpoints({
+    const addedApis = apis.addEndpoints({
       artifactResolver, authProvider: props.authProvider, data, auth, email, vendorLink,
       cdnHost:        blobCdn.host,
       mailboxDomains: addressing.domains, edge, ui, jobs,
@@ -147,12 +147,12 @@ export class Mailbox extends Construct {
       enableMcp:           props.enableMcp,
     });
 
-    // The email and mail-import Lambdas can push over the WebSocket only once the endpoints' state-change fan-out exists.
-    email.enableWebSocketPublishing(endpoints.stateChangeFanout);
-    jobs.enableWebSocketPublishing(endpoints.stateChangeFanout);
+    // The email and mail-import Lambdas hand changes to the state-change fan-out only once the endpoints have built it.
+    email.enableStateChangeFanout(addedApis.stateChangeFanout);
+    jobs.enableStateChangeFanout(addedApis.stateChangeFanout);
 
     // DNS records point at the UIs, the CDN and the API endpoints, so they come after all three.
-    edge.addDns({ ui, blobCdn, apis: endpoints });
+    edge.addDns({ ui, blobCdn, apis: addedApis.endpoints });
 
     // The bootstrap registers the UIs' OAuth clients, so it needs the UIs and the edge.
     auth.addBootstrap({ email, ui, edge, sesReceivingMode: props.enableReceiving });

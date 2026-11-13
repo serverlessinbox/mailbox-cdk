@@ -119,10 +119,8 @@ export interface ApisEndpointsProps {
   readonly enableMcp?: boolean;
 }
 
-/** What the endpoints built by {@link ApisSection.addEndpoints} offer to the rest of the mail server. */
+/** The public targets of the endpoints built by {@link ApisSection.addEndpoints}, for the DNS records. */
 export interface IApisEndpoints {
-  /** The capability to publish changes to connected WebSocket clients. */
-  readonly stateChangeFanout: IStateChangeFanout;
   /** CNAME target of the shared API's custom domain, when it has one. */
   readonly apiDomainTarget?: string;
   /** CNAME target of the JMAP API custom domain, when it has one. */
@@ -131,6 +129,12 @@ export interface IApisEndpoints {
   readonly webSocketDomainTarget?: string;
   /** CNAME target of the MCP API custom domain, when the MCP API is enabled. */
   readonly mcpApiDomainTarget?: string;
+}
+
+/** What {@link ApisSection.addEndpoints} adds, by consumer: the custom-domain targets for the edge section's DNS records, and the state-change fan-out for the Lambdas that write changes. */
+export interface AddedApis {
+  readonly endpoints:         IApisEndpoints;
+  readonly stateChangeFanout: IStateChangeFanout;
 }
 
 /**
@@ -162,7 +166,7 @@ export class ApisSection extends Construct {
   }
 
   /** Adds the JMAP, WebSocket, admin, user and (when enabled) MCP APIs; their inputs exist only once the UIs and the CDN are built. */
-  public addEndpoints(props: ApisEndpointsProps): IApisEndpoints {
+  public addEndpoints(props: ApisEndpointsProps): AddedApis {
     const gateway = this.addApiGateway(
       props.ui.adminUiOrigins,
       props.ui.webmailUiOrigins,
@@ -219,20 +223,23 @@ export class ApisSection extends Construct {
     gateway.mount(adminApi);
     gateway.mount(userApi);
 
-    jmapApi.enableWebSocketPublishing(webSocketPush.webSocketUrl, stateChangeFanout);
-    adminApi.enableWebSocketPublishing(stateChangeFanout);
-    userApi.enableWebSocketPublishing(stateChangeFanout);
+    jmapApi.enableWebSocketCapability(webSocketPush.webSocketUrl);
+    jmapApi.enableStateChangeFanout(stateChangeFanout);
+    adminApi.enableStateChangeFanout(stateChangeFanout);
+    userApi.enableStateChangeFanout(stateChangeFanout);
 
     gateway.domainLogicalIdPin?.overrideLogicalId('Mailboxadminapidomain8793AE5D');
     jmapApi.domainLogicalIdPin?.overrideLogicalId('Mailboxjmapapidomain47B62A36');
     webSocketPush.domainLogicalIdPin?.overrideLogicalId('MailboxwebsocketpushdomainCACDAF3B');
 
     return {
-      stateChangeFanout:     stateChangeFanout,
-      apiDomainTarget:       gateway.domainTarget,
-      jmapApiDomainTarget:   jmapApi.domainTarget,
-      webSocketDomainTarget: webSocketPush.domainTarget,
-      mcpApiDomainTarget:    mcpApi?.domainTarget,
+      endpoints: {
+        apiDomainTarget:       gateway.domainTarget,
+        jmapApiDomainTarget:   jmapApi.domainTarget,
+        webSocketDomainTarget: webSocketPush.domainTarget,
+        mcpApiDomainTarget:    mcpApi?.domainTarget,
+      },
+      stateChangeFanout,
     };
   }
 
